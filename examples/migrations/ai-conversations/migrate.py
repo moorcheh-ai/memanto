@@ -119,7 +119,7 @@ def _attach_footer(content, footer):
     return content
 
 
-def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
+def _walk_chatgpt_mapping(mapping, current_id, max_depth=10000):
     """Walk ChatGPT's tree-structured mapping dict backwards to collect messages."""
     messages = []
     visited = set()
@@ -169,11 +169,17 @@ def map_chatgpt(export):
                 content_obj = msg.get("content") or {}
                 if isinstance(content_obj, str):
                     text = content_obj.strip()
-                else:
+                elif isinstance(content_obj, dict):
                     parts = content_obj.get("parts") or []
                     text = " ".join(p for p in parts if isinstance(p, str)).strip()
+                else:
+                    text = str(content_obj).strip() if content_obj else ""
                 if text and role in ("user", "human"):
-                    messages.append({"text": text, "role": "user"})
+                    messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
+                elif text and role == "assistant":
+                    messages.append({"text": text, "role": "assistant", "create_time": msg.get("create_time")})
+                elif text and role == "system":
+                    messages.append({"text": text, "role": "system", "create_time": msg.get("create_time")})
         else:
             messages = _walk_chatgpt_mapping(mapping, current_node)
 
@@ -346,6 +352,9 @@ def export_okf_bundle(memories, output_dir):
         mem_id = f"mem_{i:04d}"
         raw_slug = (mem.get("title") or f"memory_{i}")[:50]
         slug = re.sub(r"[^\w\s-]", "", raw_slug).strip().replace(" ", "_")
+        slug = slug.lstrip(".")
+        if not slug:
+            slug = f"memory_{i}"
         md_content = f"""# {mem.get('title', f'Memory {i}')}
 
 **Type:** {mem.get('type') or 'auto-classified'}
@@ -377,8 +386,12 @@ def run_recall_test(memories, export_data):
     """Run a basic recall-parity test checking that key facts are preserved."""
     expected_facts = []
     conversations = export_data.get("conversations") or export_data.get("memories") or []
+    if isinstance(conversations, dict):
+        conversations = conversations.get("conversations", [])
 
     for convo in conversations:
+        if not isinstance(convo, dict):
+            continue
         title = convo.get("title") or convo.get("name") or ""
         if title:
             expected_facts.append(title)
@@ -399,11 +412,20 @@ def run_recall_test(memories, export_data):
                             expected_facts.append(text[:100])
                     current = node.get("parent")
         else:
-            for msg in convo.get("chat_messages", []):
-                if msg.get("sender") in ("human", "user"):
+            for msg in convo.get("chat_messages") or convo.get("messages") or []:
+                if not isinstance(msg, dict):
+                    continue
+                sender = msg.get("sender") or msg.get("role") or ""
+                content_obj = msg.get("content") or {}
+                if isinstance(content_obj, str):
+                    text = content_obj[:100]
+                elif isinstance(content_obj, dict):
+                    parts = content_obj.get("parts") or []
+                    text = " ".join(p for p in parts if isinstance(p, str)).strip()[:100]
+                else:
                     text = (msg.get("text") or "")[:100]
-                    if text:
-                        expected_facts.append(text)
+                if text and sender in ("human", "user"):
+                    expected_facts.append(text)
 
     all_content = " ".join(
         (mem.get("content", "") + " " + mem.get("title", "")).lower()
@@ -494,7 +516,6 @@ def main():
     _heading("Migration Complete")
     summary_msg = f"{status} - {len(memories)} memories migrated, OKF bundle at {bundle_dir}, recall {rate:.0%}"
     if HAS_RICH:
-        from rich.panel import Panel
         console.print(Panel.fit(
             f"[bold green]{status}[/bold green] - {len(memories)} memories migrated, "
             f"OKF bundle at [cyan]{bundle_dir}[/cyan], recall {rate:.0%}",

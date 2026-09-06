@@ -729,21 +729,33 @@ def migrate_conversations(
 
     if path.suffix.lower() == ".zip":
         progress("Extracting ZIP archive...")
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            with zipfile.ZipFile(path, "r") as zf:
-                zf.extractall(tmpdir_path)
-            # Find conversations.json first, fallback to any .json file
-            json_files = list(tmpdir_path.rglob("*.json"))
-            if not json_files:
-                _error("No JSON files found in ZIP archive.")
-            # Prefer conversations.json if present
-            convo_file = next((f for f in json_files if f.name == "conversations.json"), None)
-            export_file = convo_file or json_files[0]
-            export_data = load_export(export_file)
-            progress(f"Extracted {export_file.name} ({len(json_files)} JSON files in archive)")
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = Path(tmpdir)
+                with zipfile.ZipFile(path, "r") as zf:
+                    for member in zf.namelist():
+                        dest = (tmpdir_path / member).resolve()
+                        if not str(dest).startswith(str(tmpdir_path.resolve())):
+                            _error(f"Unsafe ZIP member path: {member}")
+                    zf.extractall(tmpdir_path)
+                # Find conversations.json first, fallback to any .json file
+                json_files = list(tmpdir_path.rglob("*.json"))
+                if not json_files:
+                    _error("No JSON files found in ZIP archive.")
+                # Prefer conversations.json if present
+                convo_file = next((f for f in json_files if f.name == "conversations.json"), None)
+                export_file = convo_file or json_files[0]
+                export_data = load_export(export_file)
+                progress(f"Extracted {export_file.name} ({len(json_files)} JSON files in archive)")
+        except zipfile.BadZipFile as exc:
+            _error(f"Failed to read ZIP archive: {exc}")
+        except json.JSONDecodeError as exc:
+            _error(f"Failed to parse JSON from ZIP: {exc}")
     else:
-        export_data = load_export(path)
+        try:
+            export_data = load_export(path)
+        except (json.JSONDecodeError, FileNotFoundError) as exc:
+            _error(f"Failed to read export file: {exc}")
 
     # Normalize: wrap flat arrays as {"memories": [...]}
     if isinstance(export_data, list):

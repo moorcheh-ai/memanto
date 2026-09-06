@@ -15,7 +15,7 @@ When you switch AI assistants, your conversation history — the memories, prefe
 This adapter:
 1. **Parses** ChatGPT's tree-structured exports and Claude's flat JSON exports
 2. **Extracts** user messages as semantically rich memories with provenance metadata
-3. **Classifies** memories by type (fact, preference, goal, etc.) using the source context
+3. **Defers classification** to Memanto's ingestion service (type is set to `None` for auto-classification)
 4. **Imports** into Memanto via the batch API
 5. **Exports** as a human-readable OKF bundle (markdown + manifest JSON)
 6. **Validates** recall parity — ensures key facts survive the migration
@@ -74,7 +74,7 @@ python validation/validate.py --validate-okf --okf-dir ./okf_bundle
 
 ## Architecture
 
-```
+```text
 Source Export (JSON)          Memanto Schema              OKF Bundle
 ┌─────────────────┐          ┌─────────────────┐         ┌─────────────────┐
 │ ChatGPT tree    │──map────▶│ memories[]      │──export▶│ manifest.json   │
@@ -90,22 +90,13 @@ Source Export (JSON)          Memanto Schema              OKF Bundle
 
 ## Memory Classification
 
-The adapter auto-classifies memories based on content signals:
-
-| Memory Type | Signal |
-|-------------|--------|
-| `fact` | Contains technical terms, definitions, or factual statements |
-| `preference` | "I prefer", "I like", "my favorite" |
-| `goal` | "I want to", "I need to", "my goal" |
-| `decision` | "I decided", "I chose", "the decision" |
-| `learning` | "I learned", "I now understand", "the key insight" |
-| `event` | Timestamps, "yesterday", "last week" |
+The adapter sets `type: None` for all migrated memories, deferring classification to Memanto's ingestion service. This ensures consistent type assignment across all memory sources.
 
 ## Sample OKF Bundle
 
 The `okf_bundle/` directory demonstrates the output format:
 
-```
+```text
 okf_bundle/
 ├── manifest.json          # Metadata, memory index, version
 └── memories/
@@ -128,7 +119,7 @@ The validation suite checks:
 
 ## Files
 
-```
+```text
 ai-conversations/
 ├── migrate.py                    # Standalone demo script
 ├── requirements.txt              # Dependencies

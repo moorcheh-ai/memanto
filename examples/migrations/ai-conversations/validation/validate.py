@@ -97,11 +97,32 @@ def map_chatgpt(export):
         title = (convo.get("title") or "").strip()
         mapping, current_node = convo.get("mapping") or {}, convo.get("current_node")
         if not mapping or not current_node:
-            continue
-        messages = _walk_chatgpt_mapping(mapping, current_node)
+            messages = []
+            for msg in convo.get("messages") or convo.get("chat_messages") or []:
+                role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
+                content_obj = msg.get("content") or {}
+                if isinstance(content_obj, str):
+                    text = content_obj.strip()
+                elif isinstance(content_obj, dict):
+                    parts = content_obj.get("parts") or []
+                    text = " ".join(p for p in parts if isinstance(p, str)).strip()
+                else:
+                    text = str(content_obj).strip() if content_obj else ""
+                if text and role in ("user", "human"):
+                    messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
+                elif text and role == "assistant":
+                    messages.append({"text": text, "role": "assistant", "create_time": msg.get("create_time")})
+                elif text and role == "system":
+                    messages.append({"text": text, "role": "system", "create_time": msg.get("create_time")})
+        else:
+            messages = _walk_chatgpt_mapping(mapping, current_node)
         if not messages:
             continue
-        content = "\n\n".join(f"[User message {i}]: {m['text']}" for i, m in enumerate(messages, 1))
+        content_parts = []
+        for i, msg in enumerate(messages, 1):
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
+        content = "\n\n".join(content_parts)
         if not content.strip():
             continue
         created_at = _pick_first_dt(convo, ("create_time", "created_at", "update_time"))
@@ -130,15 +151,29 @@ def map_claude(export):
         conversations = conversations.get("conversations", [])
     for convo in conversations:
         title = (convo.get("name") or convo.get("title") or "").strip()
+        chat_messages = convo.get("chat_messages") or convo.get("messages") or []
         human_messages = []
-        for msg in convo.get("chat_messages") or convo.get("messages") or []:
+        for msg in chat_messages:
             sender = (msg.get("sender") or msg.get("role") or "").strip()
-            text = (msg.get("text") or msg.get("content") or "").strip()
+            content_obj = msg.get("content") or {}
+            if isinstance(content_obj, str):
+                text = content_obj.strip()
+            elif isinstance(content_obj, dict):
+                parts = content_obj.get("parts") or []
+                text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            else:
+                text = (msg.get("text") or "").strip()
             if text and sender in ("human", "user"):
                 human_messages.append({"text": text, "role": "user", "created_at": msg.get("created_at")})
+            elif text and sender == "assistant":
+                human_messages.append({"text": text, "role": "assistant", "created_at": msg.get("created_at")})
         if not human_messages:
             continue
-        content = "\n\n".join(f"[User message {i}]: {m['text']}" for i, m in enumerate(human_messages, 1))
+        content_parts = []
+        for i, msg in enumerate(human_messages, 1):
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
+        content = "\n\n".join(content_parts)
         if not content.strip():
             continue
         created_at = _pick_first_dt(convo, ("created_at", "create_time", "updated_at"))
@@ -216,9 +251,12 @@ def validate_okf_bundle(bundle_dir):
         issues.append(f"memory_count mismatch: {manifest.get('memory_count')} vs {len(memories)}")
 
     for mem in memories:
-        mem_file = bundle_dir / mem.get("file", "")
-        if not mem_file.exists():
-            issues.append(f"Missing memory file: {mem.get('file')}")
+        mem_rel = mem.get("file", "")
+        mem_file = (bundle_dir / mem_rel).resolve()
+        if not str(mem_file).startswith(str(bundle_dir.resolve())):
+            issues.append(f"Unsafe path in memory file: {mem_rel}")
+        elif not mem_file.exists():
+            issues.append(f"Missing memory file: {mem_rel}")
         else:
             content = mem_file.read_text(encoding="utf-8")
             if len(content) < 50:

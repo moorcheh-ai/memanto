@@ -2,6 +2,7 @@
   "conversations": [
     {
       "title": "Building a REST API with FastAPI",
+      "conversation_id": "conv-fastapi-001",
       "create_time": 1700000000.0,
       "update_time": 1700003600.0,
       "current_node": "node_a3",
@@ -82,6 +83,7 @@
     },
     {
       "title": "React TypeScript State Management",
+      "conversation_id": "conv-react-ts-002",
       "create_time": 1700100000.0,
       "update_time": 1700103600.0,
       "current_node": "node_a2",
@@ -140,6 +142,7 @@
     },
     {
       "title": "Docker Compose for Development",
+      "conversation_id": "conv-docker-003",
       "create_time": 1700200000.0,
       "update_time": 1700201800.0,
       "current_node": "node_a2",
