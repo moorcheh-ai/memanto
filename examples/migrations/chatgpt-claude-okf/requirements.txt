@@ -1,0 +1,10 @@
+# Memanto itself, editable from this repo. Provides every service the adapter
+# uses: conversation extraction, memory classification and OKF export.
+-e ../../..
+
+# Declared explicitly because okf_v02.py imports it directly. Memanto happens to
+# depend on it too, but a direct import should not rely on a transitive.
+pyyaml>=6.0
+
+# Judge for the round-trip recall check in validate.py, OpenRouter compatible.
+openai>=1.0

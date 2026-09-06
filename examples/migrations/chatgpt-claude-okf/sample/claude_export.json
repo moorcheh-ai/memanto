@@ -1,0 +1,54 @@
+[
+  {
+    "uuid": "sample-claude-0001",
+    "name": "Terraform state locking",
+    "created_at": "2026-02-11T09:15:00Z",
+    "updated_at": "2026-02-11T09:41:00Z",
+    "chat_messages": [
+      {
+        "uuid": "cm-1",
+        "sender": "human",
+        "created_at": "2026-02-11T09:15:00Z",
+        "text": "Two of us ran terraform apply at the same time and corrupted the state file. We keep state in S3 but there's no locking."
+      },
+      {
+        "uuid": "cm-2",
+        "sender": "assistant",
+        "created_at": "2026-02-11T09:16:00Z",
+        "text": "Add a DynamoDB table and wire it in as the backend's lock table. S3 stores state, DynamoDB serializes writes, and a second apply blocks instead of racing."
+      },
+      {
+        "uuid": "cm-3",
+        "sender": "human",
+        "created_at": "2026-02-11T09:40:00Z",
+        "text": "",
+        "content": [
+          {
+            "type": "text",
+            "text": "Done — DynamoDB locking is in and I made state changes go through CI only, no local applies. That's a team rule now."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "uuid": "sample-claude-0002",
+    "name": "Reviewing my monitoring stack",
+    "created_at": "2026-03-04T18:02:00Z",
+    "updated_at": "2026-03-04T18:20:00Z",
+    "chat_messages": [
+      {
+        "uuid": "cm-4",
+        "sender": "human",
+        "created_at": "2026-03-04T18:02:00Z",
+        "text": "I get paged for CPU spikes that resolve themselves in 30 seconds. It's wrecking my on-call weeks and I've started ignoring alerts."
+      },
+      {
+        "uuid": "cm-5",
+        "sender": "assistant",
+        "created_at": "2026-03-04T18:05:00Z",
+        "text": "Alert on symptoms users feel, not resource numbers. Page on error rate and latency SLO burn; leave CPU as a dashboard signal with a long 'for' duration if you keep it at all."
+      }
+    ]
+  }
+]

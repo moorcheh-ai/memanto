@@ -1,0 +1,6 @@
+# Never commit real exports or the patterns that redact them.
+.private-patterns
+*.zip
+my_memories.txt
+saved_memories.txt
+!sample/saved_memories.txt
