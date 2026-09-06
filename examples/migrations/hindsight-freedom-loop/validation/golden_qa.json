@@ -1,0 +1,27 @@
+[
+  {
+    "question": "What language is the Project Atlas ingestion worker implemented in?",
+    "expected_keywords": ["Rust"],
+    "memory_type": "fact"
+  },
+  {
+    "question": "What database does the user prefer for new services?",
+    "expected_keywords": ["PostgreSQL", "Postgres"],
+    "memory_type": "preference"
+  },
+  {
+    "question": "What auth mechanism replaced session cookies?",
+    "expected_keywords": ["JWT"],
+    "memory_type": "decision"
+  },
+  {
+    "question": "What caused the staging outage on 2026-07-01?",
+    "expected_keywords": ["Redis", "TTL"],
+    "memory_type": "event"
+  },
+  {
+    "question": "What operational lesson was learned about memory provider migration?",
+    "expected_keywords": ["dry-run", "memanto migrate"],
+    "memory_type": "fact"
+  }
+]
