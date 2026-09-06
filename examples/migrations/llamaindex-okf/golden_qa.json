@@ -1,0 +1,27 @@
+[
+  {
+    "question": "What does Orchid do?",
+    "expected": "It helps small museums catalogue objects"
+  },
+  {
+    "question": "What is the preferred release-note style?",
+    "expected": "concise release notes with a short example before technical detail"
+  },
+  {
+    "question": "Which feature must ship before public sharing?",
+    "expected": "offline-first sync before adding public sharing"
+  },
+  {
+    "question": "What is the corrected pilot target?",
+    "expected": "pilot museum count is 14, not 12"
+  },
+  {
+    "question": "Who reviews the import template?",
+    "expected": "Mina is the registrar who will review the import template"
+  },
+  {
+    "question": "Which personal data should not be collected?",
+    "expected": "Avoid collecting donor addresses"
+  }
+]
+

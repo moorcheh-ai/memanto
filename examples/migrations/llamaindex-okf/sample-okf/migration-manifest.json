@@ -1,0 +1,105 @@
+{
+  "format": "okf",
+  "source": "llama-index-core Memory / SQLAlchemyChatStore",
+  "source_database": "source.sqlite",
+  "source_records": 13,
+  "mapped_memories": 13,
+  "skipped": 0,
+  "type_counts": {
+    "fact": 2,
+    "observation": 2,
+    "preference": 1,
+    "decision": 1,
+    "commitment": 1,
+    "goal": 1,
+    "artifact": 1,
+    "relationship": 1,
+    "event": 1,
+    "learning": 1,
+    "instruction": 1
+  },
+  "session_counts": {
+    "orchid-product": 8,
+    "orchid-research": 5
+  },
+  "entries": [
+    {
+      "source_id": 1,
+      "session_id": "orchid-product",
+      "okf_path": "memories/fact/llamaindex-00001.md",
+      "sha256": "c36bd1dcb20a754321aa4cd3b4ebd2285913206b789fdb47e8c49c3c3710b2e6"
+    },
+    {
+      "source_id": 2,
+      "session_id": "orchid-product",
+      "okf_path": "memories/observation/llamaindex-00002.md",
+      "sha256": "fbbad7ae3badfe4eb9bfe45e63869a63c49b6eada1347259b568df6cbc7abb79"
+    },
+    {
+      "source_id": 3,
+      "session_id": "orchid-product",
+      "okf_path": "memories/preference/llamaindex-00003.md",
+      "sha256": "f285419132097440b73bcf7e372e5073743b30546f607ebfc7fac42609274ac0"
+    },
+    {
+      "source_id": 4,
+      "session_id": "orchid-product",
+      "okf_path": "memories/decision/llamaindex-00004.md",
+      "sha256": "690a18f90a2c73fd220a48d37d525ad47ac6d433e0d79ceeff1f084b94de7577"
+    },
+    {
+      "source_id": 5,
+      "session_id": "orchid-product",
+      "okf_path": "memories/commitment/llamaindex-00005.md",
+      "sha256": "c0bf3fd40ecac4536a12896b4ec4a6bf227f17dc9382454ce955bdb298441a20"
+    },
+    {
+      "source_id": 6,
+      "session_id": "orchid-product",
+      "okf_path": "memories/goal/llamaindex-00006.md",
+      "sha256": "855ccf4c7b2b855a015e16bf50ece54f604a5252cd6aa435c3ff44660347e409"
+    },
+    {
+      "source_id": 7,
+      "session_id": "orchid-product",
+      "okf_path": "memories/artifact/llamaindex-00007.md",
+      "sha256": "61675fc6693c5a379935bdc6a258d6901564833b56f43cd81a2ee1ea0c92c60f"
+    },
+    {
+      "source_id": 8,
+      "session_id": "orchid-product",
+      "okf_path": "memories/fact/llamaindex-00008.md",
+      "sha256": "9ea25cfa86a2a1374050c09cb4a7396b8a1f8b94695691b4ddb5aa84bf17860c"
+    },
+    {
+      "source_id": 12,
+      "session_id": "orchid-research",
+      "okf_path": "memories/relationship/llamaindex-00012.md",
+      "sha256": "4444a2483e86515101684ef9407e42ad7b1fb1bbc42abd83a042a84fcb2d008c"
+    },
+    {
+      "source_id": 13,
+      "session_id": "orchid-research",
+      "okf_path": "memories/event/llamaindex-00013.md",
+      "sha256": "f2b49d6973ffde2b987bc45fd001edda0e59a04669d554e185db212e4620bc4b"
+    },
+    {
+      "source_id": 9,
+      "session_id": "orchid-research",
+      "okf_path": "memories/observation/llamaindex-00009.md",
+      "sha256": "73560ff0988e0b3b4af4068fa5480b487a30045cdeba938b5a0cbe07ef0b9800"
+    },
+    {
+      "source_id": 10,
+      "session_id": "orchid-research",
+      "okf_path": "memories/learning/llamaindex-00010.md",
+      "sha256": "daf8bd70851e8ef052d3f0d590d000f14d57f4ae07db4dc08964e5014cfc9823"
+    },
+    {
+      "source_id": 11,
+      "session_id": "orchid-research",
+      "okf_path": "memories/instruction/llamaindex-00011.md",
+      "sha256": "196fae7e5dd12082425aad1569f6fb04b57efde2cfdae5ccb18821dfc8b918e9"
+    }
+  ]
+}
