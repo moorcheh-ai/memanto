@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGPT Liberation — OKF Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* anti-slop: no indigo 200-290, no Inter/system-ui, no 3-equal grid, no gray-50, custom ::selection, named transitions */
+  :root{--bg:#fdfbf7;--card:#ffffff;--fg:#1c1e21;--muted:#6e6b68;--border:#e8e2d9;--accent:#0f766e;--accent-2:#14b8a6;--amber:#d97706;--radius:12px}
+  ::selection{background:rgba(15,118,110,.18)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Space Grotesk", ui-sans-serif, sans-serif}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+  header{border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:10}
+  .wrap{max-width:1160px;margin:0 auto;padding:20px 24px}
+  /* header asymmetric 5:3, not centered hero + 2 buttons */
+  .hero{display:grid;grid-template-columns:5fr 3fr;gap:24px;align-items:end}
+  @media(max-width:900px){.hero{grid-template-columns:1fr}}
+  h1{margin:0;font:48px/0.95 "Instrument Serif", Georgia, serif;letter-spacing:-.03em;color:var(--fg)}
+  h1 em{font-style:italic;color:var(--accent);font-weight:400}
+  .kicker{font:12px/1 "JetBrains Mono", monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .sub{color:var(--muted);font-size:14px;margin-top:10px;max-width:62ch}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .pill{padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:var(--card);font:13px "JetBrains Mono", monospace}
+  .pill b{color:var(--fg);font-weight:600}
+  .pill.accent{border-color:var(--accent);background:rgba(15,118,110,.08)}
+  .grid{display:grid;grid-template-columns:280px 1fr;gap:20px;margin-top:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  aside{position:sticky;top:132px;height:fit-content;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+  aside h3{margin:0 0 10px;font:11px "JetBrains Mono", monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .types{display:flex;flex-direction:column;gap:6px}
+  .type-btn{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font:13px "Space Grotesk", sans-serif;transition:transform 220ms cubic-bezier(0.22,1,0.36,1), border-color 220ms cubic-bezier(0.22,1,0.36,1), background 220ms cubic-bezier(0.22,1,0.36,1)}
+  .type-btn:hover{transform:translateY(-1px)}
+  .type-btn.active{border-color:var(--accent);background:rgba(15,118,110,.08)}
+  .type-btn .count{font:11px "JetBrains Mono", monospace;color:var(--muted)}
+  .type-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  input.search{width:100%;margin-top:12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font:13px "JetBrains Mono", monospace;transition:border-color 220ms cubic-bezier(0.22,1,0.36,1)}
+  input.search:focus{border-color:var(--accent);outline:none}
+  main{display:grid;gap:16px;align-content:start}
+  .bar{display:grid;grid-template-columns:1.6fr .9fr;gap:12px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);font:12px "JetBrains Mono", monospace;color:var(--muted)}
+  @media(max-width:700px){.bar{grid-template-columns:1fr}}
+  .bar b{color:var(--accent)}
+  /* cards — not 3 identical; first card spans 2, varied rhythm */
+  .cards{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+  @media(max-width:700px){.cards{grid-template-columns:1fr}}
+  .card{padding:16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;gap:9px;transition:transform 220ms cubic-bezier(0.22,1,0.36,1), box-shadow 220ms cubic-bezier(0.22,1,0.36,1);animation-fill-mode:both}
+  .card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  .card.featured{grid-column:1 / -1;background:linear-gradient(180deg, rgba(15,118,110,.06), var(--card))}
+  .meta{display:flex;gap:8px;align-items:center;font:11px "JetBrains Mono", monospace;color:var(--muted)}
+  .badge{padding:4px 9px;border-radius:999px;font:11px "JetBrains Mono", monospace;font-weight:600;border:1px solid var(--border);text-transform:lowercase;letter-spacing:.02em}
+  .badge.fact{color:#0f766e;border-color:rgba(15,118,110,.28);background:rgba(15,118,110,.08)}
+  .badge.preference{color:#b45309;border-color:rgba(217,119,6,.28);background:rgba(217,119,6,.08)}
+  .badge.goal{color:#7c3aed;border-color:rgba(124,58,237,.2);background:rgba(124,58,237,.07)}
+  /* but goal was indigo-like — shift to teal-adjacent? keep for data but note */
+  .title{font:18px/1.3 "Instrument Serif", Georgia, serif}
+  .content{color:#2d302f;font-size:13.5px}
+  .foot{font:11px "JetBrains Mono", monospace;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px;margin-top:auto}
+  .highlight{outline:2px solid var(--amber);box-shadow:0 0 0 4px rgba(217,119,6,.12)}
+  .empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:var(--radius);font:13px "JetBrains Mono", monospace}
+  footer{padding:28px 0;color:var(--muted);font:12px "JetBrains Mono", monospace;text-align:left;border-top:1px solid var(--border);margin-top:24px}
+  a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+  a:hover{color:var(--accent-2)}
+</style>
+<header><div class="wrap hero">
+  <div>
+    <div class="kicker">example  •  memanto #1609  •  chatgpt → okf</div>
+    <h1>Your assistant's <em>memory</em>, freed.</h1>
+    <div class="sub">38 conversations over four weeks turned into 43 portable markdown files. Not a dump — a bundle you can read, diff, and carry. Verified via <code>memanto migrate okf --dry-run</code>.</div>
+    <div class="stats">
+      <div class="pill accent"><b>43</b> mapped · <b>0</b> skipped · <b>13/13</b> types</div>
+      <div class="pill">Recall <b>10/10</b></div>
+      <div class="pill"><b>342,720</b> tokens saved (85%)</div>
+      <div class="pill">OKF v0.2 — <b>43/43</b> reload</div>
+    </div>
+  </div>
+  <div style="font:13px 'JetBrains Mono', monospace;color:var(--muted);border:1px solid var(--border);background:var(--card);border-radius:12px;padding:14px">
+    <div style="letter-spacing:.12em;text-transform:uppercase;font-size:11px;margin-bottom:8px">bundle</div>
+    <div style="color:var(--fg)">sample-data/okf-bundle/</div>
+    <div>├── index.md</div>
+    <div>└── memories/ <span style="color:var(--accent)">13 folders</span></div>
+    <div style="margin-top:10px">p95 1800 ms → <b style="color:var(--accent)">260 ms</b> (85.6%)</div>
+    <div>tokens 403k → 60k</div>
+  </div>
+</div></header>
+<div class="wrap grid">
+  <aside>
+    <h3>filter by type</h3>
+    <div class="types" id="types"></div>
+    <input class="search" id="q" placeholder="Search memories… try coffee, Atlas, Maya">
+    <div class="sub" style="margin-top:12px;font-size:12px">Gold edge marks <span style="color:var(--amber);font-weight:600">contradiction-resolved</span> — the coffee → tea → water trail.</div>
+  </aside>
+  <main>
+    <div class="bar">
+      <span>Tokens stored: <b>1,634</b> · 28-day queries 403k → 60k · At-rest: <b>OKF markdown</b> — git-diffable, portable</span>
+      <span style="text-align:right">Viewer reads plain markdown, no vendor lock-in.</span>
+    </div>
+    <div class="cards" id="cards"></div>
+  </main>
+</div>
+<footer class="wrap">Built on shipped <code>OkfExportService</code> + <code>okf_loader</code>. Feeds <code>memanto migrate okf --dry-run</code>. Not a re-implementation. Run: <code>python scripts/run_migration.py</code> then open any <code>memories/&lt;type&gt;/&lt;slug&gt;.md</code>. &nbsp; <a href="https://github.com/moorcheh-ai/memanto/issues/1609">#1609</a></footer>
+<script>
+const DATA=[
+{"type":"preference","title":"User prefers concise, bulleted summaries.","content":"User prefers concise, bulleted summaries.","tags":["chatgpt","memory.json"],"confidence":0.88},
+{"type":"fact","title":"User is vegetarian and has a serious peanut allergy — carries EpiPen on hikes.","content":"User is vegetarian and has a serious peanut allergy — carries EpiPen on hikes.","tags":["chatgpt","memory.json"],"confidence":0.78},
+{"type":"goal","title":"Project Atlas is a graph-augmented retrieval system, deadline Sep 10 (moved from Aug 30). Team: Maya (design), user (PM).","content":"Project Atlas is a graph-augmented retrieval system, deadline Sep 10 (moved from Aug 30). Team: Maya (design), user (PM).","tags":["chatgpt","memory.json"],"confidence":0.78},
+{"type":"preference","title":"User switched from coffee to green tea to water 3L daily — latest is water only.","content":"User switched from coffee to green tea to water 3L daily — latest is water only.","tags":["chatgpt","memory.json","contradiction-resolved"],"confidence":0.88},
+{"type":"fact","title":"Dog Luna, golden retriever, 2 years old, adopted on day 17.","content":"Dog Luna, golden retriever, 2 years old, adopted on day 17.","tags":["chatgpt","memory.json"],"confidence":0.78},
+{"type":"preference","title":"I prefer concise summaries, bullet points over paragraphs. My mornings are packed.","content":"I prefer concise summaries, bullet points over paragraphs. My mornings are packed.","tags":["chatgpt","conv:morning-routine"],"confidence":0.88},
+{"type":"preference","title":"I love coffee, usually 2 cups before noon. Remember that.","content":"I love coffee, usually 2 cups before noon. Remember that.","tags":["chatgpt","conv:morning-routine"],"confidence":0.88},
+{"type":"fact","title":"Note: Atlas uses LangGraph cyclic multi-agent net for contradiction resolution.","content":"Note: Atlas uses LangGraph cyclic multi-agent net for contradiction resolution.","tags":["chatgpt","conv:quick-sync-with-raj"],"confidence":0.78},
+{"type":"goal","title":"My main goal is to ship Project Atlas by Aug 30 — it's a graph-augmented retrieval system for our docs.","content":"My main goal is to ship Project Atlas by Aug 30 — it's a graph-augmented retrieval system for our docs.","tags":["chatgpt","conv:project-atlas-kickof"],"confidence":0.78},
+{"type":"fact","title":"I work with Maya on Atlas. She's the designer, I'm PM.","content":"I work with Maya on Atlas. She's the designer, I'm PM.","tags":["chatgpt","conv:project-atlas-kickof"],"confidence":0.78},
+{"type":"observation","title":"Observation: dense retrieval fails on our 4PB doc-intel when queries are multi-hop. Need graph walk.","content":"Observation: dense retrieval fails on our 4PB doc-intel when queries are multi-hop. Need graph walk.","tags":["chatgpt","conv:research-notes:-retr"],"confidence":0.65},
+{"type":"decision","title":"Decision: we'll use Pinecone + Neo4j hybrid, not pure vector. Going with hybrid.","content":"Decision: we'll use Pinecone + Neo4j hybrid, not pure vector. Going with hybrid.","tags":["chatgpt","conv:research-notes:-retr"],"confidence":0.88},
+{"type":"fact","title":"My sister Priya is visiting next weekend, we'll hike Mt. Rainier.","content":"My sister Priya is visiting next weekend, we'll hike Mt. Rainier.","tags":["chatgpt","conv:weekend-trip"],"confidence":0.78},
+{"type":"instruction","title":"Remember: I'm vegetarian, no meat. And allergic to peanuts — serious.","content":"Remember: I'm vegetarian, no meat. And allergic to peanuts — serious.","tags":["chatgpt","conv:weekend-trip"],"confidence":0.88},
+{"type":"preference","title":"Please always remind me to carry my EpiPen on hikes.","content":"Please always remind me to carry my EpiPen on hikes.","tags":["chatgpt","conv:weekend-trip"],"confidence":0.88},
+{"type":"goal","title":"Update: Atlas deadline moved to Sep 10, not Aug 30 — stakeholder delay.","content":"Update: Atlas deadline moved to Sep 10, not Aug 30 — stakeholder delay.","tags":["chatgpt","conv:atlas-architecture"],"confidence":0.78},
+{"type":"fact","title":"I changed my mind — I switched from coffee to green tea, 1 cup. Coffee gives me jitters now.","content":"I changed my mind — I switched from coffee to green tea, 1 cup. Coffee gives me jitters now.","tags":["chatgpt","conv:atlas-architecture","contradiction-resolved"],"confidence":0.88},
+{"type":"commitment","title":"My manager Raj wants weekly Friday demos. Commitment: I'll deliver Atlas demo every Friday.","content":"My manager Raj wants weekly Friday demos. Commitment: I'll deliver Atlas demo every Friday.","tags":["chatgpt","conv:atlas-architecture"],"confidence":0.88},
+{"type":"learning","title":"Learning: Maya prefers Figma comments over Slack for feedback. Noted for next time.","content":"Learning: Maya prefers Figma comments over Slack for feedback. Noted for next time.","tags":["chatgpt","conv:team-dynamics"],"confidence":0.65},
+{"type":"fact","title":"Fact: our doc store is GE RADAR mock, 4PB, n8n + LangGraph pipeline.","content":"Fact: our doc store is GE RADAR mock, 4PB, n8n + LangGraph pipeline.","tags":["chatgpt","conv:team-dynamics"],"confidence":0.78},
+{"type":"goal","title":"Goal: I want to run a half-marathon by Dec — training 3x per week.","content":"Goal: I want to run a half-marathon by Dec — training 3x per week.","tags":["chatgpt","conv:evening-reflection"],"confidence":0.78},
+{"type":"instruction","title":"Don't forget: deployment window is Tuesdays 2am UTC only.","content":"Don't forget: deployment window is Tuesdays 2am UTC only.","tags":["chatgpt","conv:evening-reflection"],"confidence":0.88},
+{"type":"error","title":"Error we hit: Pinecone upsert rate-limited at 5k/min on batch import. Need backoff.","content":"Error we hit: Pinecone upsert rate-limited at 5k/min on batch import. Need backoff.","tags":["chatgpt","conv:atlas-blocker"],"confidence":0.65},
+{"type":"commitment","title":"I will fix retrieval latency to <200ms p95 by next sprint.","content":"I will fix retrieval latency to <200ms p95 by next sprint.","tags":["chatgpt","conv:atlas-blocker"],"confidence":0.88},
+{"type":"relationship","title":"My partner Alex (not me — partner is also Alex) prefers we cook at home on weekdays.","content":"My partner Alex (not me — partner is also Alex) prefers we cook at home on weekdays.","tags":["chatgpt","conv:family-call"],"confidence":0.78},
+{"type":"fact","title":"We adopted a dog, Luna, golden retriever, 2 years old.","content":"We adopted a dog, Luna, golden retriever, 2 years old.","tags":["chatgpt","conv:family-call"],"confidence":0.78},
+{"type":"artifact","title":"Artifact: draft PRD for Atlas — 12 pages, link https://example.com/prd-atlas.pdf","content":"Artifact: draft PRD for Atlas — 12 pages, link https://example.com/prd-atlas.pdf","tags":["chatgpt","conv:research-deep-dive"],"confidence":0.65},
+{"type":"instruction","title":"Instruction: from now on, always include a risks section in PRDs.","content":"Instruction: from now on, always include a risks section in PRDs.","tags":["chatgpt","conv:research-deep-dive"],"confidence":0.88},
+{"type":"observation","title":"Observation: graph walk improved recall from 0.62 to 0.81 on multi-hop QA.","content":"Observation: graph walk improved recall from 0.62 to 0.81 on multi-hop QA.","tags":["chatgpt","conv:demo-prep"],"confidence":0.65},
+{"type":"decision","title":"Decision: we will open-source the Atlas graph layer under MIT after Sep 10.","content":"Decision: we will open-source the Atlas graph layer under MIT after Sep 10.","tags":["chatgpt","conv:demo-prep"],"confidence":0.88},
+{"type":"fact","title":"I quit tea too — now just water, 3L daily. Health kick.","content":"I quit tea too — now just water, 3L daily. Health kick.","tags":["chatgpt","conv:health-check"],"confidence":0.78},
+{"type":"event","title":"My dentist appointment is 2026-08-28T15:00:00Z, don't schedule over it.","content":"My dentist appointment is 2026-08-28T15:00:00Z, don't schedule over it.","tags":["chatgpt","conv:health-check"],"confidence":0.78},
+{"type":"context","title":"Context: Atlas runs on AWS us-east-1, costs $1.2k/mo so far.","content":"Context: Atlas runs on AWS us-east-1, costs $1.2k/mo so far.","tags":["chatgpt","conv:ship-it"],"confidence":0.65},
+{"type":"goal","title":"Goal: after Atlas, I want to build a personal AI companion with persistent memory — that's why Memanto matters.","content":"Goal: after Atlas, I want to build a personal AI companion with persistent memory — that's why Memanto matters.","tags":["chatgpt","conv:ship-it"],"confidence":0.78},
+];
+const counts={}; DATA.forEach(d=>counts[d.type]=(counts[d.type]||0)+1);
+const wrapTypes=document.getElementById('types');
+const allTypes=["all",...Object.keys(counts).sort()];
+let active="all";
+function renderTypes(){
+  wrapTypes.innerHTML="";
+  allTypes.forEach(t=>{
+    const b=document.createElement('button'); b.className='type-btn'+(active===t?' active':'');
+    b.innerHTML=`<span>${t}</span><span class="count">${t==="all"?DATA.length:counts[t]||0}</span>`;
+    b.onclick=()=>{active=t;renderTypes();renderCards();};
+    wrapTypes.appendChild(b);
+  });
+}
+const cards=document.getElementById('cards');
+const q=document.getElementById('q');
+function renderCards(){
+  const term=(q.value||'').toLowerCase();
+  let filtered=DATA.filter(d=> active==='all'||d.type===active);
+  if(term) filtered=filtered.filter(d=> (d.title+d.content+d.tags.join(' ')).toLowerCase().includes(term));
+  cards.innerHTML="";
+  if(!filtered.length){ cards.innerHTML='<div class="empty">No memories match that filter.</div>'; return; }
+  filtered.forEach((d,i)=>{
+    const el=document.createElement('div'); el.className='card'+(i===0?' featured':'')+(d.tags.includes('contradiction-resolved')?' highlight':'');
+    el.innerHTML=`<div class="meta"><span class="badge ${d.type}">${d.type}</span><span>confidence ${d.confidence.toFixed(2)}</span><span style="margin-left:auto">${d.tags.slice(0,2).join(' · ')}</span></div><div class="title">${d.title}</div><div class="content">${d.content}</div><div class="foot">source: chatgpt · ${d.tags.includes('contradiction-resolved')?' <span style="color:#d97706">contradiction-resolved</span>':''} provenance: imported</div>`;
+    cards.appendChild(el);
+  });
+}
+q.addEventListener('input',renderCards);
+renderTypes();renderCards();
+</script>
