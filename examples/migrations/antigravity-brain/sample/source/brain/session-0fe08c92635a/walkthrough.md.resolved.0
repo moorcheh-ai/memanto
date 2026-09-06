@@ -1,0 +1,40 @@
+# Dawn Chorus - Dark ASCII Tech Walkthrough
+
+I have completely overhauled the visual concept to match the "Dark ASCII Tech" aesthetic. The interface now resembles a raw terminal or command-line tool.
+
+## Implemented Features
+
+### 1. Design System (Terminal)
+- **Typography**: Global `monospace` font (Courier New/Consolas).
+- **Colors**: Pure black background, high-contrast Green/Amber text.
+- **UI Elements**:
+  - **Buttons**: Text-based brackets `[ CLICK ME ]` or `> CLICK ME`.
+  - **Cards**: ASCII-style borders with embedded titles.
+  - **Layout**: Status bar header and footer.
+
+### 2. Pages
+- **Landing Page**: Features a large ASCII art logo and terminal-style faction selection.
+- **Dashboard**: Data-heavy grid with ASCII separators and progress bars.
+- **Raid Page**: Target list and ASCII box-drawing combat results.
+
+## Verification
+
+I verified the application flow using the browser tool:
+1. **Landing Page**: Confirmed ASCII logo and "INITIALIZE_CONNECTION" button.
+2. **Navigation**: Successfully transitioned to Dashboard and Raid pages using `/COMMAND` style links.
+3. **Theme**: Confirmed the dark, high-contrast aesthetic is applied globally.
+
+### Dashboard Interface
+Here is the new Dashboard showing the terminal aesthetic:
+
+![Dashboard ASCII](/dashboard_ascii_1763562430672.png)
+
+## How to Run
+
+The development server is currently running. You can access the prototype at:
+**[redacted-url]**
+
+If you need to restart it:
+```bash
+npm run dev
+```
