@@ -4,9 +4,12 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+import ipaddress
 from urllib.parse import urlsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
+
+from memanto.app.config import settings
 
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
@@ -143,6 +146,192 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     return fetch_site in {"cross-site", "same-site"}
 
 
+def _request_uses_forwarded_headers(request: Request) -> bool:
+    """Return True when the caller arrived through a reverse proxy.
+
+    ``X-Forwarded-For`` / ``X-Real-IP`` / ``X-Forwarded-Host`` / ``Forwarded``
+    are only emitted by proxies, never by a direct client. Their presence is
+    the reliable signal that ``request.client.host`` is the *proxy's* address,
+    not the originating peer's.
+    """
+    return any(
+        h in request.headers
+        for h in ("x-forwarded-for", "x-real-ip", "x-forwarded-host", "forwarded")
+    )
+
+
+def _is_trusted_proxy(client_host: str | None) -> bool:
+    """Return True when *client_host* is an explicitly configured trusted proxy.
+
+    A trusted proxy is allowed to set forwarding headers on behalf of the real
+    client, so loopback trust may still apply for connections originating from
+    it. Defaults to no trusted proxies (empty ``TRUSTED_PROXIES``).
+    """
+    if not client_host:
+        return False
+    try:
+        peer = ipaddress.ip_address(client_host)
+    except ValueError:
+        # A hostname (not an IP) is never a trusted proxy entry.
+        return False
+    for entry in settings.TRUSTED_PROXIES:
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            if "/" in entry:
+                if peer in ipaddress.ip_network(entry, strict=False):
+                    return True
+            elif peer == ipaddress.ip_address(entry):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+# --- Forwarded-header effective-client resolution (CWE-290 hardening) ---
+#
+# A trusted reverse proxy is permitted to set forwarding headers, but "trusted
+# proxy" must never mean "trusted client". When a request arrives from a
+# configured trusted proxy we resolve the *effective* originating client from
+# the forwarding headers and only restore loopback trust when that client is
+# itself unambiguously loopback and every forwarding header agrees.
+
+
+_XFF_MALFORMED = object()
+
+
+def _to_ip(text: str):
+    """Parse *text* into an ``ipaddress`` object, or None when it is not an IP."""
+    try:
+        return ipaddress.ip_address(text)
+    except ValueError:
+        return None
+
+
+def _strip_ip_port(token: str):
+    """Return the IP a header token names, dropping any ``[ipv6]:port`` / IPv4:port.
+
+    Returns an ``ipaddress`` object, or None when the token is not a valid IP
+    (e.g. an unparsable host or obfuscated forward token).
+    """
+    token = (token or "").strip()
+    if not token:
+        return None
+    if token.startswith("["):
+        end = token.find("]")
+        if end == -1:
+            return None
+        return _to_ip(token[1:end])
+    if ":" in token:
+        # Either a bare IPv6 address, or IPv4:port. Try the whole token as an IP
+        # first; on failure assume an IPv4 host with a trailing port.
+        as_ip = _to_ip(token)
+        if as_ip is not None:
+            return as_ip
+        host = token.rsplit(":", 1)[0]
+        return _to_ip(host)
+    return _to_ip(token)
+
+
+def _parse_x_forwarded_for(xff: str) -> list:
+    """Split ``X-Forwarded-For`` into parsed IP entries (None marks malformed)."""
+    parts = [p.strip() for p in xff.split(",") if p.strip()]
+    if not parts:
+        return [None]
+    return [_strip_ip_port(p) for p in parts]
+
+
+def _effective_xff_client(entries: list, peer_host: str):
+    """Resolve the effective client from ``X-Forwarded-For`` entries.
+
+    The effective client is the *rightmost* entry: the peer the last proxy
+    received the connection from. Using the rightmost entry prevents an
+    untrusted client from prepending a spoofed loopback address that a naive
+    leftmost parse would honour. If the rightmost entry is the proxy's own
+    address (it appended its own peer), step one entry left to reach the real
+    client. A single entry is taken verbatim (the proxy overwrote the header).
+    """
+    if any(e is None for e in entries):
+        return _XFF_MALFORMED
+    if len(entries) == 1:
+        return entries[0]
+    if str(entries[-1]) == peer_host:
+        # Proxy appended its own peer address; the real client is one left.
+        return entries[-2]
+    return entries[-1]
+
+
+def _parse_forwarded_for(forwarded: str):
+    """Extract the client IP from a standard ``Forwarded`` header ``for=`` value.
+
+    Returns an ``ipaddress`` object, or None when the header yields no concrete
+    IP (the obfuscated ``for="_host"`` / ``for="unknown"`` forms count as
+    unresolvable and therefore untrusted).
+    """
+    for part in forwarded.split(";"):
+        part = part.strip()
+        if not part.lower().startswith("for="):
+            continue
+        val = part[len("for="):].strip()
+        if val.startswith('"') and val.endswith('"'):
+            val = val[1:-1]
+        if val.startswith("_") or val.lower() == "unknown":
+            return None
+        return _strip_ip_port(val)
+    return None
+
+
+def _resolve_trusted_proxy_client(request: Request):
+    """Decide whether a request from a trusted proxy may inherit loopback trust.
+
+    The immediate peer is already known to be a configured trusted proxy. We
+    must still pin down the *effective* client it forwards for and confirm that
+    client is itself loopback and that all forwarding headers agree.
+
+    Returns:
+        ``("allow", ipaddress)`` when the effective client is unambiguously a
+        loopback address with no conflicting/malformed headers; otherwise
+        ``("deny", reason)``.
+    """
+    xff = request.headers.get("x-forwarded-for")
+    x_real_ip = request.headers.get("x-real-ip")
+    forwarded = request.headers.get("forwarded")
+    peer_host = request.client.host if request.client else ""
+
+    resolved: dict = {}
+
+    if xff is not None:
+        effective = _effective_xff_client(_parse_x_forwarded_for(xff), peer_host)
+        if effective is _XFF_MALFORMED:
+            return ("deny", "malformed x-forwarded-for")
+        resolved["x-forwarded-for"] = effective
+
+    if x_real_ip is not None:
+        ip = _strip_ip_port(x_real_ip)
+        if ip is None:
+            return ("deny", "malformed x-real-ip")
+        resolved["x-real-ip"] = ip
+
+    if forwarded is not None:
+        ip = _parse_forwarded_for(forwarded)
+        if ip is None:
+            return ("deny", "malformed forwarded")
+        resolved["forwarded"] = ip
+
+    if not resolved:
+        return ("deny", "no resolvable client ip")
+
+    # Headers that are present must agree on the client IP.
+    if len(set(resolved.values())) > 1:
+        return ("deny", "conflicting forwarding headers")
+
+    client_ip = next(iter(resolved.values()))
+    if not client_ip.is_loopback:
+        return ("deny", "effective client is not loopback")
+    return ("allow", client_ip)
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -165,6 +354,14 @@ def require_management_access(
        against ``MEMANTO_SECRET_KEY`` for on-prem; or
     2. The request originates from the loopback interface (local desktop
        CLI / browser UX without forcing every local call to attach a key).
+
+    When a loopback request arrived *through* a reverse proxy, loopback trust
+    is only restored if the immediate peer is an explicitly configured trusted
+    proxy AND the effective client it forwards for (resolved from
+    ``X-Forwarded-For`` / ``X-Real-IP`` / ``Forwarded``) is itself unambiguously
+    a loopback address with no conflicting/malformed headers. A trusted proxy
+    is not a trusted client: a public-IP forwarded client behind a trusted
+    proxy is rejected (CWE-290).
 
     Returns the server-side Moorcheh credential string used by downstream
     service calls (same contract as ``get_moorcheh_api_key``).
@@ -190,11 +387,30 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if (
+    loopback_trusted = (
         _is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
-    ):
+    )
+    if loopback_trusted:
+        uses_proxy_headers = _request_uses_forwarded_headers(request)
+        if uses_proxy_headers and not _is_trusted_proxy(client_host):
+            # An untrusted peer is presenting forwarding headers, trying to
+            # claim a proxied/loopback origin. Refuse the spoof (CWE-290).
+            loopback_trusted = False
+        elif uses_proxy_headers and _is_trusted_proxy(client_host):
+            # The immediate peer is a configured trusted proxy. A trusted proxy
+            # is NOT a trusted client: only inherit loopback trust when the
+            # *effective* client it forwards for is itself unambiguously a
+            # loopback address and all forwarding headers agree.
+            verdict, _client_ip = _resolve_trusted_proxy_client(request)
+            if verdict != "allow":
+                loopback_trusted = False
+        elif _is_trusted_proxy(client_host):
+            # Trusted proxy but no forwarding headers: the effective client
+            # cannot be determined, so do not restore loopback trust.
+            loopback_trusted = False
+    if loopback_trusted:
         return server_key
 
     raise HTTPException(
