@@ -58,15 +58,18 @@ def _format_supporting_data(pairs):
     """Render key-value pairs into a markdown supporting-data block."""
     lines = []
     for k, v in pairs:
-        if v is not None and v != "":
-            lines.append(f"**{k}:** {v}")
+        if v in (None, "", [], {}):
+            continue
+        if isinstance(v, str) and v.strip() == "":
+            continue
+        lines.append(f"**{k}:** {v}")
     return "\n".join(lines)
 
 def _attach_footer(content, footer):
     """Append a migration-metadata footer to the content string."""
     return f"{content}\n\n---\n*Migration metadata:*\n{footer}" if footer else content
 
-def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
+def _walk_chatgpt_mapping(mapping, current_id, max_depth=10000):
     """Walk ChatGPT's tree-structured mapping dict backwards to collect messages."""
     messages, visited, node_id = [], set(), current_id
     for _ in range(max_depth):
@@ -79,10 +82,20 @@ def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
         msg = node.get("message")
         if msg:
             role = (msg.get("author") or {}).get("role", "")
-            parts = (msg.get("content") or {}).get("parts", [])
-            text = " ".join(p for p in parts if isinstance(p, str) and p.strip()).strip()
+            content_obj = msg.get("content")
+            if isinstance(content_obj, dict):
+                parts = content_obj.get("parts") or []
+                text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            elif isinstance(content_obj, str):
+                text = content_obj.strip()
+            else:
+                text = ""
             if text and role in ("user", "human"):
                 messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
+            elif text and role == "assistant":
+                messages.append({"text": text, "role": "assistant", "create_time": msg.get("create_time")})
+            elif text and role == "system":
+                messages.append({"text": text, "role": "system", "create_time": msg.get("create_time")})
         node_id = node.get("parent")
     messages.reverse()
     return messages

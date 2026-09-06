@@ -810,7 +810,7 @@ def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
         convo_title = title or _title_from(content)
 
         footer = _format_supporting_data([
-            ("Source", f"claude:conversation"),
+            ("Source", "claude:conversation"),
             ("Claude title", title),
             ("Claude UUID", convo.get("uuid")),
             ("Message count", len(human_messages)),

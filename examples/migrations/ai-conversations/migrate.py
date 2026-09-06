@@ -233,7 +233,14 @@ def map_claude(export):
         human_messages = []
         for msg in chat_messages:
             sender = (msg.get("sender") or msg.get("role") or "").strip()
-            text = (msg.get("text") or msg.get("content") or "").strip()
+            content_obj = msg.get("content")
+            if isinstance(content_obj, dict):
+                parts = content_obj.get("parts") or []
+                text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            elif isinstance(content_obj, str):
+                text = content_obj.strip()
+            else:
+                text = (msg.get("text") or "").strip()
             if text and sender in ("human", "user"):
                 human_messages.append({
                     "text": text,
