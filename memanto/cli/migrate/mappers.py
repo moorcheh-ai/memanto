@@ -685,7 +685,7 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
             messages = []
             for msg in convo.get("messages") or convo.get("chat_messages") or []:
                 role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
-content_obj = msg.get("content")
+                content_obj = msg.get("content")
                 if isinstance(content_obj, dict):
                     parts = content_obj.get("parts") or []
                     text = " ".join(p for p in parts if isinstance(p, str)).strip()
@@ -833,7 +833,6 @@ def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
->>>>>>> debeb079 (feat: add ChatGPT and Claude conversation migration adapters)
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
