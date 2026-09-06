@@ -260,6 +260,7 @@ def _render_savings_report(
     export_path: Path,
     run_dir: Path,
 ) -> Path:
+    """Generate and write the token/storage savings report for a migration run."""
     bundle = _PROVIDER_BUNDLES[provider]
     metrics = bundle["metrics"](export)
     narrative, llm_model, llm_method = _generate_narrative(
@@ -280,6 +281,7 @@ def _render_savings_report(
 
 
 def _resolve_target_agent(agent: str | None) -> str:
+    """Resolve the target agent ID from the argument or the active session."""
     if agent and agent.strip():
         return agent.strip()
     active_agent_id, active_session_token = config_manager.get_active_session()
@@ -351,6 +353,7 @@ def _run_migrate_flow(
     )
 
     def progress(msg: str) -> None:
+        """Print a progress message to the console."""
         console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
 
     # Step 1 — resolve target only if we will actually write.
@@ -581,6 +584,7 @@ def migrate_okf(
     )
 
     def progress(msg: str) -> None:
+        """Print a progress message to the console."""
         console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
 
     target_agent = None if dry_run else _resolve_target_agent(agent)
@@ -642,6 +646,172 @@ def migrate_okf(
                 "[bold yellow]Dry run complete[/bold yellow]"
                 if dry_run
                 else "[bold green]Import complete[/bold green]"
+            ),
+            border_style=border,
+        )
+    )
+
+
+@migrate_app.command("conversations")
+def migrate_conversations(
+    source: str = typer.Option(
+        ...,
+        "--source",
+        "-s",
+        help="Source platform: chatgpt or claude.",
+    ),
+    path: Path = typer.Argument(
+        ...,
+        help="Path to the exported JSON file (or ZIP archive for ChatGPT/Claude).",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Migrate AI conversation exports (ChatGPT, Claude) into Memanto.
+
+    Reads a JSON export file or ZIP archive from the source platform, extracts
+    user messages, and imports them as Memanto memories. Each conversation
+    becomes one memory with all user messages as content.
+
+    Examples:
+        memanto migrate conversations --source chatgpt ./chatgpt_export.json --dry-run
+        memanto migrate conversations --source claude ./claude_export.zip
+        memanto migrate conversations -s chatgpt ./conversations.json --agent my-agent
+    """
+    import json
+    import tempfile
+    import zipfile
+
+    from memanto.cli.migrate.mappers import MAPPERS
+    from memanto.cli.migrate.runner import (
+        load_export,
+        run_migration,
+        write_preview,
+    )
+
+    source = source.lower().strip()
+    supported = ("chatgpt", "claude")
+    if source not in supported:
+        _error(
+            f"Unsupported source '{source}'. Supported: {', '.join(supported)}",
+            hint="Use --source chatgpt or --source claude.",
+        )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_dir = config_manager.get_migrate_dir("conversations") / stamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    mode = "Dry run" if dry_run else "Migrate"
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]Conversations ({source}) -> Memanto  {mode}[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    def progress(msg: str) -> None:
+        """Print a progress message to the console."""
+        console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
+
+    target_agent = None if dry_run else _resolve_target_agent(agent)
+
+    # Handle ZIP or plain JSON
+    progress(f"Loading {source} export from {path}")
+
+    if path.suffix.lower() == ".zip":
+        progress("Extracting ZIP archive...")
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = Path(tmpdir)
+                with zipfile.ZipFile(path, "r") as zf:
+                    for member in zf.namelist():
+                        dest = (tmpdir_path / member).resolve()
+                        if not str(dest).startswith(str(tmpdir_path.resolve())):
+                            _error(f"Unsafe ZIP member path: {member}")
+                    zf.extractall(tmpdir_path)
+                # Find conversations.json first, fallback to any .json file
+                json_files = list(tmpdir_path.rglob("*.json"))
+                if not json_files:
+                    _error("No JSON files found in ZIP archive.")
+                # Prefer conversations.json if present
+                convo_file = next((f for f in json_files if f.name == "conversations.json"), None)
+                export_file = convo_file or json_files[0]
+                export_data = load_export(export_file)
+                progress(f"Extracted {export_file.name} ({len(json_files)} JSON files in archive)")
+        except zipfile.BadZipFile as exc:
+            _error(f"Failed to read ZIP archive: {exc}")
+        except json.JSONDecodeError as exc:
+            _error(f"Failed to parse JSON from ZIP: {exc}")
+    else:
+        try:
+            export_data = load_export(path)
+        except (json.JSONDecodeError, FileNotFoundError) as exc:
+            _error(f"Failed to read export file: {exc}")
+
+    # Normalize: wrap flat arrays as {"memories": [...]}
+    if isinstance(export_data, list):
+        export_data = {"memories": export_data, "conversations": export_data}
+
+    progress("Mapping conversation data onto Memanto schema...")
+    client = None if dry_run else get_client()
+    summary, rows = run_migration(
+        provider=source,
+        export=export_data,
+        client=client,
+        agent_id=target_agent or "",
+        dry_run=dry_run,
+        on_progress=progress,
+    )
+
+    preview_path = write_preview(rows, run_dir / "mapped_preview.json")
+
+    type_lines = (
+        ", ".join(f"{k}: {v}" for k, v in sorted(summary.type_counts.items())) or "—"
+    )
+    body_lines = [
+        f"[dim]Source conversations:[/dim] {summary.source_count}",
+        f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
+        f"[dim](skipped {summary.skipped} empty)[/dim]",
+        f"[dim]Type breakdown:[/dim] {type_lines}",
+    ]
+    if dry_run:
+        body_lines.append("")
+        body_lines.append("[yellow]Dry run — no writes performed.[/yellow]")
+    else:
+        body_lines.append(
+            f"[dim]Imported:[/dim] {summary.imported}  "
+            f"[dim]Failed:[/dim] {summary.failed}  "
+            f"[dim]Batches:[/dim] {summary.batches}"
+        )
+        body_lines.append(f"[dim]Target agent:[/dim] {target_agent}")
+
+    body_lines.append("")
+    body_lines.append(f"[dim]Run dir:[/dim] {run_dir}")
+    body_lines.append(f"[dim]Mapped preview:[/dim] {preview_path}")
+    if summary.errors:
+        body_lines.append(
+            f"[red]First error:[/red] {summary.errors[0]}  "
+            "[dim](see run dir for more)[/dim]"
+        )
+
+    border = WARNING if summary.failed else SUCCESS
+    console.print()
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title=(
+                "[bold yellow]Dry run complete[/bold yellow]"
+                if dry_run
+                else "[bold green]Migration complete[/bold green]"
             ),
             border_style=border,
         )
