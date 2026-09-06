@@ -1,0 +1,272 @@
+{
+  "adapter": {
+    "name": "openai-agents-sqlite-session-to-okf",
+    "version": "1.0.0",
+    "okf_version": "0.2"
+  },
+  "source": {
+    "tool": "openai-agents (OpenAI Agents SDK) SQLiteSession",
+    "package_version": "0.19.4",
+    "db_file": "agent_sessions.db",
+    "read_snapshot_sha256": "834c34b0c7416af40a349ff0a1dc68116a684fa74cdf84c2ad1ac92b41f4a9ec",
+    "sessions_table": "agent_sessions",
+    "messages_table": "agent_messages",
+    "session_id": "workspace-buddy-demo",
+    "session_created_at": "2026-08-05T17:48:25+00:00",
+    "session_updated_at": "2026-08-05T17:48:32+00:00"
+  },
+  "counts": {
+    "source_items": 19,
+    "mapped_documents": 16,
+    "skipped_items": 1,
+    "source_items_consumed": 19,
+    "mapped_without_timestamp": 0,
+    "mapped_by_kind": {
+      "assistant-message": 7,
+      "tool-call": 2,
+      "user-message": 7
+    },
+    "skipped_by_reason": {
+      "reasoning_trace": 1
+    },
+    "memanto_type_hints": {
+      "artifact": 2,
+      "auto (Memanto classifies)": 14
+    }
+  },
+  "skipped": [
+    {
+      "source_item": "agent_messages:6",
+      "reason": "reasoning_trace",
+      "detail": "model reasoning item — internal scratchpad, not a memory"
+    }
+  ],
+  "mapped": [
+    {
+      "source_items": [
+        "agent_messages:1"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/1",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 1,
+      "timestamp": "2026-08-05T17:48:25+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0001-standing-rule-for-this-workspace-reply-in-metric-units-a.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:2"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/2",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 1,
+      "timestamp": "2026-08-05T17:48:25+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0002-understood-metric-units-only-three-sentences-maximum.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:3"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/3",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 2,
+      "timestamp": "2026-08-05T17:48:26+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:4"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/4",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 2,
+      "timestamp": "2026-08-05T17:48:26+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:5"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/5",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 3,
+      "timestamp": "2026-08-05T17:48:27+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0005-what-is-the-deploy-window-for-the-platform-team-over-the.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:7",
+        "agent_messages:8"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/7",
+      "kind": "tool-call",
+      "role": "assistant",
+      "turn": 3,
+      "timestamp": "2026-08-05T17:48:27+00:00",
+      "memanto_type": "artifact",
+      "okf_document": "memories/tool-call/0007-lookup-team-calendar.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:9"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/9",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 3,
+      "timestamp": "2026-08-05T17:48:27+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0009-the-platform-team-s-deploy-window-is-tuesday-14-00-16-00.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:10"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/10",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 4,
+      "timestamp": "2026-08-05T17:48:28+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:11"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/11",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 4,
+      "timestamp": "2026-08-05T17:48:28+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:12"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/12",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 5,
+      "timestamp": "2026-08-05T17:48:30+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:13"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/13",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 5,
+      "timestamp": "2026-08-05T17:48:30+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:14"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/14",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 6,
+      "timestamp": "2026-08-05T17:48:31+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:15"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/15",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 6,
+      "timestamp": "2026-08-05T17:48:31+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:16"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/16",
+      "kind": "user-message",
+      "role": "user",
+      "turn": 7,
+      "timestamp": "2026-08-05T17:48:32+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:17",
+        "agent_messages:18"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/17",
+      "kind": "tool-call",
+      "role": "assistant",
+      "turn": 7,
+      "timestamp": "2026-08-05T17:48:32+00:00",
+      "memanto_type": "artifact",
+      "okf_document": "memories/tool-call/0017-record-incident.md"
+    },
+    {
+      "source_items": [
+        "agent_messages:19"
+      ],
+      "resource": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/19",
+      "kind": "assistant-message",
+      "role": "assistant",
+      "turn": 7,
+      "timestamp": "2026-08-05T17:48:32+00:00",
+      "memanto_type": "auto",
+      "okf_document": "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md"
+    }
+  ],
+  "output": {
+    "bundle_dir": "okf",
+    "files": [
+      "index.md",
+      "memories/assistant-message/0002-understood-metric-units-only-three-sentences-maximum.md",
+      "memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md",
+      "memories/assistant-message/0009-the-platform-team-s-deploy-window-is-tuesday-14-00-16-00.md",
+      "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md",
+      "memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md",
+      "memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md",
+      "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+      "memories/assistant-message/index.md",
+      "memories/index.md",
+      "memories/tool-call/0007-lookup-team-calendar.md",
+      "memories/tool-call/0017-record-incident.md",
+      "memories/tool-call/index.md",
+      "memories/user-message/0001-standing-rule-for-this-workspace-reply-in-metric-units-a.md",
+      "memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md",
+      "memories/user-message/0005-what-is-the-deploy-window-for-the-platform-team-over-the.md",
+      "memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md",
+      "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md",
+      "memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md",
+      "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md",
+      "memories/user-message/index.md"
+    ],
+    "documents": 16,
+    "item_timestamp_range": [
+      "2026-08-05T17:48:25+00:00",
+      "2026-08-05T17:48:32+00:00"
+    ]
+  },
+  "generated_at": "2026-08-05T17:48:34+00:00"
+}
