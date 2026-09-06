@@ -31,7 +31,11 @@ from memanto.cli.migrate.langfuse_state import (
     record_updated,
     record_written,
 )
-from memanto.cli.migrate.mappers import MAPPERS, type_breakdown
+from memanto.cli.migrate.mappers import (
+    MAPPERS,
+    _extract_langchain_messages,
+    type_breakdown,
+)
 
 BATCH_LIMIT = 100
 
@@ -217,10 +221,34 @@ def run_langfuse_sync(
 
 
 def load_export(file_path: Path) -> dict[str, Any]:
-    """Load a previously-produced provider export JSON from disk."""
+    """Load a previously-produced provider export JSON, Markdown, or JSONL from disk."""
     if not file_path.exists():
         raise FileNotFoundError(f"Export file not found: {file_path}")
-    data = json.loads(file_path.read_text(encoding="utf-8"))
+
+    suffix = file_path.suffix.lower()
+    raw_text = file_path.read_text(encoding="utf-8")
+
+    if suffix in (".md", ".markdown"):
+        return {"content": raw_text, "format": "okf", "source_file": str(file_path)}
+
+    if suffix == ".jsonl":
+        items: list[dict[str, Any]] = []
+        bad_lines: list[int] = []
+        for lineno, line in enumerate(raw_text.splitlines(), 1):
+            line_str = line.strip()
+            if line_str:
+                try:
+                    items.append(json.loads(line_str))
+                except json.JSONDecodeError:
+                    bad_lines.append(lineno)
+        return {
+            "memories": items,
+            "format": "jsonl",
+            "source_file": str(file_path),
+            "unparsed_lines": bad_lines,
+        }
+
+    data = json.loads(raw_text)
     if not isinstance(data, dict):
         raise ValueError(f"Export file must be a JSON object: {file_path}")
     return data
@@ -255,7 +283,15 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "langfuse":
         # Observations, not memories — many collapse into one signature.
         return len(export.get("observations", []) or [])
-    memories = export.get("memories", []) or []
+    if provider == "okf":
+        raw_text = export.get("content") or export.get("markdown") or export.get("text") or ""
+        return sum(1 for line in raw_text.splitlines() if line.strip().startswith("### "))
+    if provider in ("langchain", "langgraph"):
+        msgs = _extract_langchain_messages(export)
+        summary = 1 if export.get("summary") or export.get("conversation_summary") else 0
+        entities = len(export.get("entities") or export.get("entity_store") or {})
+        return len(msgs) + summary + entities
+    memories = export.get("memories", []) or export.get("items") or export.get("data") or export.get("records") or []
     if provider == "supermemory":
         mapped_memory_ids: set[str] = set()
         represented_document_ids: set[str] = set()
@@ -308,9 +344,16 @@ def run_migration(
     summary = MigrationSummary(provider=provider)
     summary.source_count = source_count(provider, export)
 
+    unparsed_lines = export.get("unparsed_lines") or []
+    if unparsed_lines:
+        summary.skipped += len(unparsed_lines)
+        summary.errors.append(
+            f"{len(unparsed_lines)} malformed/unparsed line(s) skipped in source file"
+        )
+
     rows = map_export(provider, export)
     summary.mapped_count = len(rows)
-    summary.skipped = max(0, summary.source_count - summary.mapped_count)
+    summary.skipped = max(0, summary.source_count - summary.mapped_count) + len(unparsed_lines)
     summary.type_counts = type_breakdown(rows)
 
     if dry_run or not rows:

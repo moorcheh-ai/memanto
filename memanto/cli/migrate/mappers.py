@@ -76,6 +76,29 @@ def _coerce_type(raw: str | None) -> str | None:
     return t if t in VALID_MEMORY_TYPES else None
 
 
+def _coerce_text(val: Any) -> str:
+    """Safely coerce arbitrary values, content blocks, or structures into clean stripped text."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val.strip()
+    if isinstance(val, (list, tuple)):
+        parts = []
+        for item in val:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content") or ""
+                if text:
+                    parts.append(str(text))
+        return " ".join(parts).strip()
+    if isinstance(val, dict):
+        text = val.get("text") or val.get("content") or ""
+        if text:
+            return str(text).strip()
+    return str(val).strip()
+
+
 def _coerce_provenance(raw: Any) -> str:
     if not isinstance(raw, str):
         return "imported"
@@ -473,9 +496,131 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
 # --------------------------------------------------------------------------
 
 
+_SECTION_LABEL_TO_TYPE: dict[str, str] = {
+    "instructions": "instruction",
+    "facts": "fact",
+    "preferences": "preference",
+    "decisions": "decision",
+    "goals": "goal",
+    "identities": "identity",
+    "relationships": "relationship",
+    "contexts": "context",
+    "learnings": "learning",
+    "activities": "activity",
+    "episodes": "episode",
+    "observations": "observation",
+    "artifacts": "artifact",
+}
+
+
+def _parse_okf_markdown(raw_text: str) -> list[dict[str, Any]]:
+    """Parse OKF Markdown files with sections (## Section) and headers (### Title)."""
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    if not raw_text.strip():
+        return rows
+
+    current_type: str | None = None
+    current_title: str | None = None
+    current_lines: list[str] = []
+
+    def flush_entry() -> None:
+        nonlocal current_title, current_lines, current_type
+        if not current_title:
+            return
+
+        body_lines: list[str] = []
+        tags: list[str] = []
+        confidence = 0.9
+        created_at = None
+
+        for line in current_lines:
+            stripped = line.strip()
+            if stripped in ("*No memories of this type.*", "*End of memory export.*"):
+                continue
+            if stripped.startswith("*") and stripped.endswith("*"):
+                meta_content = stripped.strip("*").strip()
+                if (
+                    any(meta_content.lower().startswith(p) for p in ("confidence:", "created:", "tags:", "status:"))
+                    or "|" in meta_content
+                ):
+                    parts = [p.strip() for p in meta_content.split("|")]
+                    for p in parts:
+                        if p.lower().startswith("confidence:"):
+                            try:
+                                val = float(p.split(":", 1)[1].strip())
+                                confidence = min(1.0, max(0.0, val))
+                            except ValueError:
+                                pass
+                        elif p.lower().startswith("created:"):
+                            created_at = _parse_dt(p.split(":", 1)[1].strip())
+                        elif p.lower().startswith("tags:"):
+                            tag_part = p.split(":", 1)[1].strip()
+                            extracted_tags = [
+                                t.strip().strip("`").strip("'").strip('"')
+                                for t in tag_part.split(",")
+                                if t.strip().strip("`").strip("'").strip('"')
+                            ]
+                            for t in extracted_tags:
+                                if t not in tags:
+                                    tags.append(t)
+                    continue
+            body_lines.append(line)
+
+        content = "\n".join(body_lines).strip()
+        if not content:
+            content = current_title
+
+        safe_title = current_title
+        if len(safe_title) > 100:
+            footer = _format_supporting_data([("Original OKF Title", safe_title)])
+            safe_title = safe_title[:97].rstrip() + "..."
+            content = _attach_footer(content, footer)
+
+        rows.append(
+            {
+                "title": safe_title,
+                "content": content,
+                "type": current_type,
+                "tags": tags,
+                "confidence": confidence,
+                "source": "okf",
+                "source_ref": safe_title,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+
+        current_title = None
+        current_lines = []
+
+    for raw_line in raw_text.splitlines():
+        line = raw_line.rstrip()
+        stripped = line.strip()
+
+        if stripped.startswith("## ") and not stripped.startswith("### "):
+            flush_entry()
+            section_name = stripped[3:].strip().lower()
+            current_type = _SECTION_LABEL_TO_TYPE.get(section_name) or _coerce_type(section_name)
+        elif stripped.startswith("### "):
+            flush_entry()
+            current_title = stripped[4:].strip()
+            current_lines = []
+        elif stripped == "---":
+            if current_title:
+                flush_entry()
+        else:
+            if current_title:
+                current_lines.append(line)
+
+    flush_entry()
+    return rows
+
+
 def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
-    """Map OKF bundle entries (from ``okf_loader.load_okf_bundle``) to Memanto
-    memory payloads.
+    """Map OKF bundle entries (from ``okf_loader.load_okf_bundle``) or raw Markdown to Memanto memory payloads.
 
     OKF's ``type`` is free-form domain vocabulary, so it can't map onto
     Memanto's fixed types. We use it only when it happens to equal a Memanto
@@ -484,6 +629,15 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     original OKF type in the footer. Everything with no schema slot (OKF type,
     resource, links, unknown frontmatter keys) goes into ``[Supporting data]``.
     """
+    raw_text = ""
+    for key in ("content", "markdown", "text"):
+        value = export.get(key)
+        if isinstance(value, str) and value.strip():
+            raw_text = value
+            break
+    if raw_text:
+        return _parse_okf_markdown(raw_text)
+
     rows: list[dict[str, Any]] = []
     migrated_at = _now_utc()
 
@@ -572,11 +726,205 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 # memories, so one incident collapses into a single grouped payload rather
 # than mapping row-for-row. That needs the user's capture settings, which
 # this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
+
+
+# --------------------------------------------------------------------------
+# LangChain / LangGraph
+# --------------------------------------------------------------------------
+
+
+def _extract_langchain_messages(export: dict[str, Any]) -> list[Any]:
+    """Extract and normalize messages from LangChain export payloads."""
+    raw = (
+        export.get("messages")
+        or export.get("chat_history")
+        or export.get("history")
+        or export.get("buffer")
+        or []
+    )
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        return [raw.strip()]
+    return []
+
+
+def map_langchain(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map LangChain/LangGraph conversation history, entities, and summaries to Memanto."""
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    summary = export.get("summary") or export.get("conversation_summary")
+    if summary and isinstance(summary, str) and summary.strip():
+        rows.append(
+            {
+                "title": _title_from(summary),
+                "content": summary.strip(),
+                "type": "context",
+                "tags": ["langchain", "summary"],
+                "confidence": 0.9,
+                "source": "langchain",
+                "source_ref": "summary",
+                "provenance": "imported",
+                "created_at": _pick_first_dt(export, ("created_at", "createdAt", "updated_at")),
+                "updated_at": migrated_at,
+            }
+        )
+
+    entities = export.get("entities") or export.get("entity_store") or {}
+    if isinstance(entities, dict):
+        for entity_name, entity_val in entities.items():
+            if not entity_val:
+                continue
+            entity_str = str(entity_val)
+            content = f"{entity_name}: {entity_str}"
+            rows.append(
+                {
+                    "title": _title_from(content),
+                    "content": content,
+                    "type": "fact",
+                    "tags": ["langchain", "entity", f"entity={entity_name}"],
+                    "confidence": 0.85,
+                    "source": "langchain",
+                    "source_ref": f"entity:{entity_name}",
+                    "provenance": "imported",
+                    "created_at": None,
+                    "updated_at": migrated_at,
+                }
+            )
+
+    messages = _extract_langchain_messages(export)
+    if isinstance(messages, list):
+        for idx, msg in enumerate(messages):
+            content = ""
+            msg_type = "human"
+            created_at = None
+
+            if isinstance(msg, dict):
+                content = _coerce_text(
+                    msg.get("content")
+                    or msg.get("text")
+                    or (msg.get("data", {}).get("content") if isinstance(msg.get("data"), dict) else "")
+                )
+                msg_type = (
+                    msg.get("type")
+                    or (msg.get("data", {}).get("type") if isinstance(msg.get("data"), dict) else "")
+                    or "message"
+                )
+                created_at = _pick_first_dt(msg, ("created_at", "createdAt", "timestamp"))
+            elif isinstance(msg, (str, list, tuple)):
+                content = _coerce_text(msg)
+
+            if not content:
+                continue
+
+            mem_type: str = "context"
+            if msg_type in ("human", "user"):
+                mem_type = "instruction" if any(w in content.lower() for w in ["always", "never", "prefer", "must", "rule"]) else "context"
+            elif msg_type in ("ai", "assistant"):
+                mem_type = "learning"
+
+            tags = ["langchain", f"role={msg_type}"]
+            rows.append(
+                {
+                    "title": _title_from(content),
+                    "content": content,
+                    "type": mem_type,
+                    "tags": tags,
+                    "confidence": 0.8,
+                    "source": "langchain",
+                    "source_ref": f"msg:{idx}",
+                    "provenance": "imported",
+                    "created_at": created_at,
+                    "updated_at": migrated_at,
+                }
+            )
+
+    return rows
+
+
+# --------------------------------------------------------------------------
+# Generic / JSONL
+# --------------------------------------------------------------------------
+
+
+def map_generic(export: dict[str, Any] | list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Map generic JSON/JSONL memory arrays to Memanto payloads."""
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    items: list[dict[str, Any]] = []
+    if isinstance(export, list):
+        items = export
+    elif isinstance(export, dict):
+        items = (
+            export.get("memories")
+            or export.get("items")
+            or export.get("data")
+            or export.get("records")
+            or []
+        )
+        if not items and ("content" in export or "text" in export or "memory" in export):
+            items = [export]
+
+    for idx, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        content = _coerce_text(
+            item.get("content")
+            or item.get("text")
+            or item.get("memory")
+            or item.get("body")
+            or item.get("value")
+        )
+        if not content:
+            continue
+
+        raw_title = _coerce_text(item.get("title")) or _title_from(content)
+        raw_type = item.get("type") or item.get("category")
+        mem_type = _coerce_type(raw_type)
+
+        tags_val = item.get("tags") or []
+        tags = [str(t) for t in tags_val] if isinstance(tags_val, (list, tuple)) else [str(tags_val)]
+
+        confidence = 0.8
+        if "confidence" in item:
+            try:
+                confidence = float(item["confidence"])
+            except (ValueError, TypeError):
+                pass
+
+        created_at = _pick_first_dt(item, ("created_at", "createdAt", "timestamp", "date"))
+        source_name = str(item.get("source") or "generic")
+        source_ref = str(item.get("id") or item.get("source_ref") or f"gen:{idx}")
+
+        rows.append(
+            {
+                "title": raw_title[:100],
+                "content": content,
+                "type": mem_type,
+                "tags": tags,
+                "confidence": confidence,
+                "source": source_name,
+                "source_ref": source_ref,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+
+    return rows
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "markdown": map_okf,
+    "langchain": map_langchain,
+    "langgraph": map_langchain,
+    "generic": map_generic,
+    "jsonl": map_generic,
 }
 
 
