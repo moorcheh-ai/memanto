@@ -1,0 +1,38 @@
+version: 1
+
+source:
+  workflow_name: LeadOps — Intake, Scoring & Follow-up
+  execution_base_url: http://localhost:5679
+
+mappings:
+  - node: Normalize, Score & Route
+    memory_type: decision
+    content_heading: Lead routing decision
+    title: "Lead {lead.company}: {qualification.route} ({qualification.score})"
+    # This is a verbatim recorded decision, so provenance confidence is 1.0.
+    # qualification.score remains a business score in the memory body; it is
+    # not incorrectly treated as epistemic confidence.
+    confidence: 1.0
+    tags:
+      - n8n
+      - leadops
+      - "route:{qualification.route}"
+    fields:
+      - label: Company
+        path: lead.company
+      - label: Use case
+        path: lead.useCase
+      - label: Qualification score
+        path: qualification.score
+      - label: Route
+        path: qualification.route
+      - label: Reasons
+        path: qualification.reasons
+      - label: Next action
+        path: qualification.nextAction
+      - label: Processed at
+        path: processedAt
+      - label: Follow up at
+        path: followUpAt
+      - label: Idempotency key
+        path: idempotencyKey
