@@ -1,0 +1,362 @@
+[
+  {
+    "title": "Request 001 · For this PydanticAI migration adapter, keep bundles deterministic and",
+    "content": "# Request 001 · For this PydanticAI migration adapter, keep bundles deterministic and\n\n## User\n\nFor this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.\n\n---\n\n**Source metadata**\n\n- Message index: `0`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-01`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0000-request-001-for-this-pydanticai-migration-adapter-keep-bundles-determini.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-01/messages/0\n- OKF pydantic_ai: schema_version=1; message_index=0; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-01; source_sidecar=source/messages/0000.json; source_sidecar_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-01",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-01/messages/0",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:00+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 003 · The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OK",
+    "content": "# Request 003 · The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OK\n\n## User\n\nThe source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OKF importer uses OKF v0.1.\n\n---\n\n**Source metadata**\n\n- Message index: `2`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-02`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0002-request-003-the-source-is-pydantic-ai-slim-2-27-1-and-memanto-s-current.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-02/messages/2\n- OKF pydantic_ai: schema_version=1; message_index=2; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-02; source_sidecar=source/messages/0002.json; source_sidecar_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-02",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-02/messages/2",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:02+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 005 · Look up the submission deadline and prize for the memory portability b",
+    "content": "# Request 005 · Look up the submission deadline and prize for the memory portability b\n\n## User\n\nLook up the submission deadline and prize for the memory portability bounty.\n\n---\n\n**Source metadata**\n\n- Message index: `4`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-03`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0004-request-005-look-up-the-submission-deadline-and-prize-for-the-memory-por.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/4\n- OKF pydantic_ai: schema_version=1; message_index=4; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-03; source_sidecar=source/messages/0004.json; source_sidecar_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-03",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/4",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:04+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 007 · Tool result · lookup_bounty",
+    "content": "# Request 007 · Tool result · lookup_bounty\n\n## Tool result · lookup_bounty\n\nCall ID: `lookup-bounty-1609`\nOutcome: `success`\n\nResult:\n```json\n{\n  \"deadline\": \"2026-08-31T23:59:00Z\",\n  \"issue\": 1609,\n  \"prize_usd\": 200,\n  \"selection\": \"top submission by the success matrix\"\n}\n```\n\n---\n\n**Source metadata**\n\n- Message index: `6`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-03`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0006-request-007-tool-result-lookup-bounty.md\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/6\n- OKF pydantic_ai: schema_version=1; message_index=6; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-03; source_sidecar=source/messages/0006.json; source_sidecar_s...",
+    "type": "artifact",
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-03",
+      "part:tool-return"
+    ],
+    "confidence": 0.9,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/6",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:06+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 009 · Correction: the merge-ready folder is examples/migrations/pydanticai-h",
+    "content": "# Request 009 · Correction: the merge-ready folder is examples/migrations/pydanticai-h\n\n## User\n\nCorrection: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf.\n\n---\n\n**Source metadata**\n\n- Message index: `8`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-04`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0008-request-009-correction-the-merge-ready-folder-is-examples-migrations-pyd.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-04/messages/8\n- OKF pydantic_ai: schema_version=1; message_index=8; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-04; source_sidecar=source/messages/0008.json; source_sidecar_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-04",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-04/messages/8",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:08+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 011 · I commit to include a real framework run, mapping table, CLI dry run,",
+    "content": "# Request 011 · I commit to include a real framework run, mapping table, CLI dry run,\n\n## User\n\nI commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle.\n\n---\n\n**Source metadata**\n\n- Message index: `10`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-05`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0010-request-011-i-commit-to-include-a-real-framework-run-mapping-table-cli-d.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-05/messages/10\n- OKF pydantic_ai: schema_version=1; message_index=10; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-05; source_sidecar=source/messages/0010.json; source_sidecar_...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-05",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-05/messages/10",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:10+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 013 · Record a validation milestone for the adapter test suite.",
+    "content": "# Request 013 · Record a validation milestone for the adapter test suite.\n\n## User\n\nRecord a validation milestone for the adapter test suite.\n\n---\n\n**Source metadata**\n\n- Message index: `12`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-06`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0012-request-013-record-a-validation-milestone-for-the-adapter-test-suite.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/12\n- OKF pydantic_ai: schema_version=1; message_index=12; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-06; source_sidecar=source/messages/0012.json; source_sidecar_...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-06",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/12",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:12+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 015 · Tool result · record_validation",
+    "content": "# Request 015 · Tool result · record_validation\n\n## Tool result · record_validation\n\nCall ID: `record-validation-1`\nOutcome: `success`\n\nResult:\n```json\n{\n  \"name\": \"migration-adapter\",\n  \"scope\": \"public demo data\",\n  \"status\": \"required\"\n}\n```\n\n---\n\n**Source metadata**\n\n- Message index: `14`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-06`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0014-request-015-tool-result-record-validation.md\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/14\n- OKF pydantic_ai: schema_version=1; message_index=14; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-06; source_sidecar=source/messages/0014.json; source_sidecar_...",
+    "type": "artifact",
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-06",
+      "part:tool-return"
+    ],
+    "confidence": 0.9,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/14",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:14+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 017 · Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actual",
+    "content": "# Request 017 · Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actual\n\n## User\n\nDo not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used.\n\n---\n\n**Source metadata**\n\n- Message index: `16`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-07`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0016-request-017-do-not-claim-a-live-moorcheh-import-unless-moorcheh-api-key.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-07/messages/16\n- OKF pydantic_ai: schema_version=1; message_index=16; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-07; source_sidecar=source/messages/0016.json; source_sidecar_...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-07",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-07/messages/16",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:16+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Request 019 · Summarize the current migration plan, deadline, and correction.",
+    "content": "# Request 019 · Summarize the current migration plan, deadline, and correction.\n\n## User\n\nSummarize the current migration plan, deadline, and correction.\n\n---\n\n**Source metadata**\n\n- Message index: `18`\n- Kind: `request`\n- Run ID: `memanto-pydanticai-run-08`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/request/0018-request-019-summarize-the-current-migration-plan-deadline-and-correction.md\n- OKF type: PydanticAI request\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-08/messages/18\n- OKF pydantic_ai: schema_version=1; message_index=18; message_kind=request; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-08; source_sidecar=source/messages/0018.json; source_sidecar_...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:request",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-08",
+      "part:user-prompt"
+    ],
+    "confidence": 0.95,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-08/messages/18",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:18+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 002 · Recorded project memory: For this PydanticAI migration adapter, keep b",
+    "content": "# Response 002 · Recorded project memory: For this PydanticAI migration adapter, keep b\n\n## Assistant\n\nRecorded project memory: For this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.\n\n---\n\n**Source metadata**\n\n- Message index: `1`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-01`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0001-response-002-recorded-project-memory-for-this-pydanticai-migration-adapt.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-01/messages/1\n- OKF pydantic_ai: schema_version=1; message_index=1; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-01; model_name=pydanticai-migration-evidence-model; source_si...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-01",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-01/messages/1",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:01+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 004 · Recorded project memory: The source is pydantic-ai-slim 2.27.1 and Mem",
+    "content": "# Response 004 · Recorded project memory: The source is pydantic-ai-slim 2.27.1 and Mem\n\n## Assistant\n\nRecorded project memory: The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OKF importer uses OKF v0.1.\n\n---\n\n**Source metadata**\n\n- Message index: `3`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-02`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0003-response-004-recorded-project-memory-the-source-is-pydantic-ai-slim-2-27.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-02/messages/3\n- OKF pydantic_ai: schema_version=1; message_index=3; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-02; model_name=pydanticai-migration-evidence-model; source_si...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-02",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-02/messages/3",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:03+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 006 · Tool call · lookup_bounty",
+    "content": "# Response 006 · Tool call · lookup_bounty\n\n## Tool call · lookup_bounty\n\nCall ID: `lookup-bounty-1609`\n\nArguments:\n```json\n{\n  \"issue\": 1609\n}\n```\n\n---\n\n**Source metadata**\n\n- Message index: `5`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-03`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0005-response-006-tool-call-lookup-bounty.md\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/5\n- OKF pydantic_ai: schema_version=1; message_index=5; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-03; model_name=pydanticai-migration-evidence-model; source_si...",
+    "type": "artifact",
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-03",
+      "part:tool-call"
+    ],
+    "confidence": 0.9,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/5",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:05+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 008 · The deadline is August 31, 2026 at 11:59 PM UTC, and the top submissio",
+    "content": "# Response 008 · The deadline is August 31, 2026 at 11:59 PM UTC, and the top submissio\n\n## Assistant\n\nThe deadline is August 31, 2026 at 11:59 PM UTC, and the top submission earns USD 200.\n\n---\n\n**Source metadata**\n\n- Message index: `7`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-03`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0007-response-008-the-deadline-is-august-31-2026-at-11-59-pm-utc-and-the-top.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/7\n- OKF pydantic_ai: schema_version=1; message_index=7; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-03; model_name=pydanticai-migration-evidence-model; source_si...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-03",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/7",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:07+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 010 · Recorded project memory: Correction: the merge-ready folder is example",
+    "content": "# Response 010 · Recorded project memory: Correction: the merge-ready folder is example\n\n## Assistant\n\nRecorded project memory: Correction: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf.\n\n---\n\n**Source metadata**\n\n- Message index: `9`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-04`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0009-response-010-recorded-project-memory-correction-the-merge-ready-folder-i.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-04/messages/9\n- OKF pydantic_ai: schema_version=1; message_index=9; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-04; model_name=pydanticai-migration-evidence-model; source_si...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-04",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-04/messages/9",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:09+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 012 · Recorded project memory: I commit to include a real framework run, map",
+    "content": "# Response 012 · Recorded project memory: I commit to include a real framework run, map\n\n## Assistant\n\nRecorded project memory: I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle.\n\n---\n\n**Source metadata**\n\n- Message index: `11`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-05`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0011-response-012-recorded-project-memory-i-commit-to-include-a-real-framewor.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-05/messages/11\n- OKF pydantic_ai: schema_version=1; message_index=11; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-05; model_name=pydanticai-migration-evidence-model; source_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-05",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-05/messages/11",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:11+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 014 · Tool call · record_validation",
+    "content": "# Response 014 · Tool call · record_validation\n\n## Tool call · record_validation\n\nCall ID: `record-validation-1`\n\nArguments:\n```json\n{\n  \"name\": \"migration-adapter\",\n  \"status\": \"required\"\n}\n```\n\n---\n\n**Source metadata**\n\n- Message index: `13`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-06`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0013-response-014-tool-call-record-validation.md\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/13\n- OKF pydantic_ai: schema_version=1; message_index=13; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-06; model_name=pydanticai-migration-evidence-model; source_s...",
+    "type": "artifact",
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-06",
+      "part:tool-call"
+    ],
+    "confidence": 0.9,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/13",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:13+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 016 · Recorded validation milestone migration-adapter: adapter, reconstructi",
+    "content": "# Response 016 · Recorded validation milestone migration-adapter: adapter, reconstructi\n\n## Assistant\n\nRecorded validation milestone migration-adapter: adapter, reconstruction, privacy, and parity tests required.\n\n---\n\n**Source metadata**\n\n- Message index: `15`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-06`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0015-response-016-recorded-validation-milestone-migration-adapter-adapter-rec.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/15\n- OKF pydantic_ai: schema_version=1; message_index=15; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-06; model_name=pydanticai-migration-evidence-model; source_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-06",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-06/messages/15",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:15+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 018 · Recorded project memory: Do not claim a live Moorcheh import unless MO",
+    "content": "# Response 018 · Recorded project memory: Do not claim a live Moorcheh import unless MO\n\n## Assistant\n\nRecorded project memory: Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used.\n\n---\n\n**Source metadata**\n\n- Message index: `17`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-07`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0017-response-018-recorded-project-memory-do-not-claim-a-live-moorcheh-import.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-07/messages/17\n- OKF pydantic_ai: schema_version=1; message_index=17; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-07; model_name=pydanticai-migration-evidence-model; source_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-07",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-07/messages/17",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:17+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  },
+  {
+    "title": "Response 020 · Use PydanticAI 2.27.1 ModelMessage JSON, migrate it into examples/migr",
+    "content": "# Response 020 · Use PydanticAI 2.27.1 ModelMessage JSON, migrate it into examples/migr\n\n## Assistant\n\nUse PydanticAI 2.27.1 ModelMessage JSON, migrate it into examples/migrations/pydanticai-history-okf, preserve canonical sidecars, fail closed on secrets, validate recall parity, and use Memanto's shipped OKF v0.1 importer. The bounty deadline is August 31, 2026 at 11:59 PM UTC and the prize is USD 200.\n\n---\n\n**Source metadata**\n\n- Message index: `19`\n- Kind: `response`\n- Run ID: `memanto-pydanticai-run-08`\n- Conversation ID: `memanto-bounty-1609-pydanticai`\n\n---\n[Supporting data]\n- OKF source: memories/response/0019-response-020-use-pydanticai-2-27-1-modelmessage-json-migrate-it-into-exa.md\n- OKF type: PydanticAI response\n- OKF resource: pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-08/messages/19\n- OKF pydantic_ai: schema_version=1; message_index=19; message_kind=response; conversation_id=memanto-bounty-1609-pydanticai; run_id=memanto-pydanticai-run-08; model_name=pydanticai-migration-evidence-model; source_s...",
+    "type": null,
+    "tags": [
+      "pydantic-ai",
+      "message:response",
+      "conversation:memanto-bounty-1609-pydanticai",
+      "run:memanto-pydanticai-run-08",
+      "part:text"
+    ],
+    "confidence": 0.75,
+    "source": "pydantic-ai-message-history",
+    "source_ref": "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-08/messages/19",
+    "provenance": "imported",
+    "created_at": "2026-08-11 12:00:19+00:00",
+    "updated_at": "2026-08-11 15:14:05.709605+00:00"
+  }
+]
