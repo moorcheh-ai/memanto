@@ -684,7 +684,7 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
             messages = []
             for msg in convo.get("messages") or convo.get("chat_messages") or []:
                 role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
-                content_obj = msg.get("content")
+content_obj = msg.get("content")
                 if isinstance(content_obj, dict):
                     parts = content_obj.get("parts") or []
                     text = " ".join(p for p in parts if isinstance(p, str)).strip()
@@ -770,7 +770,14 @@ def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
         human_messages = []
         for msg in chat_messages:
             sender = (msg.get("sender") or msg.get("role") or "").strip()
-            text = (msg.get("text") or msg.get("content") or "").strip()
+            content_obj = msg.get("content") or {}
+            if isinstance(content_obj, str):
+                text = content_obj.strip()
+            elif isinstance(content_obj, dict):
+                parts = content_obj.get("parts") or []
+                text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            else:
+                text = (msg.get("text") or "").strip()
             if text and sender in ("human", "user"):
                 human_messages.append({
                     "text": text,

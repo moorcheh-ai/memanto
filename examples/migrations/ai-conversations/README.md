@@ -100,12 +100,12 @@ The `okf_bundle/` directory demonstrates the output format:
 okf_bundle/
 ├── manifest.json          # Metadata, memory index, version
 └── memories/
-    ├── mem_0000_Building_a_REST_API.md
-    ├── mem_0001_React_TypeScript_State.md
-    ├── mem_0002_Docker_Compose.md
-    ├── mem_0003_Python_Design_Patterns.md
+    ├── mem_0000_Building_a_REST_API_with_FastAPI.md
+    ├── mem_0001_React_TypeScript_State_Management.md
+    ├── mem_0002_Docker_Compose_for_Development.md
+    ├── mem_0003_Python_Design_Patterns_Deep_Dive.md
     ├── mem_0004_Database_Query_Optimization.md
-    └── mem_0005_System_Design_Interview.md
+    └── mem_0005_System_Design_Interview_Prep.md
 ```
 
 Each memory file is human-readable markdown with metadata headers.
