@@ -1,0 +1,20 @@
+{
+  "validation_date": "2026-07-27",
+  "backend": "Moorcheh via Memanto CLI",
+  "agent": "mcp-memory-escape-demo-20260727",
+  "entities_imported": 5,
+  "memories_exported": 5,
+  "exported_type_counts": {
+    "artifact": 4,
+    "goal": 1
+  },
+  "source_records_reconstructed": 9,
+  "source_records_sha256": "bf97e55e76a5e835df64b7374a5d413877cbab2616852ef59a77df78a8e9ee5f",
+  "exported_records_sha256": "bf97e55e76a5e835df64b7374a5d413877cbab2616852ef59a77df78a8e9ee5f",
+  "lossless_live_round_trip": true,
+  "recall_commands_run": 5,
+  "recall_commands_succeeded": 5,
+  "answer_commands_run": 5,
+  "answer_commands_succeeded": 5,
+  "credential_value_scan": "clean"
+}
