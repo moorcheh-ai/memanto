@@ -1,0 +1,35 @@
+source_records: 16
+okf_nodes: 16
+mapped_memories: 16
+skipped: 0
+exact_content_hashes: 16/16
+golden_recall_parity: 4/4
+source_sha256: 96ce8d7850a63728ed778ff94edd0679d26b094b3f8f294ad7cc26604cb48824
+storage_evidence:
+  source_bytes: 6720
+  okf_bundle_bytes: 20961
+  delta_bytes: 14241
+  ratio: 3.119
+  claim: OKF expands storage here to preserve readable metadata; no savings claimed.
+token_latency_evidence: 'Not measured: this offline adapter makes no provider calls.'
+questions:
+- question: Which date format did the user request?
+  expected: ISO 8601
+  source: true
+  mapped_okf: true
+  parity: true
+- question: Which timezone stores timestamps?
+  expected: UTC
+  source: true
+  mapped_okf: true
+  parity: true
+- question: Which timezone displays timestamps?
+  expected: America/New_York
+  source: true
+  mapped_okf: true
+  parity: true
+- question: What are the corrected quiet hours?
+  expected: 22:00 to 07:00
+  source: true
+  mapped_okf: true
+  parity: true
