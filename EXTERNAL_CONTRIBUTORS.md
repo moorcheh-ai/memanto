@@ -70,3 +70,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @nwinkelman2
 - @RoaraxAli
 - @WhiteZe-wolf2077
+- @Salahalioui
