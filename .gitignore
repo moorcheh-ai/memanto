@@ -107,3 +107,6 @@ temp/
 
 # npm pack output
 *.tgz
+
+# Locally rendered demonstration media
+examples/migrations/codex-session-okf/recording/output/

@@ -23,6 +23,7 @@ from memanto.cli.migrate.okf_loader import load_okf_bundle
 
 
 def _mem(mem_id, title, content, **extra):
+    """Build a minimal memory dictionary for OKF round-trip tests."""
     base = {
         "id": mem_id,
         "title": title,
@@ -213,13 +214,55 @@ def test_foreign_okf_bundle_is_lossless(tmp_path):
 
     row = map_okf(export)[0]
     assert row["type"] is None  # free-form type -> auto-classify
-    assert row["source"] == "okf"
+    assert row["source"] == "tool"
     assert row["source_ref"] == "https://console.cloud.google.com/bigquery?t=orders"
     assert row["provenance"] == "imported"
     assert "One row per completed customer order." in row["content"]  # description
     assert "OKF type: BigQuery Table" in row["content"]  # unmapped type -> footer
     assert "OKF owner: data-team" in row["content"]  # unknown key -> footer
     assert "customers -> /tables/customers.md" in row["content"]  # link -> footer
+
+
+def test_okf_role_maps_to_valid_memory_source(tmp_path):
+    """OKF producer names and chat roles must not violate MemoryRecord.source."""
+    (tmp_path / "assistant.md").write_text(
+        "---\n"
+        "type: conversation\n"
+        "title: Assistant answer\n"
+        "x_memanto:\n"
+        "  type: context\n"
+        "  source: codex-session-jsonl\n"
+        "  role: assistant\n"
+        "---\n\n"
+        "A reusable answer.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+    assert row["source"] == "agent"
+    assert "Original source: codex-session-jsonl" in row["content"]
+    assert "OKF role: assistant" in row["content"]
+
+
+def test_okf_valid_source_precedes_conflicting_role(tmp_path):
+    """A normalized valid producer source takes precedence over the chat role."""
+    (tmp_path / "assistant.md").write_text(
+        "---\n"
+        "type: conversation\n"
+        "title: Assistant answer\n"
+        "x_memanto:\n"
+        "  type: context\n"
+        '  source: " USER "\n'
+        "  role: assistant\n"
+        "---\n\n"
+        "A reusable answer.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+    assert row["source"] == "user"
+    assert "Original source:" not in row["content"]
+    assert "OKF role: assistant" in row["content"]
 
 
 def test_loader_splits_stacked_file(tmp_path):
