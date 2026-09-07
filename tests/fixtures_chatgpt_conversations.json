@@ -1,0 +1,351 @@
+[
+    {
+        "id": "conv-1",
+        "title": "Python debugging help",
+        "create_time": 1710000000,
+        "update_time": 1710003600,
+        "mapping": {
+            "node-1": {
+                "id": "node-1",
+                "message": {
+                    "id": "msg-1",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "I prefer concise PR summaries and hate long meetings."
+                        ]
+                    },
+                    "create_time": 1710000000
+                },
+                "parent": null,
+                "children": [
+                    "node-2"
+                ]
+            },
+            "node-2": {
+                "id": "node-2",
+                "message": {
+                    "id": "msg-2",
+                    "author": {
+                        "role": "assistant"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "Got it, here's a concise approach..."
+                        ]
+                    },
+                    "create_time": 1710000050
+                },
+                "parent": "node-1",
+                "children": [
+                    "node-3"
+                ]
+            },
+            "node-3": {
+                "id": "node-3",
+                "message": {
+                    "id": "msg-3",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "I use Python 3.12 and FastAPI at work."
+                        ]
+                    },
+                    "create_time": 1710000100
+                },
+                "parent": "node-2",
+                "children": [
+                    "node-4"
+                ]
+            },
+            "node-4": {
+                "id": "node-4",
+                "message": {
+                    "id": "msg-4",
+                    "author": {
+                        "role": "assistant"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "FastAPI is great for that."
+                        ]
+                    },
+                    "create_time": 1710000200
+                },
+                "parent": "node-3",
+                "children": []
+            },
+            "node-5": {
+                "id": "node-5",
+                "message": {
+                    "id": "msg-5",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "This is an old regenerated draft that should NOT appear."
+                        ]
+                    },
+                    "create_time": 1710000150
+                },
+                "parent": "node-2",
+                "children": []
+            }
+        }
+    },
+    {
+        "id": "conv-2",
+        "title": "Trip planning",
+        "create_time": 1710001000,
+        "update_time": 1710002000,
+        "mapping": {
+            "t-1": {
+                "id": "t-1",
+                "message": {
+                    "id": "mt-1",
+                    "author": {
+                        "role": "system"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "You are a helpful assistant."
+                        ]
+                    },
+                    "create_time": 1710001000
+                },
+                "parent": null,
+                "children": [
+                    "t-2"
+                ]
+            },
+            "t-2": {
+                "id": "t-2",
+                "message": {
+                    "id": "mt-2",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "I'm allergic to peanuts, please remember that for any food suggestions."
+                        ]
+                    },
+                    "create_time": 1710001100
+                },
+                "parent": "t-1",
+                "children": [
+                    "t-3"
+                ]
+            },
+            "t-3": {
+                "id": "t-3",
+                "message": {
+                    "id": "mt-3",
+                    "author": {
+                        "role": "assistant"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "Noted, I'll avoid peanuts."
+                        ]
+                    },
+                    "create_time": 1710001200
+                },
+                "parent": "t-2",
+                "children": [
+                    "t-4"
+                ]
+            },
+            "t-4": {
+                "id": "t-4",
+                "message": {
+                    "id": "mt-4",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "Great, let's go with a Mediterranean place on Friday at 7pm."
+                        ]
+                    },
+                    "create_time": 1710001300
+                },
+                "parent": "t-3",
+                "children": []
+            }
+        }
+    },
+    {
+        "id": "conv-3",
+        "title": "Empty messages",
+        "create_time": 1710003000,
+        "mapping": {
+            "e-1": {
+                "id": "e-1",
+                "message": null,
+                "parent": null,
+                "children": [
+                    "e-2"
+                ]
+            },
+            "e-2": {
+                "id": "e-2",
+                "message": {
+                    "id": "me-2",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": null,
+                    "create_time": 1710003100
+                },
+                "parent": "e-1",
+                "children": []
+            }
+        }
+    },
+    {
+        "id": "conv-4",
+        "title": "Branch selection test",
+        "create_time": 1710004000,
+        "update_time": 1710005000,
+        "current_node": "b-3",
+        "mapping": {
+            "b-1": {
+                "id": "b-1",
+                "message": {
+                    "id": "mb-1",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "I prefer dark mode in all my apps."
+                        ]
+                    },
+                    "create_time": 1710004100
+                },
+                "parent": null,
+                "children": [
+                    "b-2-a",
+                    "b-2-b"
+                ]
+            },
+            "b-2-a": {
+                "id": "b-2-a",
+                "message": {
+                    "id": "mb-2-a",
+                    "author": {
+                        "role": "assistant"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "Dark mode is easy to set up."
+                        ]
+                    },
+                    "create_time": 1710004200
+                },
+                "parent": "b-1",
+                "children": [
+                    "b-3"
+                ]
+            },
+            "b-3": {
+                "id": "b-3",
+                "message": {
+                    "id": "mb-3",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "Actually I changed my mind, I prefer light mode."
+                        ]
+                    },
+                    "create_time": 1710004300
+                },
+                "parent": "b-2-a",
+                "children": []
+            },
+            "b-2-b": {
+                "id": "b-2-b",
+                "message": {
+                    "id": "mb-2-b",
+                    "author": {
+                        "role": "assistant"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "Dark mode is the best, here's how."
+                        ]
+                    },
+                    "create_time": 1710004250
+                },
+                "parent": "b-1",
+                "children": [
+                    "b-4"
+                ]
+            },
+            "b-4": {
+                "id": "b-4",
+                "message": {
+                    "id": "mb-4",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "I agree, dark mode is better."
+                        ]
+                    },
+                    "create_time": 1710004350
+                },
+                "parent": "b-2-b",
+                "children": []
+            }
+        }
+    },
+    {
+        "id": "conv-5",
+        "title": "Bool create_time test",
+        "create_time": 1710006000,
+        "mapping": {
+            "c-1": {
+                "id": "c-1",
+                "message": {
+                    "id": "mc-1",
+                    "author": {
+                        "role": "user"
+                    },
+                    "content": {
+                        "content_type": "text",
+                        "parts": [
+                            "I like testing edge cases."
+                        ]
+                    },
+                    "create_time": true
+                },
+                "parent": null,
+                "children": []
+            }
+        }
+    }
+]
