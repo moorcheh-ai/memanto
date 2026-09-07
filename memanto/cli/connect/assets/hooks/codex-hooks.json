@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "memanto memory sync --project-dir .",
+            "timeout": 30,
+            "statusMessage": "Loading MEMANTO memory..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "memanto memory sync --project-dir .",
+            "timeout": 30,
+            "statusMessage": "Saving MEMANTO memory..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -13,8 +13,11 @@ from typing import Any
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, AgentDef
 from memanto.cli.connect.templates import (
+    MEMANTO_DYNAMIC_SENTINEL,
+    MEMANTO_DYNAMIC_SENTINEL_END,
     MEMANTO_SENTINEL,
     MEMANTO_SENTINEL_END,
+    get_extension_content,
     get_instruction_content,
     get_skill_content,
 )
@@ -75,6 +78,15 @@ def install_agent(
                 steps.append(perm_result)
         except Exception as e:
             errors.append(f"Permissions: {e}")
+
+    # Code extension (Pi .ts extension that runs memanto memory sync on startup)
+    if agent.extension_file:
+        try:
+            ext_result = _install_extension(agent, project_path, is_global)
+            if ext_result:
+                steps.append(ext_result)
+        except Exception as e:
+            errors.append(f"Extension: {e}")
 
     if steps:
         try:
@@ -139,6 +151,15 @@ def remove_agent(
         except Exception as e:
             errors.append(f"Permission removal: {e}")
 
+    # Remove code extension (agent-specific)
+    if agent.extension_file:
+        try:
+            ext_result = _remove_extension(agent, project_path, is_global)
+            if ext_result:
+                steps.append(ext_result)
+        except Exception as e:
+            errors.append(f"Extension removal: {e}")
+
     try:
         ConfigManager().remove_connection(
             agent_name, str(project_path) if not is_global else None, is_global
@@ -156,8 +177,10 @@ def _install_instructions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Install MEMANTO instructions into the agent's instruction file."""
-    if not agent.instruction_file:
-        return None  # Agent doesn't use instruction files (skills-only)
+    if is_global and not agent.instruction_global_file:
+        return None
+    if not is_global and not agent.instruction_local_file:
+        return None
 
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path:
@@ -181,6 +204,18 @@ def _install_instructions(
     return _inject_into_file(instr_path, content, create_if_missing=True)
 
 
+def _strip_dynamic_block(text: str) -> str:
+    """Remove the dynamic memory block from the text."""
+    return re.sub(
+        re.escape(MEMANTO_DYNAMIC_SENTINEL)
+        + r".*?"
+        + re.escape(MEMANTO_DYNAMIC_SENTINEL_END),
+        "",
+        text,
+        flags=re.DOTALL,
+    ).strip()
+
+
 def _write_dedicated_file(file_path: Path, content: str) -> str:
     """Write content to a dedicated file (creates parent dirs)."""
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,7 +227,13 @@ def _write_dedicated_file(file_path: Path, content: str) -> str:
             pattern = (
                 re.escape(MEMANTO_SENTINEL) + r".*?" + re.escape(MEMANTO_SENTINEL_END)
             )
-            updated = re.sub(pattern, content.strip(), existing, flags=re.DOTALL)
+            static_content = _strip_dynamic_block(content)
+            updated = re.sub(
+                pattern,
+                static_content.replace("\\", "\\\\"),
+                existing,
+                flags=re.DOTALL,
+            )
             file_path.write_text(updated, encoding="utf-8")
             return f"Updated {file_path.name}"
 
@@ -211,7 +252,13 @@ def _inject_into_file(
             pattern = (
                 re.escape(MEMANTO_SENTINEL) + r".*?" + re.escape(MEMANTO_SENTINEL_END)
             )
-            updated = re.sub(pattern, section.strip(), existing, flags=re.DOTALL)
+            static_section = _strip_dynamic_block(section)
+            updated = re.sub(
+                pattern,
+                static_section.replace("\\", "\\\\"),
+                existing,
+                flags=re.DOTALL,
+            )
             file_path.write_text(updated, encoding="utf-8")
             return f"Updated MEMANTO section in {file_path.name}"
         else:
@@ -242,9 +289,6 @@ def _remove_instructions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Remove MEMANTO instructions from the agent's instruction file."""
-    if not agent.instruction_file:
-        return None
-
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path or not instr_path.exists():
         return None
@@ -264,19 +308,34 @@ def _remove_instructions(
             if parent.exists() and not any(parent.iterdir()):
                 parent.rmdir()
         except Exception:
+            # Ignore errors if directory is not empty or non-deletable
             pass
         return f"Removed {instr_path.name}"
 
     # For shared files (CLAUDE.md, AGENTS.md, etc.), remove the section
     existing = instr_path.read_text(encoding="utf-8")
+    modified = False
+
     if MEMANTO_SENTINEL in existing:
         pattern = re.escape(MEMANTO_SENTINEL) + r".*?" + re.escape(MEMANTO_SENTINEL_END)
-        updated = re.sub(pattern, "", existing, flags=re.DOTALL)
+        existing = re.sub(pattern, "", existing, flags=re.DOTALL)
+        modified = True
+
+    if MEMANTO_DYNAMIC_SENTINEL in existing:
+        pattern2 = (
+            re.escape(MEMANTO_DYNAMIC_SENTINEL)
+            + r".*?"
+            + re.escape(MEMANTO_DYNAMIC_SENTINEL_END)
+        )
+        existing = re.sub(pattern2, "", existing, flags=re.DOTALL)
+        modified = True
+
+    if modified:
         # Clean up extra whitespace
-        updated = re.sub(r"\n{3,}", "\n\n", updated).strip() + "\n"
+        updated = re.sub(r"\n{3,}", "\n\n", existing).strip() + "\n"
         if updated.strip():
             instr_path.write_text(updated, encoding="utf-8")
-            return f"Removed MEMANTO section from {instr_path.name}"
+            return f"Removed MEMANTO sections from {instr_path.name}"
         else:
             instr_path.unlink()
             return f"Removed {instr_path.name} (was empty)"
@@ -296,7 +355,10 @@ def _install_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str:
 
     skill_dir.mkdir(parents=True, exist_ok=True)
     skill_path = skill_dir / "SKILL.md"
-    skill_path.write_text(get_skill_content(), encoding="utf-8")
+
+    content = get_skill_content(agent.name)
+
+    skill_path.write_text(content, encoding="utf-8")
 
     rel = _display_path(skill_path, is_global)
     return f"Deployed skill to {rel}"
@@ -317,12 +379,74 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
             if skill_dir.exists() and not any(skill_dir.iterdir()):
                 skill_dir.rmdir()
         except Exception:
+            # Ignore errors if directory is not empty or non-deletable
             pass
         return f"Removed skill from {_display_path(skill_dir, is_global)}"
     return None
 
 
+# Internal: Code extension deployment (Pi)
+
+
+def _install_extension(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Deploy the agent's code extension file (e.g. the Pi .ts extension)."""
+    if not agent.extension_file:
+        return None
+
+    ext_path = agent.resolve_extension_file(project_path, is_global)
+    if not ext_path:
+        return None
+
+    ext_path.parent.mkdir(parents=True, exist_ok=True)
+    ext_path.write_text(get_extension_content(), encoding="utf-8")
+
+    return f"Deployed extension to {_display_path(ext_path, is_global)}"
+
+
+def _remove_extension(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Remove the agent's code extension file."""
+    if not agent.extension_file:
+        return None
+
+    ext_path = agent.resolve_extension_file(project_path, is_global)
+    if not ext_path or not ext_path.exists():
+        return None
+
+    ext_path.unlink()
+    # Clean up empty parent dirs
+    try:
+        if ext_path.parent.exists() and not any(ext_path.parent.iterdir()):
+            ext_path.parent.rmdir()
+    except Exception:
+        # Ignore errors if directory is not empty or non-deletable
+        pass
+    return f"Removed extension from {_display_path(ext_path.parent, is_global)}"
+
+
 # Internal: Hook configuration (Claude Code)
+
+
+def _is_memanto_hook(hook_group: dict) -> bool:
+    """Helper to detect if a hook group belongs to memanto."""
+    if not isinstance(hook_group, dict):
+        return False
+    # Handle single hook dicts (e.g. Cursor: {"command": "python ..."})
+    cmd = hook_group.get("command", "")
+    if "memanto" in cmd or "notify.py" in cmd or "session_start.py" in cmd:
+        return True
+    hooks = hook_group.get("hooks", [])
+    if isinstance(hooks, list):
+        for h in hooks:
+            if not isinstance(h, dict):
+                continue
+            c = h.get("command", "")
+            if "memanto" in c or "notify.py" in c or "session_start.py" in c:
+                return True
+    return False
 
 
 def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str | None:
@@ -349,28 +473,66 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     else:
         settings = {}
 
-    # Navigate to hook location
-    hooks = settings.setdefault("hooks", {})
-    session_start = hooks.setdefault("SessionStart", [])
+    hooks_section = settings.setdefault("hooks", {})
+    changed = False
 
-    # Check if memanto hook already exists
-    memanto_exists = any(
-        isinstance(group, dict)
-        and any(
-            isinstance(h, dict) and "memanto" in h.get("command", "")
-            for h in group.get("hooks", [])
+    # 1. Try to load hooks from assets
+    assets_hooks_dir = Path(__file__).parent / "assets" / "hooks"
+    asset_file_name = agent.hook_config.asset_file or f"{agent.name}-hooks.json"
+    asset_file_path = assets_hooks_dir / asset_file_name
+
+    if assets_hooks_dir.exists() and asset_file_path.exists():
+        target_hooks_dir = config_dir / "hooks"
+        target_hooks_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy python scripts
+        import shutil
+
+        for py_file in assets_hooks_dir.glob("*.py"):
+            shutil.copy2(py_file, target_hooks_dir / py_file.name)
+
+        # Parse and inject JSON
+        raw_json = asset_file_path.read_text(encoding="utf-8")
+        raw_json = raw_json.replace(
+            "${CLAUDE_PLUGIN_ROOT}", str(config_dir).replace("\\", "/")
         )
-        for group in session_start
-    )
+        raw_json = raw_json.replace(
+            "${PLUGIN_ROOT}", str(config_dir).replace("\\", "/")
+        )
+        raw_json = raw_json.replace(
+            "${CLAUDE_PROJECT_DIR}", str(project_path.absolute()).replace("\\", "/")
+        )
 
-    if not memanto_exists:
+        asset_hooks_data = json.loads(raw_json)
+        asset_hooks = asset_hooks_data.get("hooks", {})
+
+        for event_name, event_payloads in asset_hooks.items():
+            target_event = hooks_section.setdefault(event_name, [])
+            if not isinstance(target_event, list):
+                continue
+
+            for payload in event_payloads:
+                if not any(_is_memanto_hook(existing) for existing in target_event):
+                    target_event.append(payload)
+                    changed = True
+
+        if changed:
+            settings_path.write_text(
+                json.dumps(settings, indent=2) + "\n", encoding="utf-8"
+            )
+            return "Installed Memanto hooks and scripts"
+        return None
+
+    # 2. Fallback to hardcoded agent payload
+    session_start = hooks_section.setdefault("SessionStart", [])
+    if not any(_is_memanto_hook(group) for group in session_start):
         session_start.append(agent.hook_config.hook_payload)
         settings_path.write_text(
             json.dumps(settings, indent=2) + "\n", encoding="utf-8"
         )
         return "Added SessionStart hook"
 
-    return None  # Already configured
+    return None
 
 
 def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str | None:
@@ -394,60 +556,55 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
         return None
 
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
-    hooks = settings.get("hooks")
-    session_start = hooks.get("SessionStart") if isinstance(hooks, dict) else None
-    if not isinstance(session_start, list):
-        return None
-
-    expected_payload = agent.hook_config.hook_payload
-    expected_matcher = expected_payload.get("matcher")
-    expected_hooks = [
-        hook for hook in expected_payload.get("hooks", []) if isinstance(hook, dict)
-    ]
-    expected_commands = {
-        hook.get("command") for hook in expected_hooks if hook.get("command")
-    }
-    if not expected_commands:
+    hooks_section = settings.get("hooks")
+    if not isinstance(hooks_section, dict):
         return None
 
     changed = False
-    next_session_start = []
-    for group in session_start:
-        if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
-            next_session_start.append(group)
+
+    # 1. Remove from all hook events
+    empty_events = []
+    for event_name, event_payloads in hooks_section.items():
+        if not isinstance(event_payloads, list):
             continue
 
-        remaining_hooks = []
-        for hook in group["hooks"]:
-            if (
-                group.get("matcher") == expected_matcher
-                and isinstance(hook, dict)
-                and hook.get("command") in expected_commands
-                and any(hook == expected_hook for expected_hook in expected_hooks)
-            ):
-                changed = True
-                continue
-            remaining_hooks.append(hook)
-
-        if remaining_hooks:
-            updated_group = dict(group)
-            updated_group["hooks"] = remaining_hooks
-            next_session_start.append(updated_group)
-        else:
+        remaining = [group for group in event_payloads if not _is_memanto_hook(group)]
+        if len(remaining) != len(event_payloads):
+            hooks_section[event_name] = remaining
             changed = True
 
-    if not changed:
-        return None
+        if not remaining:
+            empty_events.append(event_name)
 
-    if next_session_start:
-        hooks["SessionStart"] = next_session_start
-    else:
-        hooks.pop("SessionStart", None)
-    if not hooks:
+    for event_name in empty_events:
+        hooks_section.pop(event_name, None)
+
+    if not hooks_section:
         settings.pop("hooks", None)
 
-    _write_or_remove_json(settings_path, settings)
-    return "Removed SessionStart hook"
+    # 2. Remove copied script files
+    target_hooks_dir = config_dir / "hooks"
+    if target_hooks_dir.exists():
+        for f in ["notify.py", "session_start.py"]:
+            script_path = target_hooks_dir / f
+            if script_path.exists():
+                try:
+                    script_path.unlink()
+                except Exception:
+                    # Ignore errors if script file cannot be unlinked
+                    pass
+        # Try to remove dir if empty
+        try:
+            target_hooks_dir.rmdir()
+        except Exception:
+            # Ignore errors if directory is not empty or non-deletable
+            pass
+
+    if changed:
+        _write_or_remove_json(settings_path, settings)
+        return "Removed Memanto hooks and scripts"
+
+    return None
 
 
 # Internal: Permission configuration

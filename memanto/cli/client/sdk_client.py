@@ -221,7 +221,17 @@ class SdkClient:
         try:
             # Validate JWT token
             token_payload = session_service.validate_session(self.session_token)
-        except (SessionExpiredError, InvalidSessionTokenError):
+        except SessionExpiredError:
+            # The stored session fully lapsed (e.g. the process was idle past
+            # its expiry). With auto-recreate enabled, transparently issue a
+            # fresh session on this first operation instead of failing.
+            recreated = session_service.check_and_auto_recreate(self.session_token)
+            if recreated is None:
+                raise
+            self._cached_session = recreated
+            self.session_token = recreated.session_token
+            return recreated
+        except InvalidSessionTokenError:
             # Surface the same specific session errors as the service
             raise
 

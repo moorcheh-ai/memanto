@@ -65,3 +65,8 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @Xenogents
 - @samuel-asleep
 - @488315
+- @sasindudilshanranwadana
+- @Vansh0Sharma
+- @nwinkelman2
+- @RoaraxAli
+- @WhiteZe-wolf2077

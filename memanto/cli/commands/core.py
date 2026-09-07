@@ -343,14 +343,14 @@ def _import_user_config() -> tuple:
     0.1.3 through 0.1.5 all work.
     """
     try:
-        from moorcheh.cli.user_config import (  # type: ignore[import-not-found]
+        from moorcheh.cli.user_config import (  # type: ignore[import-not-found,import-untyped]
             EmbeddingConfig,
             LlmConfig,
             default_base_url,
             save_runtime_config,
         )
     except ImportError:
-        from moorcheh.user_config import (  # type: ignore[import-not-found]
+        from moorcheh.user_config import (  # type: ignore[import-not-found,import-untyped]
             EmbeddingConfig,
             LlmConfig,
             default_base_url,
@@ -506,7 +506,10 @@ def _pull_ollama_model(model: str) -> None:
     ``docker exec`` for a bundled container we can't reach over HTTP.
     """
     try:
-        from moorcheh.ollama_setup import ollama_is_reachable, pull_ollama_model_http
+        from moorcheh.ollama_setup import (  # type: ignore[import-untyped]
+            ollama_is_reachable,
+            pull_ollama_model_http,
+        )
     except ImportError:
         ollama_is_reachable = None
 
@@ -911,6 +914,29 @@ def status():
             )
     except Exception:
         console.print("[dim]Could not fetch agent list.[/dim]")
+
+    # Check for instruction updates
+    try:
+        from memanto.cli.connect.templates import TEMPLATE_VERSION
+        from memanto.cli.connect.updater import check_for_updates
+
+        status = check_for_updates(project_dir=".")
+
+        is_outdated = status.get("outdated")
+        installed_version = status.get("installed_version")
+
+        if is_outdated:
+            console.print(
+                f"\n[{BOLD_PRIMARY}]Agent Instruction Status[/{BOLD_PRIMARY}]"
+            )
+            console.print(
+                f"[yellow]⚠️ Outdated (v{installed_version} installed, v{TEMPLATE_VERSION} available)[/yellow]"
+            )
+            console.print(
+                "[yellow]   Run `memanto connect update` to apply the latest instruction hardening.[/yellow]"
+            )
+    except Exception as e:
+        console.print(f"[dim]Failed to check instruction update status: {e}[/dim]")
 
     console.print()
 

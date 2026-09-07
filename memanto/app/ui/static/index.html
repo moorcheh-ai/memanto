@@ -2362,6 +2362,18 @@
         <main class="main">
             <!-- DASHBOARD -->
             <section class="page active" id="page-dashboard">
+                <!-- Update Banner (Hidden by default) -->
+                <div id="templateUpdateBanner" style="display: none; background: #fff3cd; color: #856404; padding: 8px 16px; border-radius: 4px; margin: 0 0 16px 0; border: 1px solid #ffeeba; align-items: center; justify-content: space-between; font-size: 14px;">
+                    <div>
+                        <span style="margin-right: 6px;">⚠️</span>
+                        <strong style="margin-right: 4px;">Agent Instruction Update Available</strong>
+                        <span id="templateUpdateMsg">Your workspace is using outdated agent instructions.</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="dismissTemplateUpdate()" style="background: transparent; border: 1px solid #856404; color: #856404; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Dismiss</button>
+                        <button onclick="updateTemplates()" style="background: #856404; border: none; color: white; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Update Now</button>
+                    </div>
+                </div>
                 <div class="page-header">
                     <h2>Dashboard</h2>
                     <p>System overview at a glance</p>
@@ -2861,6 +2873,56 @@
             loadDashboard();
             // Load conflict count for badge
             loadConflictBadge();
+            // Check for template updates
+            checkTemplateStatus();
+        }
+
+        async function checkTemplateStatus() {
+            try {
+                const ts = new Date().getTime();
+                const status = await api('GET', `/api/ui/template-status?_t=${ts}`);
+                if (!status) return;
+
+                const banner = document.getElementById('templateUpdateBanner');
+                if (status.outdated && status.installed_version) {
+                    const dismissed = await api('GET', `/api/ui/template-status/dismissed?_t=${ts}`);
+                    if (dismissed && dismissed.version !== status.latest_version) {
+                        document.getElementById('templateUpdateMsg').innerText = `Your workspace is using outdated agent instructions (v${status.installed_version}). Version ${status.latest_version} is now available.`;
+                        banner.style.display = 'flex';
+                    } else {
+                        banner.style.display = 'none';
+                    }
+                } else {
+                    banner.style.display = 'none';
+                }
+            } catch (err) {
+                console.warn("Failed to check template status", err);
+            }
+        }
+
+        async function dismissTemplateUpdate() {
+            try {
+                await api('POST', '/api/ui/template-status/dismiss');
+                document.getElementById('templateUpdateBanner').style.display = 'none';
+                toast("Update dismissed for this version");
+            } catch (err) {
+                toast("Failed to dismiss update", "error");
+            }
+        }
+
+        async function updateTemplates() {
+            try {
+                toast("Updating templates...");
+                const res = await api('POST', '/api/ui/template-status/update');
+                if (res && res.status === "success") {
+                    document.getElementById('templateUpdateBanner').style.display = 'none';
+                    toast("Templates updated successfully!");
+                } else {
+                    toast("Failed to update templates", "error");
+                }
+            } catch (err) {
+                toast("Error updating templates", "error");
+            }
         }
 
         function isOnPrem() {
@@ -4195,6 +4257,7 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
                     ${cfgToggle('cfgSessAutoRenew', 'Auto-renew sessions before expiry', sess.auto_renew_enabled ?? true)}
+                    ${cfgToggle('cfgSessAutoRecreate', 'Auto-create a fresh session after expiry (next request)', sess.auto_recreate_enabled ?? true)}
                 </div>
             </div>
             <!-- ANSWER CONFIG -->
@@ -4328,6 +4391,7 @@
                         extend_threshold_minutes: parseInt(document.getElementById('cfgSessExtendThreshold').value) || 30,
                         auto_renew_enabled: document.getElementById('cfgSessAutoRenew').checked,
                         auto_renew_interval_hours: parseInt(document.getElementById('cfgSessRenewInterval').value) || 6,
+                        auto_recreate_enabled: document.getElementById('cfgSessAutoRecreate').checked,
                     },
                     answer: isOnPrem()
                         ? (() => {
@@ -5192,6 +5256,7 @@
         const AGENT_LOGOS = {
             'claude-code':    { src: 'https://cdn.simpleicons.org/claude/d97757',          fallback: 'https://icons.duckduckgo.com/ip3/claude.ai.ico',           bg: '#1a0f0a', letter: 'C' },
             'codex':          { src: 'https://icons.duckduckgo.com/ip3/chatgpt.com.ico',   fallback: 'https://icons.duckduckgo.com/ip3/openai.com.ico',         bg: '#FFFFFF', letter: 'C' },
+            'pi':             { src: 'https://cdn.simpleicons.org/pi/ffffff',              fallback: 'https://pi.dev/favicon.svg',                              bg: '#09090b', letter: 'P' },
             'cursor':         { src: 'https://cdn.simpleicons.org/cursor/ffffff',          fallback: 'https://icons.duckduckgo.com/ip3/cursor.com.ico',         bg: '#0a0a0a', letter: 'C' },
             'windsurf':       { src: 'https://cdn.simpleicons.org/windsurf/24a5da',        fallback: 'https://icons.duckduckgo.com/ip3/codeium.com.ico',        bg: '#0a1218', letter: 'W' },
             'antigravity':    { src: 'https://icons.duckduckgo.com/ip3/google.com.ico',    fallback: null,                                                      bg: '#1a2230', letter: 'A' },
@@ -5933,7 +5998,7 @@
                 projectsHtml = projects.map(p => {
                     const missingTag = p.exists ? '' : ' <span class="badge badge-warning" style="margin-left:8px">missing</span>';
                     const btnLabel = p.exists ? 'Disconnect' : 'Untrack';
-                    const safePath = escHtml(p.path).replace(/'/g, "&#39;");
+                    const safePath = escHtml(p.path).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `<div class="conn-project-row${p.exists ? '' : ' missing'}" id="proj-row-${btoa(unescape(encodeURIComponent(p.path))).replace(/=/g, '')}">
                         <div>
                             <div class="conn-project-path">${escHtml(p.path)}${missingTag}</div>

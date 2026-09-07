@@ -85,7 +85,7 @@ def isolated_dirs():
 async def http():
     """Fresh async HTTP client pointing at the real app (no mocks)."""
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://localhost:8000"
     ) as client:
         yield client
 

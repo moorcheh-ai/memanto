@@ -38,6 +38,22 @@ def reset_auto_parse(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def reset_session_toggles(monkeypatch):
+    """Pin the session toggles to their defaults for every test.
+
+    ``memanto.app.config`` overlays ``~/.memanto/config.yaml`` onto ``settings``
+    at import time, so a developer who has switched auto-renew or auto-recreate
+    off locally would otherwise change how the suite behaves. Tests that
+    exercise the disabled path override this with their own ``patch.object``.
+    The overlay itself is covered in ``tests/test_session_config_overlay.py``.
+    """
+    from memanto.app.config import settings
+
+    monkeypatch.setattr(settings, "SESSION_AUTO_RENEW_ENABLED", True)
+    monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+
+
+@pytest.fixture(autouse=True)
 def force_cloud_backend(monkeypatch):
     """Force ``settings.MEMANTO_BACKEND='cloud'`` and a placeholder API key so
     the dispatcher never tries to instantiate ``OnPremClient`` during

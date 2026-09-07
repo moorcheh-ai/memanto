@@ -1,7 +1,7 @@
 """
 OKF (Open Knowledge Format) Export Service
 
-Serializes an agent's memories into an OKF v0.1 bundle — a directory of
+Serializes an agent's memories into an OKF v0.2 bundle — a directory of
 markdown files with YAML frontmatter, one concept per file, grouped into a
 folder per Memanto memory type.
 
@@ -283,7 +283,20 @@ class OkfExportService:
         section_dir.mkdir(parents=True, exist_ok=True)
         links: list[tuple[str, str]] = []
         for src, destination_name in planned:
-            shutil.copy2(str(src), str(section_dir / destination_name))
+            text = src.read_text(encoding="utf-8")
+            if not text.startswith("---"):
+                frontmatter = yaml.safe_dump(
+                    {"type": "Context Document", "title": src.stem},
+                    sort_keys=False,
+                    allow_unicode=True,
+                    default_flow_style=False,
+                ).strip()
+                front = f"---\n{frontmatter}\n---\n\n"
+                (section_dir / destination_name).write_text(
+                    front + text, encoding="utf-8"
+                )
+            else:
+                shutil.copy2(str(src), str(section_dir / destination_name))
             links.append((destination_name, destination_name))
 
         self._write_index(section_dir, title, f"{title} ({len(links)})", links)
@@ -318,7 +331,13 @@ class OkfExportService:
             return False
 
         metrics_dir.mkdir(parents=True, exist_ok=True)
-        body = f"# Metrics — aggregate\n\n> {len(records)} memories\n{viz}\n"
+        body = (
+            "---\n"
+            "type: Metrics Overview\n"
+            "title: Aggregate Metrics\n"
+            "---\n\n"
+            f"# Metrics — aggregate\n\n> {len(records)} memories\n{viz}\n"
+        )
         (metrics_dir / "overview.md").write_text(body, encoding="utf-8")
         self._write_index(
             metrics_dir, "metrics", "Metrics", [("overview", "overview.md")]
@@ -376,7 +395,14 @@ class OkfExportService:
 
         created_at = mem.get("created_at")
         if created_at:
-            frontmatter["timestamp"] = str(created_at)
+            source = mem.get("source") or "process:unknown"
+            if not (
+                source.startswith("human:")
+                or source.startswith("process:")
+                or "/" in source
+            ):
+                source = f"process:{source}"
+            frontmatter["generated"] = {"by": source, "at": str(created_at)}
 
         source_ref = mem.get("source_ref")
         if source_ref:
@@ -435,14 +461,7 @@ class OkfExportService:
         self, directory: Path, title: str, heading: str, links: list[tuple[str, str]]
     ) -> None:
         """Write a navigational ``index.md`` (skipped on import)."""
-        now = datetime.now().isoformat(timespec="seconds")
         lines = [
-            "---",
-            "type: index",
-            f"title: {title}",
-            f"timestamp: {now}",
-            "---",
-            "",
             f"# {heading}",
             "",
         ]
@@ -453,12 +472,9 @@ class OkfExportService:
     def _write_root_index(
         self, base: Path, agent_id: str, sections: dict[str, str]
     ) -> None:
-        now = datetime.now().isoformat(timespec="seconds")
         lines = [
             "---",
-            "type: index",
-            f"title: {agent_id} knowledge bundle",
-            f"timestamp: {now}",
+            'okf_version: "0.2"',
             "---",
             "",
             f"# {agent_id} — OKF bundle",

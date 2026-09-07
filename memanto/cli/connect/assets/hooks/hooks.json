@@ -1,0 +1,58 @@
+{
+  "description": "MEMANTO: persistent memory for Claude Code. SessionStart refreshes MEMORY.md and installs the status line once. PreCompact re-syncs before compaction, so context about to be summarized away survives. PostToolUse replaces the raw 'Bash(memanto ...)' line in chat with a readable summary of what the memory operation actually did; it is gated by an if-filter so it never spawns for unrelated commands. Each Python hook is registered under both 'python' and 'python3' because neither spelling exists on every platform; whichever is missing fails harmlessly and every script is idempotent.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "memanto",
+            "args": [
+              "memory",
+              "sync",
+              "--project-dir",
+              "${CLAUDE_PROJECT_DIR}"
+            ],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(memanto *)",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/notify.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "if": "Bash(memanto *)",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/notify.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

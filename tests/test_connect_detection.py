@@ -49,9 +49,30 @@ def test_cline_install_detection_requires_cline_rule_file(tmp_path):
 def test_skills_only_agent_detected_from_skill_file_alone(tmp_path):
     """Agents without an instruction file are detected from SKILL.md alone."""
     skills_only_agent = AGENT_REGISTRY["antigravity"]
-    assert skills_only_agent.instruction_file is None
+    assert skills_only_agent.instruction_local_file is None
     _write_agent_skill(tmp_path, skills_only_agent.name)
 
     installed = {agent.name for agent in detect_memanto_installed(tmp_path)}
 
     assert skills_only_agent.name in installed
+
+
+def test_pi_install_detection_requires_pi_skill_dir(tmp_path):
+    """Pi shares AGENTS.md with codex/opencode, so its own skill dir decides."""
+    agents_md = tmp_path / "AGENTS.md"
+    agents_md.write_text(
+        f"{MEMANTO_SENTINEL}\n## MEMANTO\n{MEMANTO_SENTINEL_END}\n",
+        encoding="utf-8",
+    )
+    _write_shared_agents_skill(tmp_path)
+
+    installed = {agent.name for agent in detect_memanto_installed(tmp_path)}
+
+    assert "codex" in installed
+    assert "pi" not in installed
+
+    _write_agent_skill(tmp_path, "pi")
+
+    installed = {agent.name for agent in detect_memanto_installed(tmp_path)}
+
+    assert "pi" in installed

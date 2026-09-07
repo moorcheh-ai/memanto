@@ -28,7 +28,11 @@ from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
-from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
+from memanto.app.routes.auth_deps import (
+    _is_cross_site_browser_request,
+    clear_session_cookie,
+    set_session_cookie,
+)
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -92,6 +96,12 @@ async def _require_local(request: Request) -> None:
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
             ),
+        )
+
+    if _is_cross_site_browser_request(request):
+        raise HTTPException(
+            status_code=403,
+            detail="UI management endpoints reject cross-site browser requests.",
         )
 
 
@@ -213,6 +223,17 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+        # config.yaml is overlaid onto settings at process start, so apply the
+        # session toggles to the running server too - otherwise flipping them
+        # in the UI would not take effect until the next restart.
+        for _yaml_key, _settings_attr in (
+            ("auto_renew_enabled", "SESSION_AUTO_RENEW_ENABLED"),
+            ("auto_recreate_enabled", "SESSION_AUTO_RECREATE_ENABLED"),
+        ):
+            _toggle = updates["session"].get(_yaml_key)
+            if isinstance(_toggle, bool):
+                setattr(settings, _settings_attr, _toggle)
+
     if "cli" in updates and isinstance(updates["cli"], dict):
         data = _config_manager.load_yaml()
         if "cli" not in data:
@@ -314,14 +335,14 @@ def _update_onprem_answer(ans: dict) -> None:
         # moorcheh-client 0.1.5 moved user_config into the cli subpackage;
         # try the new path first and fall back so 0.1.3-0.1.5 all work.
         try:
-            from moorcheh.cli.user_config import (  # type: ignore[import-not-found]
+            from moorcheh.cli.user_config import (  # type: ignore[import-not-found,import-untyped]
                 EmbeddingConfig,
                 LlmConfig,
                 default_base_url,
                 save_runtime_config,
             )
         except ImportError:
-            from moorcheh.user_config import (  # type: ignore[import-not-found]
+            from moorcheh.user_config import (  # type: ignore[import-not-found,import-untyped]
                 EmbeddingConfig,
                 LlmConfig,
                 default_base_url,
@@ -758,7 +779,8 @@ async def get_connections(_: None = Depends(_require_local)):
             {
                 "name": agent.name,
                 "display_name": agent.display_name,
-                "instruction_file": agent.instruction_file,
+                "instruction_local_file": agent.instruction_local_file,
+                "instruction_global_file": agent.instruction_global_file,
                 "skill_local_template": (
                     f"{agent.skill_local_dir}/memanto"
                     if agent.skill_local_dir
@@ -838,6 +860,65 @@ async def browse_path(
         "children": children,
         "quick_paths": quick,
     }
+
+
+@router.get("/api/ui/template-status")
+async def get_template_status(_: None = Depends(_require_local)):
+    """Check if agent instructions are outdated."""
+    from memanto.cli.connect.templates import TEMPLATE_VERSION
+    from memanto.cli.connect.updater import check_for_updates
+
+    try:
+        # Check both local and global installations
+        status = check_for_updates(project_dir=".")
+        return status
+    except Exception as e:
+        return {"outdated": False, "error": str(e), "latest_version": TEMPLATE_VERSION}
+
+
+@router.get("/api/ui/template-status/dismissed")
+async def get_template_status_dismissed(_: None = Depends(_require_local)):
+    """Get the currently dismissed instruction version."""
+    dismissed = _config_manager.get("cli.dismissed_template_version", "")
+    return {"version": dismissed}
+
+
+@router.post("/api/ui/template-status/dismiss")
+async def dismiss_template_status(_: None = Depends(_require_local)):
+    """Dismiss the instruction update warning for the current version."""
+    from memanto.cli.connect.templates import TEMPLATE_VERSION
+
+    _config_manager.set("cli.dismissed_template_version", TEMPLATE_VERSION)
+    return {"status": "success", "dismissed_version": TEMPLATE_VERSION}
+
+
+@router.post("/api/ui/template-status/update")
+async def apply_template_update(_: None = Depends(_require_local)):
+    """Update all active Memanto agent instructions in the workspace and globally."""
+    from memanto.cli.connect.updater import update_all_agents
+
+    try:
+        messages = update_all_agents(
+            project_dir=".", update_global=True, update_local=True
+        )
+
+        has_success = any("Successfully updated" in m for m in messages)
+        if has_success:
+            messages = [
+                m for m in messages if "No active Memanto integrations found" not in m
+            ]
+
+        # Deduplicate while preserving order
+        seen = set()
+        deduped = []
+        for m in messages:
+            if m not in seen:
+                seen.add(m)
+                deduped.append(m)
+
+        return {"status": "success", "messages": deduped}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/api/ui/connections/install")

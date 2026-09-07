@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+from urllib.parse import urlsplit
+
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
@@ -103,6 +105,44 @@ def _is_loopback_host(host: str | None) -> bool:
     return ipv4_mapped is not None and ipv4_mapped.is_loopback
 
 
+def _is_loopback_origin(origin: str | None) -> bool:
+    """Return True when a browser Origin points at the local Memanto host."""
+    if not origin or not isinstance(origin, str):
+        return False
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+
+
+def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when an HTTP Host header names a loopback interface."""
+    if not host or not isinstance(host, str):
+        return False
+    try:
+        hostname = urlsplit(f"//{host}").hostname
+    except ValueError:
+        return False
+    return hostname == "localhost" or _is_loopback_host(hostname)
+
+
+def _is_cross_site_browser_request(request: Request) -> bool:
+    """Detect browser requests that must not inherit loopback trust."""
+    origin = request.headers.get("origin")
+    if origin is not None and isinstance(origin, str):
+        return not _is_loopback_origin(origin)
+
+    fetch_site = request.headers.get("sec-fetch-site", "")
+    if isinstance(fetch_site, str):
+        fetch_site = fetch_site.strip().lower()
+    else:
+        fetch_site = ""
+    return fetch_site in {"cross-site", "same-site"}
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -150,7 +190,11 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host):
+    if (
+        _is_loopback_host(client_host)
+        and _is_loopback_host_header(request.headers.get("host"))
+        and not _is_cross_site_browser_request(request)
+    ):
         return server_key
 
     raise HTTPException(
@@ -182,12 +226,16 @@ def get_current_session(
     response: Response,
     x_session_token: str | None = Header(None),
     session_cookie: str | None = Cookie(None, alias=SESSION_COOKIE_NAME),
+    authorization: str | None = Header(None),
+    x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Session:
     """
     Get and validate current session
 
     Args:
         x_session_token: Session token header
+        authorization: Bearer management credential (for auto-recreate)
+        x_api_key: Management credential header (for auto-recreate)
 
     Returns:
         Validated Session
@@ -234,5 +282,58 @@ def get_current_session(
 
         return session
 
-    except (SessionExpiredError, SessionNotFoundError, InvalidSessionTokenError) as e:
+    except SessionExpiredError as e:
+        # The presented token belongs to a session that has fully lapsed.
+        # With SESSION_AUTO_RECREATE_ENABLED the caller gets a fresh session
+        # on this first operation — but only after passing the same
+        # management-access check as explicit activation (valid API key or
+        # loopback origin), so a stolen stale token alone is worthless.
+        recreated = _maybe_auto_recreate_session(
+            request=request,
+            response=response,
+            session_token=session_token,
+            x_session_token=x_session_token,
+            session_cookie=session_cookie,
+            authorization=authorization,
+            x_api_key=x_api_key,
+        )
+        if recreated is None:
+            raise map_error_to_http_exception(e)
+        return recreated
+
+    except (SessionNotFoundError, InvalidSessionTokenError) as e:
         raise map_error_to_http_exception(e)
+
+
+def _maybe_auto_recreate_session(
+    request: Request,
+    response: Response,
+    session_token: str,
+    x_session_token: str | None,
+    session_cookie: str | None,
+    authorization: str | None,
+    x_api_key: str | None,
+) -> Session | None:
+    """Attempt transparent recreation of an expired session.
+
+    Returns the fresh Session, or None when recreation does not apply
+    (disabled by config, terminated/logout session, superseded token) or is
+    not authorized — in which case the original expiry error surfaces.
+    """
+    try:
+        require_management_access(request, authorization, x_api_key)
+    except HTTPException:
+        return None
+
+    recreated = get_session_service().check_and_auto_recreate(session_token)
+    if recreated is None:
+        return None
+
+    # Mirror the auto-renewal handoff: refresh the browser cookie and/or
+    # return the replacement token so the next request authenticates.
+    if session_cookie:
+        set_session_cookie(response, recreated.session_token, request)
+    if x_session_token:
+        response.headers["X-Session-Token"] = recreated.session_token
+
+    return recreated

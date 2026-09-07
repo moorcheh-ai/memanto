@@ -24,7 +24,9 @@ _DEFAULT_URL = "http://localhost:8080"
 def _import_raw_client() -> Any:
     """Lazy import so the cloud path doesn't require ``moorcheh-client``."""
     try:
-        from moorcheh import MoorchehClient  # type: ignore[import-not-found]
+        from moorcheh import (
+            MoorchehClient,  # type: ignore[import-not-found,import-untyped]
+        )
     except ImportError as e:  # pragma: no cover - exercised at runtime only
         raise RuntimeError(
             "moorcheh-client is not installed. Run: pip install moorcheh-client"
@@ -35,7 +37,7 @@ def _import_raw_client() -> Any:
 def _import_docker_runtime_helpers() -> tuple[Any, Any]:
     """Lazy import of upload-dir helpers; only needed for ``upload_file``."""
     try:
-        from moorcheh.docker_runtime import (  # type: ignore[import-not-found]
+        from moorcheh.docker_runtime import (  # type: ignore[import-not-found,import-untyped]
             ensure_upload_dir,
             host_path_to_container_upload_path,
         )

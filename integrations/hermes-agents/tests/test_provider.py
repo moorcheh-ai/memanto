@@ -6,8 +6,10 @@ monkeypatched with an in-memory fake.
 """
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
+from memanto.app.utils.errors import InvalidSessionTokenError
 
 from hermes_memanto.provider import (
     MemantoMemoryProvider,
@@ -43,6 +45,7 @@ class FakeClient:
         self.answer_calls = []
         self.recall_results = []
         self.answer_response = {"answer": "", "sources": []}
+        self.profile_path: str | None = None
 
     @property
     def agent_id(self):
@@ -81,6 +84,9 @@ class FakeClient:
     def answer(self, question, *, limit=None):
         self.answer_calls.append({"question": question, "limit": limit})
         return self.answer_response
+
+    def set_profile_path(self, profile_path: str):
+        self.profile_path = profile_path
 
 
 @pytest.fixture
@@ -565,3 +571,58 @@ def test_installer_refuses_overwrite_without_force(tmp_path):
         install(tmp_path, force=False)
     # force=True overwrites cleanly
     assert install(tmp_path, force=True).exists()
+
+
+# -- _MemantoClient Tests -----------------------------------------------------
+
+
+def test_memanto_client_token_persistence(tmp_path):
+    from hermes_memanto.provider import _MemantoClient
+
+    client = _MemantoClient("api-key", "agent-1")
+    # Stub the internal SDK client
+    client._client = MagicMock()
+
+    # Set profile path
+    client.set_profile_path(str(tmp_path))
+    assert client._token_file == tmp_path / ".memanto_session_token"
+
+    # Save token
+    client.save_token("token-abc")
+    assert (tmp_path / ".memanto_session_token").read_text() == "token-abc"
+
+    # Loading profile path again loads the token
+    client2 = _MemantoClient("api-key2", "agent-1")
+    client2._client = MagicMock()
+    client2.set_profile_path(str(tmp_path))
+    assert client2._ready is True
+    assert client2._client.session_token == "token-abc"
+
+
+def test_memanto_client_auto_refresh_on_expiration(tmp_path):
+    from hermes_memanto.provider import _MemantoClient
+
+    client = _MemantoClient("api-key", "agent-1")
+    sdk = MagicMock()
+    sdk.activate_agent.return_value = {"session_token": "new-session-token"}
+    sdk.remember.side_effect = [
+        InvalidSessionTokenError("expired"),
+        {"memory_id": "m1"},
+    ]
+    client._client = sdk
+    client.set_profile_path(str(tmp_path))
+
+    # Force ready with an expired token
+    client._client.session_token = "expired-token"
+    client._ready = True
+
+    res = client.remember(
+        memory_type="fact",
+        title="Title",
+        content="Some content",
+        confidence=0.9,
+    )
+    assert res == {"memory_id": "m1"}
+    # Verify that activate_agent was called to get a new token
+    sdk.activate_agent.assert_called_once_with("agent-1", duration_hours=None)
+    assert (tmp_path / ".memanto_session_token").read_text() == "new-session-token"
