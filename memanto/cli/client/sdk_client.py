@@ -235,11 +235,23 @@ class SdkClient:
             # Surface the same specific session errors as the service
             raise
 
+        if token_payload.agent_id != agent_id:
+            raise SessionError(
+                f"Session token is for agent '{token_payload.agent_id}', "
+                f"cannot access '{agent_id}'"
+            )
+
         # Load the persisted session record
         session = session_service.get_session(token_payload.agent_id)
         if not session:
             raise SessionNotFoundError(
                 f"Session for agent {token_payload.agent_id} not found"
+            )
+
+        if session.agent_id != agent_id:
+            raise SessionError(
+                f"Session record is for agent '{session.agent_id}', "
+                f"cannot access '{agent_id}'"
             )
 
         # Check and auto-renew if near expiry. SessionService.renew_session
@@ -900,6 +912,7 @@ class SdkClient:
 
     def get_policy(self, agent_id: str) -> dict[str, Any]:
         """Return the agent's expiry policy as a plain dict."""
+        self._get_validated_session_for_agent(agent_id)
         policy = self._get_policy_service().load_policy(agent_id)
         return {
             "agent_id": agent_id,
@@ -912,6 +925,7 @@ class SdkClient:
 
         Saving does not expire anything; run :meth:`apply_policy` afterwards.
         """
+        self._get_validated_session_for_agent(agent_id)
         from memanto.app.services.memory_policy_service import MemoryPolicy
 
         parsed = MemoryPolicy(**policy)
@@ -945,6 +959,7 @@ class SdkClient:
 
     def apply_policy_preset(self, agent_id: str, name: str) -> dict[str, Any]:
         """Adopt a predefined policy bundle as the agent's policy."""
+        self._get_validated_session_for_agent(agent_id)
         from memanto.app.services.policy_presets import load_preset
 
         policy = load_preset(name)
@@ -1326,6 +1341,7 @@ class SdkClient:
         Returns:
             Dict with ``summary`` and ``export`` sub-results.
         """
+        self._get_validated_session_for_agent(agent_id)
         # Ensure agent exists
         self.get_agent(agent_id)
 
@@ -1369,6 +1385,7 @@ class SdkClient:
         Returns:
             Dict with ``conflicts`` sub-result.
         """
+        self._get_validated_session_for_agent(agent_id)
         # Ensure agent exists
         self.get_agent(agent_id)
 
@@ -1398,6 +1415,7 @@ class SdkClient:
             List of unresolved conflict dicts, each with a stable ``index``
             into the full conflict report.
         """
+        self._get_validated_session_for_agent(agent_id)
         if not date:
             date = utc_date_str()
 
@@ -1445,6 +1463,7 @@ class SdkClient:
         Returns:
             Dict with resolution result.
         """
+        self._get_validated_session_for_agent(agent_id)
         valid_actions = {
             "keep_old",
             "keep_new",
@@ -1671,6 +1690,7 @@ class SdkClient:
             previous export was reused instead).
         """
         validate_safe_id(agent_id, "agent_id")
+        self._get_validated_session_for_agent(agent_id)
         cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1791,6 +1811,8 @@ class SdkClient:
         project. Falls back to the previous cached bundle when the backend is
         unreachable (``source="stale-cache"``).
         """
+        validate_safe_id(agent_id, "agent_id")
+        self._get_validated_session_for_agent(agent_id)
         target = Path(project_dir) / "okf"
         cache = Path.home() / ".memanto" / "exports" / f"{agent_id}_okf"
 

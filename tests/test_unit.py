@@ -2644,6 +2644,9 @@ def test_direct_sync_exports_fresh_before_copying(tmp_path, monkeypatch):
     cache_path.write_text("# MEMORY\n\n### stale memory\n", encoding="utf-8")
 
     client = DirectClient.__new__(DirectClient)
+    monkeypatch.setattr(
+        client, "_get_validated_session_for_agent", lambda agent_id: None
+    )
     export_calls = []
 
     def fresh_export(*, agent_id, limit_per_type):
