@@ -35,7 +35,11 @@ from memanto.app.models import (
     UploadFileResponse,
 )
 from memanto.app.models.session import Session
-from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.routes.auth_deps import (
+    get_current_session,
+    get_moorcheh_api_key,
+    get_session_service,
+)
 from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
@@ -1113,6 +1117,7 @@ async def generate_daily_summary(
     agent_id: str,
     request: DailySummaryRequest = Body(default_factory=DailySummaryRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Generate the on-demand daily AI summary for an agent/date.
@@ -1126,7 +1131,7 @@ async def generate_daily_summary(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            DirectClient(moorcheh_api_key).generate_daily_summary,
             agent_id,
             resolved_date,
             None,
@@ -1146,6 +1151,7 @@ async def generate_conflict_report(
     agent_id: str,
     request: ConflictDetectRequest = Body(default_factory=ConflictDetectRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Generate the conflict report for an agent/date.
@@ -1158,7 +1164,7 @@ async def generate_conflict_report(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            DirectClient(moorcheh_api_key).generate_conflict_report,
             agent_id,
             resolved_date,
         )
@@ -1177,6 +1183,7 @@ async def list_conflicts(
     agent_id: str,
     date: str | None = Query(None, description="Conflict report date (YYYY-MM-DD)"),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     List unresolved conflicts for an agent.
@@ -1193,7 +1200,7 @@ async def list_conflicts(
     _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
+            DirectClient(moorcheh_api_key).list_conflicts,
             agent_id,
             resolved_date,
         )
@@ -1213,6 +1220,7 @@ async def resolve_conflict(
     agent_id: str,
     request: ConflictResolveRequest = Body(...),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Resolve a conflict for an agent.
@@ -1225,7 +1233,7 @@ async def resolve_conflict(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
+            DirectClient(moorcheh_api_key).resolve_conflict,
             agent_id,
             resolved_date,
             request.conflict_index,
