@@ -75,3 +75,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @GregDixonMXN
 - @galmousselhassan-arch
 - @terryart
+- @Rexyysilent
