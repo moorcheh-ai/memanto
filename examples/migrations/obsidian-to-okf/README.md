@@ -73,9 +73,22 @@ ruff check examples/migrations/obsidian-to-okf
 ruff format --check examples/migrations/obsidian-to-okf
 ```
 
+## Verified live round trip
+
+On 2026-09-08, the checked-in bundle was imported into a dedicated live
+Moorcheh-backed Memanto agent with the shipped CLI. All 21 records imported in
+one batch with zero failures. The three golden semantic queries returned the
+expected source memory first, and `memanto memory export --okf` produced the
+checked-in [`round-trip-okf/`](round-trip-okf/) bundle in 8.05 seconds. Loading
+that exported bundle again mapped all 21 records with the same type counts.
+
+See [`LIVE_EVIDENCE.md`](LIVE_EVIDENCE.md) for commands, measured results, and
+the explicit reason an OKF import has no provider savings report.
+
 ## Limitations
 
 - Ambiguous or missing wikilinks stay untouched and are listed in the report.
 - Obsidian Canvas and plugin databases are excluded; this adapter migrates Markdown.
-- The deterministic golden check proves content survived Memanto's loader/mapper.
-  A live semantic-recall demo still requires an active Memanto backend.
+- Memanto's production OKF mapper intentionally bounds unknown supporting-data
+  values. Full nested Obsidian extensions remain in `sample-okf/`; long values
+  can be abbreviated in the post-Memanto `round-trip-okf/` artifact.
