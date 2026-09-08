@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-08-15T16:52:16.995248+00:00",
+  "source": {
+    "tool": "Notion",
+    "databases": [
+      "Research Notes",
+      "Project Decisions",
+      "Meeting Notes",
+      "Bookmarks & Resources"
+    ],
+    "pages": 12,
+    "source_file": "data/notion_export.json",
+    "source_bytes": 10488
+  },
+  "migration": {
+    "memories_mapped": 12,
+    "skipped": 0,
+    "type_breakdown": {
+      "fact": 2,
+      "decision": 3,
+      "preference": 1,
+      "event": 2,
+      "commitment": 1,
+      "observation": 1,
+      "relationship": 1,
+      "goal": 1
+    }
+  },
+  "okf_bundle": {
+    "path": "sample_okf_bundle/",
+    "files": 12,
+    "bundle_bytes": 10405,
+    "bundle_sha256": "c80e8fd719aca4604214d0a3c5d76a38fd9c6bd19e204e4df28a76dea3ec3311"
+  },
+  "savings": {
+    "note": "Notion exports have no provider token/latency billing baseline. Storage and token estimates below are measured from the sample export.",
+    "source_tokens_est": 850,
+    "mapped_tokens_est": 1743,
+    "token_reduction_pct": -105.1,
+    "source_storage_bytes": 10488,
+    "okf_storage_bytes": 10405,
+    "storage_change_pct": -0.8,
+    "storage_note": "OKF grows vs raw JSON due to readable frontmatter \u2014 this is intentional portability overhead."
+  },
+  "validation": {
+    "golden_qa_questions": 6,
+    "offline_recall": "run: python validate_recall.py --offline",
+    "live_recall": "run: python validate_recall.py --agent notion-migration-demo"
+  }
+}

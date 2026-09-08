@@ -1,0 +1,254 @@
+{
+  "export_metadata": {
+    "exported_at": "2026-06-24T10:00:00Z",
+    "notion_workspace": "AI Research Workspace",
+    "exporter_version": "1.0.0",
+    "databases": [
+      "Research Notes",
+      "Project Decisions",
+      "Meeting Notes",
+      "Bookmarks & Resources"
+    ]
+  },
+  "pages": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "database": "Research Notes",
+      "title": "LLM Memory Architecture Survey",
+      "created_time": "2025-09-15T08:30:00Z",
+      "last_edited_time": "2025-11-02T14:20:00Z",
+      "properties": {
+        "Tags": [
+          "AI",
+          "memory",
+          "research",
+          "LLM"
+        ],
+        "Status": "In Progress",
+        "Priority": "High",
+        "Type": "fact"
+      },
+      "content": "RAG-based memory systems suffer from retrieval-rank collapse when context windows exceed 32k tokens. Active companion memory (Memanto model) outperforms passive vector stores by 40% on preference drift benchmarks. Key finding: contradiction resolution is the primary failure mode in production memory systems \u2014 flat vector stores return stale facts when newer contradicting facts share high semantic similarity with the query.",
+      "url": "https://notion.so/a1b2c3d4e5f6"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "database": "Project Decisions",
+      "title": "Switch primary memory backend from Pinecone to Memanto",
+      "created_time": "2025-10-01T09:00:00Z",
+      "last_edited_time": "2025-10-01T09:45:00Z",
+      "properties": {
+        "Tags": [
+          "infrastructure",
+          "decision",
+          "memory"
+        ],
+        "Status": "Decided",
+        "Priority": "Critical",
+        "Type": "decision"
+      },
+      "content": "Decided to migrate the agent memory layer from Pinecone to Memanto. Rationale: Pinecone returns stale preference data in 3/5 contradiction test cases. Memanto's active recall scored 85.6% accuracy vs 54.1% for Mem0. Migration path: export Pinecone vectors -> Memanto batch_remember API. Estimated savings: 65% fewer tokens retrieved per query, 4.8x lower p95 recall latency.",
+      "url": "https://notion.so/b2c3d4e5f6a7"
+    },
+    {
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "database": "Research Notes",
+      "title": "User prefers concise API responses under 500ms",
+      "created_time": "2025-08-20T11:15:00Z",
+      "last_edited_time": "2025-09-10T16:30:00Z",
+      "properties": {
+        "Tags": [
+          "preference",
+          "UX",
+          "performance"
+        ],
+        "Status": "Active",
+        "Priority": "Medium",
+        "Type": "preference"
+      },
+      "content": "User explicitly stated preference for API responses under 500ms p95. Tolerates up to 1s for complex recall operations but considers anything above 2s a UX failure. Prefers streaming for long outputs over waiting for complete response. Dislikes verbose error messages.",
+      "url": "https://notion.so/c3d4e5f6a7b8"
+    },
+    {
+      "id": "d4e5f6a7-b8c9-0123-def0-234567890123",
+      "database": "Meeting Notes",
+      "title": "Q3 planning: memory system roadmap",
+      "created_time": "2025-10-15T14:00:00Z",
+      "last_edited_time": "2025-10-15T15:30:00Z",
+      "properties": {
+        "Tags": [
+          "planning",
+          "roadmap",
+          "meeting"
+        ],
+        "Status": "Done",
+        "Priority": "High",
+        "Type": "event",
+        "Attendees": [
+          "Mitchell",
+          "Neel",
+          "Alex"
+        ],
+        "Meeting Date": "2025-10-15"
+      },
+      "content": "Q3 planning session. Agreed to prioritize: (1) temporal recall API, (2) contradiction detection pipeline, (3) multi-agent namespace isolation. Mitchell owns temporal recall. Deadline: end of Q3. Budget approved for Moorcheh infrastructure scaling to 10k req/min.",
+      "url": "https://notion.so/d4e5f6a7b8c9"
+    },
+    {
+      "id": "e5f6a7b8-c9d0-1234-ef01-345678901234",
+      "database": "Bookmarks & Resources",
+      "title": "LoCoMo: Long-Conversation Memory Benchmark",
+      "created_time": "2025-09-05T10:00:00Z",
+      "last_edited_time": "2025-09-05T10:00:00Z",
+      "properties": {
+        "Tags": [
+          "benchmark",
+          "research",
+          "dataset"
+        ],
+        "Status": "Active",
+        "Priority": "Medium",
+        "Type": "fact"
+      },
+      "content": "LoCoMo is a long-conversation dataset for evaluating memory systems. Contains 50-turn conversations with ground-truth annotations. Used in Memanto vs Mem0 benchmark: Memanto scored R@20=83.3% vs Mem0 63.3%. Dataset is freely available via HuggingFace.",
+      "url": "https://notion.so/e5f6a7b8c9d0"
+    },
+    {
+      "id": "f6a7b8c9-d0e1-2345-f012-456789012345",
+      "database": "Project Decisions",
+      "title": "Adopt UTC-aware datetimes throughout memory write pipeline",
+      "created_time": "2026-06-24T09:00:00Z",
+      "last_edited_time": "2026-06-24T09:30:00Z",
+      "properties": {
+        "Tags": [
+          "bug-fix",
+          "datetime",
+          "decision"
+        ],
+        "Status": "Decided",
+        "Priority": "High",
+        "Type": "decision"
+      },
+      "content": "Decision: replace all datetime.utcnow() calls with datetime.now(timezone.utc) in memory_write_service.py and core.py (12 locations). Root cause: naive timestamps written to storage, timezone-aware timestamps used in temporal filters \u2014 silent TypeError causing temporal filters to fail open.",
+      "url": "https://notion.so/f6a7b8c9d0e1"
+    },
+    {
+      "id": "a7b8c9d0-e1f2-3456-0123-567890123456",
+      "database": "Research Notes",
+      "title": "Agent committed to shipping temporal recall by end of Q3",
+      "created_time": "2025-10-15T15:30:00Z",
+      "last_edited_time": "2025-10-20T09:00:00Z",
+      "properties": {
+        "Tags": [
+          "commitment",
+          "roadmap",
+          "temporal"
+        ],
+        "Status": "Active",
+        "Priority": "High",
+        "Type": "commitment"
+      },
+      "content": "Mitchell committed to delivering the temporal recall endpoints (recall/as-of, recall/changed-since) by October 31, 2025. Commitment made during Q3 planning meeting. Budget approved. This is a blocker for the Moorcheh v0.2.x release.",
+      "url": "https://notion.so/a7b8c9d0e1f2"
+    },
+    {
+      "id": "b8c9d0e1-f2a3-4567-1234-678901234567",
+      "database": "Research Notes",
+      "title": "Observation: LLM judge variance increases above temperature 0.1",
+      "created_time": "2025-11-10T13:45:00Z",
+      "last_edited_time": "2025-11-10T14:00:00Z",
+      "properties": {
+        "Tags": [
+          "observation",
+          "evaluation",
+          "LLM"
+        ],
+        "Status": "Active",
+        "Priority": "Low",
+        "Type": "observation"
+      },
+      "content": "Observed significant score variance in LLM-as-judge eval runs when temperature > 0.1. At temperature=0.0, GPT-4o-mini with seed=42 produces deterministic scores. Recommendation: always pin temperature=0.0 and document judge model and version in benchmark methodology.",
+      "url": "https://notion.so/b8c9d0e1f2a3"
+    },
+    {
+      "id": "c9d0e1f2-a3b4-5678-2345-789012345678",
+      "database": "Bookmarks & Resources",
+      "title": "Neel (Moorcheh co-founder) primary technical contact",
+      "created_time": "2026-01-10T08:00:00Z",
+      "last_edited_time": "2026-03-15T10:30:00Z",
+      "properties": {
+        "Tags": [
+          "relationship",
+          "contact",
+          "Moorcheh"
+        ],
+        "Status": "Active",
+        "Priority": "High",
+        "Type": "relationship"
+      },
+      "content": "Neel at Moorcheh is the primary technical contact for API access, credits, and architecture questions. Email: neel@edgeaiinnovations.com. Prefers GitHub issues over email for bug reports. Has approved 2 bounty PRs for mitchellecm7 account.",
+      "url": "https://notion.so/c9d0e1f2a3b4"
+    },
+    {
+      "id": "d0e1f2a3-b4c5-6789-3456-890123456789",
+      "database": "Research Notes",
+      "title": "Goal: win Memanto bug bounty with 3+ Critical/High severity bugs",
+      "created_time": "2026-06-20T07:00:00Z",
+      "last_edited_time": "2026-06-24T09:45:00Z",
+      "properties": {
+        "Tags": [
+          "goal",
+          "bounty",
+          "security"
+        ],
+        "Status": "In Progress",
+        "Priority": "High",
+        "Type": "goal"
+      },
+      "content": "Goal: submit PR #784 with at minimum 3 reproducible High-severity bugs in Memanto's temporal recall pipeline. Found bugs: (1) naive/aware datetime mismatch in 12 locations, (2) recall/as-of has no query field causing timeline amnesia, (3) 100-memory silent cap in _fetch_all_memories. All submitted with reproducible failing tests and actual fixes.",
+      "url": "https://notion.so/d0e1f2a3b4c5"
+    },
+    {
+      "id": "e1f2a3b4-c5d6-7890-4567-901234567890",
+      "database": "Meeting Notes",
+      "title": "Memanto bounty kickoff \u2014 issue #639 scoping",
+      "created_time": "2026-05-28T09:00:00Z",
+      "last_edited_time": "2026-05-28T10:30:00Z",
+      "properties": {
+        "Tags": [
+          "meeting",
+          "bounty",
+          "planning"
+        ],
+        "Status": "Done",
+        "Priority": "Medium",
+        "Type": "event",
+        "Attendees": [
+          "Mitchell"
+        ],
+        "Meeting Date": "2026-05-28"
+      },
+      "content": "Kicked off work on Memanto benchmarking bounty #639. Decided to implement Scenario B: Shifting Persona benchmark. Target: 5 sessions, 22 turns, 7 explicit contradictions. LLM-as-judge with 3 query types. Also including LangGraph integration as differentiator.",
+      "url": "https://notion.so/e1f2a3b4c5d6"
+    },
+    {
+      "id": "f2a3b4c5-d6e7-8901-5678-012345678901",
+      "database": "Project Decisions",
+      "title": "Use BountyHub for all open-source contribution payouts",
+      "created_time": "2026-05-01T10:00:00Z",
+      "last_edited_time": "2026-05-01T10:15:00Z",
+      "properties": {
+        "Tags": [
+          "decision",
+          "process",
+          "bounty"
+        ],
+        "Status": "Decided",
+        "Priority": "Low",
+        "Type": "decision"
+      },
+      "content": "Decided to track and claim all open-source bounties via BountyHub platform. Account: mitchellecm7. Note: always claim on BountyHub before the deadline \u2014 even if PR is merged, unclaimed is ineligible for payout.",
+      "url": "https://notion.so/f2a3b4c5d6e7"
+    }
+  ]
+}

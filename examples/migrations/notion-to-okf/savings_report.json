@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-08-15T16:52:16.995248+00:00",
+  "source_tool": "Notion",
+  "source_records": 12,
+  "mapped_memories": 12,
+  "source_tokens_estimated": 850,
+  "memanto_tokens_estimated": 1743,
+  "token_reduction_pct": -105.1,
+  "source_storage_bytes": 10488,
+  "okf_storage_bytes": 10405,
+  "storage_change_pct": -0.8,
+  "disclaimer": "Savings estimates based on character-length token approximation (len//4). Notion has no provider token billing; no synthetic baseline is claimed."
+}
