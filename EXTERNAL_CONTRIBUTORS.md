@@ -73,3 +73,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @Salahalioui
 - @goodguypeci-design
 - @GregDixonMXN
+- @galmousselhassan-arch
