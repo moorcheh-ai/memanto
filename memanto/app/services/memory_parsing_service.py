@@ -366,7 +366,22 @@ class MemoryParsingService:
     ]
 
     def sanitize_and_guard(self, memory: MemoryRecord) -> MemoryRecord:
-        """Scan memory content for indirect prompt injections and guard untrusted payloads."""
+        """Scan memory content for indirect prompt-injection patterns and defensively tag untrusted payloads.
+
+        When an injection risk is detected the memory is annotated with
+        ``security-warning`` and ``untrusted-payload`` tags so downstream
+        consumers can apply additional scrutiny. The confidence score is
+        capped at ``0.3`` to de-prioritise adversarial content during
+        recall, while preserving an explicit ``0.0`` value set by the
+        caller (which signals "known-untrusted").
+
+        Args:
+            memory: The memory record to inspect.
+
+        Returns:
+            The same ``MemoryRecord`` instance, potentially mutated with
+            security tags and a reduced confidence score.
+        """
         if not memory.content:
             return memory
 
