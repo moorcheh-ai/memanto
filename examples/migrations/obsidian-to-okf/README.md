@@ -1,5 +1,9 @@
 # Obsidian vault → Memanto → portable OKF
 
+Watch the [112-second end-to-end demo](./demo.mp4): a real 21-note Obsidian
+vault is dry-run mapped, imported into a live Memanto agent, recalled with three
+semantic questions, exported back to OKF, and reloaded with zero skipped items.
+
 This example turns an existing Obsidian vault into an OKF v0.2 bundle that
 Memanto can inspect with `--dry-run` and import with `memanto migrate okf`.
 Conversion is local and deterministic: private vault content never needs an LLM.
