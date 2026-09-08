@@ -72,3 +72,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @WhiteZe-wolf2077
 - @Salahalioui
 - @goodguypeci-design
+- @GregDixonMXN
