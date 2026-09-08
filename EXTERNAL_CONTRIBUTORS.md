@@ -77,3 +77,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @terryart
 - @Rexyysilent
 - @FloatingPegasus
+- @franklincg
