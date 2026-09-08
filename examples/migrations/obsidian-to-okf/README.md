@@ -1,6 +1,6 @@
 # Obsidian vault → Memanto → portable OKF
 
-Watch the [112-second end-to-end demo](./demo.mp4): a real 21-note Obsidian
+Watch the [66-second end-to-end demo](./demo.mp4): a real 21-note Obsidian
 vault is dry-run mapped, imported into a live Memanto agent, recalled with three
 semantic questions, exported back to OKF, and reloaded with zero skipped items.
 
