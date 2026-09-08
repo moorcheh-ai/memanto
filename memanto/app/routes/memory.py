@@ -50,6 +50,7 @@ from memanto.app.utils.errors import (
     AuthorizationError,
     MemoryOperationError,
     map_error_to_http_exception,
+    redact_sensitive_text,
 )
 from memanto.app.utils.temporal_helpers import (
     END_OF_DAY,
@@ -397,7 +398,8 @@ def resolve_recall_limit(request_limit: int | None) -> int:
         limit = int(raw_limit)
     except (TypeError, ValueError) as e:
         raise HTTPException(
-            status_code=400, detail=f"Invalid recall configuration: {e}"
+            status_code=400,
+            detail=redact_sensitive_text(f"Invalid recall configuration: {e}"),
         ) from e
     if limit < 1:
         raise HTTPException(
@@ -954,7 +956,8 @@ async def recall(
         )
     except (TypeError, ValueError) as e:
         raise HTTPException(
-            status_code=400, detail=f"Invalid recall configuration: {e}"
+            status_code=400,
+            detail=redact_sensitive_text(f"Invalid recall configuration: {e}"),
         )
     try:
         # Initialize memory read service
@@ -1573,7 +1576,7 @@ async def get_policy_preset(
     try:
         policy = load_preset(name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=redact_sensitive_text(str(e)))
 
     return {
         "name": name,
@@ -1602,7 +1605,7 @@ async def apply_policy_preset(
     try:
         policy = load_preset(request.name)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(e)))
 
     try:
         service = MemoryPolicyService(client)
