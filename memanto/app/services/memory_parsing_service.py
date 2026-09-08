@@ -357,7 +357,7 @@ class MemoryParsingService:
     INJECTION_PATTERNS: ClassVar[list[re.Pattern[str]]] = [
         re.compile(p, re.IGNORECASE)
         for p in [
-            r"\b(?:ignore|disregard|forget|bypass)\s+(?:all\s+)?(?:previous|prior|above)\s+(?:instructions|rules|directives|prompts)\b",
+            r"\b(?:ignore|disregard|forget|bypass)\s+(?:(?:all|the)\s+)?(?:previous|prior|above)\s+(?:instructions|rules|directives|prompts)\b",
             r"\b(?:system\s*prompt|system\s*instructions)\s*:",
             r"\b(?:you\s+are\s+now\s+in|switch\s+to)\s+(?:developer\s+mode|dan\s+mode|unrestricted\s+mode)\b",
             r"(?:<\|im_start\|>|<\|im_end\|>|\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>)",
@@ -366,9 +366,10 @@ class MemoryParsingService:
     ]
 
     def sanitize_and_guard(self, memory: MemoryRecord) -> MemoryRecord:
-        """Scan memory content for indirect prompt-injection patterns and defensively tag untrusted payloads.
+        """Scan retrieval-visible memory fields (content, title, tags) for indirect prompt-injection patterns.
 
-        When an injection risk is detected the memory is annotated with
+        When an injection risk is detected across any retrieval-visible field
+        (content, title, or tags), the memory is defensively annotated with
         ``security-warning`` and ``untrusted-payload`` tags so downstream
         consumers can apply additional scrutiny. The confidence score is
         capped at ``0.3`` to de-prioritise adversarial content during
@@ -382,11 +383,22 @@ class MemoryParsingService:
             The same ``MemoryRecord`` instance, potentially mutated with
             security tags and a reduced confidence score.
         """
-        if not memory.content:
+        fields_to_scan: list[str] = []
+        if memory.content:
+            fields_to_scan.append(memory.content)
+        if memory.title:
+            fields_to_scan.append(memory.title)
+        if memory.tags:
+            fields_to_scan.extend(str(t) for t in memory.tags if t)
+
+        if not fields_to_scan:
             return memory
 
-        content = memory.content
-        risks_found = any(p.search(content) for p in self.INJECTION_PATTERNS)
+        risks_found = any(
+            p.search(text)
+            for text in fields_to_scan
+            for p in self.INJECTION_PATTERNS
+        )
 
         if risks_found:
             if memory.tags is None:
