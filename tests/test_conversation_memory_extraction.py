@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from memanto.app.services.conversation_memory_extraction_service import (
@@ -77,7 +79,10 @@ def test_extract_conversation_memories_normalizes_candidates():
     ]
     assert client.answer.call_kwargs["namespace"] == ""
     assert client.answer.call_kwargs["temperature"] == 0
-    assert "user:" in client.answer.call_kwargs["query"]
+    assert (
+        json.loads(client.answer.call_kwargs["query"])["conversation"][0]["role"]
+        == "user"
+    )
 
 
 def test_extract_omits_unset_active_ai_model(monkeypatch):
@@ -121,11 +126,12 @@ def test_conversation_text_includes_first_message_when_oversized():
     service = ConversationMemoryExtractionService(FakeClient("[]"))
     long_content = "x" * (service.MAX_CONTENT_CHARS + 500)
     text = service._conversation_text([{"role": "user", "content": long_content}])
-    # The text must include the role prefix and truncated content, not just "user:"
-    assert text.startswith("user: ")
-    assert "x" in text  # actual content was retained
+    payload = json.loads(text)
+    # The valid JSON payload must retain actual content, not just the role.
+    assert payload["conversation"][0]["role"] == "user"
+    assert "x" in payload["conversation"][0]["content"]
     assert len(text) <= service.MAX_CONTENT_CHARS
-    assert len(text) > len("user: ")  # more than just the prefix
+    assert payload["conversation"][0]["content"]
 
 
 def test_conversation_text_truncates_after_budget():
@@ -139,9 +145,9 @@ def test_conversation_text_truncates_after_budget():
             {"role": "assistant", "content": "b" * half},
         ]
     )
-    # First message must be complete with its content
-    expected = f"user: {'a' * half}"
-    assert text == expected
+    payload = json.loads(text)
+    # First message must be complete; the second was over the budget.
+    assert payload == {"conversation": [{"role": "user", "content": "a" * half}]}
     assert len(text) <= service.MAX_CONTENT_CHARS
 
 
@@ -151,10 +157,20 @@ def test_conversation_text_exact_budget_boundary_with_separator():
     it is excluded."""
     service = ConversationMemoryExtractionService(FakeClient("[]"))
 
-    prefix1 = "user: "
-    prefix2 = "assistant: "
-
-    avail = service.MAX_CONTENT_CHARS - len(prefix1) - 1 - len(prefix2)
+    # Find an exact JSON-size boundary for two conversation objects.
+    overhead = len(
+        json.dumps(
+            {
+                "conversation": [
+                    {"role": "user", "content": ""},
+                    {"role": "assistant", "content": ""},
+                ]
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+    )
+    avail = service.MAX_CONTENT_CHARS - overhead
     len1 = avail // 2
     len2 = avail - len1
 
@@ -165,7 +181,7 @@ def test_conversation_text_exact_budget_boundary_with_separator():
         ]
     )
 
-    assert "assistant: b" in text_exact
+    assert json.loads(text_exact)["conversation"][1]["content"] == "b" * len2
     assert len(text_exact) == service.MAX_CONTENT_CHARS
 
     text_exceeds = service._conversation_text(
@@ -174,5 +190,6 @@ def test_conversation_text_exact_budget_boundary_with_separator():
             {"role": "assistant", "content": "b" * (len2 + 1)},
         ]
     )
-    assert "assistant:" not in text_exceeds
-    assert len(text_exceeds) == len(prefix1) + len1
+    assert json.loads(text_exceeds) == {
+        "conversation": [{"role": "user", "content": "a" * len1}]
+    }

@@ -43,6 +43,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from memanto.app.utils.prompt_safety import memory_answer_header_prompt
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import (
     InputLimits,
@@ -900,6 +901,7 @@ class SdkClient:
 
     def get_policy(self, agent_id: str) -> dict[str, Any]:
         """Return the agent's expiry policy as a plain dict."""
+        self._get_validated_session_for_agent(agent_id)
         policy = self._get_policy_service().load_policy(agent_id)
         return {
             "agent_id": agent_id,
@@ -914,6 +916,7 @@ class SdkClient:
         """
         from memanto.app.services.memory_policy_service import MemoryPolicy
 
+        self._get_validated_session_for_agent(agent_id)
         parsed = MemoryPolicy(**policy)
         path = self._get_policy_service().save_policy(agent_id, parsed)
         return {
@@ -947,6 +950,7 @@ class SdkClient:
         """Adopt a predefined policy bundle as the agent's policy."""
         from memanto.app.services.policy_presets import load_preset
 
+        self._get_validated_session_for_agent(agent_id)
         policy = load_preset(name)
         self._get_policy_service().save_policy(agent_id, policy)
         return {
@@ -1271,11 +1275,7 @@ class SdkClient:
         # get namespace from session
         namespace = session.namespace
 
-        header_prompt = header_prompt or (
-            "You are a helpful AI assistant with access to the agent's persistent memory. "
-            "Use the provided context from the agent's memories to answer the user's question accurately. "
-            "If the memories don't contain relevant information, say so clearly."
-        )
+        header_prompt = memory_answer_header_prompt(header_prompt)
 
         footer_prompt = footer_prompt or (
             "Answer the question based on the memory context above. "

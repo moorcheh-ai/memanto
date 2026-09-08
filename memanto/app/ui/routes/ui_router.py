@@ -29,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
+    _forwarded_client_is_remote,
     _is_cross_site_browser_request,
     clear_session_cookie,
     set_session_cookie,
@@ -95,6 +96,15 @@ async def _require_local(request: Request) -> None:
             detail=(
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
+            ),
+        )
+
+    if _forwarded_client_is_remote(request):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints are only accessible from localhost. "
+                "A forwarded client address was not local."
             ),
         )
 

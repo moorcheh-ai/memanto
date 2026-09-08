@@ -14,6 +14,7 @@ from memanto.app.constants import (
     ProvenanceType,
     StatusType,
 )
+from memanto.app.utils.prompt_safety import escape_untrusted_prompt_text
 
 MemoryTag = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
@@ -140,9 +141,12 @@ class MemoryRecord(BaseModel):
         memory_type = self.type or "fact"
 
         # Format text as standardized card for semantic search
-        text = f"[{memory_type.upper()}] {self.title}\n\n{self.content}"
+        safe_title = escape_untrusted_prompt_text(self.title)
+        safe_content = escape_untrusted_prompt_text(self.content)
+        text = f"[{memory_type.upper()}] {safe_title}\n\n{safe_content}"
         if self.tags:
-            text += f"\n\nTags: {', '.join(self.tags)}"
+            safe_tags = [escape_untrusted_prompt_text(tag) for tag in self.tags]
+            text += f"\n\nTags: {', '.join(safe_tags)}"
 
         # Build document with flat metadata fields (not nested!)
         document = {

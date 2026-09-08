@@ -2,9 +2,12 @@
 Error Handling and Mapping
 """
 
+import logging
 from typing import Any
 
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 
 class MemantoError(Exception):
@@ -109,12 +112,15 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
         )
 
     elif isinstance(error, MemoryOperationError):
+        # Backend exceptions can contain hostnames, request bodies, vector
+        # metadata, or provider error payloads. They are useful internally but
+        # must never become part of a public 500 response.
+        logger.error("Memory operation failed: %s", type(error).__name__)
         return HTTPException(
             status_code=500,
             detail={
                 "error": "MemoryOperationError",
-                "message": error.message,
-                "details": error.details,
+                "message": "A memory operation failed.",
             },
         )
 
@@ -200,12 +206,12 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
 
     else:
         # Generic server error
+        logger.error("Unhandled internal error: %s", type(error).__name__)
         return HTTPException(
             status_code=500,
             detail={
                 "error": "InternalServerError",
                 "message": "An unexpected error occurred",
-                "details": {"original_error": str(error)},
             },
         )
 

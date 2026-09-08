@@ -107,6 +107,24 @@ class TestUnauthenticatedUIEndpoints:
             "UI management endpoints reject cross-site browser requests."
         )
 
+    def test_reverse_proxy_request_for_remote_client_is_rejected(self):
+        """A localhost reverse proxy must not grant its remote client UI access.
+
+        Reverse proxies commonly connect to the application over 127.0.0.1
+        while setting X-Forwarded-For to the real, internet-facing client.
+        Treating only the immediate TCP peer as the caller would otherwise let
+        a remote user invoke the unauthenticated UI management API.
+        """
+        app = _make_app()
+        client = _make_loopback_client(app)
+
+        response = client.get(
+            "/api/ui/config",
+            headers={"X-Forwarded-For": "203.0.113.25"},
+        )
+
+        assert response.status_code == 403
+
 
 class TestLoopbackDetection:
     """Unit tests for the _is_loopback helper used by _require_local.
