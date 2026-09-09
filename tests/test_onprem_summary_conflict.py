@@ -19,6 +19,7 @@ from memanto.cli.client.direct_client import DirectClient
 
 
 def test_direct_client_init_onprem_without_api_key(monkeypatch):
+    """Verify DirectClient initialization in on-prem mode tolerates omitted or empty API keys."""
     monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "")
 
@@ -36,6 +37,7 @@ def test_direct_client_init_onprem_without_api_key(monkeypatch):
 
 
 def test_direct_client_init_cloud_requires_api_key(monkeypatch):
+    """Verify DirectClient initialization in cloud mode raises ValueError when no key is available."""
     monkeypatch.setattr(settings, "MEMANTO_BACKEND", "cloud")
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "")
 
@@ -49,7 +51,23 @@ def test_direct_client_init_cloud_requires_api_key(monkeypatch):
     assert client.api_key == "my-cloud-key"
 
 
+def test_direct_client_init_cloud_falls_back_to_settings_key(monkeypatch):
+    """Verify DirectClient() without explicit key falls back to settings.MOORCHEH_API_KEY in cloud mode."""
+    monkeypatch.setattr(settings, "MEMANTO_BACKEND", "cloud")
+    monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "mk_configured_cloud_key")
+
+    client_default = DirectClient()
+    assert client_default.api_key == "mk_configured_cloud_key"
+
+    client_none = DirectClient(None)
+    assert client_none.api_key == "mk_configured_cloud_key"
+
+    client_empty = DirectClient("")
+    assert client_empty.api_key == "mk_configured_cloud_key"
+
+
 def test_get_moorcheh_api_key_dependency_onprem(monkeypatch):
+    """Verify get_moorcheh_api_key returns 'on-prem' when running with on-prem backend."""
     monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "")
 
@@ -59,6 +77,7 @@ def test_get_moorcheh_api_key_dependency_onprem(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_daily_summary_and_conflicts_onprem_routes(monkeypatch):
+    """Verify daily summary and conflict management endpoints execute cleanly in on-prem mode."""
     monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "")
 

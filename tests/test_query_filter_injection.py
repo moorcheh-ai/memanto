@@ -7,6 +7,7 @@ from memanto.app.services.memory_read_service import (
 
 
 def test_sanitize_query_text_neutralizes_filter_tags():
+    """Verify leading '#' characters on tokens are stripped to neutralize metadata/tag filters."""
     # Leading # on tokens is stripped
     assert _sanitize_query_text("#status:expired") == "status:expired"
     assert (
@@ -18,12 +19,14 @@ def test_sanitize_query_text_neutralizes_filter_tags():
 
 
 def test_sanitize_query_text_preserves_trailing_hash():
+    """Verify language syntax with trailing '#' (like C# or F#) is preserved intact."""
     # Trailing # like C# or F# should remain intact
     assert _sanitize_query_text("C# backend developer") == "C# backend developer"
     assert _sanitize_query_text("learning F#") == "learning F#"
 
 
 def test_sanitize_query_text_handles_empty_and_whitespace():
+    """Verify empty, None, and whitespace-only query inputs are handled gracefully."""
     assert _sanitize_query_text("") == ""
     assert _sanitize_query_text(None) == ""
     assert _sanitize_query_text("    ") == ""
@@ -32,6 +35,7 @@ def test_sanitize_query_text_handles_empty_and_whitespace():
 
 
 def test_build_filtered_query_sanitizes_injected_clauses():
+    """Verify injected '#' clauses become plain search terms while legitimate filters are appended."""
     service = MemoryReadService(MagicMock())
 
     # User passes query trying to inject #status:expired and #source:admin
@@ -50,6 +54,7 @@ def test_build_filtered_query_sanitizes_injected_clauses():
 
 
 def test_build_filtered_query_neutralizes_injected_memory_type():
+    """Verify injected '#memory_type:' clauses are neutralized and cannot override allowed memory types."""
     service = MemoryReadService(MagicMock())
 
     query = service._build_filtered_query(
@@ -61,6 +66,7 @@ def test_build_filtered_query_neutralizes_injected_memory_type():
 
 
 def test_search_memories_dispatches_sanitized_query_to_client():
+    """Verify search_memories dispatches sanitized query text to the underlying Moorcheh client."""
     mock_client = MagicMock()
     mock_client.similarity_search.query.return_value = {"results": []}
 

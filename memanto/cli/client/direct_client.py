@@ -251,25 +251,29 @@ class DirectClient:
     """
 
     def __init__(self, api_key: str | None = None) -> None:
-        """
-        Initialize direct client.
+        """Initialize direct client.
 
         Args:
-            api_key: Moorcheh API key (required in cloud mode, optional in on-prem mode).
+            api_key: Moorcheh API key. In cloud mode, falls back to
+                ``settings.MOORCHEH_API_KEY`` if omitted or None. Optional in on-prem mode.
 
         Raises:
-            ValueError: If in cloud mode and *api_key* is empty or None.
+            ValueError: If in cloud mode and neither *api_key* nor configured
+                ``MOORCHEH_API_KEY`` is non-empty.
         """
         from memanto.app.clients.backend import Backend, parse_backend
         from memanto.app.config import settings
 
         backend = parse_backend(settings.MEMANTO_BACKEND)
         resolved_key = (api_key or "").strip()
+        if not resolved_key and backend != Backend.ON_PREM:
+            resolved_key = (settings.MOORCHEH_API_KEY or "").strip()
+
         if backend != Backend.ON_PREM and not resolved_key:
             raise ValueError("api_key must be a non-empty string")
 
-        self.api_key: str = resolved_key or (
-            settings.MOORCHEH_API_KEY if backend != Backend.ON_PREM else ""
+        self.api_key: str = (
+            resolved_key if backend != Backend.ON_PREM else (resolved_key or "")
         )
         self.session_token: str | None = None
         self.agent_id: str | None = None
