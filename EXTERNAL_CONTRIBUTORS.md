@@ -80,3 +80,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @franklincg
 - @yy1142274323
 - @OpheliaStowe3
+- @ranvirjrj-beep
