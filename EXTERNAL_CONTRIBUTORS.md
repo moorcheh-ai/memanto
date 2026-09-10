@@ -78,3 +78,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @Rexyysilent
 - @FloatingPegasus
 - @franklincg
+- @yy1142274323
