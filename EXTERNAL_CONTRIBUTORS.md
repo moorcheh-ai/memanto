@@ -81,3 +81,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @yy1142274323
 - @OpheliaStowe3
 - @ranvirjrj-beep
+- @keeltrace
