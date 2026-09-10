@@ -1,0 +1,57 @@
+---
+type: fact
+title: Project Kestrel exists to deliver contributor attribution tracking.
+description: Project Kestrel exists to deliver contributor attribution tracking.
+tags:
+- Project Kestrel
+- project
+- purpose
+timestamp: '2026-09-10T21:01:23Z'
+generated:
+  by: process:hermes-holographic
+  at: '2026-09-10T21:01:23Z'
+x_memanto:
+  id: 2a522895-e2b5-4c14-9904-1d9f06156e0a
+  confidence: 0.6
+  provenance: imported
+  source: hermes-holographic
+  status: active
+  updated_at: '2026-09-10T21:01:23+00:00'
+  type: fact
+---
+
+Project Kestrel exists to deliver contributor attribution tracking.
+
+---
+
+## Hermes Holographic source data
+
+The block below preserves source metadata. Derived retrieval vectors are rebuild-only and are not portable source truth.
+
+```yaml
+schema: hermes-holographic-v1
+fact_id: 31
+category: project
+raw_tags: Project Kestrel,project,purpose
+retrieval_count: 0
+helpful_count: 0
+entities:
+- entity_id: 6
+  name: Project Kestrel
+  entity_type: unknown
+  aliases: ''
+  created_at: '2026-09-10T21:01:23Z'
+derived:
+  hrr_vector: absent
+  fts_index: rebuild
+  memory_bank_vector: rebuild
+```
+
+---
+[Supporting data]
+- OKF source: memories/fact/fact-000031.md
+
+---
+[Supporting data]
+- OKF source: memories/fact/project-kestrel-exists-to-deliver-contributor-attribution-tr.md
+- OKF generated: by=process:hermes-holographic; at=2026-09-10T21:01:23Z
