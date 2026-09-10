@@ -74,11 +74,12 @@ def to_moorcheh_document(memory_type: str, title: str, content: str, tags=None) 
 #    （header/footer 的用途即夹住"记忆上下文"，见 memory.py:1036-1046 文案）
 # ---------------------------------------------------------------------------
 def answer_generate(namespace, query, top_k, header_prompt, footer_prompt, retrieved):
+    # 与生产链路一致：记忆文本直接拼接在 header 与 footer 之间，无任何分隔符
     prompt = (
         header_prompt
-        + "\n\n--- Memory context (retrieved from namespace) ---\n"
+        + "\n\n"
         + "\n\n".join(m["text"] for m in retrieved[:top_k])
-        + "\n--- end memory context ---\n\n"
+        + "\n\n"
         + footer_prompt
         + "\n\nQuestion: "
         + query

