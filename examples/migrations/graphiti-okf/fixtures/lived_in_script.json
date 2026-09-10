@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "group_id": "mira-travel-agent",
+  "story": "Mira books travel for Alex Rivera over several weeks; preference flip vegetarian→omnivore; refundable-only decision.",
+  "episodes": [
+    {
+      "id": "ep-01",
+      "name": "intro-alex",
+      "reference_time": "2026-07-01T10:00:00Z",
+      "source": "message",
+      "source_description": "kickoff chat",
+      "content": "Alex Rivera: Hi Mira, I'm Alex Rivera. I live in Seattle and need help planning trips for work and vacations."
+    },
+    {
+      "id": "ep-02",
+      "name": "employer",
+      "reference_time": "2026-07-01T10:05:00Z",
+      "source": "message",
+      "source_description": "kickoff chat",
+      "content": "Alex Rivera: I work at Cascadia Labs as a staff engineer. My manager is Priya Shah."
+    },
+    {
+      "id": "ep-03",
+      "name": "seat-pref",
+      "reference_time": "2026-07-02T15:00:00Z",
+      "source": "message",
+      "source_description": "flight prefs",
+      "content": "Alex Rivera: On flights I always prefer an aisle seat. Window seats make me anxious."
+    },
+    {
+      "id": "ep-04",
+      "name": "diet-veg",
+      "reference_time": "2026-07-03T09:30:00Z",
+      "source": "message",
+      "source_description": "meal prefs",
+      "content": "Alex Rivera: Please mark me as vegetarian for all airline meals and hotel breakfasts."
+    },
+    {
+      "id": "ep-05",
+      "name": "loyalty",
+      "reference_time": "2026-07-05T11:00:00Z",
+      "source": "message",
+      "source_description": "loyalty",
+      "content": "Alex Rivera: I am a United Airlines MileagePlus gold member. Prefer United when fares are within $80 of the cheapest option."
+    },
+    {
+      "id": "ep-06",
+      "name": "denver-trip",
+      "reference_time": "2026-07-08T14:20:00Z",
+      "source": "message",
+      "source_description": "booking request",
+      "content": "Alex Rivera: Book a round-trip Seattle to Denver for July 20–23 for the Cascadia Labs offsite. Hotel near downtown."
+    },
+    {
+      "id": "ep-07",
+      "name": "refundable-policy",
+      "reference_time": "2026-07-08T14:25:00Z",
+      "source": "message",
+      "source_description": "policy decision",
+      "content": "Alex Rivera: Going forward, book only refundable fares for work trips. Non-refundable is fine for personal leisure."
+    },
+    {
+      "id": "ep-08",
+      "name": "commitment-confirm",
+      "reference_time": "2026-07-09T08:00:00Z",
+      "source": "message",
+      "source_description": "confirmation",
+      "content": "Alex Rivera: I commit to sending expense receipts within 48 hours after each work trip."
+    },
+    {
+      "id": "ep-09",
+      "name": "partner",
+      "reference_time": "2026-07-12T19:00:00Z",
+      "source": "message",
+      "source_description": "personal",
+      "content": "Alex Rivera: My partner Jordan Lee usually joins personal trips. Jordan prefers boutique hotels over big chains."
+    },
+    {
+      "id": "ep-10",
+      "name": "diet-flip",
+      "reference_time": "2026-07-18T16:45:00Z",
+      "source": "message",
+      "source_description": "preference change",
+      "content": "Alex Rivera: Update my meals — I am no longer vegetarian. I eat fish and poultry again; keep beef rare."
+    },
+    {
+      "id": "ep-11",
+      "name": "tokyo-goal",
+      "reference_time": "2026-07-22T12:00:00Z",
+      "source": "message",
+      "source_description": "future travel",
+      "content": "Alex Rivera: Personal goal: visit Tokyo with Jordan in October for 10 days. Soft budget $4,500 total."
+    },
+    {
+      "id": "ep-12",
+      "name": "instruction-timezone",
+      "reference_time": "2026-07-25T09:10:00Z",
+      "source": "message",
+      "source_description": "standing instruction",
+      "content": "Alex Rivera: Always propose itineraries in Pacific Time and flag any meeting that starts before 8am PT."
+    },
+    {
+      "id": "ep-13",
+      "name": "observation-delay",
+      "reference_time": "2026-07-26T21:00:00Z",
+      "source": "text",
+      "source_description": "ops note",
+      "content": "United flight UA482 SEA→DEN on July 20 was delayed 90 minutes due to weather. Alex rebooked the downtown hotel shuttle."
+    },
+    {
+      "id": "ep-14",
+      "name": "error-card",
+      "reference_time": "2026-07-27T10:00:00Z",
+      "source": "message",
+      "source_description": "payment hiccup",
+      "content": "Alex Rivera: The corporate card ending 4412 was declined once at check-in — use the backup Amex ending 9001 for hotels."
+    }
+  ],
+  "expected_graph": {
+    "entities": [
+      {"uuid": "ent-alex", "name": "Alex Rivera", "labels": ["Person", "Entity"], "summary": "Staff engineer at Cascadia Labs living in Seattle; primary traveler Mira assists."},
+      {"uuid": "ent-mira", "name": "Mira", "labels": ["Agent", "Entity"], "summary": "Travel-booking agent assisting Alex Rivera."},
+      {"uuid": "ent-seattle", "name": "Seattle", "labels": ["Location", "Entity"], "summary": "Alex Rivera's home city."},
+      {"uuid": "ent-cascadia", "name": "Cascadia Labs", "labels": ["Organization", "Entity"], "summary": "Alex's employer; hosts Denver offsite."},
+      {"uuid": "ent-priya", "name": "Priya Shah", "labels": ["Person", "Entity"], "summary": "Alex Rivera's manager at Cascadia Labs."},
+      {"uuid": "ent-aisle", "name": "aisle seat", "labels": ["Preference", "Entity"], "summary": "Alex's preferred airplane seat type."},
+      {"uuid": "ent-vegetarian", "name": "vegetarian meals", "labels": ["Preference", "Entity"], "summary": "Former meal preference later superseded."},
+      {"uuid": "ent-omnivore", "name": "fish and poultry diet", "labels": ["Preference", "Entity"], "summary": "Current meal preference after July 18 flip."},
+      {"uuid": "ent-united", "name": "United Airlines", "labels": ["Organization", "Entity"], "summary": "Preferred carrier; Alex is MileagePlus gold."},
+      {"uuid": "ent-denver", "name": "Denver", "labels": ["Location", "Entity"], "summary": "July offsite destination."},
+      {"uuid": "ent-jordan", "name": "Jordan Lee", "labels": ["Person", "Entity"], "summary": "Alex's partner; prefers boutique hotels."},
+      {"uuid": "ent-tokyo", "name": "Tokyo", "labels": ["Location", "Entity"], "summary": "October personal trip goal destination."},
+      {"uuid": "ent-amex", "name": "Amex ending 9001", "labels": ["Artifact", "Entity"], "summary": "Backup corporate payment card for hotels."}
+    ],
+    "edges": [
+      {"uuid": "e-lives", "source": "ent-alex", "target": "ent-seattle", "name": "LIVES_IN", "fact": "Alex Rivera lives in Seattle.", "valid_at": "2026-07-01T10:00:00Z", "invalid_at": null, "episodes": ["ep-01"]},
+      {"uuid": "e-works", "source": "ent-alex", "target": "ent-cascadia", "name": "WORKS_AT", "fact": "Alex Rivera works at Cascadia Labs as a staff engineer.", "valid_at": "2026-07-01T10:05:00Z", "invalid_at": null, "episodes": ["ep-02"]},
+      {"uuid": "e-managed", "source": "ent-alex", "target": "ent-priya", "name": "REPORTS_TO", "fact": "Alex Rivera's manager is Priya Shah.", "valid_at": "2026-07-01T10:05:00Z", "invalid_at": null, "episodes": ["ep-02"]},
+      {"uuid": "e-aisle", "source": "ent-alex", "target": "ent-aisle", "name": "PREFERS", "fact": "Alex Rivera always prefers an aisle seat on flights.", "valid_at": "2026-07-02T15:00:00Z", "invalid_at": null, "episodes": ["ep-03"]},
+      {"uuid": "e-veg", "source": "ent-alex", "target": "ent-vegetarian", "name": "PREFERS", "fact": "Alex Rivera requested vegetarian airline meals and hotel breakfasts.", "valid_at": "2026-07-03T09:30:00Z", "invalid_at": "2026-07-18T16:45:00Z", "episodes": ["ep-04", "ep-10"]},
+      {"uuid": "e-diet-new", "source": "ent-alex", "target": "ent-omnivore", "name": "PREFERS", "fact": "Alex Rivera now eats fish and poultry; keep beef rare.", "valid_at": "2026-07-18T16:45:00Z", "invalid_at": null, "episodes": ["ep-10"]},
+      {"uuid": "e-united", "source": "ent-alex", "target": "ent-united", "name": "PREFERS_CARRIER", "fact": "Alex Rivera is United MileagePlus gold and prefers United when within $80 of cheapest.", "valid_at": "2026-07-05T11:00:00Z", "invalid_at": null, "episodes": ["ep-05"]},
+      {"uuid": "e-denver-trip", "source": "ent-alex", "target": "ent-denver", "name": "TRAVELED_TO", "fact": "Alex Rivera booked Seattle to Denver July 20–23 for Cascadia Labs offsite.", "valid_at": "2026-07-08T14:20:00Z", "invalid_at": null, "episodes": ["ep-06"]},
+      {"uuid": "e-refundable", "source": "ent-alex", "target": "ent-cascadia", "name": "DECIDED", "fact": "Alex Rivera decided to book only refundable fares for work trips.", "valid_at": "2026-07-08T14:25:00Z", "invalid_at": null, "episodes": ["ep-07"]},
+      {"uuid": "e-receipts", "source": "ent-alex", "target": "ent-cascadia", "name": "COMMITTED_TO", "fact": "Alex Rivera commits to sending expense receipts within 48 hours after each work trip.", "valid_at": "2026-07-09T08:00:00Z", "invalid_at": null, "episodes": ["ep-08"]},
+      {"uuid": "e-partner", "source": "ent-alex", "target": "ent-jordan", "name": "PARTNER_OF", "fact": "Alex Rivera's partner is Jordan Lee, who prefers boutique hotels.", "valid_at": "2026-07-12T19:00:00Z", "invalid_at": null, "episodes": ["ep-09"]},
+      {"uuid": "e-tokyo", "source": "ent-alex", "target": "ent-tokyo", "name": "HAS_GOAL", "fact": "Alex Rivera aims to visit Tokyo with Jordan in October for 10 days on a soft $4,500 budget.", "valid_at": "2026-07-22T12:00:00Z", "invalid_at": null, "episodes": ["ep-11"]},
+      {"uuid": "e-tz", "source": "ent-alex", "target": "ent-mira", "name": "INSTRUCTS", "fact": "Alex Rivera instructs Mira to propose itineraries in Pacific Time and flag meetings before 8am PT.", "valid_at": "2026-07-25T09:10:00Z", "invalid_at": null, "episodes": ["ep-12"]},
+      {"uuid": "e-delay", "source": "ent-united", "target": "ent-denver", "name": "EXPERIENCED", "fact": "United UA482 SEA→DEN on July 20 was delayed 90 minutes; Alex rebooked the hotel shuttle.", "valid_at": "2026-07-26T21:00:00Z", "invalid_at": null, "episodes": ["ep-13"]},
+      {"uuid": "e-card", "source": "ent-alex", "target": "ent-amex", "name": "USES", "fact": "After card 4412 declined, Alex Rivera uses backup Amex ending 9001 for hotels.", "valid_at": "2026-07-27T10:00:00Z", "invalid_at": null, "episodes": ["ep-14"]}
+    ],
+    "invalidated": [
+      {"edge_uuid": "e-veg", "superseded_by": "e-diet-new", "at": "2026-07-18T16:45:00Z", "reason": "Alex Rivera explicitly flipped meal preference away from vegetarian."}
+    ]
+  }
+}
