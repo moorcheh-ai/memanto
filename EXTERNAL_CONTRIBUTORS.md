@@ -84,3 +84,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @keeltrace
 - @tututu-qwq
 - @taralokha
+- @farouklaaroussi07
