@@ -232,5 +232,20 @@ def test_redact_sensitive_data_helper():
     bearer = "Bearer ya29.a0AfH6SMBxyz1234567890"
     assert redact_sensitive_data(bearer) == "Bearer [REDACTED_TOKEN]"
 
+    bearer_token68 = "Bearer aBc12+34/56~test=="
+    assert redact_sensitive_data(bearer_token68) == "Bearer [REDACTED_TOKEN]"
+
     aws = "AWS credentials: AKIAIOSFODNN7EXAMPLE"
     assert redact_sensitive_data(aws) == "AWS credentials: [REDACTED_API_KEY]"
+
+    aws_secret = 'aws_secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"'
+    assert (
+        redact_sensitive_data(aws_secret)
+        == 'aws_secret_access_key="[REDACTED_CREDENTIAL]"'
+    )
+
+    aws_secret_unquoted = "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG"
+    assert (
+        redact_sensitive_data(aws_secret_unquoted)
+        == "AWS_SECRET_ACCESS_KEY=[REDACTED_CREDENTIAL]"
+    )
