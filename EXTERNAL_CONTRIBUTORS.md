@@ -83,3 +83,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @ranvirjrj-beep
 - @keeltrace
 - @tututu-qwq
+- @taralokha
