@@ -8,7 +8,7 @@ The source is an **in-memory** store. The demo writes synthetic conversation inp
 
 The actual **on-prem** loop succeeded: 15 source messages → 15 persisted observations → 15 exported messages, exact full-object reconstruction and four real semantic-retrieval answers after the selected source session was cleared. `evidence/onprem/` contains the original source snapshot, actual Memanto-exported OKF, CLI logs and measured reports. `sample/` separately retains the local dry-run example.
 
-The cloud attempts returned `403 Forbidden`; no cloud success is claimed. A sponsor question about cloud activation and acceptance of the supported on-prem deployment is pending. The actual terminal walkthrough is included below. Public social publication and the final bounty claim still need completion; on-prem eligibility has not yet been confirmed by the sponsor.
+The cloud attempts returned `403 Forbidden`; no cloud success is claimed. A sponsor question about cloud activation and acceptance of the supported on-prem deployment is pending. The actual terminal walkthrough is included below. The [public video demonstration](https://youtu.be/TZ-gKzbQQZE) is published; on-prem bounty eligibility has not yet been confirmed by the sponsor.
 
 The [79.9-second walkthrough](evidence/onprem/onprem-demo.mp4) replays the actual captured terminal execution. The [recording receipt](evidence/onprem/onprem-demo.json), [original cast](evidence/onprem/onprem-demo.cast), [migration report](evidence/onprem/summary.json), [retrieval results](evidence/onprem/destination-recall.json), [runtime inspection](evidence/onprem/runtime.json) and [exported OKF](evidence/onprem/exported-okf/) accompany it. Presentation pauses are labeled and excluded from measured CLI durations.
 
@@ -106,6 +106,6 @@ Canonical JSON escapes angle brackets so literal `<!-- okf-entry -->` in a sourc
 
 The shipped `memanto migrate okf` command has **no `--report` option and produces no savings report**. This example records measured sizes and durations separately and makes no token, storage-cost or latency-savings claim. A 0 exit code from import alone is insufficient: the exported count and exact source reconstruction are required.
 
-A recorded execution should show source answers, CLI dry run/import/export, the source being cleared, readable exported Markdown and successful backend answers. Keep failed runs labeled as failures. A terminal replay is a replay of captured execution, not a desktop screen capture. Live evidence and the public demonstration link must be provided separately before a complete bounty submission.
+A recorded execution should show source answers, CLI dry run/import/export, the source being cleared, readable exported Markdown and successful backend answers. Keep failed runs labeled as failures. A terminal replay is a replay of captured execution, not a desktop screen capture. The live evidence is included here and the [public demonstration](https://youtu.be/TZ-gKzbQQZE) shows the captured execution.
 
 References: [Haystack store implementation](https://github.com/deepset-ai/haystack-experimental/blob/main/haystack_experimental/chat_message_stores/in_memory.py), [Memanto migration guide](https://docs.memanto.ai/cli/migrate/migrate), [OKF guide](https://docs.memanto.ai/integrations/okf).
