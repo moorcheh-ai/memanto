@@ -1,0 +1,17 @@
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ OKF Export                                                                   │
+│ Agent: haystack-procurement-demo-20260911  •  Split: file  •  Limit: 16/type │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+   OKF Bundle Counts    
+┏━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Type         ┃ Count ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━┩
+│ Observations │    15 │
+└──────────────┴───────┘
+
+OK Exported 15 memories to OKF bundle!
+Bundle: 
+/Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/exports/hays
+tack-evidence
+Completed in 0.18s

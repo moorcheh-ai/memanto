@@ -1,0 +1,9 @@
+# Install the repository's shipped Memanto package first: pip install .
+haystack-ai==3.1.1
+haystack-experimental==0.19.0.post1
+pytest>=8.2,<9
+pytest-asyncio>=0.21
+pytest-timeout>=2.1
+
+# Optional supported on-prem backend client (small; does not install models)
+moorcheh-client==0.1.5

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.runs/
+private/
+*.env
+sample/.input-okf.lock
