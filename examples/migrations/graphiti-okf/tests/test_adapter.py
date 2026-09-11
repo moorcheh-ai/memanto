@@ -16,13 +16,13 @@ def test_adapt_writes_memories(tmp_path: Path):
     export = build_offline_export(load_fixture())
     okf = tmp_path / "okf"
     summary = adapt(export, okf)
-    assert summary["mapped_count"] >= 20
-    assert len(summary["per_type"]) >= 6
+    assert summary["mapped_count"] == 34
+    assert len(summary["per_type"]) == 12
     assert (okf / "index.md").exists()
     md_files = list((okf / "memories").rglob("*.md"))
     # exclude index.md files
     real = [p for p in md_files if p.name != "index.md"]
-    assert len(real) >= 20
+    assert len(real) == 34
     # contradiction tags present
     corpus = "\n".join(p.read_text() for p in real).lower()
     assert "vegetarian" in corpus

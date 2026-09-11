@@ -5,7 +5,7 @@ description: "Backup corporate payment card for hotels."
 tags: ["group:mira-travel-agent", "entity", "source:graphiti", "label:Artifact"]
 generated:
   by: "process:graphiti"
-  at: "2026-09-10T13:59:42Z"
+  at: "2026-09-11T01:08:50Z"
 resource: "graphiti:entity:ent-amex"
 x_memanto:
   confidence: 0.8

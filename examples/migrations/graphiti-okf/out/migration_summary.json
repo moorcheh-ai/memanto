@@ -23,7 +23,7 @@
     "preference": 3,
     "relationship": 3
   },
-  "okf_root": "/workspace/memanto-1609/examples/migrations/graphiti-okf/out/okf-bundle",
+  "okf_root": "out/okf-bundle",
   "files": [
     "memories/fact/lives-in-alex-rivera-seattle-e-lives.md",
     "memories/relationship/works-at-alex-rivera-cascadia-labs-e-works.md",
@@ -60,5 +60,5 @@
     "memories/observation/episode-ep-13-observation-delay.md",
     "memories/error/episode-ep-14-error-card.md"
   ],
-  "generated_at": "2026-09-10T13:59:42Z"
+  "generated_at": "2026-09-11T01:08:50Z"
 }

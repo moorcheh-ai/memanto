@@ -5,7 +5,7 @@ description: "Travel-booking agent assisting Alex Rivera."
 tags: ["group:mira-travel-agent", "entity", "source:graphiti", "label:Agent"]
 generated:
   by: "process:graphiti"
-  at: "2026-09-10T13:59:42Z"
+  at: "2026-09-11T01:08:50Z"
 resource: "graphiti:entity:ent-mira"
 x_memanto:
   confidence: 0.8

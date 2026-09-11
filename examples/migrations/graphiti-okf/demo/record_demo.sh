@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DEMO_DIR="$(cd "$(dirname "$0")" && pwd)"
-EXAMPLE="$DEMO_DIR/../examples/migrations/graphiti-okf"
+EXAMPLE="$(cd "$DEMO_DIR/.." && pwd)"
 CAST="$DEMO_DIR/demo.cast"
 MP4="$DEMO_DIR/demo.mp4"
 GIF="$DEMO_DIR/demo.gif"
@@ -40,7 +40,7 @@ asciinema rec "$CAST" \
 echo
 echo "== Converting cast → mp4 + gif =="
 # Slightly faster than realtime for watchability (~0.85x wall → shorter video)
-python3 "$DEMO_DIR/cast2mp4.py" "$CAST" --mp4 "$MP4" --gif "$GIF" \
+"$EXAMPLE/.venv/bin/python" "$DEMO_DIR/cast2mp4.py" "$CAST" --mp4 "$MP4" --gif "$GIF" \
   --fps 12 --font-size 15 --speed 0.72 --max-seconds 200
 
 echo

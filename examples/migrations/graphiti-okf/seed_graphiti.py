@@ -206,6 +206,8 @@ def main() -> None:
     meta = asyncio.run(seed_live(fixture, args.backend))
     ok = sum(1 for e in meta['episodes'] if e.get('ok'))
     print(f"[live] episodes ok={ok}/{len(meta['episodes'])} meta→{META}")
+    if ok != len(meta['episodes']):
+        raise SystemExit(1)
     print('Next: python export_graphiti.py --mode live')
 
 

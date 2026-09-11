@@ -4,7 +4,7 @@
 set -euo pipefail
 
 DEMO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXAMPLE="$DEMO_ROOT/examples/migrations/graphiti-okf"
+EXAMPLE="$DEMO_ROOT"
 export PATH="$EXAMPLE/.venv/bin:$PATH"
 export TERM="xterm-256color"
 export COLORTERM="truecolor"

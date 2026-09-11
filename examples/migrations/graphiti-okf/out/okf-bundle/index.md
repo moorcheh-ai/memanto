@@ -5,7 +5,7 @@ okf_version: "0.2"
 description: "Portable knowledge liberated from a Graphiti temporal graph."
 generated:
   by: "process:graphiti-okf-adapter"
-  at: "2026-09-10T13:59:42Z"
+  at: "2026-09-11T01:08:50Z"
 ---
 
 # Graphiti → OKF bundle

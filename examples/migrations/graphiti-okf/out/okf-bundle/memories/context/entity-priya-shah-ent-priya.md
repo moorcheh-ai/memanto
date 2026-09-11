@@ -5,7 +5,7 @@ description: "Alex Rivera's manager at Cascadia Labs."
 tags: ["group:mira-travel-agent", "entity", "source:graphiti", "label:Person"]
 generated:
   by: "process:graphiti"
-  at: "2026-09-10T13:59:42Z"
+  at: "2026-09-11T01:08:50Z"
 resource: "graphiti:entity:ent-priya"
 x_memanto:
   confidence: 0.8

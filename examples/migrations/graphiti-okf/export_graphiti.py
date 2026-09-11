@@ -19,8 +19,8 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-def write_offline(out: Path) -> Path:
-    if out.exists():
+def write_offline(out: Path, *, reuse: bool = False) -> Path:
+    if reuse and out.exists():
         print(f'[offline] using existing {out}')
         return out
     from seed_graphiti import build_offline_export, load_fixture
@@ -54,15 +54,26 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', choices=('offline', 'live'), default='offline')
     parser.add_argument('--out', type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        '--reuse-existing',
+        action='store_true',
+        help='Offline only: reuse out/graphiti_export.json if present instead of regenerating',
+    )
     args = parser.parse_args()
 
     if args.mode == 'offline':
-        write_offline(args.out)
+        write_offline(args.out, reuse=args.reuse_existing)
         return
 
+    if not META.exists():
+        print(
+            '[live] No seed_meta.json — run seed_graphiti.py --mode live first; '
+            'refusing to write a live-fallback that claims a completed seed.',
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     try:
-        if not META.exists():
-            raise RuntimeError('No seed_meta.json — run seed_graphiti.py --mode live first')
         write_live_fallback(args.out)
     except Exception as exc:  # noqa: BLE001
         print(f'[live] dump unavailable ({exc}); writing fallback export', file=sys.stderr)

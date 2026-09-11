@@ -11,9 +11,9 @@ def test_export_shape():
     export = build_offline_export(load_fixture())
     assert export["source"] == "graphiti"
     assert export["group_id"] == "mira-travel-agent"
-    assert len(export["episodes"]) >= 12
-    assert len(export["entities"]) >= 10
-    assert len(export["edges"]) >= 12
+    assert len(export["episodes"]) == 14
+    assert len(export["entities"]) == 13
+    assert len(export["edges"]) == 15
     assert export["invalidated"]
     veg = next(e for e in export["edges"] if e["uuid"] == "e-veg")
     assert veg["invalid_at"]

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from collections import Counter
@@ -40,7 +41,11 @@ RELATION_TYPE_MAP: dict[str, str] = {
 
 def _slug(text: str, limit: int = 60) -> str:
     s = re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
-    return (s or 'memory')[:limit]
+    s = s or 'memory'
+    if len(s) <= limit:
+        return s
+    suffix = hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+    return f"{s[:limit - len(suffix) - 1].rstrip('-')}-{suffix}"
 
 
 def _now() -> str:
@@ -81,14 +86,15 @@ def classify_episode(ep: dict[str, Any]) -> str:
         return 'decision'
     if 'instruction' in desc or 'standing' in desc:
         return 'instruction'
-    if 'ops note' in desc or ep.get('source') == 'text':
-        return 'observation'
     if 'hiccup' in desc or 'declined' in content:
         return 'error'
     if 'goal' in desc or 'goal:' in content:
         return 'goal'
     if 'commit' in desc or 'commit' in content:
         return 'commitment'
+    if 'ops note' in desc:
+        return 'observation'
+    # Unmatched text episodes fall through to observation (generic fallback last).
     return 'observation'
 
 
@@ -337,7 +343,11 @@ def adapt(export: dict[str, Any], okf_root: Path) -> dict[str, Any]:
         'mapped_count': sum(counts.values()),
         'skipped_episodes': skipped,
         'per_type': dict(sorted(counts.items())),
-        'okf_root': str(okf_root),
+        'okf_root': (
+            str(okf_root.resolve().relative_to(ROOT))
+            if okf_root.resolve().is_relative_to(ROOT)
+            else str(okf_root)
+        ),
         'files': written,
         'generated_at': _now(),
     }

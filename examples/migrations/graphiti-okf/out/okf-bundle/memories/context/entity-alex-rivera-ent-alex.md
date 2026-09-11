@@ -5,7 +5,7 @@ description: "Staff engineer at Cascadia Labs living in Seattle; primary travele
 tags: ["group:mira-travel-agent", "entity", "source:graphiti", "label:Person"]
 generated:
   by: "process:graphiti"
-  at: "2026-09-10T13:59:42Z"
+  at: "2026-09-11T01:08:50Z"
 resource: "graphiti:entity:ent-alex"
 x_memanto:
   confidence: 0.8

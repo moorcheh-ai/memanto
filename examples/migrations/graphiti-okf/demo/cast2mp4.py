@@ -117,10 +117,21 @@ def main() -> int:
     ap.add_argument("cast", type=Path)
     ap.add_argument("--mp4", type=Path, default=None)
     ap.add_argument("--gif", type=Path, default=None)
-    ap.add_argument("--fps", type=float, default=12.0)
+    def positive_float(value: str) -> float:
+        v = float(value)
+        if v <= 0:
+            raise argparse.ArgumentTypeError(f"must be > 0, got {value!r}")
+        return v
+
+    ap.add_argument("--fps", type=positive_float, default=12.0)
     ap.add_argument("--font-size", type=int, default=16)
     ap.add_argument("--pad", type=int, default=12)
-    ap.add_argument("--speed", type=float, default=1.0, help="Playback speed multiplier")
+    ap.add_argument(
+        "--speed",
+        type=positive_float,
+        default=1.0,
+        help="Playback speed multiplier (must be > 0)",
+    )
     ap.add_argument("--max-seconds", type=float, default=180.0)
     args = ap.parse_args()
 
