@@ -44,6 +44,18 @@ _session_service = None
 logger = logging.getLogger(__name__)
 
 
+def _one_line(value: Any, default: str = "") -> str:
+    """Collapse a value into a single display line.
+
+    Summary entries are Markdown, so anything interpolated into a heading must
+    not carry line breaks. ``str.split()`` splits on every Unicode whitespace
+    code point -- including U+2028, U+2029, U+000B, U+000C and U+0085 -- so
+    this does not depend on the upstream title validator having covered all of
+    them. This mirrors ``memory_export_service._one_line``.
+    """
+    return " ".join(str(value or "").split()) or default
+
+
 def get_session_service() -> "SessionService":
     """
     Shared SessionService singleton.
@@ -722,8 +734,10 @@ class SessionService:
         self._harden_session_storage()
 
         # Format the memory into Markdown
-        memory_type = (getattr(memory_record, "type", None) or "unclassified").upper()
-        title = getattr(memory_record, "title", "Untitled")
+        memory_type = _one_line(
+            getattr(memory_record, "type", None), "unclassified"
+        ).upper()
+        title = _one_line(getattr(memory_record, "title", None), "Untitled")
         content = getattr(memory_record, "content", "")
         confidence = getattr(memory_record, "confidence", 1.0)
         # Fall back to the record's own id so the ID is logged on every path
