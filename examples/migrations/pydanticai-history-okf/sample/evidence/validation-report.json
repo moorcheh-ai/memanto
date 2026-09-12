@@ -1,0 +1,178 @@
+{
+  "memanto_mapped": 20,
+  "memanto_skipped": 0,
+  "okf_nodes": 20,
+  "privacy": {
+    "categories": {},
+    "finding_count": 0,
+    "pass": true
+  },
+  "recall": {
+    "method": "deterministic lexical top-4 retrieval with exact golden substrings",
+    "okf_passed": 6,
+    "okf_score": 1.0,
+    "parity": true,
+    "questions": 6,
+    "results": [
+      {
+        "expected_substrings": [
+          "pydantic-ai-slim",
+          "2.27.1"
+        ],
+        "id": "source-version",
+        "okf_pass": true,
+        "okf_top_indexes": [
+          6,
+          7,
+          10,
+          11
+        ],
+        "question": "What PydanticAI source package and version did the project record?",
+        "source_pass": true,
+        "source_top_indexes": [
+          1,
+          3,
+          0,
+          2
+        ]
+      },
+      {
+        "expected_substrings": [
+          "examples/migrations/pydanticai-history-okf",
+          "not pydanticai-to-okf"
+        ],
+        "id": "corrected-folder",
+        "okf_pass": true,
+        "okf_top_indexes": [
+          14,
+          4,
+          7,
+          10
+        ],
+        "question": "Which merge-ready output folder replaced the earlier folder name?",
+        "source_pass": true,
+        "source_top_indexes": [
+          8,
+          9,
+          13,
+          14
+        ]
+      },
+      {
+        "expected_substrings": [
+          "August 31, 2026",
+          "11:59 PM UTC",
+          "USD 200"
+        ],
+        "id": "deadline-and-prize",
+        "okf_pass": true,
+        "okf_top_indexes": [
+          2,
+          3,
+          19,
+          9
+        ],
+        "question": "What are the bounty deadline and prize?",
+        "source_pass": true,
+        "source_top_indexes": [
+          4,
+          6,
+          19,
+          7
+        ]
+      },
+      {
+        "expected_substrings": [
+          "real framework run",
+          "mapping table",
+          "CLI dry run",
+          "recall parity",
+          "sample OKF bundle"
+        ],
+        "id": "required-evidence",
+        "okf_pass": true,
+        "okf_top_indexes": [
+          15,
+          5,
+          13,
+          14
+        ],
+        "question": "What did I commit to include for the migration submission?",
+        "source_pass": true,
+        "source_top_indexes": [
+          10,
+          11,
+          0,
+          1
+        ]
+      },
+      {
+        "expected_substrings": [
+          "Do not claim",
+          "MOORCHEH_API_KEY",
+          "actually used"
+        ],
+        "id": "live-import-honesty",
+        "okf_pass": true,
+        "okf_top_indexes": [
+          8,
+          18,
+          19
+        ],
+        "question": "When is it acceptable to claim a live Moorcheh import?",
+        "source_pass": true,
+        "source_top_indexes": [
+          16,
+          17,
+          19
+        ]
+      },
+      {
+        "expected_substrings": [
+          "fail closed on secrets"
+        ],
+        "id": "privacy-rule",
+        "okf_pass": true,
+        "okf_top_indexes": [
+          0,
+          10,
+          17,
+          19
+        ],
+        "question": "What privacy behavior must generated bundles use?",
+        "source_pass": true,
+        "source_top_indexes": [
+          0,
+          1,
+          15,
+          19
+        ]
+      }
+    ],
+    "source_passed": 6,
+    "source_score": 1.0
+  },
+  "reconstruction": {
+    "canonical_sha256": "65c8915c03b03894421d79654a96ca863f583fcf77129dbf227541599a733bf5",
+    "lossless": true,
+    "matches_manifest": true,
+    "messages": 20
+  },
+  "savings": {
+    "honesty_note": "These are measured UTF-8 context bytes, not invented token, cost, or network-latency claims. Live Moorcheh metrics require a real key.",
+    "measurement_basis": "Selected bytes summed across all recall queries versus sending the complete context separately for every query.",
+    "okf_full_context_bytes_across_queries": 103260,
+    "okf_full_context_bytes_per_query": 17210,
+    "okf_retrieval_reduction_percent": 80.16,
+    "okf_selected_context_bytes_across_queries": 20486,
+    "recall_queries": 6,
+    "source_full_context_bytes_across_queries": 34698,
+    "source_full_context_bytes_per_query": 5783,
+    "source_selected_context_bytes_across_queries": 7131
+  },
+  "source_messages": 20,
+  "type_breakdown": {
+    "artifact": 4,
+    "auto": 16
+  }
+}

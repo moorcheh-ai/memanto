@@ -1,0 +1,43 @@
+$ $REPO/.venv/bin/python $REPO/examples/migrations/pydanticai-history-okf/generate_source.py --output $REPO/examples/migrations/pydanticai-history-okf/sample/source/history.json --report $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/source-run.json
+Framework : pydantic-ai-slim 2.27.1
+Turns     : 8
+Messages  : 20
+Source    : $REPO/examples/migrations/pydanticai-history-okf/sample/source/history.json
+$ $REPO/.venv/bin/python $REPO/examples/migrations/pydanticai-history-okf/adapter.py $REPO/examples/migrations/pydanticai-history-okf/sample/source/history.json --output $REPO/examples/migrations/pydanticai-history-okf/sample/okf --force
+Source messages : 20
+Mapped memories : 20
+Skipped messages: 0
+Type breakdown  : {'artifact': 4, 'auto': 16}
+Lossless        : True
+OKF bundle      : $REPO/examples/migrations/pydanticai-history-okf/sample/okf
+$ $REPO/.venv/bin/python -m memanto migrate okf $REPO/examples/migrations/pydanticai-history-okf/sample/okf --dry-run
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from $REPO/examples/migrations/pydanticai-history-okf/sample/okf
+  … Mapping OKF nodes onto Memanto schema...
+
+╭────────────────────────────── Dry run complete ──────────────────────────────╮
+│ OKF nodes: 20                                                                │
+│ Mapped memories: 20  (skipped 0)                                             │
+│ Type breakdown: artifact: 4, auto: 16                                        │
+│                                                                              │
+│ Dry run — no writes performed.                                               │
+│                                                                              │
+│ Run dir: $HOME/.memanto/migrate/okf/20260811_151405               │
+│ Mapped preview:                                                              │
+│ $HOME/.memanto/migrate/okf/20260811_151405/mapped_preview.json    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+$ $REPO/.venv/bin/python $REPO/examples/migrations/pydanticai-history-okf/reconstruct.py $REPO/examples/migrations/pydanticai-history-okf/sample/okf --output $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/reconstructed-history.json --report $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/reconstruction-report.json
+{
+  "canonical_sha256": "65c8915c03b03894421d79654a96ca863f583fcf77129dbf227541599a733bf5",
+  "lossless": true,
+  "matches_manifest": true,
+  "messages": 20
+}
+$ $REPO/.venv/bin/python $REPO/examples/migrations/pydanticai-history-okf/validate.py --source $REPO/examples/migrations/pydanticai-history-okf/sample/source/history.json --bundle $REPO/examples/migrations/pydanticai-history-okf/sample/okf --questions $REPO/examples/migrations/pydanticai-history-okf/sample/golden_qa.json --report $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/validation-report.json
+Messages        : 20
+Memanto mapped  : 20
+Recall parity   : 6/6 -> 6/6
+Privacy findings: 0
+Report          : $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/validation-report.json
