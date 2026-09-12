@@ -87,3 +87,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @farouklaaroussi07
 - @Fewknowme
 - @alexsolonsky
+- @respawn-pdeu
