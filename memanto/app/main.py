@@ -11,7 +11,7 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
-from memanto.app.config import settings
+from memanto.app.config import check_secure_deployment, settings
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
@@ -69,13 +69,17 @@ async def lifespan(_: FastAPI):
     yield
 
 
-# Create FastAPI app
+# Create FastAPI app. The interactive docs and the OpenAPI schema are disabled
+# by default (MEMANTO_ENABLE_DOCS=true re-enables them): the server binds
+# 0.0.0.0 by default, so an unauthenticated schema would enumerate every route
+# to any network peer.
 app = FastAPI(
     title="Memanto - Memory that AI Agents Love!",
     description="A memory layer service for agentic AI systems using Moorcheh SDK",
     version=__version__,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.MEMANTO_ENABLE_DOCS else None,
+    redoc_url="/redoc" if settings.MEMANTO_ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if settings.MEMANTO_ENABLE_DOCS else None,
     lifespan=lifespan,
 )
 
@@ -166,4 +170,8 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
 
+    try:
+        check_secure_deployment(host="0.0.0.0")
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     uvicorn.run(app, host="0.0.0.0", port=8000)

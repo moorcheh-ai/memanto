@@ -188,6 +188,16 @@ class Settings(BaseSettings):
     # UI Mode
     MEMANTO_UI_MODE: bool = False
 
+    # Security: expose the interactive API docs (/docs, /redoc, /openapi.json).
+    # Off by default because the server binds 0.0.0.0 by default and the schema
+    # would otherwise be enumerable by any network peer. Enable explicitly when
+    # the API is served over a trusted network or HTTPS.
+    MEMANTO_ENABLE_DOCS: bool = False
+    # Security: refuse to start when MEMANTO would be served over plain HTTP on
+    # a non-loopback interface (the default 0.0.0.0 bind) so the session cookie
+    # and API traffic cannot be sniffed on the network.
+    MEMANTO_REQUIRE_SECURE: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )
@@ -195,6 +205,42 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
+
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def is_loopback_host(host: str | None) -> bool:
+    """True when a uvicorn ``host`` binds only to loopback interfaces."""
+    return (host or "").strip().lower().strip("[]") in LOOPBACK_HOSTS
+
+
+def plain_http_exposure_message(host: str) -> str | None:
+    """Describe the exposure when ``host`` serves plain HTTP on the network.
+
+    Returns a human-readable warning when a non-loopback bind would expose
+    MEMANTO over clear-text HTTP (the app ships with no built-in TLS and
+    defaults to binding ``0.0.0.0``), else ``None``. ``DEBUG`` is the intended
+    escape hatch for local development.
+    """
+    if is_loopback_host(host) or settings.DEBUG:
+        return None
+    return (
+        f"Memanto is serving over plain HTTP on {host!r} (no built-in TLS). Any "
+        "network peer that can reach this port can sniff the session cookie "
+        "(full memory read/write for an active agent) and enumerate every API "
+        "route. Bind to a loopback address (127.0.0.1) or terminate TLS in "
+        "front of Memanto."
+    )
+
+
+def check_secure_deployment(host: str) -> None:
+    """Warn (or hard-fail) when Memanto would serve plain HTTP on the network."""
+    message = plain_http_exposure_message(host)
+    if message is None:
+        return
+    if settings.MEMANTO_REQUIRE_SECURE:
+        raise RuntimeError(f"MEMANTO_REQUIRE_SECURE is set. {message}")
+    logger.warning("%s", message)
 
 
 def get_data_dir() -> Path:
