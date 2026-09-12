@@ -82,7 +82,7 @@ memanto recall "deployment policy" --as-of 2026-08-05
 memanto recall "deployment policy" --changed-since v2.1
 ```
 
-macOS, Linux, Windows. `memanto ui` opens a local dashboard over the whole estate — browse it, search it, audit it.
+macOS and Linux have full support. On Windows, the core CLI and dashboard are available, but secure OKF import is not currently supported. `memanto ui` opens a local dashboard over the whole estate — browse it, search it, audit it.
 
 ---
 
@@ -92,7 +92,7 @@ This is the part that matters in two years, and it's the part every platform-nat
 
 **Your estate is a file.** `memanto memory export --okf` gives you the [Open Knowledge Format](https://docs.memanto.ai/integrations/okf) — plain Markdown, readable, diffable, committable, greppable. Not a proprietary dump you can technically request. The actual working format.
 
-**It moves.** `memanto migrate` imports from Mem0, Letta, Supermemory, or any OKF bundle. The same command works in reverse. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
+**It moves.** On macOS and Linux, `memanto migrate` imports from Mem0, Letta, Supermemory, or any OKF bundle. Windows can export OKF, but secure OKF import is not currently supported there. The same command works in reverse on supported platforms. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
 
 **It runs on your machine.** Local Docker + Ollama, no account, no API key, nothing leaves your infrastructure. Or free cloud, or your own hosting. `memanto config backend` switches between them in one command, and the estate comes with you.
 
