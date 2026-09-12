@@ -27,6 +27,14 @@ from memanto.app.utils.atomic_write import okf_bundle_lock
 # contains its own ``---`` rules.
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 
+# A stacked file joins documents with the delimiter alone on its own line,
+# followed by the next document's frontmatter. Matching that whole frame rather
+# than the bare substring keeps a memory that merely mentions the sentinel from
+# splitting into a headless fragment on every import.
+_ENTRY_SPLIT_RE = re.compile(
+    rf"^[ \t]*{re.escape(ENTRY_DELIMITER)}[ \t]*\n(?=---\n)", re.MULTILINE
+)
+
 _SKIP_FILENAMES = {"index.md", "log.md"}
 # OKF baseline fields + Memanto's namespaced extension block. Anything else in
 # the frontmatter is preserved as "extra" so import stays lossless.
@@ -128,7 +136,7 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
     memories: list[dict[str, Any]] = []
     for file_path in files:
         text = file_path.read_text(encoding="utf-8")
-        for chunk in text.split(ENTRY_DELIMITER):
+        for chunk in _ENTRY_SPLIT_RE.split(text):
             chunk = chunk.strip()
             if not chunk:
                 continue

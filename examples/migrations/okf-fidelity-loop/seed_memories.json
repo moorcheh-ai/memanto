@@ -1,0 +1,135 @@
+[
+  {
+    "content": "Memanto's migrate CLI ships four mappers: mem0, letta, supermemory and okf. Anything else has to reach the CLI as a provider-shaped export JSON or as an OKF bundle.",
+    "type": "fact",
+    "title": "Four shipped migration mappers",
+    "tags": ["migrate", "okf"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "Langfuse is deliberately absent from the MAPPERS registry: its rows are observability events, not memories, so one incident collapses into a single grouped payload instead of mapping row-for-row.",
+    "type": "decision",
+    "title": "Langfuse stays out of MAPPERS",
+    "tags": ["migrate", "langfuse"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "An OKF bundle nests importable memories under memories/. The sibling daily-summaries/, sessions/ and metrics/ folders are export-only context and are skipped on import, so re-importing a bundle never re-ingests its own logs.",
+    "type": "fact",
+    "title": "Only memories/ is importable",
+    "tags": ["okf", "import"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/okf_loader.py"
+  },
+  {
+    "content": "Memanto-only fields (id, confidence, provenance, source, status and the temporal metadata) ride in a namespaced x_memanto frontmatter block. OKF consumers ignore unknown keys, so Memanto -> OKF -> Memanto keeps them.",
+    "type": "fact",
+    "title": "x_memanto carries the round trip",
+    "tags": ["okf", "roundtrip"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Import an OKF bundle with `memanto migrate okf <path> --agent <id>`. The flag is --agent (short -a), not --agent-id; four of the open bounty PRs document a flag that does not exist.",
+    "type": "instruction",
+    "title": "The import flag is --agent",
+    "tags": ["cli", "migrate"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "write_okf_bundle refuses any output_dir outside the agent data directory. To write a bundle somewhere else, construct OkfExportService with a custom exports_dir; its parent bounds what the service will accept.",
+    "type": "error",
+    "title": "Bundle output is sandboxed to ~/.memanto",
+    "tags": ["okf", "export"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/validation.py"
+  },
+  {
+    "content": "OKF layout defaults to split=auto: a type with 50 or fewer memories gets one file per memory, a larger type collapses into a single stacked file so high-volume agents do not produce thousands of files.",
+    "type": "preference",
+    "title": "auto split at 50 memories",
+    "tags": ["okf", "layout"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Stacked OKF files hold several documents separated by the <!-- okf-entry --> sentinel, so a body containing its own --- rule cannot be mistaken for a document boundary.",
+    "type": "artifact",
+    "title": "okf-entry separates stacked documents",
+    "tags": ["okf", "format"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Repeated OKF round trips used to stack one [Supporting data] footer per cycle, because _attach_footer appended unconditionally to content that already carried the previous pass's footer. Stripping it first makes the loop converge.",
+    "type": "learning",
+    "title": "Round trips must be idempotent",
+    "tags": ["okf", "roundtrip", "fidelity"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "map_okf leaves type=None when OKF's free-form type has no Memanto slot, deferring to server-side auto-classification, and records the original OKF type in the supporting-data footer instead.",
+    "type": "observation",
+    "title": "Unmapped OKF types defer to auto-classification",
+    "tags": ["okf", "types"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "CI runs ruff check and ruff format over the whole repository; only legacy_archive is excluded. mypy skips examples/, but ruff does not, so an example with an unused import fails the build.",
+    "type": "context",
+    "title": "ruff covers examples/, mypy does not",
+    "tags": ["ci", "lint"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": ".github/workflows/ci.yml"
+  },
+  {
+    "content": "load_okf_bundle parses a bundle into entries, map_okf turns those entries into batch-remember rows, and run_migration imports them in batches of 100. A new adapter only has to produce the bundle.",
+    "type": "relationship",
+    "title": "How the OKF import path fits together",
+    "tags": ["migrate", "architecture"],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/runner.py"
+  },
+  {
+    "content": "Prove the freedom loop is idempotent: carrying an agent's memory out to OKF and back must be a no-op, however many times you do it.",
+    "type": "goal",
+    "title": "Idempotent portability",
+    "tags": ["okf", "fidelity"],
+    "source": "repo-review",
+    "provenance": "explicit_statement"
+  },
+  {
+    "content": "Keep this example offline and key-free after the fixture exists, so anyone can reproduce the fidelity result without a Moorcheh account.",
+    "type": "commitment",
+    "title": "Harness stays key-free",
+    "tags": ["examples", "reproducibility"],
+    "source": "repo-review",
+    "provenance": "explicit_statement"
+  },
+  {
+    "content": "Reviewed all 65 open PRs on bounty #1609 before adding this example. Every one of them tested a single export/import hop; none tested a second one, which is where the footer drift appears.",
+    "type": "event",
+    "title": "Reviewed 65 bounty PRs",
+    "tags": ["bounty", "review"],
+    "source": "repo-review",
+    "provenance": "observed",
+    "source_ref": "https://github.com/moorcheh-ai/memanto/issues/1609"
+  }
+]

@@ -1,0 +1,321 @@
+[
+  {
+    "content": "test_backend covers: tests for the backend abstraction (cloud vs on-prem dispatcher).",
+    "type": "observation",
+    "title": "test backend",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_backend.py"
+  },
+  {
+    "content": "test_cli covers: mEMANTO CLI Integration Tests",
+    "type": "observation",
+    "title": "test cli",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_cli.py"
+  },
+  {
+    "content": "test_cli_stream_encoding covers: regression tests for CLI stream encoding.",
+    "type": "observation",
+    "title": "test cli stream encoding",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_cli_stream_encoding.py"
+  },
+  {
+    "content": "test_cors_fix covers: tests for CORS misconfiguration fix (#770).",
+    "type": "observation",
+    "title": "test cors fix",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_cors_fix.py"
+  },
+  {
+    "content": "test_daily_analysis_query_length covers: regression coverage for daily-summary embedding context overflow.",
+    "type": "observation",
+    "title": "test daily analysis query length",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_daily_analysis_query_length.py"
+  },
+  {
+    "content": "test_e2e covers: end-to-end tests \u2014 real Moorcheh API, zero mocks.",
+    "type": "observation",
+    "title": "test e2e",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_e2e.py"
+  },
+  {
+    "content": "test_export_resilience covers: regression coverage: ``export_memory_md`` must not silently write an empty export when every ``recall`` call fails (e.g. the on-prem backend is",
+    "type": "observation",
+    "title": "test export resilience",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_export_resilience.py"
+  },
+  {
+    "content": "test_langfuse_config covers: tests for per-project Langfuse capture settings and score rules.",
+    "type": "observation",
+    "title": "test langfuse config",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_langfuse_config.py"
+  },
+  {
+    "content": "test_langfuse_discover covers: tests for Langfuse project discovery.",
+    "type": "observation",
+    "title": "test langfuse discover",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_langfuse_discover.py"
+  },
+  {
+    "content": "test_langfuse_export covers: tests for the Langfuse exporter: credentials, hosts, and cursor pagination.",
+    "type": "observation",
+    "title": "test langfuse export",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_langfuse_export.py"
+  },
+  {
+    "content": "test_langfuse_rules covers: tests for Langfuse capture rules: classification, signatures, payloads.",
+    "type": "observation",
+    "title": "test langfuse rules",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_langfuse_rules.py"
+  },
+  {
+    "content": "test_langfuse_state covers: tests for the Langfuse sync ledger \u2014 the thing that makes re-syncing safe.",
+    "type": "observation",
+    "title": "test langfuse state",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_langfuse_state.py"
+  },
+  {
+    "content": "test_langfuse_sync covers: tests for the shared Langfuse sync path (CLI + UI tile).",
+    "type": "observation",
+    "title": "test langfuse sync",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_langfuse_sync.py"
+  },
+  {
+    "content": "test_memory_format covers: test memory format round-trip integrity: content/tag parsing in _format_memory_item.",
+    "type": "observation",
+    "title": "test memory format",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_memory_format.py"
+  },
+  {
+    "content": "test_memory_policy covers: tests for expiry policies: duration parsing, evaluation, sweeps, purge.",
+    "type": "observation",
+    "title": "test memory policy",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_memory_policy.py"
+  },
+  {
+    "content": "test_memory_read_multi_type covers: regression coverage for union semantics in multi-type recall.",
+    "type": "observation",
+    "title": "test memory read multi type",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_memory_read_multi_type.py"
+  },
+  {
+    "content": "test_memory_read_temporal_recall covers: regression tests for temporal / post-retrieval recall.",
+    "type": "observation",
+    "title": "test memory read temporal recall",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_memory_read_temporal_recall.py"
+  },
+  {
+    "content": "test_migrate covers: focused regression tests for migration tools and mappers.",
+    "type": "observation",
+    "title": "test migrate",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_migrate.py"
+  },
+  {
+    "content": "test_moorcheh_user_config_compat covers: regression tests for the moorcheh-client user_config import path.",
+    "type": "observation",
+    "title": "test moorcheh user config compat",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_moorcheh_user_config_compat.py"
+  },
+  {
+    "content": "test_okf covers: oKF (Open Knowledge Format) export/import coverage.",
+    "type": "observation",
+    "title": "test okf",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_okf.py"
+  },
+  {
+    "content": "test_output_path_traversal covers: tests for output_path traversal fix (#770).",
+    "type": "observation",
+    "title": "test output path traversal",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_output_path_traversal.py"
+  },
+  {
+    "content": "test_pagination_guard covers: regression tests for memory document pagination.",
+    "type": "observation",
+    "title": "test pagination guard",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_pagination_guard.py"
+  },
+  {
+    "content": "test_postcommit_summary_resilience covers: committed memory operations must not fail on auxiliary summary logging.",
+    "type": "observation",
+    "title": "test postcommit summary resilience",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_postcommit_summary_resilience.py"
+  },
+  {
+    "content": "test_remaining_ui_auth covers: tests for the second round of localhost-guarded UI endpoints.",
+    "type": "observation",
+    "title": "test remaining ui auth",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_remaining_ui_auth.py"
+  },
+  {
+    "content": "test_review_followups covers: regression tests for issues raised in review of the merged PR batch.",
+    "type": "observation",
+    "title": "test review followups",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_review_followups.py"
+  },
+  {
+    "content": "test_session_summary_concurrency covers: concurrency regressions for local session-summary persistence.",
+    "type": "observation",
+    "title": "test session summary concurrency",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_session_summary_concurrency.py"
+  },
+  {
+    "content": "test_title_newline_roundtrip covers: regression tests for multi-line memory titles.",
+    "type": "observation",
+    "title": "test title newline roundtrip",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_title_newline_roundtrip.py"
+  },
+  {
+    "content": "test_ui_auth covers: tests for unauthenticated UI endpoint vulnerability fix.",
+    "type": "observation",
+    "title": "test ui auth",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_ui_auth.py"
+  },
+  {
+    "content": "test_unit covers: mEMANTO Core Unit Tests (No Server Required)",
+    "type": "observation",
+    "title": "test unit",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_unit.py"
+  }
+]
