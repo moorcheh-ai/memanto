@@ -1,0 +1,6 @@
+{
+  "bundle_format": "okf",
+  "generated_by": "memanto.examples.langgraph_checkpoint_to_okf",
+  "schema_version": 1,
+  "source": "langgraph-checkpoint-sqlite"
+}

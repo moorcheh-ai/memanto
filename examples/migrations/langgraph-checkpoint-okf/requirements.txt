@@ -1,0 +1,4 @@
+langgraph==1.2.10
+langgraph-checkpoint-sqlite==3.1.0
+langchain-core==1.5.2
+PyYAML==6.0.3
