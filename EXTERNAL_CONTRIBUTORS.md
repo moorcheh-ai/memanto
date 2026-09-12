@@ -85,3 +85,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @tututu-qwq
 - @taralokha
 - @farouklaaroussi07
+- @Fewknowme
