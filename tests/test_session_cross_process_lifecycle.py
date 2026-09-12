@@ -32,6 +32,7 @@ def test_logout_serializes_with_renewal_across_service_instances(tmp_path, monke
     logout_body_entered = threading.Event()
 
     def controlled_renew(agent_id, pattern=None):
+        """Pause renewal so a second worker can attempt concurrent logout."""
         renewal_entered.set()
         assert release_renewal.wait(timeout=3)
         return original_renew(agent_id=agent_id, pattern=pattern)
@@ -39,10 +40,12 @@ def test_logout_serializes_with_renewal_across_service_instances(tmp_path, monke
     original_end_body = logout_worker._end_session
 
     def observed_end_body(agent_id):
+        """Record when logout enters its mutation body."""
         logout_body_entered.set()
         return original_end_body(agent_id)
 
     def run_logout():
+        """Signal logout scheduling before invoking the second worker."""
         logout_call_started.set()
         return logout_worker.end_session("test-agent")
 
