@@ -144,6 +144,7 @@ All config is via environment variables (load order: process env →
 | `MEMANTO_MCP_TRANSPORT` | no | `stdio` | `stdio`, `sse`, or `streamable-http`. |
 | `MEMANTO_MCP_HOST` | no | `127.0.0.1` | Bind host for sse/http transports. |
 | `MEMANTO_MCP_PORT` | no | `8765` | Bind port for sse/http transports. |
+| `MEMANTO_MCP_AUTH_TOKEN` | required for non-loopback HTTP/SSE | _none_ | Bearer token checked on every inbound HTTP request. Keep it separate from `MOORCHEH_API_KEY`. |
 | `MEMANTO_MCP_LOG_LEVEL` | no | `INFO` | Log level (logs are always sent to stderr). |
 
 CLI flags (`memanto-mcp --transport sse --port 9000`) override env vars.
@@ -155,6 +156,7 @@ transport:
 
 ```bash
 # Streamable HTTP (recommended modern transport)
+export MEMANTO_MCP_AUTH_TOKEN='replace-with-a-long-random-token'
 memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
 
 # Server-Sent Events (older, still widely supported)
@@ -162,10 +164,12 @@ memanto-mcp --transport sse --host 0.0.0.0 --port 8765
 ```
 
 Then point your client at `http://your-host:8765/mcp` (or whatever path the
-chosen transport advertises). Pair with a reverse proxy + auth for
-production deployments — the server itself authenticates upstream to
-Moorcheh using your API key but does **not** authenticate inbound MCP
-clients.
+chosen transport advertises) and send `Authorization: Bearer
+<MEMANTO_MCP_AUTH_TOKEN>`. Non-loopback HTTP/SSE binds fail closed at startup
+unless `MEMANTO_MCP_AUTH_TOKEN` is set; the token is checked before any MCP
+route or tool handler runs. The server authenticates upstream to Moorcheh
+using `MOORCHEH_API_KEY`, which is a separate credential. Use TLS and a
+reverse proxy for production deployments.
 
 ## How it works
 

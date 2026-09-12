@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 from mcp.types import Implementation
@@ -17,8 +18,8 @@ from memanto.app.constants import (
 )
 from memanto.app.core import SOURCE_MAX_LENGTH, SOURCE_PATTERN
 
-from memanto_mcp.config import MCPServerSettings
-from memanto_mcp.server import build_server
+from memanto_mcp.config import MCPServerSettings, TransportType
+from memanto_mcp.server import _build_network_app, build_server
 
 MAIN_TOOL_NAMES = {
     "remember",
@@ -166,3 +167,34 @@ async def test_tool_descriptions_non_empty(fake_api_key: str) -> None:
         assert tool.description and tool.description.strip(), (
             f"Tool {tool.name!r} has an empty description"
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("transport", "path"),
+    [
+        (TransportType.SSE, "/sse"),
+        (TransportType.STREAMABLE_HTTP, "/mcp"),
+    ],
+)
+async def test_network_transport_app_is_guarded_before_mcp_routes(
+    fake_api_key: str,
+    monkeypatch: pytest.MonkeyPatch,
+    transport: TransportType,
+    path: str,
+) -> None:
+    """The auth boundary must wrap the real FastMCP transport app."""
+    monkeypatch.setenv("MEMANTO_MCP_TRANSPORT", transport.value)
+    monkeypatch.setenv("MEMANTO_MCP_AUTH_TOKEN", "network-test-token")
+
+    settings = MCPServerSettings()  # type: ignore[call-arg]
+    mcp = build_server(settings)
+    app = _build_network_app(mcp, settings)
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://127.0.0.1",
+    ) as client:
+        response = await client.get(path)
+
+    assert response.status_code == 401
