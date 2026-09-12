@@ -119,6 +119,23 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
+def _resolve_client_key(api_key: str | None) -> str | None:
+    """Resolve the effective Moorcheh key for a memory-operation client.
+
+    MEMANTO is single-tenant per server instance: sessions are created under
+    the configured server key, so memory operations must stay bound to it. A
+    caller-presented ``X-Api-Key`` is honored only when it matches the
+    configured server key; a mismatched key would otherwise silently redirect
+    memory operations to a *different* tenant's namespace (cross-tenant data
+    confusion — the server never verifies the presented key owns the agent's
+    namespace). On-prem has no key, so the presented value is passed through
+    and ignored by the on-prem client.
+    """
+    if api_key and settings.MOORCHEH_API_KEY and api_key != settings.MOORCHEH_API_KEY:
+        return None
+    return api_key
+
+
 def get_moorcheh_client(
     api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
 ) -> Any:
@@ -129,11 +146,11 @@ def get_moorcheh_client(
     With ``Header(...)`` as the default value, those calls passed FastAPI's
     ``Header`` metadata object to the cloud SDK as the API key.
     """
-    return moorcheh_client.get_client(api_key=api_key)
+    return moorcheh_client.get_client(api_key=_resolve_client_key(api_key))
 
 
 def get_async_moorcheh_client(
     api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
 ) -> Any:
     """Async equivalent of :func:`get_moorcheh_client`."""
-    return moorcheh_client.get_async_client(api_key=api_key)
+    return moorcheh_client.get_async_client(api_key=_resolve_client_key(api_key))
