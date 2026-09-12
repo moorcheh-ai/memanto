@@ -192,8 +192,9 @@ class Settings(BaseSettings):
 
     # Security: expose the interactive API docs (/docs, /redoc, /openapi.json).
     # Off by default because the server binds 0.0.0.0 by default and the schema
-    # would otherwise be enumerable by any network peer. Enable explicitly when
-    # the API is served over a trusted network or HTTPS.
+    # would otherwise be enumerable by any network peer. Enable explicitly only
+    # on a trusted network or behind an access-control layer - HTTPS protects
+    # transport, not access to the schema.
     MEMANTO_ENABLE_DOCS: bool = False
     # Security: refuse to start when MEMANTO would be served over plain HTTP on
     # a non-loopback interface (the default 0.0.0.0 bind) so the session cookie

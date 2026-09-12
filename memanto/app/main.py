@@ -73,7 +73,8 @@ async def lifespan(_: FastAPI):
 # Create FastAPI app. The interactive docs and the OpenAPI schema are disabled
 # by default (MEMANTO_ENABLE_DOCS=true re-enables them): the server binds
 # 0.0.0.0 by default, so an unauthenticated schema would enumerate every route
-# to any network peer.
+# to any network peer. Enable them only on a trusted network or behind an
+# access-control layer - HTTPS protects transport, not access to the schema.
 app = FastAPI(
     title="Memanto - Memory that AI Agents Love!",
     description="A memory layer service for agentic AI systems using Moorcheh SDK",
