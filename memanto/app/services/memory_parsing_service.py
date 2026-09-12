@@ -354,11 +354,72 @@ class MemoryParsingService:
     }
     FUZZY_CHOICES: ClassVar[list[str]] = list(FUZZY_KEYWORD_TO_TYPE)
 
+    INJECTION_PATTERNS: ClassVar[list[re.Pattern[str]]] = [
+        re.compile(p, re.IGNORECASE)
+        for p in [
+            r"\b(?:ignore|disregard|forget|bypass)\s+(?:(?:all|the)\s+)?(?:previous|prior|above)\s+(?:instructions|rules|directives|prompts)\b",
+            r"\b(?:system\s*prompt|system\s*instructions)\s*:",
+            r"\b(?:you\s+are\s+now\s+in|switch\s+to)\s+(?:developer\s+mode|dan\s+mode|unrestricted\s+mode)\b",
+            r"(?:<\|im_start\|>|<\|im_end\|>|\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>)",
+            r"\b(?:reveal|leak|print|output)\s+(?:all\s+)?(?:secret|api\s*key|environment|token)\b",
+        ]
+    ]
+
+    def sanitize_and_guard(self, memory: MemoryRecord) -> MemoryRecord:
+        """Scan retrieval-visible memory fields (content, title, tags) for indirect prompt-injection patterns.
+
+        When an injection risk is detected across any retrieval-visible field
+        (content, title, or tags), the memory is defensively annotated with
+        ``security-warning`` and ``untrusted-payload`` tags so downstream
+        consumers can apply additional scrutiny. The confidence score is
+        capped at ``0.3`` to de-prioritise adversarial content during
+        recall, while preserving an explicit ``0.0`` value set by the
+        caller (which signals "known-untrusted").
+
+        Args:
+            memory: The memory record to inspect.
+
+        Returns:
+            The same ``MemoryRecord`` instance, potentially mutated with
+            security tags and a reduced confidence score.
+        """
+        fields_to_scan: list[str] = []
+        if memory.content:
+            fields_to_scan.append(memory.content)
+        if memory.title:
+            fields_to_scan.append(memory.title)
+        if memory.tags:
+            fields_to_scan.extend(str(t) for t in memory.tags if t)
+
+        if not fields_to_scan:
+            return memory
+
+        risks_found = any(
+            p.search(text)
+            for text in fields_to_scan
+            for p in self.INJECTION_PATTERNS
+        )
+
+        if risks_found:
+            if memory.tags is None:
+                memory.tags = []
+            if "security-warning" not in memory.tags:
+                memory.tags.append("security-warning")
+            if "untrusted-payload" not in memory.tags:
+                memory.tags.append("untrusted-payload")
+            if memory.confidence is not None:
+                memory.confidence = min(memory.confidence, 0.3)
+            else:
+                memory.confidence = 0.3
+
+        return memory
+
     def parse_memory(self, memory: MemoryRecord) -> MemoryRecord:
         """
-        Auto-detect and assign a memory type.
+        Auto-detect and assign a memory type, while applying security defenses.
 
         Rules:
+        - Apply prompt injection sanitization and untrusted payload tagging.
         - Respect an explicit type if one is already set.
         - Skip detection entirely when auto-parsing is disabled.
         - Retry with a conservative fuzzy keyword match when the deterministic
@@ -366,6 +427,8 @@ class MemoryParsingService:
         - Fall back to ``"fact"`` when classification is inconclusive, so a
           memory is never stored without a type.
         """
+        # Guard against prompt injection trojans
+        memory = self.sanitize_and_guard(memory)
 
         # 1. Respect existing type
         if memory.type:
