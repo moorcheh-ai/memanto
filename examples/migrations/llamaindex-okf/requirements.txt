@@ -1,0 +1,3 @@
+llama-index-core==0.14.23
+PyYAML>=6.0
+
