@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import jwt
+from filelock import FileLock
 from pydantic import ValidationError
 
 from memanto.app.config import get_data_dir, settings
@@ -74,11 +75,11 @@ class SessionService:
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self._secret_key: str | None = secret_key or settings.MEMANTO_SECRET_KEY or None
         self._storage_hardened = False
-        # Serialize lifecycle operations for the same agent so renewal cannot
-        # publish a fresh bearer token after logout has completed. Keep the
-        # process-wide active marker on its own narrower lock so unrelated
-        # agents can create, renew, and terminate sessions concurrently.
-        self._agent_locks: dict[str, threading.RLock] = {}
+        # Serialize lifecycle operations for the same agent across both threads
+        # and worker processes so renewal cannot publish a fresh bearer token
+        # after logout has completed. FileLock is recursive per instance and
+        # coordinates independent SessionService instances through one lock file.
+        self._agent_locks: dict[str, FileLock] = {}
         self._agent_locks_guard = threading.Lock()
         self._active_marker_lock = threading.RLock()
         self._summary_lock = threading.Lock()
@@ -90,13 +91,25 @@ class SessionService:
             self._secret_key = self._generate_secure_secret_key()
         return self._secret_key
 
-    def _lock_for_agent(self, agent_id: str) -> threading.RLock:
-        """Return the stable lifecycle lock for one agent."""
+    def _lock_for_agent(self, agent_id: str) -> FileLock:
+        """Return a stable cross-process lifecycle lock for one agent.
+
+        Multiple application workers can share the same session directory. A
+        process-local RLock cannot make logout authoritative over renewal in a
+        different worker, so lifecycle mutations coordinate through a private
+        lock file. Reusing one FileLock per service/agent also keeps nested
+        create/renew calls reentrant.
+        """
         validate_safe_id(agent_id, "agent_id")
         with self._agent_locks_guard:
             lock = self._agent_locks.get(agent_id)
             if lock is None:
-                lock = threading.RLock()
+                self.sessions_dir.mkdir(
+                    parents=True, exist_ok=True, mode=self._PRIVATE_DIR_MODE
+                )
+                self._set_private_permissions(self.sessions_dir, self._PRIVATE_DIR_MODE)
+                lock_path = self.sessions_dir / f".{agent_id}.lifecycle.lock"
+                lock = FileLock(str(lock_path), mode=self._PRIVATE_FILE_MODE)
                 self._agent_locks[agent_id] = lock
             return lock
 
@@ -583,8 +596,9 @@ class SessionService:
         # Validation and renewal must be one operation. Without the per-agent
         # lifecycle lock, parallel requests can all observe the same
         # near-expiry session, mint competing tokens, and immediately
-        # invalidate every replacement except the last file write. The same
-        # lock also makes logout authoritative over an in-flight renewal.
+        # invalidate every replacement except the last file write. The lock is
+        # cross-process so logout remains authoritative even when another worker
+        # is already inside renewal.
         with self._lock_for_agent(agent_id):
             session = self.get_session(agent_id)
             if not session or not session.is_active():
