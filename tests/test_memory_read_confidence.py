@@ -141,3 +141,17 @@ def test_fetch_all_memories_tag_filter_matches_trimmed_list_tags():
     memories = service._fetch_all_memories(["memanto_agent_demo"], tags=["beta"])
 
     assert [memory["id"] for memory in memories] == ["mem-1"]
+
+
+def test_non_finite_confidence_fails_open_not_silently_dropped():
+    service = MemoryReadService(None)
+
+    nan_mem = {"id": "nan", "confidence": float("nan")}
+    low_mem = {"id": "low", "confidence": 0.41}
+
+    filtered = service._filter_by_min_confidence(
+        [nan_mem, low_mem], min_confidence=0.8
+    )
+
+    # NaN est malformé -> fail open (inclus), pas droppé. 0.41 < 0.8 -> droppé.
+    assert [memory["id"] for memory in filtered] == ["nan"]
