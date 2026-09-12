@@ -53,14 +53,41 @@ Source retrieval reports scores and expected phrases. An unrelated query can sti
 
 Byte counts measure the serialized source and generated OKF files. Base64 and Markdown generally increase storage. Direct OKF migration has no provider-style savings report; cost and latency savings are unavailable.
 
-Cloud import, target recall, re-export, live demo video, and bounty claim remain pending. After configuring a dedicated Memanto agent, the remaining workflow starts with:
+A real Moorcheh run is included in `artifacts/cloud-run/`. Four records imported and all four original snapshots were recovered exactly from the cloud re-export. Source top-1 retrieval matched 3/3 positive questions; target top-1 matched 2/3 (the Delhi answer ranked second, tied in score with the first result). All three expected facts appeared in the returned hits. Both systems returned matches for the unrelated control. This is evidence of record conservation, not equivalent retrieval quality.
+
+The recorded import succeeded before an export-path error; validation resumed without importing duplicates. `original-cli-import.txt` and `live-report.json` explain that sequence. Source JSON is 1,086 bytes, local OKF is 4,856 bytes, and the cloud re-export including session context is 10,578 bytes. No savings are claimed. The required live screen recording and social showcase are still pending.
+
+## Optional live validation
+
+After the local run, prepare a uniquely named demo agent and activate that exact
+agent in the Memanto CLI. The runner checks the active agent/session before importing. Existing CLI configuration requires the explicit `--allow-shared-config` flag; check the account and target before using it.
+Keep `MOORCHEH_API_KEY` in the process environment; it is never printed or
+written to the report.
 
 ```sh
-memanto migrate okf ./migration-run/okf-bundle --agent <demo-agent>
-memanto memory export --okf
+export MOORCHEH_API_KEY='...'
+.venv/bin/python -m memanto agent create <unique-demo-agent-id>
+LIVE_DIR="examples/migrations/langmem/artifacts/live-$(date +%Y%m%d-%H%M%S)"
+.venv/bin/python examples/migrations/langmem/live_workflow.py \
+  --bundle examples/migrations/langmem/artifacts/sample-run/okf-bundle \
+  --source-export examples/migrations/langmem/artifacts/sample-run/langmem_export.json \
+  --source-report examples/migrations/langmem/artifacts/sample-run/run-report.json \
+  --agent <unique-demo-agent-id> \
+  --allow-shared-config \
+  --output "$LIVE_DIR"
 ```
 
-Remote validation must decode source snapshots again and compare source and target retrieval before describing the full migration as lossless or equivalent.
+Use `--allow-shared-config` only after confirming that the existing CLI config
+contains the dedicated demo account and the same target agent; omit it to keep
+the collision guard active.
+
+This invokes `memanto migrate okf` for the import and `memanto memory export
+--okf` for the re-export, and uses the SDK for the source report's recall questions. The
+resulting `live-report.json`, `cli-import.txt`, and `cli-export.txt` record each top score, returned hit id/content,
+recall timing, import/export timing, source/target bytes, and exact snapshot
+missing/unexpected/changed identities. It reports cost and latency savings as
+unavailable; no savings are inferred from byte or timing measurements. The
+runner does not activate or delete agents and refuses an existing output directory. Import adds memories to the explicitly selected agent. Exports are first written to a unique directory under `~/.memanto/exports` as the shipped CLI requires, then copied to the run directory. Those export files remain available locally. Use `--resume-after-import` only after confirming an earlier import succeeded; the report marks import as skipped and does not invent its timing.
 
 ## Checks
 

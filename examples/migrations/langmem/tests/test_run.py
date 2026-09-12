@@ -161,3 +161,48 @@ def test_okf_round_trip_keeps_source_snapshot_and_refuses_overwrite(
         pass
     else:
         raise AssertionError("existing output must not be overwritten")
+
+
+def test_live_snapshot_comparison_reports_exact_differences() -> None:
+    live_spec = importlib.util.spec_from_file_location(
+        "langmem_live_workflow", Path(__file__).parents[1] / "live_workflow.py"
+    )
+    assert live_spec and live_spec.loader
+    live = importlib.util.module_from_spec(live_spec)
+    live_spec.loader.exec_module(live)
+    source = [
+        {"namespace": ["n"], "key": "same", "value": {"content": "one"}},
+        {"namespace": ["n"], "key": "missing", "value": {"content": "two"}},
+    ]
+    target = [
+        {"namespace": ["n"], "key": "same", "value": {"content": "changed"}},
+        {"namespace": ["n"], "key": "extra", "value": {"content": "three"}},
+    ]
+    result = live.compare_records(source, target)
+    assert result["exact_match"] is False
+    assert result["missing"] == [run.identity(source[1])]
+    assert result["unexpected"] == [run.identity(target[1])]
+    assert result["changed"] == [run.identity(source[0])]
+    with pytest.raises(ValueError, match="duplicate"):
+        live.compare_records(source, source + [source[0]])
+    client = type("Client", (), {})()
+    live.bind_client_session(client, "demo", "token", "demo")
+    assert client.agent_id == "demo"
+    assert client.session_token == "token"
+    with pytest.raises(RuntimeError, match="active agent"):
+        live.bind_client_session(client, "other", "token", "demo")
+
+
+def test_live_reads_actual_shipped_okf_bundle(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "langmem_live_workflow", Path(__file__).parents[1] / "live_workflow.py"
+    )
+    assert spec and spec.loader
+    live = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(live)
+    records = [{"namespace": ["n"], "key": "one", "value": {"content": "fact"}}]
+    run.to_okf({"memories": records}, tmp_path / "bundle")
+    actual = live.decode_snapshots(
+        live.map_okf(live.load_okf_bundle(tmp_path / "bundle"))
+    )
+    assert live.compare_records(records, actual)["exact_match"]

@@ -1,0 +1,20 @@
+╭─────────────────────────╮
+│ OKF -> Memanto  Migrate │
+╰─────────────────────────╯
+  … Loading OKF bundle from
+~/Documents/Codex/2026-09-09/your-goal-is-to-make-any/outputs/me
+manto-live-source/okf-bundle
+  … Mapping OKF nodes onto Memanto schema...
+  … Importing batch 1/1 (4 memories)...
+
+╭────────────────────────────── Import complete ───────────────────────────────╮
+│ OKF nodes: 4                                                                 │
+│ Mapped memories: 4  (skipped 0)                                              │
+│ Type breakdown: fact: 3, preference: 1                                       │
+│ Imported: 4  Failed: 0  Batches: 1                                           │
+│ Target agent: langmem-okf-demo-20260912                                      │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/20260912_064224              │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/20260912_064224/mapped_preview.json   │
+╰──────────────────────────────────────────────────────────────────────────────╯
