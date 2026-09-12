@@ -102,9 +102,29 @@ def build_report(
     if agent:
         migrate_cmd += ["--agent", agent]
     dry = subprocess.run(migrate_cmd, capture_output=True, text=True, check=False)
-    lines.append("## Portable export (out leg)")
-    lines.append("")
+
     if export_dir:
+        lines.append("## Portable export (out leg)")
+        lines.append("")
+        # The out-leg export reads the Memanto store, so import the bundle
+        # for real first; only then is the export a faithful round-trip.
+        import_cmd = [
+            sys.executable,
+            "-m",
+            "memanto",
+            "migrate",
+            "okf",
+            output_dir,
+        ]
+        if agent:
+            import_cmd += ["--agent", agent]
+        imp = subprocess.run(import_cmd, capture_output=True, text=True, check=False)
+        lines.append(f"- **Import:** `memanto migrate okf {output_dir}`")
+        lines.append("")
+        lines.append("```")
+        lines.append(_strip_output(imp.stdout + imp.stderr))
+        lines.append("```")
+        lines.append("")
         exp = subprocess.run(
             [
                 sys.executable,
@@ -126,8 +146,10 @@ def build_report(
         lines.append(_strip_output(exp.stdout + exp.stderr))
         lines.append("```")
     else:
+        lines.append("## Portable export (out leg)")
+        lines.append("")
         lines.append(
-            "_Pass `--export-memanto <dir>` to run `memanto memory export --okf` and prove the portable out-leg._"
+            "_Pass `--export-memanto <dir>` to run `memanto migrate okf` then `memanto memory export --okf` and prove the portable out-leg._"
         )
     lines.append("")
     both = "\n".join(lines)
@@ -148,7 +170,12 @@ def main() -> None:
     parser.add_argument(
         "--export-memanto",
         default=None,
-        help="Also export the imported memories back to OKF (run 'memanto memory export --okf'); must be inside the agent data dir",
+        help="Also import the bundle then export the imported memories back to OKF (run 'memanto migrate okf' + 'memanto memory export --okf'); must be inside the agent data dir",
+    )
+    parser.add_argument(
+        "--agent",
+        default=None,
+        help="Memanto agent id to use for import/dry-run",
     )
     args = parser.parse_args()
 
@@ -166,6 +193,7 @@ def main() -> None:
         entities=entities,
         conv_count=len(conv_list),
         export_dir=args.export_memanto,
+        agent=args.agent,
     )
 
     if args.report:

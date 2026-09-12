@@ -201,6 +201,10 @@ see the `MemoryEntity` list that `extract()` returns.
 pytest
 ```
 
+## Demo video
+
+🎬 https://youtu.be/MYwstw2hfO8
+
 ## Social posts
 
 - [Post on X](https://x.com/Lidiya_299/status/2098788801183416621)

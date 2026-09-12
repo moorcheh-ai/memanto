@@ -17,9 +17,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import streamlit as st
-
 import adapters  # noqa: F401
+import streamlit as st
 from core.adapters import ADAPTERS
 from core.okf_generator import OKFGenerator
 from generate_report import build_report
@@ -29,6 +28,32 @@ _NO_AGENT = (
     "No active session",
     "Call activate_agent()",
 )
+
+# Browser-provided paths must stay inside the migration workspace so a shared
+# Streamlit server cannot read or write arbitrary files on the host.
+_WORKSPACE = Path(__file__).resolve().parent
+
+
+def _workspace_path(raw: str, *, for_write: bool = False) -> Path:
+    """Resolve *raw* inside the migration workspace.
+
+    Relative paths are resolved against the workspace; absolute paths that
+    point outside the workspace are rejected (or reused only when they are
+    already inside it) to prevent path traversal / arbitrary file access.
+    """
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = _WORKSPACE / path
+    path = path.resolve()
+    try:
+        path.relative_to(_WORKSPACE)
+    except ValueError:
+        raise ValueError(
+            f"Path outside the migration workspace is not allowed: {path}"
+        )
+    if for_write:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _active_agent_hint() -> str:
@@ -85,7 +110,10 @@ adapter = ADAPTERS[source]()
 
 if st.button("Read export"):
     try:
-        raw = adapter.load(input_path)
+        resolved_input = _workspace_path(input_path)
+        if not resolved_input.is_file():
+            raise FileNotFoundError(f"Export file not found: {resolved_input}")
+        raw = adapter.load(str(resolved_input))
         st.session_state["raw"] = raw
         st.session_state["conv_list"] = adapter.get_conversation_list(raw)
         st.session_state["bundle"] = None
@@ -134,7 +162,8 @@ if conv_list is not None:
                     st.caption(f"... and {len(entities) - 10} more")
                 st.info("Dry run — no files written.")
             else:
-                path = OKFGenerator(output_dir).generate_bundle(entities)
+                bundle_base = _workspace_path(output_dir, for_write=True)
+                path = OKFGenerator(str(bundle_base)).generate_bundle(entities)
                 st.session_state["bundle"] = path
                 st.session_state["entities"] = entities
                 selected_count = len(selected_ids) if selected_ids else len(conv_list)
@@ -186,6 +215,7 @@ if bundle_path is not None:
         if not entities:
             st.warning("Generate the OKF bundle first.")
         else:
+            report_target = _workspace_path(report_path_input, for_write=True)
             report_text = build_report(
                 source=source,
                 input_path=st.session_state.get("input_path", input_path),
@@ -194,10 +224,10 @@ if bundle_path is not None:
                 conv_count=st.session_state.get("conv_count", 0),
                 export_dir=None,
             )
-            Path(report_path_input).write_text(report_text, encoding="utf-8")
+            report_target.write_text(report_text, encoding="utf-8")
             st.session_state["report"] = report_text
-            st.session_state["report_file"] = str(Path(report_path_input).resolve())
-            st.success(f"Report written to `{report_path_input}`")
+            st.session_state["report_file"] = str(report_target.resolve())
+            st.success(f"Report written to `{report_target}`")
 
 if st.session_state.get("report_file") is not None:
     st.markdown("### Generated report")
@@ -209,19 +239,25 @@ if st.session_state.get("report_file") is not None:
 
 st.sidebar.markdown("### Export / Query")
 export_dir = st.sidebar.text_input(
-    "Export dir", str(Path.home() / ".memanto" / "okf_export")
+    "Export dir", str(_WORKSPACE / "okf_export")
 )
 
 if st.button("Export OKF bundle from Memanto"):
-    rc, out, err = _run_memanto(
-        ["memory", "export", "--agent", agent, "--okf", "-o", export_dir]
-    )
-    if rc == 0:
-        st.session_state["export_bundle"] = export_dir
-        st.success(f"Exported OKF bundle to `{export_dir}`")
-        st.code((out + err).strip(), language="text")
-    else:
-        _show_cmd_error("Export", rc, out, err)
+    try:
+        export_target = str(_workspace_path(export_dir, for_write=True))
+    except ValueError as e:
+        st.error(str(e))
+        export_target = None
+    if export_target:
+        rc, out, err = _run_memanto(
+            ["memory", "export", "--agent", agent, "--okf", "-o", export_target]
+        )
+        if rc == 0:
+            st.session_state["export_bundle"] = export_target
+            st.success(f"Exported OKF bundle to `{export_target}`")
+            st.code((out + err).strip(), language="text")
+        else:
+            _show_cmd_error("Export", rc, out, err)
 
 export_bundle = st.session_state.get("export_bundle")
 if export_bundle is not None:

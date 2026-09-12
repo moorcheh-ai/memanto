@@ -1,7 +1,7 @@
 ---
 type: context
 title: "Data Reconciliation Overview"
-description: "**User:** Расскажи о Data Reconciliation + Circuit Breaker Engine  **Assistant:** Если смотреть на название **Data Recon"
+description: "**User:** Расскажи о Data Reconciliation + Circuit Breaker Engine"
 tags: [chatgpt, 17880944]
 resource: chatgpt://conversation/1788094462565
 x_memanto:

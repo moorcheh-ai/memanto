@@ -30,6 +30,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import adapters  # noqa: F401  (registers adapters)
 from core.adapters import ADAPTERS
+from core.okf_generator import OKFGenerator
+
+
+def _memanto_run(cmd: list[str]) -> subprocess.CompletedProcess:
+    """Run a ``memanto`` CLI subcommand and return the raw result."""
+    return subprocess.run(
+        [sys.executable, "-m", "memanto", *cmd],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+
+
+def import_bundle(bundle_dir: str, agent: str | None = None) -> None:
+    """Import an OKF bundle into Memanto (required before 'after' scoring)."""
+    cmd = ["migrate", "okf", bundle_dir]
+    if agent:
+        cmd += ["--agent", agent]
+    result = _memanto_run(cmd)
+    if result.returncode != 0:
+        print("Import into Memanto failed — cannot score 'after' parity.\n")
+        print(result.stdout + result.stderr)
+        sys.exit(1)
 
 
 def _norm(text: str) -> str:
@@ -148,6 +172,11 @@ def main() -> None:
         action="store_true",
         help="Select all conversations (skip the interactive prompt)",
     )
+    parser.add_argument(
+        "--agent",
+        default=None,
+        help="Memanto agent id to import the bundle into",
+    )
     args = parser.parse_args()
 
     adapter = ADAPTERS[args.source]()
@@ -192,7 +221,23 @@ def main() -> None:
 
     if selected:
         wanted_ids = {conv_list[i]["id"] for i in selected}
-        raw = [conv for conv, info in zip(raw, conv_list) if info["id"] in wanted_ids]
+        raw = [
+            conv
+            for conv, info in zip(raw, conv_list, strict=False)
+            if info["id"] in wanted_ids
+        ]
+    raw = {"conversations": raw}
+
+    # Migrate the selected export for real before scoring: build the OKF
+    # bundle and import it so Memanto answers the 'after' leg from data that
+    # actually came from this source (not from a pre-existing store).
+    entities = adapter.extract(raw)
+    if not entities:
+        print("No memories extracted from the selected conversations.")
+        sys.exit(1)
+    bundle = OKFGenerator(args.output).generate_bundle(entities)
+    print(f"\nMigrating bundle {bundle} into Memanto...\n")
+    import_bundle(str(bundle), agent=args.agent)
 
     index = _build_source_index(raw)
 

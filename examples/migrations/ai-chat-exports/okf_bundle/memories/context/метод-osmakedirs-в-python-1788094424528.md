@@ -1,7 +1,7 @@
 ---
 type: context
 title: "Метод os.makedirs в Python"
-description: "**User:** Что делает метод osmakedirs  **Assistant:** Вероятно, ты имела в виду метод `os.makedirs()` из модуля `os` в P"
+description: "**User:** Что делает метод osmakedirs"
 tags: [chatgpt, 17880944]
 resource: chatgpt://conversation/1788094424528
 x_memanto:

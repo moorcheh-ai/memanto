@@ -6,6 +6,7 @@ Turns a list of ``MemoryEntity`` records into a valid OKF bundle directory
 
 from __future__ import annotations
 
+import shutil
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,18 @@ class OKFGenerator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         memories_dir = self.output_dir / "memories"
         metrics_dir = self.output_dir / "metrics"
+
+        # Remove previously generated artifacts so a reused --output never
+        # ships stale memories from an earlier (differently filtered) run.
+        for artifact in (
+            self.output_dir / "index.md",
+            memories_dir,
+            metrics_dir,
+        ):
+            if artifact.is_dir():
+                shutil.rmtree(artifact)
+            elif artifact.exists():
+                artifact.unlink()
 
         type_groups: dict[str, list[MemoryEntity]] = {}
         for e in entities:
@@ -56,7 +69,7 @@ class OKFGenerator:
             "---",
             f"type: {entity.source_type.value}",
             f'title: "{MemoryEntity._escape_yaml(entity.title)}"',
-            f'description: "{MemoryEntity._escape_yaml(entity.content[:120])}"',
+            f'description: "{MemoryEntity._escape_yaml(self._summary(entity))}"',
             f"tags: [{tags_str}]",
         ]
         if ts:
@@ -83,6 +96,22 @@ class OKFGenerator:
         if unique_id:
             return f"{base}-{unique_id}.md"
         return f"{base}.md"
+
+    @staticmethod
+    def _summary(entity: MemoryEntity, max_len: int = 120) -> str:
+        """Return a concise description without duplicating the transcript.
+
+        The body already stores the full conversation, so the frontmatter
+        description only keeps the opening user question (collapsed to a
+        single line) instead of repeating a transcript excerpt.
+        """
+        if not entity.content:
+            return entity.title
+        first_line = entity.content.split("\n\n", 1)[0]
+        collapsed = " ".join(first_line.split())
+        if len(collapsed) > max_len:
+            collapsed = collapsed[: max_len - 1].rstrip() + "…"
+        return collapsed or entity.title
 
     def _write_type_index(
         self, entities: list[MemoryEntity], type_dir: Path, mem_type: str
