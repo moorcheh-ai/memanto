@@ -90,3 +90,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @respawn-pdeu
 - @amyelchristian
 - @walterwagner
+- @rasadregmi
