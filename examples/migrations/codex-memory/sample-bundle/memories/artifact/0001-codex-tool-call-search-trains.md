@@ -11,7 +11,7 @@ x_memanto:
   type: "artifact"
   source: "codex:rollout.tool_call"
   provenance: "observed"
-thread_id: "rollout-2026-01-02T09-00-00-019f0001-0000-7000-8000-000000000001"
+thread_id: "019f0001-0000-7000-8000-000000000001"
 ---
 
 **Tool call:** `search_trains`

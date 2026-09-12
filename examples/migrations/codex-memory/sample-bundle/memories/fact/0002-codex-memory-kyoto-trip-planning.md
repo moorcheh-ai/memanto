@@ -10,8 +10,9 @@ x_memanto:
   type: "fact"
   source: "codex:memories_1.stage1_outputs"
   provenance: "inferred"
+  updated_at: "2025-12-29T09:20:00+00:00"
 thread_id: "019f0001-0000-7000-8000-000000000001"
-usage_count: 3
+usage_count: "3"
 ---
 
 ## Codex rollout summary

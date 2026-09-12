@@ -12,4 +12,6 @@
 # That is the whole dependency list. There is nothing else to install, no
 # service to start, and no API key required for the OKF import path
 # (`memanto migrate okf` is a local file import).
-memanto>=0.2.21
+# Pinned to the version this adapter and sample bundle were validated against.
+# `memanto migrate okf` is a local file import: no service, no API key.
+memanto==0.2.21

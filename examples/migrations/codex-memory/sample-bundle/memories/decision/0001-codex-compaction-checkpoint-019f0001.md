@@ -1,17 +1,17 @@
 ---
 type: "codex-compaction"
-title: "Codex compaction checkpoint · rollout-"
+title: "Codex compaction checkpoint · 019f0001"
 description: "A memory-compaction event: Codex decided what to forget."
 tags:
   - "codex"
   - "compaction"
   - "checkpoint"
-timestamp: "2026-01-02T09:40:00+00:00"
+timestamp: "2026-01-02T09:00:40+00:00"
 x_memanto:
   type: "decision"
   source: "codex:rollout.compacted"
   provenance: "observed"
-thread_id: "rollout-2026-01-03T14-30-00-019f0001-0000-7000-8000-000000000002"
+thread_id: "019f0001-0000-7000-8000-000000000001"
 ---
 
 **Compaction event (the moment memory was rewritten)**

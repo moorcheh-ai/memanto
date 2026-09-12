@@ -1,7 +1,7 @@
 ---
 type: "codex-session"
 title: "Codex session · Plan a 3-day trip to Kyoto"
-description: "Codex session 019f0001 in ~/work/weekend-trip-planner"
+description: "Codex session 019f0001 in ~/work/trip"
 tags:
   - "codex"
   - "session"
@@ -11,6 +11,7 @@ x_memanto:
   type: "context"
   source: "codex:state_5.threads"
   provenance: "observed"
+  updated_at: "2026-01-02T09:00:00+00:00"
 thread_id: "019f0001-0000-7000-8000-000000000001"
 ---
 
@@ -18,7 +19,7 @@ thread_id: "019f0001-0000-7000-8000-000000000001"
 
 - `id`: 019f0001-0000-7000-8000-000000000001
 - `title`: Plan a 3-day trip to Kyoto
-- `cwd`: ~/work/weekend-trip-planner
+- `cwd`: ~/work/trip
 - `created_at`: 2026-01-02T09:00:00Z
 - `updated_at`: 2026-01-02T09:00:00Z
 - `model`: gpt-5-codex

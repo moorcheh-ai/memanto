@@ -45,7 +45,7 @@ memanto migrate okf ./okf-bundle
 ```
 
 That is the whole pipeline. On the reference store (42 Codex sessions,
-77 MB of transcripts) it produced **295 memories, 0 skipped** — see
+77 MB of transcripts) it produced **5896 memories, 0 skipped** — see
 [MAPPING.md](MAPPING.md) for the full validation transcript.
 
 ## Look at what you just freed
@@ -106,7 +106,8 @@ rollout JSONL. This adapter reads them.
 | `--no-redact` | Keep absolute paths, e-mails and tokens verbatim. |
 | `--stacked` | One file per type separated by Memanto's `<!-- okf-entry -->` sentinel. |
 | `--limit N` | Cap rows read per SQLite source. |
-| `--rollout-per-file N` | Cap memories taken from each transcript (default 40). |
+| `--rollout-per-file N` | Cap memories taken from each transcript (default: unlimited, so no transcript is silently cut short). |
+| `--force` | Replace a non-empty `--out` directory (the new bundle is built in a temp dir and swapped in). |
 
 Redaction is **on by default**: `$HOME`, `C:\Users\<name>`, e-mail addresses
 and API-token-shaped strings are replaced with `~`, `<email>` and `<token>`

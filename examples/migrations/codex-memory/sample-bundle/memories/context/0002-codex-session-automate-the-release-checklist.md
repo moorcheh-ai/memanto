@@ -1,7 +1,7 @@
 ---
 type: "codex-session"
 title: "Codex session · Automate the release checklist"
-description: "Codex session 019f0001 in ~/work/release-checklist"
+description: "Codex session 019f0001 in ~/work/release"
 tags:
   - "codex"
   - "session"
@@ -11,6 +11,7 @@ x_memanto:
   type: "context"
   source: "codex:state_5.threads"
   provenance: "observed"
+  updated_at: "2026-01-03T14:30:00+00:00"
 thread_id: "019f0001-0000-7000-8000-000000000002"
 ---
 
@@ -18,7 +19,7 @@ thread_id: "019f0001-0000-7000-8000-000000000002"
 
 - `id`: 019f0001-0000-7000-8000-000000000002
 - `title`: Automate the release checklist
-- `cwd`: ~/work/release-checklist
+- `cwd`: ~/work/release
 - `created_at`: 2026-01-03T14:30:00Z
 - `updated_at`: 2026-01-03T14:30:00Z
 - `model`: gpt-5-codex

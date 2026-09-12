@@ -78,26 +78,31 @@ is meant to be shareable, so `codex_to_okf.py` redacts **by default**:
 ## 5. Validation evidence
 
 Run against a real store (42 rollout transcripts, 77 MB, 42 threads,
-5 distilled memories):
+5 distilled memories). Reasoning traces are included here with
+`--include-reasoning`; leave the flag off and the `learning` rows disappear:
 
 ```
-$ python codex_to_okf.py --out ./okf-bundle
-Memories    : 295
-  artifact       17
-  context        42
-  fact            5
-  instruction    47
-  observation   106
-  preference     78
+$ python codex_to_okf.py --out ./okf-bundle --include-reasoning
+Memories    : 5896
+  artifact       2420
+  context          42
+  decision         15
+  fact              5
+  instruction     198
+  learning       2020
+  observation     797
+  preference      399
+```
 
+```
 $ memanto migrate okf ./okf-bundle --dry-run
-┌───────────────────────────── Dry run complete ──────────────────────────────┐
-│ OKF nodes: 295                                                              │
-│ Mapped memories: 295  (skipped 0)                                           │
-│ Type breakdown: artifact: 17, context: 42, fact: 5, instruction: 47,        │
-│ observation: 106, preference: 78                                            │
-└─────────────────────────────────────────────────────────────────────────────┘
+
+  OKF nodes: 5896
+  Mapped memories: 5896  (skipped 0)
+  Type breakdown: artifact: 2420, context: 42, decision: 15, fact: 5,
+                  instruction: 198, learning: 2020, observation: 797,
+                  preference: 399
 ```
 
-295/295 nodes mapped, **0 skipped** — the bundle is accepted by Memanto's own
+5896/5896 nodes mapped, **0 skipped** — the bundle is accepted by Memanto's own
 loader with the intended type breakdown preserved exactly.

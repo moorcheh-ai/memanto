@@ -1,38 +1,19 @@
 #!/usr/bin/env python3
-"""
-codex_to_okf.py — migrate OpenAI Codex CLI agent memory into Memanto.
+"""Migrate an OpenAI Codex CLI memory store into a portable OKF bundle.
 
-Codex keeps your agent's accumulated memory in a proprietary local store:
+Codex CLI keeps its memory in a handful of SQLite databases plus per-session
+JSONL rollout transcripts. None of it is exportable through any Codex-native
+feature, and the rollout logs hold material the CLI never surfaces at all:
+hidden reasoning traces and context-compaction events.
 
-    ~/.codex/memories_1.sqlite   stage1_outputs  -- the distilled memories
-    ~/.codex/goals_1.sqlite      thread_goals    -- long-running objectives
-    ~/.codex/state_5.sqlite      threads         -- session/episode registry
-    ~/.codex/sessions/**/*.jsonl rollout-*       -- full transcripts, incl.
-                                                    hidden reasoning traces
-                                                    and compaction checkpoints
+This adapter reads that store read-only and emits Markdown documents in the
+Open Format for Knowledge (OKF) that `memanto migrate okf` imports directly.
 
-None of it is portable. There is no `codex export`. This adapter turns the
-whole store into a standards-based **OKF (Open Knowledge Format)** bundle —
-plain markdown with YAML frontmatter — that `memanto migrate okf` ingests
-directly, and that you can also read, grep, git-version and review yourself.
-
-Usage
------
-    python codex_to_okf.py --out ./okf-bundle                # migrate everything
-    python codex_to_okf.py --out ./okf-bundle --dry-run      # preview mapping
-    python codex_to_okf.py --include-reasoning               # also take the CoT
-    python codex_to_okf.py --no-redact                       # keep raw paths
-
-Then:
-
+    python codex_to_okf.py --codex-home ~/.codex --out ./okf-bundle
     memanto migrate okf ./okf-bundle --dry-run
     memanto migrate okf ./okf-bundle
-    memanto memory export --okf -o ./roundtrip
 
-Field mapping (Codex concept -> Memanto memory type) is documented in
-MAPPING.md; the authoritative Memanto type is written to the namespaced
-``x_memanto.type`` frontmatter key, while OKF's free-form ``type`` keeps the
-source concept name so non-Memanto consumers still see where it came from.
+Only the standard library is required to produce a bundle.
 """
 
 from __future__ import annotations
@@ -41,8 +22,10 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sqlite3
 import sys
+import tempfile
 import unicodedata
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -55,17 +38,26 @@ MEMANTO_TYPES = {
 }
 
 ENTRY_DELIMITER = "<!-- okf-entry -->"
+# A body containing the raw sentinel would be split into an extra document by
+# the OKF loader. Bodies are rewritten to this harmless form before writing.
+DELIMITER_ESCAPE = "<!-- okf-entry (escaped in source) -->"
 BUNDLE_VERSION = "okf/0.2"
 
 # ---------------------------------------------------------------- redaction --
 # Codex stores absolute paths, user names, e-mail addresses and host names.
 # Migration output is meant to be shareable, so redaction is on by default.
 _HOME = str(Path.home())
+
 _REDACTIONS: list[tuple[re.Pattern[str], str]] = [
+    # re.escape() turns the literal home path into an escaped literal pattern,
+    # so this entry carries no attacker-controlled regex surface.
     (re.compile(re.escape(_HOME), re.IGNORECASE), "~"),
-    (re.compile(r"[A-Za-z]:\\Users\\[^\\\s\"']+", re.IGNORECASE), "~"),
-    (re.compile(r"/Users/[^/\s\"']+"), "~"),
-    (re.compile(r"/home/[^/\s\"']+"), "~"),
+    # Windows profiles may contain spaces ("C:\Users\Jane Doe\..."). Stopping at
+    # the next backslash keeps the whole profile segment inside the match while
+    # still leaving the trailing path readable.
+    (re.compile(r"[A-Za-z]:\\Users\\[^\\\"'\r\n]+", re.IGNORECASE), "~"),
+    (re.compile(r"/Users/[^/\"'\s]+"), "~"),
+    (re.compile(r"/home/[^/\"'\s]+"), "~"),
     (re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"), "<email>"),
     (re.compile(r"\b(?:ghp|gho|ghs|sk|xox[baprs])[-_][A-Za-z0-9_-]{16,}\b"), "<token>"),
 ]
@@ -77,6 +69,13 @@ def redact(text: str, enabled: bool) -> str:
     for pattern, repl in _REDACTIONS:
         text = pattern.sub(repl, text)
     return text
+
+
+def escape_delimiter(text: str) -> str:
+    """Neutralise the OKF entry sentinel so a body cannot forge a new entry."""
+    if not text or ENTRY_DELIMITER not in text:
+        return text
+    return text.replace(ENTRY_DELIMITER, DELIMITER_ESCAPE)
 
 
 # ------------------------------------------------------------------- helpers --
@@ -123,15 +122,15 @@ def frontmatter(meta: dict[str, Any]) -> str:
         if isinstance(value, list):
             lines.append(f"{key}:")
             for item in value:
-                lines.append(f"  - {yaml_scalar(item)}")
+                lines.append(f"  - {yaml_scalar(escape_delimiter(str(item)))}")
         elif isinstance(value, dict):
             lines.append(f"{key}:")
             for sub_key, sub_value in value.items():
                 if sub_value is None or sub_value == "":
                     continue
-                lines.append(f"  {sub_key}: {yaml_scalar(sub_value)}")
+                lines.append(f"  {sub_key}: {yaml_scalar(escape_delimiter(str(sub_value)))}")
         else:
-            lines.append(f"{key}: {yaml_scalar(value)}")
+            lines.append(f"{key}: {yaml_scalar(escape_delimiter(str(value)))}")
     lines.append("---")
     return "\n".join(lines)
 
@@ -164,7 +163,7 @@ class Memory:
 
     def render(self) -> str:
         meta: dict[str, Any] = {
-            "type": self.extra.pop("_okf_type", self.type),
+            "type": self.extra.get("_okf_type", self.type),
             "title": self.title,
             "description": self.description or None,
             "tags": self.tags or None,
@@ -181,7 +180,8 @@ class Memory:
             if key.startswith("_") or key in {"source", "provenance", "confidence", "updated_at"}:
                 continue
             meta[key] = value
-        return f"{frontmatter(meta)}\n\n{self.body}\n"
+        body = escape_delimiter(self.body)
+        return f"{frontmatter(meta)}\n\n{body}\n"
 
 
 # ------------------------------------------------------------------ Codex IO --
@@ -219,7 +219,7 @@ class CodexStore:
             return
         sql = (
             "select thread_id, raw_memory, rollout_summary, rollout_slug, generated_at, "
-            "usage_count, source_updated_at from stage1_outputs order by generated_at desc"
+            "source_updated_at, usage_count from stage1_outputs order by generated_at desc"
         )
         if limit:
             sql += f" limit {int(limit)}"
@@ -228,7 +228,8 @@ class CodexStore:
             summary = redact(row["rollout_summary"] or "", self.redact_enabled)
             if not raw and not summary:
                 continue
-            title = (row["rollout_slug"] or summary.splitlines()[0] if summary else "codex memory")[:120]
+            slug = row["rollout_slug"] or (summary.splitlines()[0] if summary else "codex memory")
+            title = str(slug)[:120]
             body_parts = []
             if summary:
                 body_parts.append("## Codex rollout summary\n\n" + summary)
@@ -245,6 +246,7 @@ class CodexStore:
                 extra={
                     "source": "codex:memories_1.stage1_outputs",
                     "provenance": "inferred",
+                    "updated_at": iso(row["source_updated_at"]),
                     "thread_id": row["thread_id"],
                     "usage_count": row["usage_count"],
                     "_okf_type": "codex-distilled-memory",
@@ -312,6 +314,7 @@ class CodexStore:
                 extra={
                     "source": "codex:state_5.threads",
                     "provenance": "observed",
+                    "updated_at": iso(record.get("updated_at")),
                     "thread_id": thread_id,
                     "_okf_type": "codex-session",
                 },
@@ -320,23 +323,22 @@ class CodexStore:
 
     # -- source 4: rollout transcripts ---------------------------------------
     def rollout_files(self) -> list[Path]:
-        sessions = self.home / "sessions"
-        if not sessions.is_dir():
-            archived = self.home / "archived_sessions"
-            sessions = archived if archived.is_dir() else sessions
-        if not sessions.is_dir():
-            return []
-        files = [p for p in sessions.rglob("*.jsonl") if p.is_file()]
+        """Every rollout transcript under every session root that exists."""
+        files: list[Path] = []
+        for name in ("sessions", "archived_sessions"):
+            root = self.home / name
+            if root.is_dir():
+                files.extend(p for p in root.rglob("*.jsonl") if p.is_file())
         files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         return files
 
-    def rollout_memories(self, per_file: int) -> Iterator[Memory]:
+    def rollout_memories(self, per_file: int | None) -> Iterator[Memory]:
         for path in self.rollout_files():
             produced = 0
             thread_id = path.stem
             with path.open("r", encoding="utf-8", errors="replace") as handle:
                 for line in handle:
-                    if produced >= per_file:
+                    if per_file is not None and produced >= per_file:
                         break
                     line = line.strip()
                     if not line:
@@ -345,6 +347,13 @@ class CodexStore:
                         obj = json.loads(line)
                     except json.JSONDecodeError:
                         continue
+                    # The canonical session UUID lives in the first session_meta
+                    # record; it is the only value that joins rollout memories to
+                    # the state_5.threads row, so resolve it before mapping.
+                    if obj.get("type") == "session_meta":
+                        session_id = (obj.get("payload") or {}).get("session_id")
+                        if isinstance(session_id, str) and session_id.strip():
+                            thread_id = session_id.strip()
                     memory = self._rollout_line_to_memory(obj, thread_id)
                     if memory is not None:
                         produced += 1
@@ -379,7 +388,7 @@ class CodexStore:
 
         if kind == "compacted":
             self.counts["compacted"] += 1
-            body = json.dumps(payload, ensure_ascii=False, indent=2)[:4000]
+            body = json.dumps(payload, ensure_ascii=False, indent=2)
             return Memory(
                 type="decision",
                 title=f"Codex compaction checkpoint · {thread_id[:8]}",
@@ -407,6 +416,7 @@ class CodexStore:
             if not text:
                 return None
             text = redact(text, self.redact_enabled)
+
             if role == "user":
                 self.counts["user_message"] += 1
                 return Memory(
@@ -423,19 +433,42 @@ class CodexStore:
                         "_okf_type": "codex-user-message",
                     },
                 )
-            self.counts["assistant_message"] += 1
+
+            if role == "assistant":
+                self.counts["assistant_message"] += 1
+                return Memory(
+                    type="observation",
+                    title=f"Codex answer · {text.splitlines()[0][:90]}",
+                    description="What Codex concluded or produced.",
+                    body=f"**Assistant message (role: {role})**\n\n{text}",
+                    tags=["codex", "assistant-output"],
+                    timestamp=ts,
+                    extra={
+                        "source": "codex:rollout.message",
+                        "provenance": "observed",
+                        "thread_id": thread_id,
+                        "_okf_type": "codex-assistant-message",
+                    },
+                )
+
+            # system / developer / tool / unknown: keep the content, but never
+            # relabel it as assistant output. It is recorded under its own type
+            # with the role preserved in the body and tags.
+            role_label = role if isinstance(role, str) and role else "unknown"
+            self.counts[f"message_role:{role_label}"] += 1
             return Memory(
-                type="observation",
-                title=f"Codex answer · {text.splitlines()[0][:90]}",
-                description="What Codex concluded or produced.",
-                body=f"**Assistant message (role: {role})**\n\n{text}",
-                tags=["codex", "assistant-output"],
+                type="instruction",
+                title=f"Codex {role_label} message · {text.splitlines()[0][:90]}",
+                description=f"Rollout message with role `{role_label}` — not user, not assistant.",
+                body=f"**Rollout message (role: {role_label})**\n\n{text}",
+                tags=["codex", "message", f"role:{role_label}"],
                 timestamp=ts,
                 extra={
                     "source": "codex:rollout.message",
-                    "provenance": "observed",
+                    "provenance": "explicit_statement",
                     "thread_id": thread_id,
-                    "_okf_type": "codex-assistant-message",
+                    "role": role_label,
+                    "_okf_type": "codex-role-message",
                 },
             )
 
@@ -471,7 +504,7 @@ class CodexStore:
                 type="artifact",
                 title=f"Codex tool call · {name}",
                 description=f"Codex invoked `{name}`.",
-                body=f"**Tool call:** `{name}`\n\n```json\n{redact(str(args), self.redact_enabled)[:3000]}\n```",
+                body=f"**Tool call:** `{name}`\n\n```json\n{redact(str(args), self.redact_enabled)}\n```",
                 tags=["codex", "tool-call", f"tool:{name}"],
                 timestamp=ts,
                 extra={
@@ -516,8 +549,11 @@ class CodexStore:
 
 
 # ------------------------------------------------------------------- writing --
-def write_bundle(memories: Iterable[Memory], out_dir: Path, *, stacked: bool) -> dict[str, Any]:
-    """Write memories as an OKF bundle (one folder per Memanto type)."""
+class BundleExists(Exception):
+    """Raised when the destination holds a previous bundle and --force is off."""
+
+
+def _write_into(memories: Iterable[Memory], out_dir: Path, *, stacked: bool) -> dict[str, Any]:
     by_type: dict[str, list[Memory]] = defaultdict(list)
     for memory in memories:
         by_type[memory.type].append(memory)
@@ -564,6 +600,50 @@ def write_bundle(memories: Iterable[Memory], out_dir: Path, *, stacked: bool) ->
     return {"per_type": written, "total": sum(written.values())}
 
 
+def write_bundle(
+    memories: Iterable[Memory], out_dir: Path, *, stacked: bool, force: bool = False
+) -> dict[str, Any]:
+    """Write memories as an OKF bundle (one folder per Memanto type).
+
+    The destination must be empty unless ``force`` is set. Because the OKF
+    loader imports every Markdown file under ``memories/``, a bundle left in
+    place alongside a new one would be imported together with it. When
+    ``force`` is set the new bundle is built in a temporary directory and then
+    swapped in, so a failure part-way through cannot leave a half-written
+    bundle behind.
+    """
+    out_dir = Path(out_dir)
+    if out_dir.exists() and any(out_dir.iterdir()) and not force:
+        raise BundleExists(
+            f"{out_dir} is not empty. The OKF loader imports every Markdown file "
+            f"under memories/, so stale files would be imported alongside the new "
+            f"bundle. Pass --force to replace it, or choose an empty --out path."
+        )
+
+    if not force:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return _write_into(memories, out_dir, stacked=stacked)
+
+    parent = out_dir.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".okf-staging-", dir=str(parent)))
+    try:
+        result = _write_into(memories, staging, stacked=stacked)
+        backup = out_dir.with_name(out_dir.name + ".replaced")
+        if backup.exists():
+            shutil.rmtree(backup)
+        if out_dir.exists():
+            out_dir.rename(backup)
+        staging.rename(out_dir)
+        if backup.exists():
+            shutil.rmtree(backup)
+        return result
+    except BaseException:
+        if staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Migrate an OpenAI Codex CLI memory store into a portable OKF bundle."
@@ -572,8 +652,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="Path to the Codex store (default: ~/.codex).")
     parser.add_argument("--out", default="./okf-bundle", help="Output OKF bundle directory.")
     parser.add_argument("--limit", type=int, default=None, help="Max rows per SQLite source.")
-    parser.add_argument("--rollout-per-file", type=int, default=40,
-                        help="Max memories taken from each rollout transcript.")
+    parser.add_argument("--rollout-per-file", type=int, default=None,
+                        help="Max memories taken from each rollout transcript "
+                             "(default: unlimited, so no transcript is silently cut short).")
+    parser.add_argument("--force", action="store_true",
+                        help="Replace a non-empty --out directory (build is atomic).")
     parser.add_argument("--include-reasoning", action="store_true",
                         help="Also migrate hidden reasoning traces (private; off by default).")
     parser.add_argument("--no-redact", action="store_true",
@@ -608,7 +691,6 @@ def main(argv: list[str] | None = None) -> int:
             except sqlite3.Error as exc:
                 print(f"[warn] {label}: {exc}", file=sys.stderr)
 
-    bundle_source: Iterable[Memory]
     if args.dry_run:
         counter: Counter[str] = Counter()
         sample: list[str] = []
@@ -633,8 +715,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     out_dir = Path(args.out).expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
-    result = write_bundle(stream(), out_dir, stacked=args.stacked)
+    try:
+        result = write_bundle(stream(), out_dir, stacked=args.stacked, force=args.force)
+    except BundleExists as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 2
 
     print(f"Codex store : {home}")
     print(f"OKF bundle  : {out_dir}")
