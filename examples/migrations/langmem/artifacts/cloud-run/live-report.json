@@ -1,0 +1,190 @@
+{
+  "agent": "langmem-okf-demo-20260912",
+  "source_records": 4,
+  "import": {
+    "seconds": null,
+    "skipped": true,
+    "bundle_bytes": 4856
+  },
+  "target_reexport": {
+    "seconds": 11.824,
+    "bundle_bytes": 10578
+  },
+  "source_retrieval": [
+    {
+      "query": "server-side programming language",
+      "expected_phrase": "Python",
+      "score": 0.6734931332165102,
+      "top1": {
+        "content": "User prefers Python for backend work."
+      },
+      "positive_top1_match": true,
+      "negative_control": false
+    },
+    {
+      "query": "city and drink",
+      "expected_phrase": "Delhi",
+      "score": 0.6475591687213093,
+      "top1": {
+        "content": "User lives in Delhi and enjoys masala tea."
+      },
+      "positive_top1_match": true,
+      "negative_control": false
+    },
+    {
+      "query": "mobile framework",
+      "expected_phrase": "React Native",
+      "score": 0.7227980288128932,
+      "top1": {
+        "content": "User is building a mobile app with React Native."
+      },
+      "positive_top1_match": true,
+      "negative_control": false
+    },
+    {
+      "query": "unrelated quantum physics",
+      "expected_phrase": null,
+      "score": 0.5432299175427019,
+      "top1": {
+        "content": "User prefers Python for backend work."
+      },
+      "positive_top1_match": null,
+      "negative_control": true
+    }
+  ],
+  "target_recall": [
+    {
+      "query": "server-side programming language",
+      "expected_phrase": "Python",
+      "score": 0.142998,
+      "hits": [
+        {
+          "id": "45895091-5997-4d57-9a92-f041c74e54af",
+          "score": 0.142998,
+          "content": "User prefers Python for backend work.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDQ1ODM4KzAwOjAwIiwgImtleSI6ICJiZGZkZGQzOS1hNjFmLTRjODItODFiNC0xOTllNjBlZDI5MGUiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ0NjE0OCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIHByZWZlcnMgUHl0aG9uIGZvciBiYWNrZW5kIHdvcmsuIn19\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-prefers-python-for-backend-work.md\n- OKF resource: langmem://store/5809b2e5f8b2561d7b8529018054ac90e68da950ab6a668bde00cfad0574bb5e\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.445838+00:00"
+        },
+        {
+          "id": "0a2d4bed-9266-4981-a80d-275f23ef1699",
+          "score": 0.086334,
+          "content": "User lives in Delhi and enjoys masala tea.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDUzMDQ3KzAwOjAwIiwgImtleSI6ICJjYjFjYzQ1NS0zZDQyLTQ2ODYtOGQxNS01MDk3OWZmMTEzYWEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1MzA1MCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGxpdmVzIGluIERlbGhpIGFuZCBlbmpveXMgbWFzYWxhIHRlYS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-lives-in-delhi-and-enjoys-masala-tea.md\n- OKF resource: langmem://store/d6060f6117424c01c6da8ab0bd1abfd4f862397a817b8b08347fddcb0d68f0e5\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.453047+00:00"
+        },
+        {
+          "id": "13551e9c-1cb2-48bc-84bd-ba2433406174",
+          "score": 0.0531,
+          "content": "User is building a mobile app with React Native.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDU5Nzk5KzAwOjAwIiwgImtleSI6ICIxZDczYmYwOS05YTdkLTRkOGYtYjJlNi1kNWJlMzliMWNmNGEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1OTgwMyswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGlzIGJ1aWxkaW5nIGEgbW9iaWxlIGFwcCB3aXRoIFJlYWN0IE5hdGl2ZS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-is-building-a-mobile-app-with-react-native.md\n- OKF resource: langmem://store/152ac7a8166125cced4a063efb35f0dfe8e801991a0d5f93d2b2e3fa8d2abeb9\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.459799+00:00"
+        },
+        {
+          "id": "929a8d5f-17c9-468f-87bb-a0c2dbcc506c",
+          "score": 0.049779,
+          "content": "Team's release owner is Priya N.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDgyMzI4KzAwOjAwIiwgImtleSI6ICIzNTlmNmEzNy02MDI2LTRmZmMtOGRlMy05NzliMWYzOGQ5Y2QiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdGVhbSJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ4MjMzMSswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJUZWFtJ3MgcmVsZWFzZSBvd25lciBpcyBQcml5YSBOLiJ9fQ==\n\n---\n[Supporting data]\n- OKF source: memories/fact/team-s-release-owner-is-priya-n.md\n- OKF resource: langmem://store/c1035e224512fe8a57137371ed5c2b1eedf4c065e7280dc4a0df5f983f2bdcaf\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.482328+00:00"
+        }
+      ],
+      "positive_top1_match": true,
+      "negative_control": false,
+      "elapsed_ms": 1134.3
+    },
+    {
+      "query": "city and drink",
+      "expected_phrase": "Delhi",
+      "score": 0.0531,
+      "hits": [
+        {
+          "id": "929a8d5f-17c9-468f-87bb-a0c2dbcc506c",
+          "score": 0.0531,
+          "content": "Team's release owner is Priya N.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDgyMzI4KzAwOjAwIiwgImtleSI6ICIzNTlmNmEzNy02MDI2LTRmZmMtOGRlMy05NzliMWYzOGQ5Y2QiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdGVhbSJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ4MjMzMSswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJUZWFtJ3MgcmVsZWFzZSBvd25lciBpcyBQcml5YSBOLiJ9fQ==\n\n---\n[Supporting data]\n- OKF source: memories/fact/team-s-release-owner-is-priya-n.md\n- OKF resource: langmem://store/c1035e224512fe8a57137371ed5c2b1eedf4c065e7280dc4a0df5f983f2bdcaf\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.482328+00:00"
+        },
+        {
+          "id": "0a2d4bed-9266-4981-a80d-275f23ef1699",
+          "score": 0.0531,
+          "content": "User lives in Delhi and enjoys masala tea.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDUzMDQ3KzAwOjAwIiwgImtleSI6ICJjYjFjYzQ1NS0zZDQyLTQ2ODYtOGQxNS01MDk3OWZmMTEzYWEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1MzA1MCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGxpdmVzIGluIERlbGhpIGFuZCBlbmpveXMgbWFzYWxhIHRlYS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-lives-in-delhi-and-enjoys-masala-tea.md\n- OKF resource: langmem://store/d6060f6117424c01c6da8ab0bd1abfd4f862397a817b8b08347fddcb0d68f0e5\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.453047+00:00"
+        },
+        {
+          "id": "45895091-5997-4d57-9a92-f041c74e54af",
+          "score": 0.049779,
+          "content": "User prefers Python for backend work.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDQ1ODM4KzAwOjAwIiwgImtleSI6ICJiZGZkZGQzOS1hNjFmLTRjODItODFiNC0xOTllNjBlZDI5MGUiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ0NjE0OCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIHByZWZlcnMgUHl0aG9uIGZvciBiYWNrZW5kIHdvcmsuIn19\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-prefers-python-for-backend-work.md\n- OKF resource: langmem://store/5809b2e5f8b2561d7b8529018054ac90e68da950ab6a668bde00cfad0574bb5e\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.445838+00:00"
+        },
+        {
+          "id": "13551e9c-1cb2-48bc-84bd-ba2433406174",
+          "score": 0.026543,
+          "content": "User is building a mobile app with React Native.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDU5Nzk5KzAwOjAwIiwgImtleSI6ICIxZDczYmYwOS05YTdkLTRkOGYtYjJlNi1kNWJlMzliMWNmNGEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1OTgwMyswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGlzIGJ1aWxkaW5nIGEgbW9iaWxlIGFwcCB3aXRoIFJlYWN0IE5hdGl2ZS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-is-building-a-mobile-app-with-react-native.md\n- OKF resource: langmem://store/152ac7a8166125cced4a063efb35f0dfe8e801991a0d5f93d2b2e3fa8d2abeb9\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.459799+00:00"
+        }
+      ],
+      "positive_top1_match": false,
+      "negative_control": false,
+      "elapsed_ms": 868.245
+    },
+    {
+      "query": "mobile framework",
+      "expected_phrase": "React Native",
+      "score": 0.156374,
+      "hits": [
+        {
+          "id": "13551e9c-1cb2-48bc-84bd-ba2433406174",
+          "score": 0.156374,
+          "content": "User is building a mobile app with React Native.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDU5Nzk5KzAwOjAwIiwgImtleSI6ICIxZDczYmYwOS05YTdkLTRkOGYtYjJlNi1kNWJlMzliMWNmNGEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1OTgwMyswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGlzIGJ1aWxkaW5nIGEgbW9iaWxlIGFwcCB3aXRoIFJlYWN0IE5hdGl2ZS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-is-building-a-mobile-app-with-react-native.md\n- OKF resource: langmem://store/152ac7a8166125cced4a063efb35f0dfe8e801991a0d5f93d2b2e3fa8d2abeb9\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.459799+00:00"
+        },
+        {
+          "id": "45895091-5997-4d57-9a92-f041c74e54af",
+          "score": 0.06971,
+          "content": "User prefers Python for backend work.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDQ1ODM4KzAwOjAwIiwgImtleSI6ICJiZGZkZGQzOS1hNjFmLTRjODItODFiNC0xOTllNjBlZDI5MGUiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ0NjE0OCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIHByZWZlcnMgUHl0aG9uIGZvciBiYWNrZW5kIHdvcmsuIn19\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-prefers-python-for-backend-work.md\n- OKF resource: langmem://store/5809b2e5f8b2561d7b8529018054ac90e68da950ab6a668bde00cfad0574bb5e\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.445838+00:00"
+        },
+        {
+          "id": "0a2d4bed-9266-4981-a80d-275f23ef1699",
+          "score": 0.056421,
+          "content": "User lives in Delhi and enjoys masala tea.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDUzMDQ3KzAwOjAwIiwgImtleSI6ICJjYjFjYzQ1NS0zZDQyLTQ2ODYtOGQxNS01MDk3OWZmMTEzYWEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1MzA1MCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGxpdmVzIGluIERlbGhpIGFuZCBlbmpveXMgbWFzYWxhIHRlYS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-lives-in-delhi-and-enjoys-masala-tea.md\n- OKF resource: langmem://store/d6060f6117424c01c6da8ab0bd1abfd4f862397a817b8b08347fddcb0d68f0e5\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.453047+00:00"
+        },
+        {
+          "id": "929a8d5f-17c9-468f-87bb-a0c2dbcc506c",
+          "score": 0.019907,
+          "content": "Team's release owner is Priya N.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDgyMzI4KzAwOjAwIiwgImtleSI6ICIzNTlmNmEzNy02MDI2LTRmZmMtOGRlMy05NzliMWYzOGQ5Y2QiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdGVhbSJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ4MjMzMSswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJUZWFtJ3MgcmVsZWFzZSBvd25lciBpcyBQcml5YSBOLiJ9fQ==\n\n---\n[Supporting data]\n- OKF source: memories/fact/team-s-release-owner-is-priya-n.md\n- OKF resource: langmem://store/c1035e224512fe8a57137371ed5c2b1eedf4c065e7280dc4a0df5f983f2bdcaf\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.482328+00:00"
+        }
+      ],
+      "positive_top1_match": true,
+      "negative_control": false,
+      "elapsed_ms": 873.79
+    },
+    {
+      "query": "unrelated quantum physics",
+      "expected_phrase": null,
+      "score": 0.029862,
+      "hits": [
+        {
+          "id": "0a2d4bed-9266-4981-a80d-275f23ef1699",
+          "score": 0.029862,
+          "content": "User lives in Delhi and enjoys masala tea.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDUzMDQ3KzAwOjAwIiwgImtleSI6ICJjYjFjYzQ1NS0zZDQyLTQ2ODYtOGQxNS01MDk3OWZmMTEzYWEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1MzA1MCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGxpdmVzIGluIERlbGhpIGFuZCBlbmpveXMgbWFzYWxhIHRlYS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-lives-in-delhi-and-enjoys-masala-tea.md\n- OKF resource: langmem://store/d6060f6117424c01c6da8ab0bd1abfd4f862397a817b8b08347fddcb0d68f0e5\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.453047+00:00"
+        },
+        {
+          "id": "45895091-5997-4d57-9a92-f041c74e54af",
+          "score": 0.006635,
+          "content": "User prefers Python for backend work.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDQ1ODM4KzAwOjAwIiwgImtleSI6ICJiZGZkZGQzOS1hNjFmLTRjODItODFiNC0xOTllNjBlZDI5MGUiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ0NjE0OCswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIHByZWZlcnMgUHl0aG9uIGZvciBiYWNrZW5kIHdvcmsuIn19\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-prefers-python-for-backend-work.md\n- OKF resource: langmem://store/5809b2e5f8b2561d7b8529018054ac90e68da950ab6a668bde00cfad0574bb5e\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.445838+00:00"
+        },
+        {
+          "id": "929a8d5f-17c9-468f-87bb-a0c2dbcc506c",
+          "score": 0.003318,
+          "content": "Team's release owner is Priya N.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDgyMzI4KzAwOjAwIiwgImtleSI6ICIzNTlmNmEzNy02MDI2LTRmZmMtOGRlMy05NzliMWYzOGQ5Y2QiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdGVhbSJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ4MjMzMSswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJUZWFtJ3MgcmVsZWFzZSBvd25lciBpcyBQcml5YSBOLiJ9fQ==\n\n---\n[Supporting data]\n- OKF source: memories/fact/team-s-release-owner-is-priya-n.md\n- OKF resource: langmem://store/c1035e224512fe8a57137371ed5c2b1eedf4c065e7280dc4a0df5f983f2bdcaf\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.482328+00:00"
+        },
+        {
+          "id": "13551e9c-1cb2-48bc-84bd-ba2433406174",
+          "score": 0.003318,
+          "content": "User is building a mobile app with React Native.\n\n[LangMem source record base64]\neyJjcmVhdGVkX2F0IjogIjIwMjYtMDktMTJUMDY6Mzk6MzYuNDU5Nzk5KzAwOjAwIiwgImtleSI6ICIxZDczYmYwOS05YTdkLTRkOGYtYjJlNi1kNWJlMzliMWNmNGEiLCAibmFtZXNwYWNlIjogWyJtZW1vcmllcyIsICJzeW50aGV0aWMtdXNlciJdLCAidXBkYXRlZF9hdCI6ICIyMDI2LTA5LTEyVDA2OjM5OjM2LjQ1OTgwMyswMDowMCIsICJ2YWx1ZSI6IHsiY29udGVudCI6ICJVc2VyIGlzIGJ1aWxkaW5nIGEgbW9iaWxlIGFwcCB3aXRoIFJlYWN0IE5hdGl2ZS4ifX0=\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-is-building-a-mobile-app-with-react-native.md\n- OKF resource: langmem://store/152ac7a8166125cced4a063efb35f0dfe8e801991a0d5f93d2b2e3fa8d2abeb9\n- OKF generated: by=process:langmem; at=2026-09-12T06:39:36.459799+00:00"
+        }
+      ],
+      "positive_top1_match": false,
+      "negative_control": true,
+      "elapsed_ms": 969.925
+    }
+  ],
+  "snapshot_comparison": {
+    "source_count": 4,
+    "target_snapshot_count": 4,
+    "missing": [],
+    "unexpected": [],
+    "changed": [],
+    "exact_match": true
+  },
+  "savings": {
+    "cost": null,
+    "latency": null,
+    "note": "No savings claim is made by this workflow."
+  }
+}

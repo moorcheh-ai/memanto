@@ -1,0 +1,17 @@
+╭────────────────────────────────────────────────────────────────────────╮
+│ OKF Export                                                             │
+│ Agent: langmem-video-20260912-065428  •  Split: file  •  Limit: 4/type │
+╰────────────────────────────────────────────────────────────────────────╯
+
+   OKF Bundle Counts
+┏━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Type        ┃ Count ┃
+┡━━━━━━━━━━━━━╇━━━━━━━┩
+│ Facts       │     3 │
+│ Preferences │     1 │
+└─────────────┴───────┘
+
+OK Exported 4 memories to OKF bundle!
+Bundle:
+~/.memanto/exports/langmem-b18d12e8624c4f7ebc5c70ae2fb6ad5b
+Completed in 10.55s

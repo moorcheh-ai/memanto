@@ -1,0 +1,7 @@
+{
+  "agent_id": "langmem-video-20260912-065428",
+  "question": "Which city does the user live in, and what drink do they enjoy?",
+  "answer": "Based on the stored memories, the user **lives in Delhi** and enjoys **masala tea**. 🍵\n\n*(Source: Chunk 1 — \"User lives in Delhi and enjoys masala tea.\")*",
+  "sources": [],
+  "namespace": "memanto_agent_langmem-video-20260912-065428"
+}
