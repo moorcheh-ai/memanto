@@ -88,3 +88,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @Fewknowme
 - @alexsolonsky
 - @respawn-pdeu
+- @amyelchristian
