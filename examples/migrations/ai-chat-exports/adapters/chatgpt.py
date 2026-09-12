@@ -1,18 +1,31 @@
+"""ChatGPT conversation export adapter.
+
+Converts OpenAI ChatGPT conversation archives (JSON or ZIP) into
+``MemoryEntity`` records suitable for OKF bundle generation.
+"""
+
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from core.adapters import register_adapter
 from core.models import MemoryEntity, MemoryType
+from core.text import extract_text, parse_timestamp
 
 
 @register_adapter
 class ChatGPTAdapter:
+    """Adapter for ChatGPT conversation exports."""
+
     name = "chatgpt"
 
     def load(self, path: str) -> dict:
+        """Load a ChatGPT export from *path* (JSON file or ZIP archive).
+
+        Returns a dict with a ``conversations`` key holding the list of
+        conversation objects.
+        """
         data_path = Path(path)
         if data_path.suffix == ".zip":
             import zipfile
@@ -37,6 +50,7 @@ class ChatGPTAdapter:
         return data
 
     def get_conversation_list(self, raw: dict) -> list[dict]:
+        """Return a summary list of conversations for the interactive picker."""
         result = []
         conversations = raw.get("conversations", [])
         for conv in conversations:
@@ -55,6 +69,11 @@ class ChatGPTAdapter:
         return result
 
     def extract(self, raw: dict, filters: dict | None = None) -> list[MemoryEntity]:
+        """Extract ``MemoryEntity`` records from all conversations.
+
+        Supports both the ``conversations`` list format and the legacy
+        ``mapping`` graph format used by older ChatGPT exports.
+        """
         entities: list[MemoryEntity] = []
 
         conversations = raw.get("conversations", [])
@@ -73,6 +92,7 @@ class ChatGPTAdapter:
     def _extract_conversation(
         self, conv: dict, filters: dict | None
     ) -> list[MemoryEntity]:
+        """Convert a single conversation dict into a list of memory entities."""
         conv_id = conv.get("id", conv.get("conversation_id", "unknown"))
         title = conv.get("title")
         if not isinstance(title, str) or not title.strip():
@@ -89,10 +109,10 @@ class ChatGPTAdapter:
         for user_msg, assistant_msg in self._pair_messages(messages):
             content_parts = []
             if user_msg:
-                content_parts.append(f"**User:** {self._extract_text(user_msg)}")
+                content_parts.append(f"**User:** {extract_text(user_msg)}")
             if assistant_msg:
                 content_parts.append(
-                    f"**Assistant:** {self._extract_text(assistant_msg)}"
+                    f"**Assistant:** {extract_text(assistant_msg)}"
                 )
 
             if content_parts:
@@ -111,7 +131,7 @@ class ChatGPTAdapter:
         timestamp = None
         for msg in reversed(messages):
             if msg.get("create_time"):
-                timestamp = self._parse_timestamp(msg["create_time"])
+                timestamp = parse_timestamp(msg["create_time"])
                 break
 
         return [
@@ -132,6 +152,7 @@ class ChatGPTAdapter:
     def _extract_from_mapping(
         self, mapping: dict, filters: dict | None
     ) -> list[MemoryEntity]:
+        """Extract memories from the legacy ``mapping`` graph format."""
         root_id = next(
             (nid for nid, node in mapping.items() if node.get("parent") is None),
             None,
@@ -148,7 +169,7 @@ class ChatGPTAdapter:
             node = mapping.get(node_id, {})
             msg = node.get("message")
             if msg and msg.get("content"):
-                text = self._extract_text(msg)
+                text = extract_text(msg)
                 if text.strip():
                     messages.append(
                         {
@@ -196,7 +217,7 @@ class ChatGPTAdapter:
         if not parts:
             return []
 
-        timestamp = self._parse_timestamp(messages[-1].get("create_time"))
+        timestamp = parse_timestamp(messages[-1].get("create_time"))
 
         return [
             MemoryEntity(
@@ -214,6 +235,7 @@ class ChatGPTAdapter:
         ]
 
     def _traverse_graph(self, mapping: dict, start_id: str) -> list[str]:
+        """Walk the mapping graph in breadth-first order from *start_id*."""
         children: dict[str | None, list[str]] = {}
         for nid, node in mapping.items():
             parent = node.get("parent")
@@ -235,6 +257,7 @@ class ChatGPTAdapter:
         return order
 
     def _flatten_mapping(self, mapping: dict) -> list[dict]:
+        """Flatten the mapping graph into an ordered list of message dicts."""
         root_id = next(
             (nid for nid, node in mapping.items() if node.get("parent") is None),
             None,
@@ -254,6 +277,11 @@ class ChatGPTAdapter:
     def _pair_messages(
         self, messages: list[dict]
     ) -> list[tuple[dict | None, dict | None]]:
+        """Pair consecutive user/assistant messages by role.
+
+        Handles system messages (skipped), odd-length conversations (last
+        user message paired with ``None``), and consecutive same-role messages.
+        """
         pairs: list[tuple[dict | None, dict | None]] = []
         i = 0
         while i < len(messages):
@@ -262,13 +290,12 @@ class ChatGPTAdapter:
             if role == "user":
                 user_msg = msg
                 asst_msg = None
-                if i + 1 < len(messages):
-                    next_role = messages[i + 1].get("author", {}).get("role", "unknown")
-                    if next_role == "assistant":
-                        asst_msg = messages[i + 1]
-                        i += 2
-                    else:
-                        i += 1
+                j = i + 1
+                while j < len(messages) and messages[j].get("author", {}).get("role") not in ("user", "assistant"):
+                    j += 1
+                if j < len(messages) and messages[j].get("author", {}).get("role") == "assistant":
+                    asst_msg = messages[j]
+                    i = j + 1
                 else:
                     i += 1
                 pairs.append((user_msg, asst_msg))
@@ -276,32 +303,8 @@ class ChatGPTAdapter:
                 i += 1
         return pairs
 
-    def _extract_text(self, msg: dict) -> str:
-        content = msg.get("content", {})
-        if isinstance(content, str):
-            return content
-        if isinstance(content, dict):
-            parts = content.get("parts", [])
-            return "".join(p for p in parts if isinstance(p, str))
-        return str(content)
-
-    def _parse_timestamp(self, ts) -> datetime | None:
-        if ts is None:
-            return None
-        try:
-            if isinstance(ts, (int, float)):
-                return datetime.fromtimestamp(ts, tz=timezone.utc)
-            if isinstance(ts, str):
-                for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"):
-                    try:
-                        return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
-                    except ValueError:
-                        continue
-        except (ValueError, OSError):
-            pass
-        return None
-
     def get_source_stats(self) -> dict:
+        """Return aggregate statistics for this source (stub)."""
         return {
             "source": self.name,
             "total_conversations": 0,

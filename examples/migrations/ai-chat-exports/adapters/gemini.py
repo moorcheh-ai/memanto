@@ -1,18 +1,30 @@
+"""Gemini conversation export adapter.
+
+Converts Google Gemini conversation archives (JSON or ZIP) into
+``MemoryEntity`` records suitable for OKF bundle generation.
+"""
+
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from core.adapters import register_adapter
 from core.models import MemoryEntity, MemoryType
+from core.text import extract_text, parse_timestamp
 
 
 @register_adapter
 class GeminiAdapter:
+    """Adapter for Google Gemini conversation exports."""
+
     name = "gemini"
 
     def load(self, path: str) -> list[dict]:
+        """Load a Gemini export from *path* (JSON file or ZIP archive).
+
+        Returns a list of conversation dicts.
+        """
         data_path = Path(path)
         if data_path.suffix == ".zip":
             import zipfile
@@ -37,6 +49,7 @@ class GeminiAdapter:
         return data if isinstance(data, list) else [data]
 
     def get_conversation_list(self, raw: list[dict]) -> list[dict]:
+        """Return a summary list of conversations for the interactive picker."""
         result = []
         for conv in raw:
             conv_id = conv.get("id", conv.get("conversation_id", "unknown"))
@@ -54,6 +67,7 @@ class GeminiAdapter:
     def extract(
         self, raw: list[dict], filters: dict | None = None
     ) -> list[MemoryEntity]:
+        """Extract ``MemoryEntity`` records from all conversations."""
         entities: list[MemoryEntity] = []
 
         for conv in raw:
@@ -64,6 +78,7 @@ class GeminiAdapter:
     def _extract_conversation(
         self, conv: dict, filters: dict | None
     ) -> list[MemoryEntity]:
+        """Convert a single conversation dict into a list of memory entities."""
         conv_id = conv.get("id", conv.get("conversation_id", "unknown"))
         conv_name = conv.get("title", f"Gemini {str(conv_id)[:8]}")
 
@@ -80,7 +95,7 @@ class GeminiAdapter:
         parts = []
         for m in messages:
             role = m.get("role") or m.get("sender", "unknown")
-            text = self._extract_text(m)
+            text = extract_text(m)
             if text.strip():
                 label = "User" if role == "user" else "Assistant"
                 parts.append(f"**{label}:** {text}")
@@ -102,7 +117,7 @@ class GeminiAdapter:
             or messages[-1].get("created_at")
             or conv.get("create_time")
         )
-        timestamp = self._parse_timestamp(ts_str)
+        timestamp = parse_timestamp(ts_str)
 
         entity = MemoryEntity(
             source_type=MemoryType.CONTEXT,
@@ -119,43 +134,8 @@ class GeminiAdapter:
 
         return [entity]
 
-    def _extract_text(self, msg: dict) -> str:
-        if "text" in msg:
-            return msg["text"] or ""
-        content = msg.get("content", "")
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            texts = []
-            for block in content:
-                if isinstance(block, str):
-                    texts.append(block)
-                elif isinstance(block, dict) and block.get("type") == "text":
-                    texts.append(block.get("text", ""))
-            return "\n".join(texts)
-        return str(content)
-
-    def _parse_timestamp(self, ts) -> datetime | None:
-        if ts is None:
-            return None
-        try:
-            if isinstance(ts, str):
-                for fmt in (
-                    "%Y-%m-%dT%H:%M:%S.%fZ",
-                    "%Y-%m-%dT%H:%M:%SZ",
-                    "%Y-%m-%dT%H:%M:%S",
-                ):
-                    try:
-                        return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
-                    except ValueError:
-                        continue
-            if isinstance(ts, (int, float)):
-                return datetime.fromtimestamp(ts, tz=timezone.utc)
-        except (ValueError, OSError):
-            pass
-        return None
-
     def get_source_stats(self) -> dict:
+        """Return aggregate statistics for this source (stub)."""
         return {
             "source": self.name,
             "total_conversations": 0,

@@ -1,3 +1,5 @@
+"""Core memory entity model and memory type enum."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,6 +8,8 @@ from enum import Enum
 
 
 class MemoryType(Enum):
+    """The kinds of memories Memanto can represent."""
+
     FACT = "fact"
     PREFERENCE = "user_preference"
     CONTEXT = "context"
@@ -23,6 +27,8 @@ class MemoryType(Enum):
 
 @dataclass
 class MemoryEntity:
+    """A single normalized memory produced by an adapter."""
+
     source_type: MemoryType
     title: str
     content: str
@@ -35,6 +41,7 @@ class MemoryEntity:
     metadata: dict = field(default_factory=dict)
 
     def to_okf_frontmatter(self) -> str:
+        """Render this entity as the YAML frontmatter block for an OKF memory."""
         ts = ""
         if self.timestamp:
             ts = self.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -61,4 +68,5 @@ class MemoryEntity:
 
     @staticmethod
     def _escape_yaml(text: str) -> str:
+        """Escape backslashes, quotes and newlines for inclusion in a YAML value."""
         return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")

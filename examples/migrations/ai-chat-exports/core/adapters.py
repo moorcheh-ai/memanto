@@ -1,3 +1,10 @@
+"""Adapter protocol definitions and the source registry.
+
+Defines the ``SourceAdapter`` / ``ApiSourceAdapter`` protocols, the global
+``ADAPTERS`` registry, and the ``DataSource`` model that lets the pipeline
+work with either local files or live API endpoints.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,12 +30,18 @@ class DataSource:
 
     @classmethod
     def from_file(cls, path: str) -> DataSource:
+        """Create a file-backed ``DataSource`` from the given *path*."""
         return cls(kind="file", path=path)
 
     @classmethod
     def from_api(
         cls, endpoint: str, credentials: dict[str, Any] | None = None
     ) -> DataSource:
+        """Create an API-backed ``DataSource`` for *endpoint*.
+
+        Optional *credentials* are injected (DI) and never read from the
+        environment inside business logic.
+        """
         return cls(kind="api", endpoint=endpoint, credentials=credentials or {})
 
 
@@ -75,6 +88,7 @@ ADAPTERS: dict[str, type[SourceAdapter | ApiSourceAdapter]] = {}
 def register_adapter(
     cls: type[SourceAdapter | ApiSourceAdapter],
 ) -> type[SourceAdapter | ApiSourceAdapter]:
+    """Register *cls* in the global ``ADAPTERS`` registry keyed by its name."""
     ADAPTERS[str(cls.name)] = cls
     return cls
 

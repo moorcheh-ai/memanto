@@ -32,6 +32,7 @@ _NO_AGENT = (
 
 
 def _active_agent_hint() -> str:
+    """Return a help string for activating a Memanto agent."""
     return (
         "Memanto needs an active agent for this step.\n"
         "Activate one first, for example:\n"
@@ -41,10 +42,12 @@ def _active_agent_hint() -> str:
 
 
 def _is_no_agent(output: str) -> bool:
+    """Check whether *output* contains a 'no active agent' signal."""
     return any(token.lower() in output.lower() for token in _NO_AGENT)
 
 
 def _run_memanto(cmd: list[str]) -> tuple[int, str, str]:
+    """Run a ``memanto`` CLI subcommand and return (returncode, stdout, stderr)."""
     result = subprocess.run(
         [sys.executable, "-m", "memanto", *cmd],
         capture_output=True,
@@ -55,6 +58,7 @@ def _run_memanto(cmd: list[str]) -> tuple[int, str, str]:
 
 
 def _show_cmd_error(cmd_name: str, rc: int, out: str, err: str) -> None:
+    """Display a Memanto command error in the Streamlit UI."""
     combined = (out + "\n" + err).strip()
     if _is_no_agent(combined):
         st.warning(f"**{cmd_name}: agent not active.**")
@@ -85,9 +89,18 @@ if st.button("Read export"):
         st.session_state["raw"] = raw
         st.session_state["conv_list"] = adapter.get_conversation_list(raw)
         st.session_state["bundle"] = None
+        st.session_state["_source_key"] = source
         st.success(f"Loaded {len(st.session_state['conv_list'])} conversations.")
     except Exception as e:  # noqa: BLE001
         st.error(f"Failed to load: {e}")
+
+if source != st.session_state.get("_source_key"):
+    st.session_state.pop("raw", None)
+    st.session_state.pop("conv_list", None)
+    st.session_state.pop("bundle", None)
+    st.session_state.pop("entities", None)
+    st.session_state.pop("_source_key", None)
+    st.rerun()
 
 conv_list = st.session_state.get("conv_list")
 if conv_list is not None:
@@ -112,15 +125,25 @@ if conv_list is not None:
         if not entities:
             st.warning("No entities matched. Check filters / input.")
         else:
-            path = OKFGenerator(output_dir).generate_bundle(entities)
-            st.session_state["bundle"] = path
-            st.session_state["entities"] = entities
-            st.session_state["conv_count"] = len(conv_list)
-            st.session_state["input_path"] = input_path
-            st.session_state["report"] = None
-            st.success(
-                f"Generated OKF bundle with {len(entities)} memories at `{path}`"
-            )
+            if use_dry_run:
+                st.subheader("Dry-run preview")
+                for i, e in enumerate(entities[:10]):
+                    st.markdown(f"**[{i + 1}]** [{e.source_type.value}] {e.title[:60]}")
+                    st.caption(f"Tags: {', '.join(e.tags)}")
+                if len(entities) > 10:
+                    st.caption(f"... and {len(entities) - 10} more")
+                st.info("Dry run — no files written.")
+            else:
+                path = OKFGenerator(output_dir).generate_bundle(entities)
+                st.session_state["bundle"] = path
+                st.session_state["entities"] = entities
+                selected_count = len(selected_ids) if selected_ids else len(conv_list)
+                st.session_state["conv_count"] = selected_count
+                st.session_state["input_path"] = input_path
+                st.session_state["report"] = None
+                st.success(
+                    f"Generated OKF bundle with {len(entities)} memories at `{path}`"
+                )
 
 bundle_path = st.session_state.get("bundle")
 if bundle_path is not None:

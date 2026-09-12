@@ -33,10 +33,12 @@ from core.adapters import ADAPTERS
 
 
 def _norm(text: str) -> str:
+    """Lower-case and strip non-word characters for comparison."""
     return re.sub(r"\W+", " ", text.lower())
 
 
 def _kws(question: str) -> list[str]:
+    """Extract meaningful keywords from a question, ignoring stopwords."""
     stop = {
         "the",
         "a",
@@ -61,6 +63,7 @@ def _kws(question: str) -> list[str]:
 
 
 def _build_source_index(raw) -> dict[str, str]:
+    """Build a conversation-id → full-text index from the raw export."""
     if isinstance(raw, dict):
         conversations = raw.get("conversations") or raw.get("chat_messages") or []
         raw = conversations if isinstance(conversations, list) else []
@@ -86,6 +89,7 @@ def _build_source_index(raw) -> dict[str, str]:
 
 
 def _source_has_answer(index: dict[str, str], question: str) -> bool:
+    """Check whether the source export contains evidence for *question*."""
     kws = _kws(question)
     if not kws:
         return False
@@ -97,6 +101,7 @@ def _source_has_answer(index: dict[str, str], question: str) -> bool:
 
 
 def _memanto_answer(question: str) -> str:
+    """Query Memanto for an answer to *question*."""
     try:
         out = subprocess.run(
             [sys.executable, "-m", "memanto", "answer", question, "-n", "5"],
@@ -114,16 +119,25 @@ _ERROR_HINTS = ("no active agent", " error", "not found", "does not exist", "<me
 
 
 def _score_parity(question: str, before: bool, after: str) -> bool:
+    """Score recall parity between source evidence and Memanto answer.
+
+    Requires that the Memanto answer contains at least 2 of the extracted
+    keywords (not just 1) to reduce false-positive parity passes.
+    """
     if not before:
         return False  # can't claim recall without source evidence
     low = after.lower()
     if not after or any(h in low for h in _ERROR_HINTS):
         return False  # an error / empty result is not a pass
     kws = _kws(question)
-    return bool(kws) and any(kw in low for kw in kws)  # weak on-topic signal
+    if not kws:
+        return False
+    matches = sum(1 for kw in kws if kw in low)
+    return matches >= 2 or (len(kws) == 1 and matches == 1)
 
 
 def main() -> None:
+    """Run the round-trip recall parity check."""
     parser = argparse.ArgumentParser(description="Round-trip recall parity check")
     parser.add_argument("--source", choices=list(ADAPTERS.keys()), required=True)
     parser.add_argument("--input", required=True)

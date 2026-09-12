@@ -17,7 +17,7 @@ import, so this is safe to leave broad at the export stage.
 
 | Claude export concept               | Claude JSON field        | MemoryEntity                  | OKF frontmatter  |
 |-------------------------------------|--------------------------|-------------------------------|------------------|
-| Conversation                        | `uuid` / `id`            | `metadata.chat_id`            | `x_memanto`      |
+| Conversation id                     | `uuid` / `id`            | `metadata.chat_id`            | `resource`       |
 | Conversation title                  | `name`                   | `title`                       | `title`          |
 | Conversation type                   | `type`                   | `metadata.conversation_type`  | `[Supporting data]` |
 | Message (human + assistant)         | `chat_messages`/`messages`| `content` (paired)            | body             |
@@ -30,7 +30,7 @@ import, so this is safe to leave broad at the export stage.
 
 | ChatGPT export concept        | ChatGPT JSON field       | MemoryEntity                 | OKF frontmatter  |
 |-------------------------------|--------------------------|------------------------------|------------------|
-| Conversation                  | `id` / `conversation_id` | `metadata.chat_id`           | `x_memanto`      |
+| Conversation id               | `id` / `conversation_id` | `metadata.chat_id`           | `resource`       |
 | Conversation title            | `title`                  | `title`                      | `title`          |
 | Message pairs (user/assistant)| `messages`/`mapping`     | `content`                    | body             |
 | Message timestamp             | `create_time`            | `timestamp`                  | `timestamp`      |
@@ -41,7 +41,7 @@ import, so this is safe to leave broad at the export stage.
 
 | Gemini export concept          | Gemini JSON field      | MemoryEntity               | OKF frontmatter  |
 |--------------------------------|------------------------|----------------------------|------------------|
-| Conversation                   | `id` / `conversation_id`| `metadata.chat_id`         | `x_memanto`      |
+| Conversation id                | `id` / `conversation_id`| `metadata.chat_id`         | `resource`       |
 | Conversation title             | `title`                | `title`                    | `title`          |
 | Message (user + model)         | `messages`/`chat_messages`| `content` (paired)       | body             |
 | Message timestamp              | `timestamp`/`created_at`| `timestamp`                | `timestamp`      |
@@ -51,6 +51,8 @@ import, so this is safe to leave broad at the export stage.
 ## Notes
 
 - **Fidelity:** unmapped source fields are preserved by `memanto migrate okf`
-  in the `[Supporting data]` footer, so nothing is lost on import.
-- **Round trip:** the same conversation can be recalled after import via
-  `memanto recall` / `memanto answer` (see `validate_roundtrip.py`).
+  in the `[Supporting data]` footer, so nothing is lost on import. The source
+  conversation id is surfaced in the `resource` URI (`<provider>://conversation/<id>`);
+  per-conversation metadata such as `conversation_type` is kept on the
+  `MemoryEntity.metadata` dict (used programmatically) and, where supported,
+  preserved via supporting data on import.

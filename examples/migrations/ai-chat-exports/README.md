@@ -203,9 +203,9 @@ pytest
 
 ## Social posts
 
+- [Post on X](https://x.com/Lidiya_299/status/2098788801183416621)
 - [Contra](https://contra.com/lidiya_vu8ek55m/posts?r=lidiya_vu8ek55m)
 - [LinkedIn](https://www.linkedin.com/posts/lidiya-mikhailova_promptsandpapersclaudichatgptgeminicompan-activity-7372739284847124481-d-Lz)
-- [X / Twitter](https://x.com/Lidiya_299/status/2098788801183416621)
 
 ## Links
 

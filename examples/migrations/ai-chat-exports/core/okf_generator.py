@@ -1,3 +1,9 @@
+"""OKF bundle generator.
+
+Turns a list of ``MemoryEntity`` records into a valid OKF bundle directory
+(markdown memories, per-type indexes, a bundle manifest and metrics).
+"""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -8,10 +14,14 @@ from core.models import MemoryEntity
 
 
 class OKFGenerator:
+    """Writes an OKF bundle directory from memory entities."""
+
     def __init__(self, output_dir: str):
+        """Create a generator that writes bundles under *output_dir*."""
         self.output_dir = Path(output_dir)
 
     def generate_bundle(self, entities: list[MemoryEntity]) -> Path:
+        """Write the full bundle (memories, indexes, metrics) and return its path."""
         self.output_dir.mkdir(parents=True, exist_ok=True)
         memories_dir = self.output_dir / "memories"
         metrics_dir = self.output_dir / "metrics"
@@ -33,6 +43,7 @@ class OKFGenerator:
         return self.output_dir
 
     def _write_memory(self, entity: MemoryEntity, type_dir: Path) -> Path:
+        """Write a single memory as a markdown file with YAML frontmatter."""
         filepath = type_dir / self._filename(entity)
 
         ts = ""
@@ -66,6 +77,7 @@ class OKFGenerator:
         return filepath
 
     def _filename(self, entity: MemoryEntity) -> str:
+        """Build a unique, filesystem-safe filename for a memory entity."""
         unique_id = entity.source_ref.split("/")[-1] if entity.source_ref else ""
         base = self._safe_filename(entity.title)
         if unique_id:
@@ -75,6 +87,7 @@ class OKFGenerator:
     def _write_type_index(
         self, entities: list[MemoryEntity], type_dir: Path, mem_type: str
     ) -> None:
+        """Write a per-type index markdown listing all memories of the type."""
         lines = [f"# {mem_type}", ""]
         for e in entities:
             filename = self._filename(e)
@@ -84,6 +97,7 @@ class OKFGenerator:
     def _write_bundle_index(
         self, type_groups: dict[str, list[MemoryEntity]], memories_dir: Path
     ) -> None:
+        """Write the bundle manifest (index.md) at the bundle root."""
         lines = ["# OKF Memory Bundle", ""]
         for mem_type, group in sorted(type_groups.items()):
             lines.append(f"## {mem_type} ({len(group)})")
@@ -99,6 +113,7 @@ class OKFGenerator:
         type_groups: dict[str, list[MemoryEntity]],
         metrics_dir: Path,
     ) -> None:
+        """Write metrics/overview.md summarising the bundle contents."""
         metrics_dir.mkdir(parents=True, exist_ok=True)
 
         type_counts = Counter(e.source_type.value for e in entities)
@@ -117,10 +132,11 @@ class OKFGenerator:
             "",
             "## By type",
             "",
+            "| Type | Count | Share |",
+            "| --- | --- | --- |",
         ]
 
         max_count = max(type_counts.values()) if type_counts else 1
-        lines.extend(["| Type | Count | Share |", "| --- | --- | --- |"])
         for mem_type, count in type_counts.most_common():
             bar_len = int((count / max_count) * 20) if max_count else 0
             bar = "\u2588" * bar_len
@@ -140,6 +156,7 @@ class OKFGenerator:
 
     @staticmethod
     def _safe_filename(title: str, max_len: int = 80) -> str:
+        """Return a filesystem-safe, lower-cased slug for *title*."""
         safe = ""
         for ch in title:
             if ch.isalnum() or ch in ("-", "_"):
