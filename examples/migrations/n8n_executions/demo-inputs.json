@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Avery Stone",
+    "email": "avery@atlas-fleet.example",
+    "company": "Atlas Fleet",
+    "companySize": 120,
+    "budgetUsd": 15000,
+    "urgency": "immediate",
+    "useCase": "Automate CRM lead routing and manual follow-up workflows",
+    "notes": "The sales team needs an n8n integration this week.",
+    "source": "demo"
+  },
+  {
+    "name": "Blake Rivera",
+    "email": "blake@beacon-studio.example",
+    "company": "Beacon Studio",
+    "companySize": 15,
+    "budgetUsd": 2500,
+    "urgency": "this_quarter",
+    "useCase": "Reduce manual lead qualification",
+    "notes": "Exploring a small workflow automation pilot.",
+    "source": "demo"
+  },
+  {
+    "name": "Casey Morgan",
+    "email": "casey@cedar-hobby.example",
+    "company": "Cedar Hobby",
+    "companySize": 2,
+    "budgetUsd": 500,
+    "urgency": "researching",
+    "useCase": "Send a monthly newsletter",
+    "notes": "No sales process change planned yet.",
+    "source": "demo"
+  }
+]
