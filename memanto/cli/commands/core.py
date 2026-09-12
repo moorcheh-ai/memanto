@@ -21,7 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from memanto.app.clients.backend import Backend
-from memanto.app.config import plain_http_exposure_message, settings
+from memanto.app.config import is_loopback_host, plain_http_exposure_message, settings
 from memanto.cli.commands._shared import (
     ACCENT,
     BOLD_BRIGHT,
@@ -42,13 +42,20 @@ from memanto.cli.commands._shared import (
 
 
 def _notify_exposed_deployment(host: str) -> None:
-    """Warn (or hard-fail) when MEMANTO serves plain HTTP on the network."""
+    """Warn (or hard-fail) when MEMANTO serves plain HTTP on the network.
+
+    ``DEBUG`` suppresses the non-fatal warning only; it must never disable the
+    ``MEMANTO_REQUIRE_SECURE`` enforcement.
+    """
+    if is_loopback_host(host):
+        return
     message = plain_http_exposure_message(host)
     if message is None:
         return
     if settings.MEMANTO_REQUIRE_SECURE:
         _error(message)
-    _warn(message)
+    elif not settings.DEBUG:
+        _warn(message)
 
 
 def _first_run_setup() -> None:
