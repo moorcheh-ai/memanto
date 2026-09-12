@@ -1,0 +1,26 @@
+{
+  "source_count": 8,
+  "okf_count": 8,
+  "type_counts": {
+    "decision": 5,
+    "fact": 2,
+    "instruction": 1
+  },
+  "skipped": 0,
+  "timings_seconds": {
+    "cli_dry_run": 0.242,
+    "cli_import": 4.196,
+    "cli_export": 10.814
+  },
+  "savings": "N/A: shipped OKF migration has no savings report; AutoGen ListMemory is in-process and no embedding bill was measured.",
+  "mode": "live-cloud",
+  "target_before_count": 0,
+  "lossless_payload_roundtrip": true,
+  "exported_count": 8,
+  "ranked_top3_passed": 5,
+  "ranked_top3_total": 6,
+  "recall_passed": 6,
+  "recall_total": 6,
+  "recall_scope": "equal context volume: all eight demo records; not ranked-search parity",
+  "agent": "autogen-handoff-20260912094448"
+}

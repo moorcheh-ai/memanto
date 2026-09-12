@@ -1,0 +1,6 @@
+[OK] Namespace created in Moorcheh: memanto_agent_autogen-handoff-20260912094448
+Agent 'autogen-handoff-20260912094448' created successfully!
+Pattern: project
+Agent activated automatically.
+Activation expires: 2026-09-12T15:44:53.344155+00:00
+You can now run: memanto remember "..." and memanto recall "..."
