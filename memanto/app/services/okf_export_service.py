@@ -395,6 +395,9 @@ class OkfExportService:
 
         created_at = mem.get("created_at")
         if created_at:
+            frontmatter["timestamp"] = (
+                self._parse_ts(created_at).isoformat().replace("+00:00", "Z")
+            )
             source = mem.get("source") or "process:unknown"
             if not (
                 source.startswith("human:")
@@ -402,7 +405,10 @@ class OkfExportService:
                 or "/" in source
             ):
                 source = f"process:{source}"
-            frontmatter["generated"] = {"by": source, "at": str(created_at)}
+            frontmatter["generated"] = {
+                "by": source,
+                "at": self._parse_ts(created_at).isoformat().replace("+00:00", "Z"),
+            }
 
         source_ref = mem.get("source_ref")
         if source_ref:
