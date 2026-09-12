@@ -1,4 +1,4 @@
-FROM all-minilm:latest
+FROM all-minilm@sha256:1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef
 # The model is trained for 512 tokens; packaged default 256 fails this fixture.
 PARAMETER num_ctx 512
 PARAMETER num_batch 512

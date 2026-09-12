@@ -8,6 +8,11 @@ if docker container inspect "$name" >/dev/null 2>&1; then
   echo "Container $name already exists; inspect it before restarting this example." >&2
   exit 1
 fi
+docker volume create "$volume" >/dev/null
+docker run --rm --user 0 \
+  --entrypoint chown \
+  --mount "type=volume,src=$volume,dst=/app/data" \
+  "$image" 65532:65532 /app/data
 docker run --detach --name "$name" --publish 127.0.0.1:18080:8080 \
   --env SERVER_HOST=0.0.0.0 --env SERVER_PORT=8080 \
   --env EMBEDDING_PROVIDER=ollama --env EMBEDDING_MODEL=all-minilm-haystack \
@@ -20,6 +25,4 @@ docker run --detach --name "$name" --publish 127.0.0.1:18080:8080 \
   --env FILE_REGISTRY_FILE=/app/data/file_registry.json \
   --env CHUNKER_URL=http://127.0.0.1:8090 \
   --mount "type=volume,src=$volume,dst=/app/data" "$image"
-# The official image runs as UID/GID 65532; new named volumes start owned by root.
-docker exec --user 0 "$name" chown 65532:65532 /app/data
 printf 'Server started on localhost:18080. Stop with: docker stop %s\n' "$name"

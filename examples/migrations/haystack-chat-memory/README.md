@@ -77,10 +77,10 @@ Configure `InMemoryChatMessageStore(skip_system_messages=False, last_k=None)` at
 Save a snapshot with `format: haystack-chat-store-v1`, a `sessions` dictionary mapping session IDs to `[message.to_dict(), ...]`, and optional generation/version metadata. Then:
 
 ```sh
-python examples/migrations/haystack-chat-memory/adapter.py source.json input-okf --session your-session
-memanto migrate okf input-okf --dry-run
-memanto migrate okf input-okf --agent your-dedicated-agent
-memanto memory export --agent your-dedicated-agent --okf --split file --limit 1000 --output exports/haystack-evidence
+.venv/bin/python examples/migrations/haystack-chat-memory/adapter.py source.json input-okf --session your-session
+.venv/bin/memanto migrate okf input-okf --dry-run
+.venv/bin/memanto migrate okf input-okf --agent your-dedicated-agent
+.venv/bin/memanto memory export --agent your-dedicated-agent --okf --split file --limit 1000 --output exports/haystack-evidence
 ```
 
 The example accepts at most 1,000 messages/session, 8 MiB snapshots and an 8,000-character canonical body per message. Oversized or unsupported content fails before publishing a partial bundle. Review private source information before uploading it. Text and serialized tool call/result content are supported; other top-level content modalities are explicitly rejected.

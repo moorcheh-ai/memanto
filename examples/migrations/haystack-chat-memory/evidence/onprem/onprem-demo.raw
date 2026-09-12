@@ -3,12 +3,12 @@ Backend: on-prem | Actual source API run; no generative model involved.
 Source golden answers: {"currency": "EUR", "response_window": "48 hours", "channel": "email", "approver": "Maya"}
 [Presentation pause: 8s; excluded from CLI timings]
 
-$ memanto migrate okf /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/input-okf --dry-run
+$ memanto migrate okf <memanto-checkout>/onprem-demo/input-okf --dry-run
 ╭─────────────────────────╮
 │ OKF -> Memanto  Dry run │
 ╰─────────────────────────╯
   … Loading OKF bundle from 
-/Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/input-okf
+<memanto-checkout>/onprem-demo/input-okf
   … Mapping OKF nodes onto Memanto schema...
 
 ╭────────────────────────────────────────────────── Dry run complete ──────────────────────────────────────────────────╮
@@ -19,10 +19,10 @@ $ memanto migrate okf /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work
 │ Dry run — no writes performed.                                                                                       │
 │                                                                                                                      │
 │ Run dir:                                                                                                             │
-│ /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/migrate/ │
+│ <memanto-checkout>/onprem-demo/private/.memanto/migrate/ │
 │ okf/20260911_191713                                                                                                  │
 │ Mapped preview:                                                                                                      │
-│ /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/migrate/ │
+│ <memanto-checkout>/onprem-demo/private/.memanto/migrate/ │
 │ okf/20260911_191713/mapped_preview.json                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
@@ -39,12 +39,12 @@ You can now run: memanto remember "..." and memanto recall "..."
 
 [Presentation pause: 7s; excluded from CLI timings]
 
-$ memanto migrate okf /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/input-okf --agent haystack-procurement-demo-20260911
+$ memanto migrate okf <memanto-checkout>/onprem-demo/input-okf --agent haystack-procurement-demo-20260911
 ╭─────────────────────────╮
 │ OKF -> Memanto  Migrate │
 ╰─────────────────────────╯
   … Loading OKF bundle from 
-/Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/input-okf
+<memanto-checkout>/onprem-demo/input-okf
   … Mapping OKF nodes onto Memanto schema...
   … Importing batch 1/1 (15 memories)...
 
@@ -56,10 +56,10 @@ $ memanto migrate okf /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work
 │ Target agent: haystack-procurement-demo-20260911                                                                     │
 │                                                                                                                      │
 │ Run dir:                                                                                                             │
-│ /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/migrate/ │
+│ <memanto-checkout>/onprem-demo/private/.memanto/migrate/ │
 │ okf/20260911_191728                                                                                                  │
 │ Mapped preview:                                                                                                      │
-│ /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/migrate/ │
+│ <memanto-checkout>/onprem-demo/private/.memanto/migrate/ │
 │ okf/20260911_191728/mapped_preview.json                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
@@ -81,7 +81,7 @@ $ memanto memory export --agent haystack-procurement-demo-20260911 --okf --split
 
 OK Exported 15 memories to OKF bundle!
 Bundle: 
-/Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/exports/hays
+<memanto-checkout>/onprem-demo/private/.memanto/exports/hays
 tack-evidence
 Completed in 0.18s
 
@@ -119,6 +119,6 @@ Source session cleared: 0 messages; unrelated session remains intact.
 Destination export golden answers: {"currency": "EUR", "response_window": "48 hours", "channel": "email", "approver": "Maya"}
 Verified result: 15 source messages and 15 unchanged exported messages; four real recall answers passed.
 Measured CLI seconds (presentation pauses excluded): {"migrate-okf-dry-run": 0.503, "agent-create": 0.55, "migrate-okf": 0.674, "memory-export": 0.542}
-Full measured report: /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/summary.json
+Full measured report: <memanto-checkout>/onprem-demo/summary.json
 Destination import/export and exact source reconstruction succeeded. Four real semantic recall queries also passed.
 [Presentation pause: 8s; excluded from CLI timings]

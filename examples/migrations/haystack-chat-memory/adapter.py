@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import re
 import tempfile
@@ -102,6 +103,7 @@ def render_session(snapshot: dict[str, Any], session_id: str) -> dict[str, str]:
         readable = "\n\n".join(text_parts)
         # Keep arbitrary source Markdown inert in the readable transcript; the
         # canonical JSON below remains the exact reconstruction source.
+        readable = html.escape(readable)
         readable = "\n".join("> " + line for line in readable.splitlines())
         readable = readable.replace("<!-- okf-entry -->", "&lt;!-- okf-entry --&gt;")
         body = (

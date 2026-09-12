@@ -2,7 +2,7 @@
 │ OKF -> Memanto  Migrate │
 ╰─────────────────────────╯
   … Loading OKF bundle from 
-/Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/input-okf
+<memanto-checkout>/onprem-demo/input-okf
   … Mapping OKF nodes onto Memanto schema...
   … Importing batch 1/1 (15 memories)...
 
@@ -14,9 +14,9 @@
 │ Target agent: haystack-procurement-demo-20260911                                                                     │
 │                                                                                                                      │
 │ Run dir:                                                                                                             │
-│ /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/migrate/ │
+│ <memanto-checkout>/onprem-demo/private/.memanto/migrate/ │
 │ okf/20260911_191728                                                                                                  │
 │ Mapped preview:                                                                                                      │
-│ /Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/migrate/ │
+│ <memanto-checkout>/onprem-demo/private/.memanto/migrate/ │
 │ okf/20260911_191728/mapped_preview.json                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

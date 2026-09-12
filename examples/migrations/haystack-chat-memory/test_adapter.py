@@ -57,6 +57,17 @@ def test_literal_delimiters_preserve_single_complete_message(tmp_path, text):
     )
 
 
+def test_readable_text_escapes_html_without_changing_source_envelope(tmp_path):
+    snapshot = snapshot_with('<script>alert("xss")</script> & <tag>')
+    write_bundle(snapshot, SESSION, tmp_path / "bundle")
+    row = map_okf(load_okf_bundle(tmp_path / "bundle"))[0]
+    assert (
+        "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt; &amp; &lt;tag&gt;"
+        in row["content"]
+    )
+    assert reconstruct(row["content"])["message"] == snapshot["sessions"][SESSION][0]
+
+
 def test_oversize_rejected_before_partial_output(tmp_path):
     snapshot = snapshot_with("small")
     snapshot["sessions"][SESSION].append(ChatMessage.from_user("x" * 9000).to_dict())

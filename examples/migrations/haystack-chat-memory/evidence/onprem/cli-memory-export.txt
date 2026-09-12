@@ -12,6 +12,6 @@
 
 OK Exported 15 memories to OKF bundle!
 Bundle: 
-/Users/farouklaaroussi/Documents/Codex/2026-09-11/con/work/next-bounty/memanto/onprem-demo/private/.memanto/exports/hays
+<memanto-checkout>/onprem-demo/private/.memanto/exports/hays
 tack-evidence
 Completed in 0.18s
