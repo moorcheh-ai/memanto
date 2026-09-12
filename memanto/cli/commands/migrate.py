@@ -424,18 +424,22 @@ def _run_migrate_flow(
         )
 
     border = WARNING if summary.failed else SUCCESS
+    if dry_run:
+        panel_title = "[bold yellow]Dry run complete[/bold yellow]"
+    elif summary.failed:
+        panel_title = "[bold yellow]Migration incomplete[/bold yellow]"
+    else:
+        panel_title = "[bold green]Migration complete[/bold green]"
     console.print()
     console.print(
         Panel(
             "\n".join(body_lines),
-            title=(
-                "[bold yellow]Dry run complete[/bold yellow]"
-                if dry_run
-                else "[bold green]Migration complete[/bold green]"
-            ),
+            title=panel_title,
             border_style=border,
         )
     )
+    if summary.failed:
+        raise typer.Exit(code=1)
 
 
 # --------------------------------------------------------------------------
@@ -634,18 +638,22 @@ def migrate_okf(
         )
 
     border = WARNING if summary.failed else SUCCESS
+    if dry_run:
+        panel_title = "[bold yellow]Dry run complete[/bold yellow]"
+    elif summary.failed:
+        panel_title = "[bold yellow]Import incomplete[/bold yellow]"
+    else:
+        panel_title = "[bold green]Import complete[/bold green]"
     console.print()
     console.print(
         Panel(
             "\n".join(body_lines),
-            title=(
-                "[bold yellow]Dry run complete[/bold yellow]"
-                if dry_run
-                else "[bold green]Import complete[/bold green]"
-            ),
+            title=panel_title,
             border_style=border,
         )
     )
+    if summary.failed:
+        raise typer.Exit(code=1)
 
 
 @migrate_app.command("supermemory")
