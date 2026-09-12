@@ -1,0 +1,11 @@
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
+artifacts/*.sqlite
+artifacts/*.sqlite-*
+artifacts/runs/**/*.sqlite
+artifacts/runs/**/*.sqlite-*
+artifacts/preview.json
+artifacts/*.mp4

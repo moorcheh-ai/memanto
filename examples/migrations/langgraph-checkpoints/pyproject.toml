@@ -1,0 +1,29 @@
+[project]
+name = "memanto-langgraph-checkpoint-migration"
+version = "0.1.0"
+description = "Convert real LangGraph SQLite checkpoints into a portable OKF bundle"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-sqlite>=3.1,<4",
+    "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+# Pillow is required for tests that import build_demo_video / record_live_terminal.
+dev = ["pytest>=8,<9", "Pillow>=12,<13"]
+video = ["Pillow>=12,<13"]
+
+[project.scripts]
+langgraph-to-okf = "langgraph_to_okf.cli:main"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["langgraph_to_okf*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
