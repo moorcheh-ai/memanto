@@ -11,7 +11,8 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
-from memanto.app.config import settings
+from memanto.app.config import check_secure_deployment, settings
+from memanto.app.middleware import TrustedProxySchemeMiddleware
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
@@ -69,13 +70,18 @@ async def lifespan(_: FastAPI):
     yield
 
 
-# Create FastAPI app
+# Create FastAPI app. The interactive docs and the OpenAPI schema are disabled
+# by default (MEMANTO_ENABLE_DOCS=true re-enables them): the server binds
+# 0.0.0.0 by default, so an unauthenticated schema would enumerate every route
+# to any network peer. Enable them only on a trusted network or behind an
+# access-control layer - HTTPS protects transport, not access to the schema.
 app = FastAPI(
     title="Memanto - Memory that AI Agents Love!",
     description="A memory layer service for agentic AI systems using Moorcheh SDK",
     version=__version__,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.MEMANTO_ENABLE_DOCS else None,
+    redoc_url="/redoc" if settings.MEMANTO_ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if settings.MEMANTO_ENABLE_DOCS else None,
     lifespan=lifespan,
 )
 
@@ -95,6 +101,15 @@ def _validate_cors_settings(
             "ALLOWED_ORIGINS=['*']. Specify explicit trusted origins when enabling credentials."
         )
 
+
+# If TLS terminates at a trusted reverse proxy, restore the browser-facing
+# scheme so the session cookie is marked Secure (see auth_deps.py). Off by
+# default: X-Forwarded-Proto is only honored from explicit peers.
+if settings.proxy_allowed_ips:
+    app.add_middleware(
+        TrustedProxySchemeMiddleware,
+        allowed_ips=settings.proxy_allowed_ips,
+    )
 
 # Add CORS middleware
 _validate_cors_settings(settings.ALLOWED_ORIGINS, settings.CORS_ALLOW_CREDENTIALS)
@@ -166,4 +181,8 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
 
+    try:
+        check_secure_deployment(host="0.0.0.0")
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     uvicorn.run(app, host="0.0.0.0", port=8000)

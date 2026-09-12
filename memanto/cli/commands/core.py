@@ -21,6 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from memanto.app.clients.backend import Backend
+from memanto.app.config import is_loopback_host, plain_http_exposure_message, settings
 from memanto.cli.commands._shared import (
     ACCENT,
     BOLD_BRIGHT,
@@ -30,6 +31,7 @@ from memanto.cli.commands._shared import (
     SUCCESS,
     WARNING,
     _error,
+    _warn,
     app,
     config_manager,
     console,
@@ -37,6 +39,23 @@ from memanto.cli.commands._shared import (
     print_logo,
     show_welcome_banner,
 )
+
+
+def _notify_exposed_deployment(host: str) -> None:
+    """Warn (or hard-fail) when MEMANTO serves plain HTTP on the network.
+
+    ``DEBUG`` suppresses the non-fatal warning only; it must never disable the
+    ``MEMANTO_REQUIRE_SECURE`` enforcement.
+    """
+    if is_loopback_host(host):
+        return
+    message = plain_http_exposure_message(host)
+    if message is None:
+        return
+    if settings.MEMANTO_REQUIRE_SECURE:
+        _error(message)
+    elif not settings.DEBUG:
+        _warn(message)
 
 
 def _first_run_setup() -> None:
@@ -961,6 +980,8 @@ def serve(
         host = "0.0.0.0"  # Typically want 0.0.0.0 for bind
     port = port or server_cfg.get("port", 8000)
 
+    _notify_exposed_deployment(host)
+
     console.print(
         Panel.fit(
             f"[{BOLD_PRIMARY}]MEMANTO REST API Starting...[/{BOLD_PRIMARY}]\n"
@@ -1010,7 +1031,8 @@ def serve(
     display_host = "localhost" if host == "0.0.0.0" else host
     console.print("\n[green]Starting local REST API...[/green]")
     console.print(f"[dim]Server URL: http://{display_host}:{port}[/dim]")
-    console.print(f"[dim]API Docs: http://{display_host}:{port}/docs[/dim]")
+    if settings.MEMANTO_ENABLE_DOCS:
+        console.print(f"[dim]API Docs: http://{display_host}:{port}/docs[/dim]")
     console.print(f"[dim]Health Check: http://{display_host}:{port}/health[/dim]")
     console.print(
         "\n[bold]Next step:[/bold] Open a new terminal and run [bright_white]memanto agent create <agent-id>[/bright_white]."
@@ -1082,6 +1104,8 @@ def ui(
         host = "0.0.0.0"
     port = port or server_cfg.get("port", 8000)
 
+    _notify_exposed_deployment(host)
+
     # Check if configured
     if config_manager.get_backend() == Backend.ON_PREM:
         os.environ["MEMANTO_BACKEND"] = "on-prem"
@@ -1122,7 +1146,8 @@ def ui(
         )
     )
     console.print(f"\n[{BRIGHT}]Dashboard:[/{BRIGHT}]  {ui_url}")
-    console.print(f"[dim]API Docs:   http://localhost:{port}/docs[/dim]")
+    if settings.MEMANTO_ENABLE_DOCS:
+        console.print(f"[dim]API Docs:   http://localhost:{port}/docs[/dim]")
     console.print("\n[bold]Press CTRL+C to stop.[/bold]\n")
 
     # Open browser after a short delay (in background thread)

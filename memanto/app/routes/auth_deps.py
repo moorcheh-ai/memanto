@@ -4,10 +4,12 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+import logging
 from urllib.parse import urlsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
+from memanto.app.config import is_loopback_host
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.client_identity import set_memanto_session
@@ -20,6 +22,17 @@ from memanto.app.utils.errors import (
 
 SESSION_COOKIE_NAME = "memanto_session_token"
 
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_log_value(value: object) -> str:
+    """Render ``value`` for logs without control characters (CWE-117).
+
+    Request-derived values (e.g. a URL built from the Host header) must not be
+    able to forge log lines via embedded CR/LF bytes.
+    """
+    return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
+
 
 def set_session_cookie(
     response: Response, session_token: str, request: Request
@@ -31,12 +44,21 @@ def set_session_cookie(
     ever sending the cookie back over the plain-HTTP deployment this ships with by
     default. Mark it Secure only when the current request actually arrived over HTTPS.
     """
+    secure = request.url.scheme == "https"
+    if not secure and not is_loopback_host(request.url.hostname):
+        logger.warning(
+            "Issuing the browser UI session cookie over plain HTTP from %s. "
+            "Any network peer that can reach this port can intercept it and "
+            "gain full memory read/write for the active agent. Terminate TLS "
+            "in front of Memanto or bind to a loopback address.",
+            _sanitize_log_value(request.url),
+        )
     response.set_cookie(
         SESSION_COOKIE_NAME,
         session_token,
         httponly=True,
         samesite="strict",
-        secure=request.url.scheme == "https",
+        secure=secure,
         path="/",
     )
 
