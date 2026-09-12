@@ -1,0 +1,64 @@
+{
+  "summary": {
+    "source_count": 4,
+    "mapped_count": 4,
+    "bundle": "okf-bundle",
+    "sections": [
+      "memories",
+      "metrics"
+    ],
+    "per_type": {
+      "fact": 3,
+      "preference": 1
+    },
+    "conserved_records": 4,
+    "source_bytes": 1086,
+    "bundle_bytes": 4856
+  },
+  "source_retrieval": [
+    {
+      "query": "server-side programming language",
+      "expected_phrase": "Python",
+      "score": 0.6734931332165102,
+      "top1": {
+        "content": "User prefers Python for backend work."
+      },
+      "positive_top1_match": true,
+      "negative_control": false
+    },
+    {
+      "query": "city and drink",
+      "expected_phrase": "Delhi",
+      "score": 0.6475591687213093,
+      "top1": {
+        "content": "User lives in Delhi and enjoys masala tea."
+      },
+      "positive_top1_match": true,
+      "negative_control": false
+    },
+    {
+      "query": "mobile framework",
+      "expected_phrase": "React Native",
+      "score": 0.7227980288128932,
+      "top1": {
+        "content": "User is building a mobile app with React Native."
+      },
+      "positive_top1_match": true,
+      "negative_control": false
+    },
+    {
+      "query": "unrelated quantum physics",
+      "expected_phrase": null,
+      "score": 0.5432299175427019,
+      "top1": {
+        "content": "User prefers Python for backend work."
+      },
+      "positive_top1_match": null,
+      "negative_control": true
+    }
+  ],
+  "target_recall": "not run",
+  "cost_savings": null,
+  "latency_savings": null,
+  "source_note": "synthetic scenario through real tools"
+}
