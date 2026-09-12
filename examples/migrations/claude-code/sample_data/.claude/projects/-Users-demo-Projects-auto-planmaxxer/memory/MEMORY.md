@@ -1,0 +1,2 @@
+- [Project Context](project_context.md) — Rust CLI automating an iterative plan-review-refine cycle
+- [User Workflow](user_workflow.md) — Plan architect using a multi-stage workflow with competing AI reviewers

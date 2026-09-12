@@ -1,0 +1,47 @@
+[
+  {
+    "question": "What does Auto Planmaxxer automate?",
+    "answer": "It automates iterative plan optimization and review across Claude Code and Codex.",
+    "required_terms": [
+      ["iterative", "plan"],
+      ["claude code"],
+      ["codex"]
+    ]
+  },
+  {
+    "question": "Why was the tool built?",
+    "answer": "Manual iterations take one to three hours, so the tool enables unattended overnight refinement.",
+    "required_terms": [
+      ["one to three hours", "1-3 hours"],
+      ["unattended"],
+      ["overnight"]
+    ]
+  },
+  {
+    "question": "What integration architecture was selected?",
+    "answer": "Use claude -p --resume for integration, keep execution synchronous, and use std::thread for parallel reviews.",
+    "required_terms": [
+      ["claude -p --resume"],
+      ["synchronous"],
+      ["std::thread"]
+    ]
+  },
+  {
+    "question": "What operating qualities does the user value?",
+    "answer": "Unattended automation, deterministic file operations, full audit logs, and separation of model work from deterministic operations.",
+    "required_terms": [
+      ["unattended"],
+      ["deterministic"],
+      ["audit"]
+    ]
+  },
+  {
+    "question": "What did the user ask Claude Code to clarify?",
+    "answer": "The user asked for the workflow ordering, a diagram, and the origin of kickoff and continuation prompts.",
+    "required_terms": [
+      ["workflow"],
+      ["diagram"],
+      ["kickoff", "continuation"]
+    ]
+  }
+]
