@@ -1,109 +1,94 @@
-# Environment variables and secrets
-.env
-.env.local
-.env.*.local
-*.key
-*.pem
-*.crt
-secrets/
-.secrets
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-uv.lock
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
-venv/
-.venv/
-ENV/
-env/
-.env/
-
-# IDEs
-.vscode/
-.idea/
-.claude/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Testing
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
 
 # Cython debug symbols
-cython_debug/
-
 # Database
+# Environment variables and secrets
+# Generated version file
+# IDEs
+# Jupyter Notebook
+# Logs
+# mypy
+# npm pack output
+# OS
+# Pyre type checker
+# Python
+# pytype static type analyzer
+# Temporary files
+# Testing
+# Virtual environments
+*$py.class
+**/_version.py
+*.bak
+*.cover
+*.crt
 *.db
+*.egg
+*.egg-info/
+*.key
+*.log
+*.pem
+*.py[cod]
+*.so
 *.sqlite
 *.sqlite3
-
-# Logs
-logs/
-*.log
-pip-log.txt
-pip-delete-this-directory.txt
-
-# OS
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
-*.swp
 *.swo
-
-# Generated version file
-**/_version.py
-
-# npm pack output
+*.swp
 *.tgz
+*.tmp
+*~
+.cache
+.claude/
+.coverage
+.coverage.*
+.dmypy.json
+.DS_Store
+.eggs/
+.env
+.env.*.local
+.env.local
+.env/
+.idea/
+.installed.cfg
+.ipynb_checkpoints
+.mypy_cache/
+.nox/
+.pyre/
+.pytest_cache/
+.Python
+.pytype/
+.secrets
+.tox/
+.venv/
+.vscode/
+__pycache__/
+build/
+coverage.xml
+cython_debug/
+Desktop.ini
+develop-eggs/
+dist/
+dmypy.json
+docs/demo.mp4
+downloads/
+eggs/
+env/
+ENV/
+examples/migrations/chatgpt-liberation/docs/demo.mp4
+examples/migrations/chatgpt-liberation/docs/demo-thumb.png
+lib/
+lib64/
+logs/
+MANIFEST
+nosetests.xml
+parts/
+pip-delete-this-directory.txt
+pip-log.txt
+sdist/
+secrets/
+share/python-wheels/
+temp/
+Thumbs.db
+tmp/
+uv.lock
+var/
+venv/
+wheels/

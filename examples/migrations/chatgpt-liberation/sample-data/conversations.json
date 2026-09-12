@@ -1,0 +1,2206 @@
+[
+  {
+    "id": "conv-000-19b28123",
+    "title": "Morning routine",
+    "create_time": 1783108800.0,
+    "mapping": {
+      "m-000-0": {
+        "id": "m-000-0",
+        "message": {
+          "id": "m-000-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783108800.0,
+          "content": {
+            "parts": [
+              "I prefer concise summaries, bullet points over paragraphs. My mornings are packed."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-000-1"
+        ]
+      },
+      "m-000-1": {
+        "id": "m-000-1",
+        "message": {
+          "id": "m-000-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783109220.0,
+          "content": {
+            "parts": [
+              "Got it \u2014 I'll keep summaries short and bulleted."
+            ]
+          }
+        },
+        "parent": "m-000-0",
+        "children": [
+          "m-000-2"
+        ]
+      },
+      "m-000-2": {
+        "id": "m-000-2",
+        "message": {
+          "id": "m-000-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783109640.0,
+          "content": {
+            "parts": [
+              "I love coffee, usually 2 cups before noon. Remember that."
+            ]
+          }
+        },
+        "parent": "m-000-1",
+        "children": [
+          "m-000-3"
+        ]
+      },
+      "m-000-3": {
+        "id": "m-000-3",
+        "message": {
+          "id": "m-000-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783110060.0,
+          "content": {
+            "parts": [
+              "Noted \u2014 2 coffees before noon."
+            ]
+          }
+        },
+        "parent": "m-000-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-001-8913819d",
+    "title": "Project Atlas kickoff",
+    "create_time": 1783162800.0,
+    "mapping": {
+      "m-001-0": {
+        "id": "m-001-0",
+        "message": {
+          "id": "m-001-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783162800.0,
+          "content": {
+            "parts": [
+              "My main goal is to ship Project Atlas by Aug 30 \u2014 it's a graph-augmented retrieval system for our docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-001-1"
+        ]
+      },
+      "m-001-1": {
+        "id": "m-001-1",
+        "message": {
+          "id": "m-001-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783163220.0,
+          "content": {
+            "parts": [
+              "Locked in: Project Atlas, deadline Aug 30, graph-augmented retrieval."
+            ]
+          }
+        },
+        "parent": "m-001-0",
+        "children": [
+          "m-001-2"
+        ]
+      },
+      "m-001-2": {
+        "id": "m-001-2",
+        "message": {
+          "id": "m-001-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783163640.0,
+          "content": {
+            "parts": [
+              "I work with Maya on Atlas. She's the designer, I'm PM."
+            ]
+          }
+        },
+        "parent": "m-001-1",
+        "children": [
+          "m-001-3"
+        ]
+      },
+      "m-001-3": {
+        "id": "m-001-3",
+        "message": {
+          "id": "m-001-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783164060.0,
+          "content": {
+            "parts": [
+              "Team noted: Maya (design), you (PM) on Atlas."
+            ]
+          }
+        },
+        "parent": "m-001-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-002-5f104a56",
+    "title": "Research notes: retrieval",
+    "create_time": 1783245600.0,
+    "mapping": {
+      "m-002-0": {
+        "id": "m-002-0",
+        "message": {
+          "id": "m-002-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783245600.0,
+          "content": {
+            "parts": [
+              "Observation: dense retrieval fails on our 4PB doc-intel when queries are multi-hop. Need graph walk."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-002-1"
+        ]
+      },
+      "m-002-1": {
+        "id": "m-002-1",
+        "message": {
+          "id": "m-002-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783246020.0,
+          "content": {
+            "parts": [
+              "Logged as observation \u2014 multi-hop needs graph walk."
+            ]
+          }
+        },
+        "parent": "m-002-0",
+        "children": [
+          "m-002-2"
+        ]
+      },
+      "m-002-2": {
+        "id": "m-002-2",
+        "message": {
+          "id": "m-002-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783246440.0,
+          "content": {
+            "parts": [
+              "Decision: we'll use Pinecone + Neo4j hybrid, not pure vector. Going with hybrid."
+            ]
+          }
+        },
+        "parent": "m-002-1",
+        "children": [
+          "m-002-3"
+        ]
+      },
+      "m-002-3": {
+        "id": "m-002-3",
+        "message": {
+          "id": "m-002-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783246860.0,
+          "content": {
+            "parts": [
+              "Decision recorded: Pinecone + Neo4j hybrid."
+            ]
+          }
+        },
+        "parent": "m-002-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-003-087f3832",
+    "title": "Weekend trip",
+    "create_time": 1783519200.0,
+    "mapping": {
+      "m-003-0": {
+        "id": "m-003-0",
+        "message": {
+          "id": "m-003-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783519200.0,
+          "content": {
+            "parts": [
+              "My sister Priya is visiting next weekend, we'll hike Mt. Rainier."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-003-1"
+        ]
+      },
+      "m-003-1": {
+        "id": "m-003-1",
+        "message": {
+          "id": "m-003-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783519620.0,
+          "content": {
+            "parts": [
+              "Event noted \u2014 Priya visiting, Rainier hike."
+            ]
+          }
+        },
+        "parent": "m-003-0",
+        "children": [
+          "m-003-2"
+        ]
+      },
+      "m-003-2": {
+        "id": "m-003-2",
+        "message": {
+          "id": "m-003-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783520040.0,
+          "content": {
+            "parts": [
+              "Remember: I'm vegetarian, no meat. And allergic to peanuts \u2014 serious."
+            ]
+          }
+        },
+        "parent": "m-003-1",
+        "children": [
+          "m-003-3"
+        ]
+      },
+      "m-003-3": {
+        "id": "m-003-3",
+        "message": {
+          "id": "m-003-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783520460.0,
+          "content": {
+            "parts": [
+              "Dietary constraints saved: vegetarian, peanut allergy."
+            ]
+          }
+        },
+        "parent": "m-003-2",
+        "children": [
+          "m-003-4"
+        ]
+      },
+      "m-003-4": {
+        "id": "m-003-4",
+        "message": {
+          "id": "m-003-4",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783520880.0,
+          "content": {
+            "parts": [
+              "Please always remind me to carry my EpiPen on hikes."
+            ]
+          }
+        },
+        "parent": "m-003-3",
+        "children": [
+          "m-003-5"
+        ]
+      },
+      "m-003-5": {
+        "id": "m-003-5",
+        "message": {
+          "id": "m-003-5",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783521300.0,
+          "content": {
+            "parts": [
+              "Instruction saved: remind EpiPen on hikes."
+            ]
+          }
+        },
+        "parent": "m-003-4",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-004-2e5f10d0",
+    "title": "Atlas architecture",
+    "create_time": 1783774800.0,
+    "mapping": {
+      "m-004-0": {
+        "id": "m-004-0",
+        "message": {
+          "id": "m-004-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783774800.0,
+          "content": {
+            "parts": [
+              "Update: Atlas deadline moved to Sep 10, not Aug 30 \u2014 stakeholder delay."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-004-1"
+        ]
+      },
+      "m-004-1": {
+        "id": "m-004-1",
+        "message": {
+          "id": "m-004-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783775220.0,
+          "content": {
+            "parts": [
+              "Updated: Atlas deadline Sep 10 (was Aug 30)."
+            ]
+          }
+        },
+        "parent": "m-004-0",
+        "children": [
+          "m-004-2"
+        ]
+      },
+      "m-004-2": {
+        "id": "m-004-2",
+        "message": {
+          "id": "m-004-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783775640.0,
+          "content": {
+            "parts": [
+              "I changed my mind \u2014 I switched from coffee to green tea, 1 cup. Coffee gives me jitters now."
+            ]
+          }
+        },
+        "parent": "m-004-1",
+        "children": [
+          "m-004-3"
+        ]
+      },
+      "m-004-3": {
+        "id": "m-004-3",
+        "message": {
+          "id": "m-004-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783776060.0,
+          "content": {
+            "parts": [
+              "Preference updated: green tea, 1 cup (was coffee)."
+            ]
+          }
+        },
+        "parent": "m-004-2",
+        "children": [
+          "m-004-4"
+        ]
+      },
+      "m-004-4": {
+        "id": "m-004-4",
+        "message": {
+          "id": "m-004-4",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783776480.0,
+          "content": {
+            "parts": [
+              "My manager Raj wants weekly Friday demos. Commitment: I'll deliver Atlas demo every Friday."
+            ]
+          }
+        },
+        "parent": "m-004-3",
+        "children": [
+          "m-004-5"
+        ]
+      },
+      "m-004-5": {
+        "id": "m-004-5",
+        "message": {
+          "id": "m-004-5",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783776900.0,
+          "content": {
+            "parts": [
+              "Commitment: Friday demos to Raj."
+            ]
+          }
+        },
+        "parent": "m-004-4",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-005-8054ba84",
+    "title": "Team dynamics",
+    "create_time": 1783947600.0,
+    "mapping": {
+      "m-005-0": {
+        "id": "m-005-0",
+        "message": {
+          "id": "m-005-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783947600.0,
+          "content": {
+            "parts": [
+              "Learning: Maya prefers Figma comments over Slack for feedback. Noted for next time."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-005-1"
+        ]
+      },
+      "m-005-1": {
+        "id": "m-005-1",
+        "message": {
+          "id": "m-005-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783948020.0,
+          "content": {
+            "parts": [
+              "Learning captured \u2014 Maya \u2192 Figma comments."
+            ]
+          }
+        },
+        "parent": "m-005-0",
+        "children": [
+          "m-005-2"
+        ]
+      },
+      "m-005-2": {
+        "id": "m-005-2",
+        "message": {
+          "id": "m-005-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783948440.0,
+          "content": {
+            "parts": [
+              "Fact: our doc store is GE RADAR mock, 4PB, n8n + LangGraph pipeline."
+            ]
+          }
+        },
+        "parent": "m-005-1",
+        "children": [
+          "m-005-3"
+        ]
+      },
+      "m-005-3": {
+        "id": "m-005-3",
+        "message": {
+          "id": "m-005-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783948860.0,
+          "content": {
+            "parts": [
+              "Fact stored: GE RADAR 4PB, n8n/LangGraph."
+            ]
+          }
+        },
+        "parent": "m-005-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-006-33a5e3bd",
+    "title": "Evening reflection",
+    "create_time": 1784116800.0,
+    "mapping": {
+      "m-006-0": {
+        "id": "m-006-0",
+        "message": {
+          "id": "m-006-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784116800.0,
+          "content": {
+            "parts": [
+              "Goal: I want to run a half-marathon by Dec \u2014 training 3x per week."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-006-1"
+        ]
+      },
+      "m-006-1": {
+        "id": "m-006-1",
+        "message": {
+          "id": "m-006-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784117220.0,
+          "content": {
+            "parts": [
+              "Goal logged: half-marathon Dec, 3x/week training."
+            ]
+          }
+        },
+        "parent": "m-006-0",
+        "children": [
+          "m-006-2"
+        ]
+      },
+      "m-006-2": {
+        "id": "m-006-2",
+        "message": {
+          "id": "m-006-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784117640.0,
+          "content": {
+            "parts": [
+              "Don't forget: deployment window is Tuesdays 2am UTC only."
+            ]
+          }
+        },
+        "parent": "m-006-1",
+        "children": [
+          "m-006-3"
+        ]
+      },
+      "m-006-3": {
+        "id": "m-006-3",
+        "message": {
+          "id": "m-006-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784118060.0,
+          "content": {
+            "parts": [
+              "Instruction: deploy Tuesdays 2am UTC."
+            ]
+          }
+        },
+        "parent": "m-006-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-007-fbc8eab9",
+    "title": "Atlas blocker",
+    "create_time": 1784372400.0,
+    "mapping": {
+      "m-007-0": {
+        "id": "m-007-0",
+        "message": {
+          "id": "m-007-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784372400.0,
+          "content": {
+            "parts": [
+              "Error we hit: Pinecone upsert rate-limited at 5k/min on batch import. Need backoff."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-007-1"
+        ]
+      },
+      "m-007-1": {
+        "id": "m-007-1",
+        "message": {
+          "id": "m-007-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784372820.0,
+          "content": {
+            "parts": [
+              "Error noted: Pinecone 5k/min limit, needs backoff."
+            ]
+          }
+        },
+        "parent": "m-007-0",
+        "children": [
+          "m-007-2"
+        ]
+      },
+      "m-007-2": {
+        "id": "m-007-2",
+        "message": {
+          "id": "m-007-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784373240.0,
+          "content": {
+            "parts": [
+              "I will fix retrieval latency to <200ms p95 by next sprint."
+            ]
+          }
+        },
+        "parent": "m-007-1",
+        "children": [
+          "m-007-3"
+        ]
+      },
+      "m-007-3": {
+        "id": "m-007-3",
+        "message": {
+          "id": "m-007-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784373660.0,
+          "content": {
+            "parts": [
+              "Commitment: <200ms p95 retrieval by next sprint."
+            ]
+          }
+        },
+        "parent": "m-007-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-008-847814d9",
+    "title": "Family call",
+    "create_time": 1784577600.0,
+    "mapping": {
+      "m-008-0": {
+        "id": "m-008-0",
+        "message": {
+          "id": "m-008-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784577600.0,
+          "content": {
+            "parts": [
+              "My partner Alex (not me \u2014 partner is also Alex) prefers we cook at home on weekdays."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-008-1"
+        ]
+      },
+      "m-008-1": {
+        "id": "m-008-1",
+        "message": {
+          "id": "m-008-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784578020.0,
+          "content": {
+            "parts": [
+              "Relationship: partner Alex, home-cook weekdays."
+            ]
+          }
+        },
+        "parent": "m-008-0",
+        "children": [
+          "m-008-2"
+        ]
+      },
+      "m-008-2": {
+        "id": "m-008-2",
+        "message": {
+          "id": "m-008-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784578440.0,
+          "content": {
+            "parts": [
+              "We adopted a dog, Luna, golden retriever, 2 years old."
+            ]
+          }
+        },
+        "parent": "m-008-1",
+        "children": [
+          "m-008-3"
+        ]
+      },
+      "m-008-3": {
+        "id": "m-008-3",
+        "message": {
+          "id": "m-008-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784578860.0,
+          "content": {
+            "parts": [
+              "Fact: Luna, golden retriever, 2yo."
+            ]
+          }
+        },
+        "parent": "m-008-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-009-8d429535",
+    "title": "Research deep dive",
+    "create_time": 1784743200.0,
+    "mapping": {
+      "m-009-0": {
+        "id": "m-009-0",
+        "message": {
+          "id": "m-009-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784743200.0,
+          "content": {
+            "parts": [
+              "Artifact: draft PRD for Atlas \u2014 12 pages, link https://example.com/prd-atlas.pdf"
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-009-1"
+        ]
+      },
+      "m-009-1": {
+        "id": "m-009-1",
+        "message": {
+          "id": "m-009-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784743620.0,
+          "content": {
+            "parts": [
+              "Artifact noted: PRD 12 pages."
+            ]
+          }
+        },
+        "parent": "m-009-0",
+        "children": [
+          "m-009-2"
+        ]
+      },
+      "m-009-2": {
+        "id": "m-009-2",
+        "message": {
+          "id": "m-009-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784744040.0,
+          "content": {
+            "parts": [
+              "Instruction: from now on, always include a risks section in PRDs."
+            ]
+          }
+        },
+        "parent": "m-009-1",
+        "children": [
+          "m-009-3"
+        ]
+      },
+      "m-009-3": {
+        "id": "m-009-3",
+        "message": {
+          "id": "m-009-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784744460.0,
+          "content": {
+            "parts": [
+              "Instruction: always include risks in PRDs."
+            ]
+          }
+        },
+        "parent": "m-009-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-010-627eae4c",
+    "title": "Demo prep",
+    "create_time": 1785063600.0,
+    "mapping": {
+      "m-010-0": {
+        "id": "m-010-0",
+        "message": {
+          "id": "m-010-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785063600.0,
+          "content": {
+            "parts": [
+              "Observation: graph walk improved recall from 0.62 to 0.81 on multi-hop QA."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-010-1"
+        ]
+      },
+      "m-010-1": {
+        "id": "m-010-1",
+        "message": {
+          "id": "m-010-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785064020.0,
+          "content": {
+            "parts": [
+              "Observation: recall 0.62\u21920.81 with graph walk."
+            ]
+          }
+        },
+        "parent": "m-010-0",
+        "children": [
+          "m-010-2"
+        ]
+      },
+      "m-010-2": {
+        "id": "m-010-2",
+        "message": {
+          "id": "m-010-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785064440.0,
+          "content": {
+            "parts": [
+              "Decision: we will open-source the Atlas graph layer under MIT after Sep 10."
+            ]
+          }
+        },
+        "parent": "m-010-1",
+        "children": [
+          "m-010-3"
+        ]
+      },
+      "m-010-3": {
+        "id": "m-010-3",
+        "message": {
+          "id": "m-010-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785064860.0,
+          "content": {
+            "parts": [
+              "Decision: MIT open-source graph layer post-Sep 10."
+            ]
+          }
+        },
+        "parent": "m-010-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-011-14290e1d",
+    "title": "Health check",
+    "create_time": 1785265200.0,
+    "mapping": {
+      "m-011-0": {
+        "id": "m-011-0",
+        "message": {
+          "id": "m-011-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785265200.0,
+          "content": {
+            "parts": [
+              "I quit tea too \u2014 now just water, 3L daily. Health kick."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-011-1"
+        ]
+      },
+      "m-011-1": {
+        "id": "m-011-1",
+        "message": {
+          "id": "m-011-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785265620.0,
+          "content": {
+            "parts": [
+              "Preference updated: 3L water daily (was tea)."
+            ]
+          }
+        },
+        "parent": "m-011-0",
+        "children": [
+          "m-011-2"
+        ]
+      },
+      "m-011-2": {
+        "id": "m-011-2",
+        "message": {
+          "id": "m-011-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785266040.0,
+          "content": {
+            "parts": [
+              "My dentist appointment is 2026-08-28T15:00:00Z, don't schedule over it."
+            ]
+          }
+        },
+        "parent": "m-011-1",
+        "children": [
+          "m-011-3"
+        ]
+      },
+      "m-011-3": {
+        "id": "m-011-3",
+        "message": {
+          "id": "m-011-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785266460.0,
+          "content": {
+            "parts": [
+              "Event: dentist 2026-08-28T15:00Z."
+            ]
+          }
+        },
+        "parent": "m-011-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-012-2c8d1fba",
+    "title": "Ship it",
+    "create_time": 1785427200.0,
+    "mapping": {
+      "m-012-0": {
+        "id": "m-012-0",
+        "message": {
+          "id": "m-012-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785427200.0,
+          "content": {
+            "parts": [
+              "Context: Atlas runs on AWS us-east-1, costs $1.2k/mo so far."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-012-1"
+        ]
+      },
+      "m-012-1": {
+        "id": "m-012-1",
+        "message": {
+          "id": "m-012-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785427620.0,
+          "content": {
+            "parts": [
+              "Context: AWS us-east-1, $1.2k/mo."
+            ]
+          }
+        },
+        "parent": "m-012-0",
+        "children": [
+          "m-012-2"
+        ]
+      },
+      "m-012-2": {
+        "id": "m-012-2",
+        "message": {
+          "id": "m-012-2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785428040.0,
+          "content": {
+            "parts": [
+              "Goal: after Atlas, I want to build a personal AI companion with persistent memory \u2014 that's why Memanto matters."
+            ]
+          }
+        },
+        "parent": "m-012-1",
+        "children": [
+          "m-012-3"
+        ]
+      },
+      "m-012-3": {
+        "id": "m-012-3",
+        "message": {
+          "id": "m-012-3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785428460.0,
+          "content": {
+            "parts": [
+              "Goal: personal AI companion with persistent memory."
+            ]
+          }
+        },
+        "parent": "m-012-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-013-c5730871",
+    "title": "Quick sync with Raj",
+    "create_time": 1783159200.0,
+    "mapping": {
+      "m-013-0": {
+        "id": "m-013-0",
+        "message": {
+          "id": "m-013-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783159200.0,
+          "content": {
+            "parts": [
+              "Note: Atlas uses LangGraph cyclic multi-agent net for contradiction resolution."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-013-1"
+        ]
+      },
+      "m-013-1": {
+        "id": "m-013-1",
+        "message": {
+          "id": "m-013-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783159620.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-013-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-014-f206ac61",
+    "title": "Figma feedback",
+    "create_time": 1783418400.0,
+    "mapping": {
+      "m-014-0": {
+        "id": "m-014-0",
+        "message": {
+          "id": "m-014-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783418400.0,
+          "content": {
+            "parts": [
+              "Fact: we eval on GE RADAR 4PB slice, 10k docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-014-1"
+        ]
+      },
+      "m-014-1": {
+        "id": "m-014-1",
+        "message": {
+          "id": "m-014-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783418820.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-014-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-015-279e3173",
+    "title": "Pipeline debug",
+    "create_time": 1783681200.0,
+    "mapping": {
+      "m-015-0": {
+        "id": "m-015-0",
+        "message": {
+          "id": "m-015-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783681200.0,
+          "content": {
+            "parts": [
+              "Preference: I like dark mode, muted colors, no emojis in docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-015-1"
+        ]
+      },
+      "m-015-1": {
+        "id": "m-015-1",
+        "message": {
+          "id": "m-015-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783681620.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-015-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-016-c1b4f4c9",
+    "title": "EpiPen check",
+    "create_time": 1783947600.0,
+    "mapping": {
+      "m-016-0": {
+        "id": "m-016-0",
+        "message": {
+          "id": "m-016-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783947600.0,
+          "content": {
+            "parts": [
+              "Instruction: always cite sources in research summaries."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-016-1"
+        ]
+      },
+      "m-016-1": {
+        "id": "m-016-1",
+        "message": {
+          "id": "m-016-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783948020.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-016-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-017-f7b4f8cb",
+    "title": "Tea vs coffee",
+    "create_time": 1784206800.0,
+    "mapping": {
+      "m-017-0": {
+        "id": "m-017-0",
+        "message": {
+          "id": "m-017-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784206800.0,
+          "content": {
+            "parts": [
+              "Event: all-hands 2026-08-20T16:00:00Z."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-017-1"
+        ]
+      },
+      "m-017-1": {
+        "id": "m-017-1",
+        "message": {
+          "id": "m-017-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784207220.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-017-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-018-b16e67bd",
+    "title": "Atlas metrics",
+    "create_time": 1784484000.0,
+    "mapping": {
+      "m-018-0": {
+        "id": "m-018-0",
+        "message": {
+          "id": "m-018-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784484000.0,
+          "content": {
+            "parts": [
+              "Relationship: Maya handles UX, I handle data layer."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-018-1"
+        ]
+      },
+      "m-018-1": {
+        "id": "m-018-1",
+        "message": {
+          "id": "m-018-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784484420.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-018-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-019-e200375f",
+    "title": "Weekend hike plan",
+    "create_time": 1784746800.0,
+    "mapping": {
+      "m-019-0": {
+        "id": "m-019-0",
+        "message": {
+          "id": "m-019-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784746800.0,
+          "content": {
+            "parts": [
+              "Learning: EpiPen reminder should be proactive, not reactive."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-019-1"
+        ]
+      },
+      "m-019-1": {
+        "id": "m-019-1",
+        "message": {
+          "id": "m-019-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784747220.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-019-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-020-560fdbad",
+    "title": "Luna walk",
+    "create_time": 1784973600.0,
+    "mapping": {
+      "m-020-0": {
+        "id": "m-020-0",
+        "message": {
+          "id": "m-020-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784973600.0,
+          "content": {
+            "parts": [
+              "Commitment: I will document Atlas trade-offs in ADR-04."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-020-1"
+        ]
+      },
+      "m-020-1": {
+        "id": "m-020-1",
+        "message": {
+          "id": "m-020-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784974020.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-020-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-021-6cb491d9",
+    "title": "Grocery: vegetarian",
+    "create_time": 1785261600.0,
+    "mapping": {
+      "m-021-0": {
+        "id": "m-021-0",
+        "message": {
+          "id": "m-021-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785261600.0,
+          "content": {
+            "parts": [
+              "Observation: vector-only recall drops 23% on temporal queries."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-021-1"
+        ]
+      },
+      "m-021-1": {
+        "id": "m-021-1",
+        "message": {
+          "id": "m-021-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785262020.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-021-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-022-f786dea3",
+    "title": "Neon retro analysis",
+    "create_time": 1785502800.0,
+    "mapping": {
+      "m-022-0": {
+        "id": "m-022-0",
+        "message": {
+          "id": "m-022-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785502800.0,
+          "content": {
+            "parts": [
+              "Decision: keep GE mock data, don't use prod PII."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-022-1"
+        ]
+      },
+      "m-022-1": {
+        "id": "m-022-1",
+        "message": {
+          "id": "m-022-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785503220.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-022-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-023-e2ab6f27",
+    "title": "Slack vs Figma",
+    "create_time": 1783368000.0,
+    "mapping": {
+      "m-023-0": {
+        "id": "m-023-0",
+        "message": {
+          "id": "m-023-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783368000.0,
+          "content": {
+            "parts": [
+              "Note: Atlas uses LangGraph cyclic multi-agent net for contradiction resolution."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-023-1"
+        ]
+      },
+      "m-023-1": {
+        "id": "m-023-1",
+        "message": {
+          "id": "m-023-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783368420.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-023-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-024-6aebe238",
+    "title": "Pinecone backoff impl",
+    "create_time": 1783620000.0,
+    "mapping": {
+      "m-024-0": {
+        "id": "m-024-0",
+        "message": {
+          "id": "m-024-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783620000.0,
+          "content": {
+            "parts": [
+              "Fact: we eval on GE RADAR 4PB slice, 10k docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-024-1"
+        ]
+      },
+      "m-024-1": {
+        "id": "m-024-1",
+        "message": {
+          "id": "m-024-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783620420.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-024-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-025-cf23ea55",
+    "title": "Neo4j schema",
+    "create_time": 1783872000.0,
+    "mapping": {
+      "m-025-0": {
+        "id": "m-025-0",
+        "message": {
+          "id": "m-025-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783872000.0,
+          "content": {
+            "parts": [
+              "Preference: I like dark mode, muted colors, no emojis in docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-025-1"
+        ]
+      },
+      "m-025-1": {
+        "id": "m-025-1",
+        "message": {
+          "id": "m-025-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783872420.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-025-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-026-bd43ae81",
+    "title": "Q&A benchmark",
+    "create_time": 1784120400.0,
+    "mapping": {
+      "m-026-0": {
+        "id": "m-026-0",
+        "message": {
+          "id": "m-026-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784120400.0,
+          "content": {
+            "parts": [
+              "Instruction: always cite sources in research summaries."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-026-1"
+        ]
+      },
+      "m-026-1": {
+        "id": "m-026-1",
+        "message": {
+          "id": "m-026-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784120820.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-026-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-027-27718208",
+    "title": "Evals: recall parity",
+    "create_time": 1784394000.0,
+    "mapping": {
+      "m-027-0": {
+        "id": "m-027-0",
+        "message": {
+          "id": "m-027-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784394000.0,
+          "content": {
+            "parts": [
+              "Event: all-hands 2026-08-20T16:00:00Z."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-027-1"
+        ]
+      },
+      "m-027-1": {
+        "id": "m-027-1",
+        "message": {
+          "id": "m-027-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784394420.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-027-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-028-ecd836fa",
+    "title": "Handoff to Maya",
+    "create_time": 1784660400.0,
+    "mapping": {
+      "m-028-0": {
+        "id": "m-028-0",
+        "message": {
+          "id": "m-028-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784660400.0,
+          "content": {
+            "parts": [
+              "Relationship: Maya handles UX, I handle data layer."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-028-1"
+        ]
+      },
+      "m-028-1": {
+        "id": "m-028-1",
+        "message": {
+          "id": "m-028-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784660820.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-028-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-029-b438f5c7",
+    "title": "Deploy Tuesday",
+    "create_time": 1784901600.0,
+    "mapping": {
+      "m-029-0": {
+        "id": "m-029-0",
+        "message": {
+          "id": "m-029-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784901600.0,
+          "content": {
+            "parts": [
+              "Learning: EpiPen reminder should be proactive, not reactive."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-029-1"
+        ]
+      },
+      "m-029-1": {
+        "id": "m-029-1",
+        "message": {
+          "id": "m-029-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784902020.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-029-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-030-ba5712bb",
+    "title": "Risks doc",
+    "create_time": 1785146400.0,
+    "mapping": {
+      "m-030-0": {
+        "id": "m-030-0",
+        "message": {
+          "id": "m-030-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785146400.0,
+          "content": {
+            "parts": [
+              "Commitment: I will document Atlas trade-offs in ADR-04."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-030-1"
+        ]
+      },
+      "m-030-1": {
+        "id": "m-030-1",
+        "message": {
+          "id": "m-030-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785146820.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-030-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-031-138fb35c",
+    "title": "Dog park",
+    "create_time": 1785412800.0,
+    "mapping": {
+      "m-031-0": {
+        "id": "m-031-0",
+        "message": {
+          "id": "m-031-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785412800.0,
+          "content": {
+            "parts": [
+              "Observation: vector-only recall drops 23% on temporal queries."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-031-1"
+        ]
+      },
+      "m-031-1": {
+        "id": "m-031-1",
+        "message": {
+          "id": "m-031-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1785413220.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-031-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-032-8c22b4a6",
+    "title": "Rainier prep",
+    "create_time": 1783267200.0,
+    "mapping": {
+      "m-032-0": {
+        "id": "m-032-0",
+        "message": {
+          "id": "m-032-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783267200.0,
+          "content": {
+            "parts": [
+              "Decision: keep GE mock data, don't use prod PII."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-032-1"
+        ]
+      },
+      "m-032-1": {
+        "id": "m-032-1",
+        "message": {
+          "id": "m-032-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783267620.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-032-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-033-b0703706",
+    "title": "Half-marathon week2",
+    "create_time": 1783522800.0,
+    "mapping": {
+      "m-033-0": {
+        "id": "m-033-0",
+        "message": {
+          "id": "m-033-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783522800.0,
+          "content": {
+            "parts": [
+              "Note: Atlas uses LangGraph cyclic multi-agent net for contradiction resolution."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-033-1"
+        ]
+      },
+      "m-033-1": {
+        "id": "m-033-1",
+        "message": {
+          "id": "m-033-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783523220.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-033-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-034-0de794b5",
+    "title": "Docs pipeline",
+    "create_time": 1783778400.0,
+    "mapping": {
+      "m-034-0": {
+        "id": "m-034-0",
+        "message": {
+          "id": "m-034-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1783778400.0,
+          "content": {
+            "parts": [
+              "Fact: we eval on GE RADAR 4PB slice, 10k docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-034-1"
+        ]
+      },
+      "m-034-1": {
+        "id": "m-034-1",
+        "message": {
+          "id": "m-034-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1783778820.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-034-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-035-2891fb71",
+    "title": "n8n cron",
+    "create_time": 1784030400.0,
+    "mapping": {
+      "m-035-0": {
+        "id": "m-035-0",
+        "message": {
+          "id": "m-035-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784030400.0,
+          "content": {
+            "parts": [
+              "Preference: I like dark mode, muted colors, no emojis in docs."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-035-1"
+        ]
+      },
+      "m-035-1": {
+        "id": "m-035-1",
+        "message": {
+          "id": "m-035-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784030820.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-035-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-036-38712c10",
+    "title": "Atlas OKF export",
+    "create_time": 1784293200.0,
+    "mapping": {
+      "m-036-0": {
+        "id": "m-036-0",
+        "message": {
+          "id": "m-036-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784293200.0,
+          "content": {
+            "parts": [
+              "Instruction: always cite sources in research summaries."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-036-1"
+        ]
+      },
+      "m-036-1": {
+        "id": "m-036-1",
+        "message": {
+          "id": "m-036-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784293620.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-036-0",
+        "children": []
+      }
+    }
+  },
+  {
+    "id": "conv-037-d8542d1a",
+    "title": "Freedom demo",
+    "create_time": 1784559600.0,
+    "mapping": {
+      "m-037-0": {
+        "id": "m-037-0",
+        "message": {
+          "id": "m-037-0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1784559600.0,
+          "content": {
+            "parts": [
+              "Event: all-hands 2026-08-20T16:00:00Z."
+            ]
+          }
+        },
+        "parent": null,
+        "children": [
+          "m-037-1"
+        ]
+      },
+      "m-037-1": {
+        "id": "m-037-1",
+        "message": {
+          "id": "m-037-1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1784560020.0,
+          "content": {
+            "parts": [
+              "Noted."
+            ]
+          }
+        },
+        "parent": "m-037-0",
+        "children": []
+      }
+    }
+  }
+]
