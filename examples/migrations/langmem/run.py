@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -240,7 +241,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=HERE / "artifacts" / "sample-run",
+        default=HERE / "artifacts" / ("run-" + uuid.uuid4().hex[:12]),
         help="New run directory; existing output is never overwritten",
     )
     parser.add_argument(

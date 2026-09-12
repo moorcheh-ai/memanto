@@ -11,10 +11,10 @@ Use Python 3.12 from the repository root:
 ```sh
 python3.12 -m venv .venv
 .venv/bin/pip install -e . -r examples/migrations/langmem/requirements.txt
-.venv/bin/python examples/migrations/langmem/run.py
+.venv/bin/python examples/migrations/langmem/run.py --output ./langmem-run
 ```
 
-The first run downloads `BAAI/bge-small-en-v1.5` for local ONNX embeddings. Output goes into `examples/migrations/langmem/artifacts/sample-run/`:
+The first run downloads `BAAI/bge-small-en-v1.5` for local ONNX embeddings. The command above writes `./langmem-run/`. Without `--output`, each invocation selects a new `artifacts/run-<id>/` directory so the committed sample is never overwritten. The committed reference run remains in `artifacts/sample-run/`. Each run contains:
 
 - `langmem_export.json`: actual source-tool records.
 - `okf-bundle/`: readable Markdown plus exact encoded source snapshots.
@@ -47,7 +47,7 @@ The type rule is a simple heuristic, not semantic inference. Source IDs remain p
 
 The adapter refuses records whose body/snapshot exceeds its conservative 8,500-character budget. It decodes every snapshot from the actual mapped payload and compares exact records. This checks local import fidelity; it does not prove remote retention or retrieval.
 
-## Reports and remaining live validation
+## Reports and live validation
 
 Source retrieval reports scores and expected phrases. An unrelated query can still return a weak match: no universal threshold or perfect-recall claim is made. File-only imports report source retrieval as not run.
 
@@ -55,7 +55,9 @@ Byte counts measure the serialized source and generated OKF files. Base64 and Ma
 
 A real Moorcheh run is included in `artifacts/cloud-run/`. Four records imported and all four original snapshots were recovered exactly from the cloud re-export. Source top-1 retrieval matched 3/3 positive questions; target top-1 matched 2/3 (the Delhi answer ranked second, tied in score with the first result). All three expected facts appeared in the returned hits. Both systems returned matches for the unrelated control. This is evidence of record conservation, not equivalent retrieval quality.
 
-The recorded import succeeded before an export-path error; validation resumed without importing duplicates. `original-cli-import.txt` and `live-report.json` explain that sequence. Source JSON is 1,086 bytes, local OKF is 4,856 bytes, and the cloud re-export including session context is 10,578 bytes. No savings are claimed. The required live screen recording and social showcase are still pending.
+The recorded import succeeded before an export-path error; validation resumed without importing duplicates. `original-cli-import.txt` and `live-report.json` explain that sequence. Source JSON is 1,086 bytes, local OKF is 4,856 bytes, and the cloud re-export including session context is 10,578 bytes. No savings are claimed.
+
+The [87-second recorded demonstration](https://youtu.be/drDLkrKyhms) shows a fresh source run, a new empty source store, the actual cloud import, target recall, readable cloud-exported Markdown, and a real cloud answer identifying Delhi and masala tea. `artifacts/recorded-run/` contains the matching CLI logs, source export, recall/conservation report, and answer. Its cloud bundle is 10,598 bytes including session context. The video runs import separately, then uses `--resume-after-import` for validation to avoid duplicate writes. It is a screen recording of a local browser console streaming the real commands and their results.
 
 ## Optional live validation
 
@@ -69,9 +71,9 @@ export MOORCHEH_API_KEY='...'
 .venv/bin/python -m memanto agent create <unique-demo-agent-id>
 LIVE_DIR="examples/migrations/langmem/artifacts/live-$(date +%Y%m%d-%H%M%S)"
 .venv/bin/python examples/migrations/langmem/live_workflow.py \
-  --bundle examples/migrations/langmem/artifacts/sample-run/okf-bundle \
-  --source-export examples/migrations/langmem/artifacts/sample-run/langmem_export.json \
-  --source-report examples/migrations/langmem/artifacts/sample-run/run-report.json \
+  --bundle ./langmem-run/okf-bundle \
+  --source-export ./langmem-run/langmem_export.json \
+  --source-report ./langmem-run/run-report.json \
   --agent <unique-demo-agent-id> \
   --allow-shared-config \
   --output "$LIVE_DIR"

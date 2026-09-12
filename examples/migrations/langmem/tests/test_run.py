@@ -206,3 +206,29 @@ def test_live_reads_actual_shipped_okf_bundle(tmp_path: Path) -> None:
         live.map_okf(live.load_okf_bundle(tmp_path / "bundle"))
     )
     assert live.compare_records(records, actual)["exact_match"]
+
+
+def test_default_output_does_not_collide_with_committed_sample(
+    tmp_path: Path, monkeypatch
+) -> None:
+    sample = tmp_path / "artifacts" / "sample-run"
+    sample.mkdir(parents=True)
+    marker = sample / "preserve.txt"
+    marker.write_text("existing sample")
+    source = tmp_path / "source.json"
+    source.write_text(
+        json.dumps(
+            {
+                "memories": [
+                    {"namespace": ["n"], "key": "k", "value": {"content": "fact"}}
+                ]
+            }
+        )
+    )
+    monkeypatch.setattr(run, "HERE", tmp_path)
+    monkeypatch.setattr(run.sys, "argv", ["run.py", "--source-export", str(source)])
+    run.main()
+    assert marker.read_text() == "existing sample"
+    generated = list((tmp_path / "artifacts").glob("run-*"))
+    assert len(generated) == 1
+    assert (generated[0] / "cli-dry-run.txt").is_file()
