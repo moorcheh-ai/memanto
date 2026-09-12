@@ -1,0 +1,43 @@
+[
+  {
+    "id": "q1",
+    "question": "What is the user's name?",
+    "must_include_any": ["Priya Shah", "Priya"]
+  },
+  {
+    "id": "q2",
+    "question": "Which language does Priya prefer for internal/backend services now?",
+    "must_include_any": ["Python", "FastAPI"],
+    "must_not_include_as_current": ["TypeScript for all backend", "TypeScript over Python for production services"]
+  },
+  {
+    "id": "q3",
+    "question": "What is the primary database?",
+    "must_include_any": ["PostgreSQL 16", "PostgreSQL"]
+  },
+  {
+    "id": "q4",
+    "question": "Who is the on-call buddy?",
+    "must_include_any": ["Marcus Chen"]
+  },
+  {
+    "id": "q5",
+    "question": "What Friday deploy rule exists?",
+    "must_include_any": ["Never deploy on Fridays", "Fridays"]
+  },
+  {
+    "id": "q6",
+    "question": "What pgbouncer setting was raised after INC-441?",
+    "must_include_any": ["max_client_conn", "400"]
+  },
+  {
+    "id": "q7",
+    "question": "What is the monthly LLM spend budget?",
+    "must_include_any": ["200", "USD 200"]
+  },
+  {
+    "id": "q8",
+    "question": "Which timezone does Priya work in?",
+    "must_include_any": ["Asia/Kolkata", "UTC+5:30"]
+  }
+]
