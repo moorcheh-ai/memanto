@@ -1,0 +1,6 @@
+Session      : workspace-buddy-demo
+Source items : 19
+Mapped docs  : 16 (assistant-message=7, tool-call=2, user-message=7)
+Skipped items: 1 (reasoning_trace=1)
+OKF bundle   : sample/okf
+Report       : sample/evidence/adapter-report.json
