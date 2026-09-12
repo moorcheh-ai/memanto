@@ -384,6 +384,15 @@ def enforce_session_scope(session: Session, agent_id: str) -> None:
         )
 
 
+def _direct_client_for_session(session: Session, agent_id: str) -> DirectClient:
+    """Instantiate a DirectClient bound to the authenticated session."""
+    client = DirectClient(settings.MOORCHEH_API_KEY)
+    client.agent_id = agent_id
+    client.session_token = session.session_token
+    client._cached_session = session
+    return client
+
+
 def resolve_recall_limit(request_limit: int | None) -> int:
     """Resolve and validate the effective recall result limit."""
 
@@ -1125,8 +1134,9 @@ async def generate_daily_summary(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = _direct_client_for_session(session, agent_id)
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            client.generate_daily_summary,
             agent_id,
             resolved_date,
             None,
@@ -1157,8 +1167,9 @@ async def generate_conflict_report(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = _direct_client_for_session(session, agent_id)
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            client.generate_conflict_report,
             agent_id,
             resolved_date,
         )
@@ -1192,8 +1203,9 @@ async def list_conflicts(
     resolved_date = date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = _direct_client_for_session(session, agent_id)
         conflicts = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
+            client.list_conflicts,
             agent_id,
             resolved_date,
         )
@@ -1224,8 +1236,9 @@ async def resolve_conflict(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = _direct_client_for_session(session, agent_id)
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
+            client.resolve_conflict,
             agent_id,
             resolved_date,
             request.conflict_index,

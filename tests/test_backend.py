@@ -388,6 +388,9 @@ class TestExportDataDirRouting:
 
         for client_cls in (DirectClient, SdkClient):
             client = client_cls(api_key="dummy-key")
+            monkeypatch.setattr(
+                client, "_get_validated_session_for_agent", lambda agent_id: None
+            )
             export_calls = []
 
             def failing_export(export_calls=export_calls, **kwargs):
