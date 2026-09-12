@@ -1,0 +1,9 @@
+{
+  "okf_bytes": 55429,
+  "provider_cost_savings": null,
+  "provider_latency_savings": null,
+  "provider_token_savings": null,
+  "reason": "Antigravity brain artifacts are local files with no provider billing baseline.",
+  "source_bytes": 23515,
+  "storage_delta_bytes": 31914
+}
