@@ -10,9 +10,9 @@ The actual **on-prem** loop succeeded: 15 source messages → 15 persisted obser
 
 The cloud attempts returned `403 Forbidden`; no cloud success is claimed. A sponsor question about cloud activation and acceptance of the supported on-prem deployment is pending. The actual terminal walkthrough is included below. The [public video demonstration](https://youtu.be/TZ-gKzbQQZE) is published; on-prem bounty eligibility has not yet been confirmed by the sponsor.
 
-The [79.9-second walkthrough](evidence/onprem/onprem-demo.mp4) replays the actual captured terminal execution. The [recording receipt](evidence/onprem/onprem-demo.json), [original cast](evidence/onprem/onprem-demo.cast), [migration report](evidence/onprem/summary.json), [retrieval results](evidence/onprem/destination-recall.json), [runtime inspection](evidence/onprem/runtime.json) and [exported OKF](evidence/onprem/exported-okf/) accompany it. Presentation pauses are labeled and excluded from measured CLI durations.
+The [79.9-second walkthrough](evidence/onprem/onprem-demo.mp4) replays the actual captured terminal execution. The [recording receipt](evidence/onprem/onprem-demo.json), [path-redacted cast](evidence/onprem/onprem-demo.cast), [migration report](evidence/onprem/summary.json), [retrieval results](evidence/onprem/destination-recall.json), [runtime inspection](evidence/onprem/runtime.json) and [exported OKF](evidence/onprem/exported-okf/) accompany it. The video is unchanged; the receipt distinguishes its original source hash from the redacted text recording. Presentation pauses are labeled and excluded from measured CLI durations.
 
-Validation: **13 tests pass**, Ruff lint and formatting pass for all eight Python files, and mypy passes for the seven production Python files with Python 3.12 and `--follow-imports=silent`. The full repository suite was not run.
+Validation: **14 adapter tests pass**. Targeted lint, formatting and type checks cover this example's Python files. The full repository suite was not run.
 
 ## Setup
 
@@ -52,11 +52,14 @@ OLLAMA_HOST=127.0.0.1:11435 OLLAMA_MODELS="$PWD/.runs/models" OLLAMA_NO_CLOUD=1 
 Keep it running. In another terminal in this directory:
 
 ```sh
+(
+set -e
 OLLAMA_HOST=127.0.0.1:11435 .runs/ollama-bin/ollama pull all-minilm
-../.venv/bin/python verify_ollama_model.py --host http://127.0.0.1:11435 --model all-minilm --digest 1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef
+../../../.venv/bin/python verify_ollama_model.py --host http://127.0.0.1:11435 --model all-minilm --digest 1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef
 OLLAMA_HOST=127.0.0.1:11435 .runs/ollama-bin/ollama create all-minilm-haystack -f Modelfile
 ./onprem-server.sh
 curl --fail http://127.0.0.1:18080/health
+)
 ```
 
 The health response must identify `all-minilm-haystack`. The supplied `Modelfile` retains the same 384-dimensional weights and sets **`num_ctx 512` and `num_batch 512`**, within the model's 512-token training context. The packaged default of 256 rejected ten source inputs (261–383 tokens) in an initial actual run; the CLI reported 15 imported while only five persisted. The strict export check caught this, and those failed recordings remain failures. No source messages were shortened or removed to make the test pass. Longer real-world histories may need a larger-context embedding model even when adapter body limits pass.
