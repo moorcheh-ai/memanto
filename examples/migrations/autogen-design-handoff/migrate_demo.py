@@ -53,10 +53,12 @@ QUESTIONS = [
 
 
 def canonical(value: Any) -> str:
+    """Serialize JSON deterministically for payload hashes and equality checks."""
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
 def write_json(path: Path, value: Any) -> None:
+    """Write readable evidence, creating its parent directory when needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
 
@@ -147,6 +149,22 @@ async def seed_source(output: Path) -> dict[str, Any]:
     return snapshot
 
 
+def validate_record(record: Any) -> dict[str, Any]:
+    """Reject unsupported source records and return metadata for OKF mapping."""
+    if not isinstance(record, dict):
+        raise ValueError("Record must be an object")
+    if record.get("mime_type") not in ("text/plain", "application/json"):
+        raise ValueError("Unsupported MIME; nothing written")
+    if not isinstance(record.get("content"), (str, dict)):
+        raise ValueError("content must be text or a JSON object")
+    metadata = record.get("metadata")
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise ValueError("metadata must be an object or null")
+    return metadata
+
+
 def to_okf(component: dict[str, Any], destination: Path) -> dict[str, Any]:
     """Convert only the documented ListMemory component schema, fail closed.
 
@@ -161,11 +179,7 @@ def to_okf(component: dict[str, Any], destination: Path) -> dict[str, Any]:
         raise ValueError("Expected non-empty config.memory_contents")
     prepared = []
     for ordinal, record in enumerate(records):
-        if record.get("mime_type") not in ("text/plain", "application/json"):
-            raise ValueError(f"Unsupported MIME at record {ordinal}; nothing written")
-        metadata = record.get("metadata") or {}
-        if not isinstance(metadata, dict):
-            raise ValueError("metadata must be an object or null")
+        metadata = validate_record(record)
         payload = canonical(record)
         if len(payload) > 6000:
             raise ValueError("Record exceeds lossless example limit (6000 characters)")
@@ -213,13 +227,38 @@ def to_okf(component: dict[str, Any], destination: Path) -> dict[str, Any]:
 
 
 def recover_records(content: str) -> list[dict[str, Any]]:
-    return [
-        json.loads(p)
-        for p in re.findall(r"```autogen-record\n(.*?)\n```", content, re.S)
-    ]
+    """Recover only the final adapter payload, allowing the CLI support footer.
+
+    Fences in user content are never treated as additional records. An absent
+    adapter envelope returns no records; a damaged envelope raises ValueError.
+    """
+    prefix, marker, tail = content.rpartition("\n```autogen-record\n")
+    if not marker:
+        return []
+    header = re.search(
+        r"(?:^|\n)Source order: [0-9]+\. SHA256: ([0-9a-f]{64})\n\Z", prefix
+    )
+    if not header:
+        return []
+    payload, closing, suffix = tail.partition("\n```")
+    suffix = suffix.strip()
+    if not closing or (
+        suffix
+        and not re.fullmatch(r"---\n\[Supporting data\]\n(?:- [^\n]+\n?)+", suffix)
+    ):
+        raise ValueError("Malformed adapter payload envelope")
+    try:
+        record = json.loads(payload)
+    except json.JSONDecodeError as error:
+        raise ValueError("Malformed adapter payload JSON") from error
+    validate_record(record)
+    if hashlib.sha256(canonical(record).encode()).hexdigest() != header[1]:
+        raise ValueError("Adapter payload SHA256 mismatch")
+    return [record]
 
 
 def cli(output: Path, name: str, arguments: list[str]) -> float:
+    """Run the shipped CLI, retain a redacted transcript, and return elapsed time."""
     command = [shutil.which("memanto") or "memanto", *arguments]
     print("$ memanto " + " ".join(arguments).replace(str(output), "RUN"), flush=True)
     started = time.perf_counter()
@@ -260,6 +299,7 @@ def validate_checks(
 
 
 def main() -> None:
+    """Run source conversion and optional live checks without overwriting evidence."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("run"))
     parser.add_argument(

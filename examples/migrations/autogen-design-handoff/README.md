@@ -93,7 +93,7 @@ The checked-in `evidence/` is from a real cloud run starting **2026-09-12 09:44:
 | Equal-volume current-value recall | 6 / 6, all 8 records per query |
 | Separate ranked top-3 audit | 5 / 6; review-clearance instruction missed |
 | CLI dry run / import / export wall time | 0.242 s / 4.196 s / 10.814 s |
-| Boundary/integrity/gate tests | 13 passed |
+| Boundary/integrity/gate tests | 13 passed at capture; 38 passed after review fixes |
 | Ruff lint / format | passed / 4 files already formatted |
 
 Inspect [migration-summary.json](evidence/migration-summary.json),
@@ -168,3 +168,12 @@ Savings are therefore **N/A**, while measured timings are preserved in the repor
 
 The example does not delete cloud agents automatically. After review, remove
 only the uniquely named synthetic demo agent through Memanto or the console.
+
+### Review validation
+
+The follow-up tests cover falsy invalid metadata, nested payload fences, damaged
+JSON/schema/envelopes, compatibility with the saved cloud export and recall, and
+both documented local origins with foreign-origin rejection and one-shot startup.
+The 38-test follow-up uses no cloud calls; loopback HTTP tests replace the pipeline.
+The captured migration data, metrics and video remain unchanged. See
+`evidence/review-validation.txt` for the exact checks and environment warnings.

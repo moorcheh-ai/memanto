@@ -29,6 +29,7 @@ LOCK = threading.Lock()
 
 
 def pipeline():
+    """Execute one real migration while exposing only redacted progress output."""
     command = [
         sys.executable,
         "-u",
@@ -62,7 +63,10 @@ HTML = r"""<!doctype html><html lang="en"><meta charset="utf-8"><title>Own your 
 
 
 class Handler(BaseHTTPRequestHandler):
+    """Serve the fixed demo display and admit one start from a local origin."""
+
     def do_GET(self):
+        """Return the display or evidence produced by this server's own run."""
         if self.path == "/":
             payload, mime = HTML.encode(), "text/html; charset=utf-8"
         elif self.path == "/state":
@@ -96,10 +100,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_POST(self):
-        if (
-            self.path != "/start"
-            or self.headers.get("Origin") != "http://127.0.0.1:8769"
-        ):
+        """Start once from either documented loopback origin; reject other callers."""
+        if self.path != "/start" or self.headers.get("Origin") not in {
+            "http://127.0.0.1:8769",
+            "http://localhost:8769",
+        }:
             self.send_error(403)
             return
         with LOCK:
@@ -113,6 +118,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def log_message(self, *args):
+        """Suppress access logs to keep the screencast terminal uncluttered."""
         pass
 
 

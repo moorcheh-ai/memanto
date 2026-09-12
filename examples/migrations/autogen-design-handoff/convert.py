@@ -8,6 +8,7 @@ from migrate_demo import to_okf
 
 
 def main() -> None:
+    """Convert a supplied ListMemory snapshot into a new lossless OKF bundle."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("component", type=Path)
     parser.add_argument("bundle", type=Path)
