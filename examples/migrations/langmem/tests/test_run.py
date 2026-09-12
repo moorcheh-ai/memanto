@@ -232,3 +232,10 @@ def test_default_output_does_not_collide_with_committed_sample(
     generated = list((tmp_path / "artifacts").glob("run-*"))
     assert len(generated) == 1
     assert (generated[0] / "cli-dry-run.txt").is_file()
+
+
+def test_committed_cloud_report_preserves_raw_recall() -> None:
+    artifacts = Path(__file__).parents[1] / "artifacts" / "cloud-run"
+    report = json.loads((artifacts / "live-report.json").read_text())
+    recall = json.loads((artifacts / "target-recall.json").read_text())
+    assert report["target_recall"] == recall

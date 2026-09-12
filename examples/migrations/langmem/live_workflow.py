@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -209,6 +210,8 @@ def main() -> None:
     if args.output.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {args.output}")
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+
     source_export = json.loads(args.source_export.read_text(encoding="utf-8"))
     source_records = validate_export(source_export)
     report_path = args.source_report or args.source_export.with_name("run-report.json")
@@ -225,92 +228,115 @@ def main() -> None:
     if not compare_records(source_records, local_snapshots)["exact_match"]:
         raise ValueError("source export and import bundle do not match")
     repo_root = Path(__file__).resolve().parents[3]
-    args.output.mkdir(parents=True)
-    target_bundle = args.output / "target-okf"
+    # Keep every local artifact in a sibling staging directory. A failed run
+    # must not leave a partial report that looks like a successful validation.
+    with tempfile.TemporaryDirectory(
+        prefix=f".{args.output.name}.staging-", dir=args.output.parent
+    ) as staging_dir:
+        staging = Path(staging_dir)
+        target_bundle = staging / "target-okf"
 
-    import_seconds: float | None = None
-    import_log = "Import skipped explicitly; existing target is being validated.\n"
-    if not args.resume_after_import:
-        import_seconds, import_log = run_command(
+        import_seconds: float | None = None
+        import_log = "Import skipped explicitly; existing target is being validated.\n"
+        if not args.resume_after_import:
+            import_seconds, import_log = run_command(
+                [
+                    sys.executable,
+                    "-m",
+                    "memanto",
+                    "migrate",
+                    "okf",
+                    str(args.bundle),
+                    "--agent",
+                    args.agent,
+                ],
+                repo_root,
+            )
+            print(
+                "Import completed; retry this run with --resume-after-import "
+                "to avoid importing the bundle again.",
+                file=sys.stderr,
+            )
+        (staging / "cli-import.txt").write_text(import_log, encoding="utf-8")
+        client = SdkClient(os.environ["MOORCHEH_API_KEY"])
+        bind_client_session(client, active_agent, active_token, args.agent)
+        recall = recall_report(
+            client,
+            args.agent,
+            queries,
+        )
+        (staging / "target-recall.json").write_text(
+            json.dumps(recall, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        # Honor the shipped export path boundary, then copy the resulting bundle.
+        staged_export = (
+            Path.home() / ".memanto" / "exports" / ("langmem-" + uuid.uuid4().hex)
+        )
+        export_seconds, export_log = run_command(
             [
                 sys.executable,
                 "-m",
                 "memanto",
-                "migrate",
-                "okf",
-                str(args.bundle),
+                "memory",
+                "export",
+                "--okf",
                 "--agent",
                 args.agent,
+                "--limit",
+                str(max(1, len(source_records))),
+                "--split",
+                "file",
+                "--output",
+                str(staged_export),
             ],
             repo_root,
         )
-    (args.output / "cli-import.txt").write_text(import_log, encoding="utf-8")
-    client = SdkClient(os.environ["MOORCHEH_API_KEY"])
-    bind_client_session(client, active_agent, active_token, args.agent)
-    recall = recall_report(
-        client,
-        args.agent,
-        queries,
-    )
-    (args.output / "target-recall.json").write_text(
-        json.dumps(recall, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-    # Honor the shipped export path boundary, then copy the resulting bundle.
-    staged_export = (
-        Path.home() / ".memanto" / "exports" / ("langmem-" + uuid.uuid4().hex)
-    )
-    export_seconds, export_log = run_command(
-        [
-            sys.executable,
-            "-m",
-            "memanto",
-            "memory",
-            "export",
-            "--okf",
-            "--agent",
-            args.agent,
-            "--limit",
-            str(max(1, len(source_records))),
-            "--split",
-            "file",
-            "--output",
-            str(staged_export),
-        ],
-        repo_root,
-    )
-    (args.output / "cli-export.txt").write_text(export_log, encoding="utf-8")
-    shutil.copytree(staged_export, target_bundle)
-    target_rows = load_okf_bundle(target_bundle)
-    target_snapshots = decode_snapshots(map_okf(target_rows))
-    report = {
-        "agent": args.agent,
-        "source_records": len(source_records),
-        "import": {
-            "seconds": round(import_seconds, 3) if import_seconds is not None else None,
-            "skipped": args.resume_after_import,
-            "bundle_bytes": file_bytes(args.bundle),
-        },
-        "target_reexport": {
-            "seconds": round(export_seconds, 3),
-            "bundle_bytes": file_bytes(target_bundle),
-        },
-        "source_retrieval": source_report.get("source_retrieval", []),
-        "target_recall": recall,
-        "snapshot_comparison": compare_records(source_records, target_snapshots),
-        "savings": {
-            "cost": None,
-            "latency": None,
-            "note": "No savings claim is made by this workflow.",
-        },
-    }
-    (args.output / "live-report.json").write_text(
-        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-    print(json.dumps(report, indent=2, ensure_ascii=False))
-    if not report["snapshot_comparison"]["exact_match"]:
-        raise SystemExit(
-            "Source snapshot conservation failed; inspect live-report.json"
+        (staging / "cli-export.txt").write_text(export_log, encoding="utf-8")
+        shutil.copytree(staged_export, target_bundle)
+
+        target_rows = load_okf_bundle(target_bundle)
+        target_snapshots = decode_snapshots(map_okf(target_rows))
+        comparison = compare_records(source_records, target_snapshots)
+        report = {
+            "agent": args.agent,
+            "source_records": len(source_records),
+            "import": {
+                "seconds": round(import_seconds, 3)
+                if import_seconds is not None
+                else None,
+                "skipped": args.resume_after_import,
+                "bundle_bytes": file_bytes(args.bundle),
+            },
+            "target_reexport": {
+                "seconds": round(export_seconds, 3),
+                "bundle_bytes": file_bytes(target_bundle),
+            },
+            "source_retrieval": source_report.get("source_retrieval", []),
+            "target_recall": recall,
+            "snapshot_comparison": comparison,
+            "savings": {
+                "cost": None,
+                "latency": None,
+                "note": "No savings claim is made by this workflow.",
+            },
+        }
+        (staging / "live-report.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+        if not comparison["exact_match"]:
+            # Keep the diagnostic visible even though the invalid staging tree
+            # is removed and therefore cannot be inspected at the output path.
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+            raise SystemExit(
+                "Source snapshot conservation failed; see printed snapshot comparison"
+            )
+        if args.output.exists():
+            raise FileExistsError(
+                f"refusing to overwrite existing output: {args.output}"
+            )
+        staging.rename(args.output)
+
+    print(json.dumps(report, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

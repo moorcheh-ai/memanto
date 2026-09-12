@@ -8,8 +8,7 @@
   },
   "target_reexport": {
     "seconds": 11.824,
-    "bundle_bytes": 10578,
-    "artifact_bytes": 10548
+    "bundle_bytes": 10578
   },
   "source_retrieval": [
     {
@@ -82,8 +81,7 @@
       ],
       "positive_top1_match": true,
       "negative_control": false,
-      "elapsed_ms": 1134.3,
-      "expected_in_returned_hits": true
+      "elapsed_ms": 1134.3
     },
     {
       "query": "city and drink",
@@ -113,8 +111,7 @@
       ],
       "positive_top1_match": false,
       "negative_control": false,
-      "elapsed_ms": 868.245,
-      "expected_in_returned_hits": true
+      "elapsed_ms": 868.245
     },
     {
       "query": "mobile framework",
@@ -144,8 +141,7 @@
       ],
       "positive_top1_match": true,
       "negative_control": false,
-      "elapsed_ms": 873.79,
-      "expected_in_returned_hits": true
+      "elapsed_ms": 873.79
     },
     {
       "query": "unrelated quantum physics",
@@ -175,8 +171,7 @@
       ],
       "positive_top1_match": false,
       "negative_control": true,
-      "elapsed_ms": 969.925,
-      "expected_in_returned_hits": null
+      "elapsed_ms": 969.925
     }
   ],
   "snapshot_comparison": {
@@ -191,6 +186,5 @@
     "cost": null,
     "latency": null,
     "note": "No savings claim is made by this workflow."
-  },
-  "run_note": "Import succeeded in the initial attempt. Re-export initially rejected an output path outside Memanto data; validation resumed without repeating import. Original import log is included. Source uses synthetic data created through real LangMem operations. Published CLI logs, metrics, and session context have trailing whitespace normalized; memory documents are unchanged."
+  }
 }
