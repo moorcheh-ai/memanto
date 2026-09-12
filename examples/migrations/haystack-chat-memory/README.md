@@ -53,6 +53,7 @@ Keep it running. In another terminal in this directory:
 
 ```sh
 OLLAMA_HOST=127.0.0.1:11435 .runs/ollama-bin/ollama pull all-minilm
+../.venv/bin/python verify_ollama_model.py --host http://127.0.0.1:11435 --model all-minilm --digest 1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef
 OLLAMA_HOST=127.0.0.1:11435 .runs/ollama-bin/ollama create all-minilm-haystack -f Modelfile
 ./onprem-server.sh
 curl --fail http://127.0.0.1:18080/health
