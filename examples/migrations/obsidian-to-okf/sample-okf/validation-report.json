@@ -1,0 +1,23 @@
+{
+  "golden_recall": {
+    "What is the Bureau trying to keep forgotten?": true,
+    "What system governs lamplight memory?": true,
+    "Who is the protagonist?": true
+  },
+  "golden_recall_score": "3/3",
+  "is_lossless_by_record_count": true,
+  "mapped_memories": 21,
+  "okf_records": 21,
+  "resolvable_wikilinks_converted": 6,
+  "source": "leethobbit/obsidian-inkswell-plugin sample vault",
+  "source_records": 21,
+  "source_sha256": "5edc939e73e6e23eaf936ce1d76f33d1f9415cab03999ce061aaddd7a47e53e7",
+  "type_counts": {
+    "artifact": 10,
+    "context": 1,
+    "decision": 1,
+    "fact": 7,
+    "goal": 2
+  },
+  "unresolved_wikilinks_preserved": 2
+}
