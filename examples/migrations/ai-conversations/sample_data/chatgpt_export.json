@@ -1,0 +1,203 @@
+{
+  "conversations": [
+    {
+      "title": "Building a REST API with FastAPI",
+      "conversation_id": "conv-fastapi-001",
+      "create_time": 1700000000.0,
+      "update_time": 1700003600.0,
+      "current_node": "node_a3",
+      "mapping": {
+        "node_root": {
+          "id": "node_root",
+          "message": null,
+          "parent": null,
+          "children": ["node_u1"]
+        },
+        "node_u1": {
+          "id": "node_u1",
+          "message": {
+            "id": "msg_u1",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["I want to build a REST API with FastAPI for a todo app. What's the best project structure?"]},
+            "create_time": 1700000000.0
+          },
+          "parent": "node_root",
+          "children": ["node_a1"]
+        },
+        "node_a1": {
+          "id": "node_a1",
+          "message": {
+            "id": "msg_a1",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text", "parts": ["Here's a recommended project structure for a FastAPI todo app:\n\n```\nproject/\n├── app/\n│   ├── __init__.py\n│   ├── main.py\n│   ├── models.py\n│   ├── schemas.py\n│   ├── database.py\n│   └── routers/\n│       ├── __init__.py\n│       └── todos.py\n├── tests/\n└── requirements.txt\n```"]},
+            "create_time": 1700000100.0
+          },
+          "parent": "node_u1",
+          "children": ["node_u2"]
+        },
+        "node_u2": {
+          "id": "node_u2",
+          "message": {
+            "id": "msg_u2",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["How do I set up SQLAlchemy with async support in this structure?"]},
+            "create_time": 1700000200.0
+          },
+          "parent": "node_a1",
+          "children": ["node_a2"]
+        },
+        "node_a2": {
+          "id": "node_a2",
+          "message": {
+            "id": "msg_a2",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text",             "parts": ["For async SQLAlchemy, use `AsyncSession` with `create_async_engine`:\n\n```python\nfrom sqlalchemy.ext.asyncio import create_async_engine, AsyncSession\nfrom sqlalchemy.orm import sessionmaker\n\nengine = create_async_engine('postgresql+asyncpg://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}')\nAsyncSessionLocal = sessionmaker(engine, class_=AsyncSession)\n```"]},
+            "create_time": 1700000300.0
+          },
+          "parent": "node_u2",
+          "children": ["node_u3"]
+        },
+        "node_u3": {
+          "id": "node_u3",
+          "message": {
+            "id": "msg_u3",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["What about dependency injection for the database session?"]},
+            "create_time": 1700000400.0
+          },
+          "parent": "node_a2",
+          "children": ["node_a3"]
+        },
+        "node_a3": {
+          "id": "node_a3",
+          "message": {
+            "id": "msg_a3",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text", "parts": ["Use FastAPI's dependency injection:\n\n```python\nasync def get_db():\n    async with AsyncSessionLocal() as session:\n        yield session\n\n@app.get('/todos')\nasync def get_todos(db: AsyncSession = Depends(get_db)):\n    result = await db.execute(select(Todo))\n    return result.scalars().all()\n```"]},
+            "create_time": 1700000500.0
+          },
+          "parent": "node_u3",
+          "children": []
+        }
+      }
+    },
+    {
+      "title": "React TypeScript State Management",
+      "conversation_id": "conv-react-ts-002",
+      "create_time": 1700100000.0,
+      "update_time": 1700103600.0,
+      "current_node": "node_a2",
+      "mapping": {
+        "node_root": {
+          "id": "node_root",
+          "message": null,
+          "parent": null,
+          "children": ["node_u1"]
+        },
+        "node_u1": {
+          "id": "node_u1",
+          "message": {
+            "id": "msg_u1",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["I'm working on a React TypeScript project and trying to decide between Redux Toolkit and Zustand for state management. What do you recommend for a medium-sized app?"]},
+            "create_time": 1700100000.0
+          },
+          "parent": "node_root",
+          "children": ["node_a1"]
+        },
+        "node_a1": {
+          "id": "node_a1",
+          "message": {
+            "id": "msg_a1",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text", "parts": ["For a medium-sized app, **Zustand** is often the better choice:\n\n- Less boilerplate than Redux Toolkit\n- Built-in TypeScript support\n- No providers needed\n- Simple API with great devtools\n\nRedux Toolkit is better if you need complex middleware, time-travel debugging, or your team already knows Redux."]},
+            "create_time": 1700100100.0
+          },
+          "parent": "node_u1",
+          "children": ["node_u2"]
+        },
+        "node_u2": {
+          "id": "node_u2",
+          "message": {
+            "id": "msg_u2",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["Can you show me how to set up Zustand with TypeScript for a todo app?"]},
+            "create_time": 1700100200.0
+          },
+          "parent": "node_a1",
+          "children": ["node_a2"]
+        },
+        "node_a2": {
+          "id": "node_a2",
+          "message": {
+            "id": "msg_a2",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text", "parts": ["```typescript\nimport { create } from 'zustand'\n\ntype Todo = {\n  id: string\n  text: string\n  completed: boolean\n}\n\ntype TodoStore = {\n  todos: Todo[]\n  addTodo: (text: string) => void\n  toggleTodo: (id: string) => void\n  removeTodo: (id: string) => void\n}\n\nexport const useTodoStore = create<TodoStore>((set) => ({\n  todos: [],\n  addTodo: (text) => set((state) => ({\n    todos: [...state.todos, { id: crypto.randomUUID(), text, completed: false }]\n  })),\n  toggleTodo: (id) => set((state) => ({\n    todos: state.todos.map((t) => t.id === id ? { ...t, completed: !t.completed } : t)\n  })),\n  removeTodo: (id) => set((state) => ({\n    todos: state.todos.filter((t) => t.id !== id)\n  }))\n}))\n```"]},
+            "create_time": 1700100300.0
+          },
+          "parent": "node_u2",
+          "children": []
+        }
+      }
+    },
+    {
+      "title": "Docker Compose for Development",
+      "conversation_id": "conv-docker-003",
+      "create_time": 1700200000.0,
+      "update_time": 1700201800.0,
+      "current_node": "node_a2",
+      "mapping": {
+        "node_root": {
+          "id": "node_root",
+          "message": null,
+          "parent": null,
+          "children": ["node_u1"]
+        },
+        "node_u1": {
+          "id": "node_u1",
+          "message": {
+            "id": "msg_u1",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["How do I set up Docker Compose for a full-stack app with React, FastAPI, and PostgreSQL?"]},
+            "create_time": 1700200000.0
+          },
+          "parent": "node_root",
+          "children": ["node_a1"]
+        },
+        "node_a1": {
+          "id": "node_a1",
+          "message": {
+            "id": "msg_a1",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text",             "parts": ["Here's a docker-compose.yml:\n\n```yaml\nversion: '3.8'\nservices:\n  frontend:\n    build: ./frontend\n    ports: ['3000:3000']\n    volumes: ['./frontend/src:/app/src']\n    depends_on: [backend]\n\n  backend:\n    build: ./backend\n    ports: ['8000:8000']\n    environment:\n      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/mydb\n    volumes: ['./backend/app:/app/app']\n    depends_on: [db]\n\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_DB: mydb\n      POSTGRES_USER: ${POSTGRES_USER}\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}\n    volumes: ['pgdata:/var/lib/postgresql/data']\n    ports: ['5432:5432']\n\nvolumes:\n  pgdata:\n```"]},
+            "create_time": 1700200100.0
+          },
+          "parent": "node_u1",
+          "children": ["node_u2"]
+        },
+        "node_u2": {
+          "id": "node_u2",
+          "message": {
+            "id": "msg_u2",
+            "author": {"role": "user", "name": null},
+            "content": {"content_type": "text", "parts": ["How do I add hot-reloading for the backend?"]},
+            "create_time": 1700200200.0
+          },
+          "parent": "node_a1",
+          "children": ["node_a2"]
+        },
+        "node_a2": {
+          "id": "node_a2",
+          "message": {
+            "id": "msg_a2",
+            "author": {"role": "assistant", "name": "ChatGPT"},
+            "content": {"content_type": "text", "parts": ["Use uvicorn with `--reload`:\n\n```yaml\nbackend:\n  command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000\n  volumes:\n    - ./backend/app:/app/app\n```\n\nThe volume mount + `--reload` flag gives you hot-reloading."]},
+            "create_time": 1700200300.0
+          },
+          "parent": "node_u2",
+          "children": []
+        }
+      }
+    }
+  ]
+}

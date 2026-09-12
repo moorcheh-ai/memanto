@@ -1,0 +1,29 @@
+{
+  "okf_version": "1.0",
+  "created_at": "2026-09-06T09:08:51.812769+00:00",
+  "source": "memanto-migration",
+  "memory_count": 3,
+  "memories": [
+    {
+      "id": "mem_0000",
+      "title": "Building a REST API with FastAPI",
+      "type": "auto-classified",
+      "source": "chatgpt",
+      "file": "memories/mem_0000_Building_a_REST_API_with_FastAPI.md"
+    },
+    {
+      "id": "mem_0001",
+      "title": "React TypeScript State Management",
+      "type": "auto-classified",
+      "source": "chatgpt",
+      "file": "memories/mem_0001_React_TypeScript_State_Management.md"
+    },
+    {
+      "id": "mem_0002",
+      "title": "Docker Compose for Development",
+      "type": "auto-classified",
+      "source": "chatgpt",
+      "file": "memories/mem_0002_Docker_Compose_for_Development.md"
+    }
+  ]
+}
