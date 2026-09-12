@@ -1,0 +1,197 @@
+[
+  {
+    "title": "User will speak about embedded Rust at RustConf; their slides are due August...",
+    "content": "User will speak about embedded Rust at RustConf; their slides are due August 15, 2026.\n\n---\n[Supporting data]\n- OKF source: memories/commitment/user-will-speak-about-embedded-rust-at-rustconf-their-slides.md\n- OKF resource: chatgpt:conv-008:m-008b\n- OKF conversation: Conference talk outline",
+    "type": "commitment",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-008:m-008b",
+    "provenance": "imported",
+    "created_at": "2026-05-14 11:00:30+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User's team decided to port their sensor drivers from C to Rust using embedde...",
+    "content": "User's team decided to port their sensor drivers from C to Rust using embedded-hal.\n\n---\n[Supporting data]\n- OKF source: memories/decision/user-s-team-decided-to-port-their-sensor-drivers-from-c-to-r.md\n- OKF resource: chatgpt:conv-005:m-005b\n- OKF conversation: Porting a driver to Rust",
+    "type": "decision",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-005:m-005b",
+    "provenance": "imported",
+    "created_at": "2026-02-03 14:05:30+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User moved to Seattle in March 2026, previously lived in Austin.",
+    "content": "User moved to Seattle in March 2026, previously lived in Austin.\n\n---\n[Supporting data]\n- OKF source: memories/event/user-moved-to-seattle-in-march-2026-previously-lived-in-aust.md\n- OKF resource: chatgpt:conv-006:m-006b\n- OKF conversation: Neighborhood advice",
+    "type": "event",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-006:m-006b",
+    "provenance": "imported",
+    "created_at": "2026-03-21 17:40:30+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User is a firmware engineer at Meridian Robotics working on STM32 microcontro...",
+    "content": "User is a firmware engineer at Meridian Robotics working on STM32 microcontrollers, primarily in C.\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-is-a-firmware-engineer-at-meridian-robotics-working-on.md\n- OKF resource: chatgpt:conv-001:m-001c\n- OKF conversation: Debugging an I2C driver",
+    "type": "fact",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-001:m-001c",
+    "provenance": "imported",
+    "created_at": "2025-11-04 09:12:45+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User is allergic to shellfish.",
+    "content": "User is allergic to shellfish.\n\n---\n[Supporting data]\n- OKF source: memories/fact/user-is-allergic-to-shellfish.md\n- OKF resource: chatgpt:conv-009:m-009b\n- OKF conversation: Meal prep for race week",
+    "type": "fact",
+    "tags": [
+      "chatgpt",
+      "model-set-context"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-009:m-009b",
+    "provenance": "imported",
+    "created_at": "2026-02-14 00:00:00+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User is training for the Chicago Marathon in October 2026, currently running...",
+    "content": "User is training for the Chicago Marathon in October 2026, currently running about 25 km per week.\n\n---\n[Supporting data]\n- OKF source: memories/goal/user-is-training-for-the-chicago-marathon-in-october-2026-cu.md\n- OKF resource: chatgpt:conv-004:m-004b\n- OKF conversation: Marathon training plan",
+    "type": "goal",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-004:m-004b",
+    "provenance": "imported",
+    "created_at": "2026-01-12 06:20:30+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "About the user (custom instructions): I'm a firmware engineer. I work mostly...",
+    "content": "About the user (custom instructions): I'm a firmware engineer. I work mostly in C and Rust on embedded sensor platforms. Keep examples small and hardware-realistic.\n\n---\n[Supporting data]\n- OKF source: memories/instruction/about-the-user-custom-instructions-i-m-a-firmware-engineer-i.md\n- OKF resource: chatgpt:conv-001:m-001a\n- OKF conversation: Debugging an I2C driver",
+    "type": "instruction",
+    "tags": [
+      "chatgpt",
+      "custom-instructions"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-001:m-001a",
+    "provenance": "imported",
+    "created_at": "2025-11-04 09:12:00+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "How the user wants responses (custom instructions): Be concise. Prefer code o...",
+    "content": "How the user wants responses (custom instructions): Be concise. Prefer code over prose. Flag unsafe memory patterns.\n\n---\n[Supporting data]\n- OKF source: memories/instruction/how-the-user-wants-responses-custom-instructions-be-concise.md\n- OKF resource: chatgpt:conv-001:m-001a\n- OKF conversation: Debugging an I2C driver",
+    "type": "instruction",
+    "tags": [
+      "chatgpt",
+      "custom-instructions"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-001:m-001a",
+    "provenance": "imported",
+    "created_at": "2025-11-04 09:12:00+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User now prefers espresso over pour-over coffee and is shopping for an espres...",
+    "content": "User now prefers espresso over pour-over coffee and is shopping for an espresso machine under $600.\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-now-prefers-espresso-over-pour-over-coffee-and-is-shopp.md\n- OKF resource: chatgpt:conv-007:m-007b\n- OKF conversation: Espresso machine shopping",
+    "type": "preference",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-007:m-007b",
+    "provenance": "imported",
+    "created_at": "2026-04-08 08:10:30+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User prefers dark roast coffee, usually brewed as pour-over.",
+    "content": "User prefers dark roast coffee, usually brewed as pour-over.\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-prefers-dark-roast-coffee-usually-brewed-as-pour-over.md\n- OKF resource: chatgpt:conv-002:m-002b\n- OKF conversation: Coffee brewing ratios",
+    "type": "preference",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-002:m-002b",
+    "provenance": "imported",
+    "created_at": "2025-11-18 07:45:20+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User keeps a sourdough starter named Clint Yeastwood.",
+    "content": "User keeps a sourdough starter named Clint Yeastwood.\n\n---\n[Supporting data]\n- OKF source: memories/relationship/user-keeps-a-sourdough-starter-named-clint-yeastwood.md\n- OKF resource: chatgpt:conv-009:m-009b\n- OKF conversation: Meal prep for race week",
+    "type": "relationship",
+    "tags": [
+      "chatgpt",
+      "model-set-context"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-009:m-009b",
+    "provenance": "imported",
+    "created_at": "2026-06-02 18:25:01+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User's partner is named Sam. They have a dog named Biscuit who chews on things.",
+    "content": "User's partner is named Sam. They have a dog named Biscuit who chews on things.\n\n---\n[Supporting data]\n- OKF source: memories/relationship/user-s-partner-is-named-sam-they-have-a-dog-named-biscuit-wh.md\n- OKF resource: chatgpt:conv-003:m-003b\n- OKF conversation: Gift ideas",
+    "type": "relationship",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-003:m-003b",
+    "provenance": "imported",
+    "created_at": "2025-12-09 19:30:25+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  },
+  {
+    "title": "User's partner Sam eats vegetarian on weekdays.",
+    "content": "User's partner Sam eats vegetarian on weekdays.\n\n---\n[Supporting data]\n- OKF source: memories/relationship/user-s-partner-sam-eats-vegetarian-on-weekdays.md\n- OKF resource: chatgpt:conv-009:m-009d\n- OKF conversation: Meal prep for race week",
+    "type": "relationship",
+    "tags": [
+      "chatgpt",
+      "bio"
+    ],
+    "confidence": 0.8,
+    "source": "chatgpt",
+    "source_ref": "chatgpt:conv-009:m-009d",
+    "provenance": "imported",
+    "created_at": "2026-06-02 18:26:00+00:00",
+    "updated_at": "2026-07-23 00:26:23.790798+00:00"
+  }
+]
