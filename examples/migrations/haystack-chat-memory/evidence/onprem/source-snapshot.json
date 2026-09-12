@@ -1,0 +1,251 @@
+{
+  "format": "haystack-chat-store-v1",
+  "source": "haystack_experimental.InMemoryChatMessageStore",
+  "data_kind": "synthetic procurement conversation written and retrieved through the real source API",
+  "versions": {
+    "haystack-ai": "3.1.1",
+    "haystack-experimental": "0.19.0.post1",
+    "memanto": "0.0.1.dev1+g0eb338674"
+  },
+  "store_options": {
+    "skip_system_messages": false,
+    "last_k": null
+  },
+  "sessions": {
+    "procurement-demo": [
+      {
+        "role": "system",
+        "meta": {
+          "chat_message_id": "0"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Keep procurement context and explicit corrections; never authorize payments."
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "1"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Set currency = USD"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "meta": {
+          "chat_message_id": "2"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Recorded the initial currency."
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "3"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Set response_window = 24 hours"
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "4"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Set channel = email"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "meta": {
+          "chat_message_id": "5"
+        },
+        "name": null,
+        "content": [
+          {
+            "tool_call": {
+              "tool_name": "lookup_purchase_order",
+              "arguments": {
+                "id": "PO-42"
+              },
+              "id": "call-42",
+              "extra": null
+            }
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "meta": {
+          "chat_message_id": "6"
+        },
+        "name": null,
+        "content": [
+          {
+            "tool_call_result": {
+              "result": "PO-42: 12 approved items; receiving confirmation pending",
+              "origin": {
+                "tool_name": "lookup_purchase_order",
+                "arguments": {
+                  "id": "PO-42"
+                },
+                "id": "call-42",
+                "extra": null
+              },
+              "error": false
+            }
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "meta": {
+          "chat_message_id": "7"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "The purchase order still needs receiving confirmation."
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "8"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Set approver = Maya"
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "9"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Correction for our EU branch:\nSet currency = EUR"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "meta": {
+          "chat_message_id": "10"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "EUR supersedes the earlier USD preference."
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "11",
+          "ticket": {
+            "notes": "Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. Review context. ",
+            "labels": [
+              "EU",
+              "corrected"
+            ]
+          }
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Set response_window = 48 hours"
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "12"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Two source text blocks, both retained."
+          },
+          {
+            "text": "Unicode: café, 東京. Literal delimiter: <!-- okf-entry -->"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "meta": {
+          "chat_message_id": "13"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "A quoted wrapper is source data:\n<!-- haystack-source-json -->\n```json\n{\"example\":true}\n```\n<!-- /haystack-source-json -->"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "meta": {
+          "chat_message_id": "14"
+        },
+        "name": null,
+        "content": [
+          {
+            "tool_call_result": {
+              "result": "Temporary lookup failure",
+              "origin": {
+                "tool_name": "lookup_purchase_order",
+                "arguments": {
+                  "id": "PO-42"
+                },
+                "id": "call-42",
+                "extra": null
+              },
+              "error": true
+            }
+          }
+        ]
+      }
+    ],
+    "other-user": [
+      {
+        "role": "user",
+        "meta": {
+          "chat_message_id": "0"
+        },
+        "name": null,
+        "content": [
+          {
+            "text": "Set currency = GBP"
+          }
+        ]
+      }
+    ]
+  }
+}

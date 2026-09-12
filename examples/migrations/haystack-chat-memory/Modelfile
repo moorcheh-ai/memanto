@@ -1,0 +1,4 @@
+FROM all-minilm:latest
+# The model is trained for 512 tokens; packaged default 256 fails this fixture.
+PARAMETER num_ctx 512
+PARAMETER num_batch 512

@@ -1,0 +1,34 @@
+{
+  "mode": "LIVE_MEMANTO_ON_PREM_RECALL",
+  "method": "semantic retrieve up to 20 memories, then deterministic latest-setting answer over source positions",
+  "checks": {
+    "currency": {
+      "query": "What is the latest procurement currency setting?",
+      "expected": "EUR",
+      "actual": "EUR",
+      "returned_memories": 15,
+      "passed": true
+    },
+    "response_window": {
+      "query": "What is the latest procurement response window setting?",
+      "expected": "48 hours",
+      "actual": "48 hours",
+      "returned_memories": 15,
+      "passed": true
+    },
+    "channel": {
+      "query": "What is the latest procurement channel setting?",
+      "expected": "email",
+      "actual": "email",
+      "returned_memories": 15,
+      "passed": true
+    },
+    "approver": {
+      "query": "What is the latest procurement approver setting?",
+      "expected": "Maya",
+      "actual": "Maya",
+      "returned_memories": 15,
+      "passed": true
+    }
+  }
+}

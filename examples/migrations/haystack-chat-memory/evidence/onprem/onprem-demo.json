@@ -1,0 +1,28 @@
+{
+  "format": "actual-pty-recording-v1",
+  "started_at_utc": "2026-09-11T19:17:03.941862+00:00",
+  "duration_seconds": 79.781012,
+  "command": [
+    "../.venv/bin/python",
+    "examples/migrations/haystack-chat-memory/run_showcase.py",
+    "../onprem-demo",
+    "--live",
+    "--backend",
+    "on-prem",
+    "--server-url",
+    "http://127.0.0.1:18080",
+    "--agent",
+    "haystack-procurement-demo-20260911",
+    "--demo"
+  ],
+  "cwd": "<memanto-checkout>/source",
+  "child_exit_code": 0,
+  "exit_code": 0,
+  "timed_out": false,
+  "interrupted": false,
+  "input_recorded": false,
+  "cast_sha256": "5ad48bcd8d6f3318c37957acd3685d851cca60b34048081145dc7039c11bd0b4",
+  "distribution_cast_sha256": "95a9b5e89e3b72f4fed3ce10904f389d07bd3f2e221615d3b31d63b4dce4698b",
+  "raw_sha256": "2d26a1de86aa9eeb106213912ee06374b9bafa205448e26942203df072d0fad8",
+  "note": "Real PTY output. cast_sha256 is the original recording paired with onprem-demo.mp4; distribution_cast_sha256 is the path-redacted cast. UTF-8 replacement decoding in cast; raw contains original bytes. No assertion of external service success."
+}

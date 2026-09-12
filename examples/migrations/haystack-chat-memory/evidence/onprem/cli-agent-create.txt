@@ -1,0 +1,7 @@
+[OK] Namespace created in Moorcheh: memanto_agent_haystack-procurement-demo-20260911
+Agent 'haystack-procurement-demo-20260911' created successfully!
+Pattern: tool
+Description: Isolated Haystack procurement migration showcase
+Agent activated automatically.
+Activation expires: 2026-09-12T01:17:20.838564+00:00
+You can now run: memanto remember "..." and memanto recall "..."
