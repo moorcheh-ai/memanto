@@ -236,18 +236,27 @@ def cli(output: Path, name: str, arguments: list[str]) -> float:
     return round(time.perf_counter() - started, 3)
 
 
-def validate_checks(report: dict[str, Any], source_checks: list[dict[str, Any]]) -> None:
+def validate_checks(
+    report: dict[str, Any], source_checks: list[dict[str, Any]]
+) -> None:
     """Fail the command when the saved integrity or recall evidence fails."""
     failures = []
-    if not source_checks or not all(check.get("passed") is True for check in source_checks):
+    if not source_checks or not all(
+        check.get("passed") is True for check in source_checks
+    ):
         failures.append("source recall")
     if report.get("mode") == "live-cloud":
         if report.get("lossless_payload_roundtrip") is not True:
             failures.append("roundtrip integrity")
-        if not report.get("recall_total") or report.get("recall_passed") != report["recall_total"]:
+        if (
+            not report.get("recall_total")
+            or report.get("recall_passed") != report["recall_total"]
+        ):
             failures.append("target recall")
     if failures:
-        raise SystemExit("Validation failed: " + ", ".join(failures) + ". Evidence retained.")
+        raise SystemExit(
+            "Validation failed: " + ", ".join(failures) + ". Evidence retained."
+        )
 
 
 def main() -> None:
@@ -276,8 +285,13 @@ def main() -> None:
         )
     output.mkdir(parents=True)
     snapshot = asyncio.run(seed_source(output))
-    print("AutoGen: 8 real add calls, snapshot saved, source cleared to 0 records.", flush=True)
-    source_checks = json.loads((output / "source-operations.json").read_text())["checks"]
+    print(
+        "AutoGen: 8 real add calls, snapshot saved, source cleared to 0 records.",
+        flush=True,
+    )
+    source_checks = json.loads((output / "source-operations.json").read_text())[
+        "checks"
+    ]
     report = to_okf(snapshot, output / "source-okf")
     report["timings_seconds"] = {
         "cli_dry_run": cli(
@@ -351,7 +365,9 @@ def main() -> None:
             checks = []
             for key, question, expected in QUESTIONS:
                 started = time.perf_counter()
-                result = client.recall(args.agent, question, limit=top_k, min_similarity=0.0)
+                result = client.recall(
+                    args.agent, question, limit=top_k, min_similarity=0.0
+                )
                 records = [
                     r
                     for item in result["memories"]
@@ -383,7 +399,9 @@ def main() -> None:
                 write_json(output / "recall-after.json", checks)
                 report["recall_passed"] = sum(c["passed"] for c in checks)
                 report["recall_total"] = len(checks)
-                report["recall_scope"] = "equal context volume: all eight demo records; not ranked-search parity"
+                report["recall_scope"] = (
+                    "equal context volume: all eight demo records; not ranked-search parity"
+                )
         report["mode"] = "live-cloud"
         report["agent"] = args.agent
     write_json(output / "migration-summary.json", report)

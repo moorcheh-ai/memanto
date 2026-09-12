@@ -94,6 +94,7 @@ The checked-in `evidence/` is from a real cloud run starting **2026-09-12 09:44:
 | Separate ranked top-3 audit | 5 / 6; review-clearance instruction missed |
 | CLI dry run / import / export wall time | 0.242 s / 4.196 s / 10.814 s |
 | Boundary/integrity/gate tests | 13 passed |
+| Ruff lint / format | passed / 4 files already formatted |
 
 Inspect [migration-summary.json](evidence/migration-summary.json),
 [source operations](evidence/source-operations.json),

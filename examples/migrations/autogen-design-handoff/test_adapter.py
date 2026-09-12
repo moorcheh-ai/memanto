@@ -4,7 +4,13 @@ import asyncio
 from collections import Counter
 
 import pytest
-from migrate_demo import canonical, recover_records, seed_source, to_okf, validate_checks
+from migrate_demo import (
+    canonical,
+    recover_records,
+    seed_source,
+    to_okf,
+    validate_checks,
+)
 
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
@@ -76,7 +82,11 @@ def test_other_component_is_not_silently_interpreted(tmp_path):
 
 
 def test_real_snapshot_is_not_mislabelled_synthetic(tmp_path):
-    row = {"content": "Actual app preference", "mime_type": "text/plain", "metadata": {"kind": "decision"}}
+    row = {
+        "content": "Actual app preference",
+        "mime_type": "text/plain",
+        "metadata": {"kind": "decision"},
+    }
     to_okf(component([row]), tmp_path / "okf")
     node = next((tmp_path / "okf").glob("*.md")).read_text()
     assert "synthetic" not in node
@@ -85,7 +95,12 @@ def test_real_snapshot_is_not_mislabelled_synthetic(tmp_path):
 
 @pytest.mark.parametrize("failure", ["source", "target", "integrity"])
 def test_failure_gate_rejects_failed_proofs(failure):
-    report = {"mode": "live-cloud", "recall_passed": 6, "recall_total": 6, "lossless_payload_roundtrip": True}
+    report = {
+        "mode": "live-cloud",
+        "recall_passed": 6,
+        "recall_total": 6,
+        "lossless_payload_roundtrip": True,
+    }
     checks = [{"passed": True}]
     if failure == "source":
         checks[0]["passed"] = False
@@ -98,7 +113,15 @@ def test_failure_gate_rejects_failed_proofs(failure):
 
 
 def test_failure_gate_accepts_complete_proofs():
-    validate_checks({"mode": "live-cloud", "recall_passed": 6, "recall_total": 6, "lossless_payload_roundtrip": True}, [{"passed": True}])
+    validate_checks(
+        {
+            "mode": "live-cloud",
+            "recall_passed": 6,
+            "recall_total": 6,
+            "lossless_payload_roundtrip": True,
+        },
+        [{"passed": True}],
+    )
 
 
 def test_ranked_top3_is_informational_not_equal_scope_parity():
