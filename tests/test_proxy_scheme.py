@@ -17,7 +17,7 @@ from starlette.testclient import TestClient
 
 from memanto.app.config import settings
 from memanto.app.middleware import TrustedProxySchemeMiddleware
-from memanto.app.routes.auth_deps import set_session_cookie
+from memanto.app.routes.auth_deps import _sanitize_log_value, set_session_cookie
 
 TRUSTED_PEER = "10.0.0.5"
 UNTRUSTED_PEER = "203.0.113.9"
@@ -82,6 +82,23 @@ class TestTrustedProxySchemeMiddleware:
     def test_non_http_scope_unaffected(self):
         scope = {"type": "websocket", "scheme": "ws", "client": (TRUSTED_PEER, 1)}
         assert _run_middleware(scope, [TRUSTED_PEER]) == "ws"
+
+
+class TestSanitizeLogValue:
+    """CWE-117: request-derived values must not forge log lines via CR/LF."""
+
+    def test_escapes_crlf_and_control_chars(self):
+        payload = "http://evil.test\r\nINJECTED LOG LINE\x1b"
+        cleaned = _sanitize_log_value(payload)
+        assert "\r" not in cleaned
+        assert "\n" not in cleaned
+        assert cleaned == "http://evil.test\\x0d\\x0aINJECTED LOG LINE\\x1b"
+
+    def test_normal_url_unchanged(self):
+        assert _sanitize_log_value("http://127.0.0.1:8000/") == "http://127.0.0.1:8000/"
+
+    def test_non_string_value_stringified(self):
+        assert "127.0.0.1" in _sanitize_log_value(("127.0.0.1", 8000))
 
 
 class TestProxySettingsDefault:

@@ -25,6 +25,15 @@ SESSION_COOKIE_NAME = "memanto_session_token"
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_log_value(value: object) -> str:
+    """Render ``value`` for logs without control characters (CWE-117).
+
+    Request-derived values (e.g. a URL built from the Host header) must not be
+    able to forge log lines via embedded CR/LF bytes.
+    """
+    return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
+
+
 def set_session_cookie(
     response: Response, session_token: str, request: Request
 ) -> None:
@@ -42,7 +51,7 @@ def set_session_cookie(
             "Any network peer that can reach this port can intercept it and "
             "gain full memory read/write for the active agent. Terminate TLS "
             "in front of Memanto or bind to a loopback address.",
-            request.url,
+            _sanitize_log_value(request.url),
         )
     response.set_cookie(
         SESSION_COOKIE_NAME,
