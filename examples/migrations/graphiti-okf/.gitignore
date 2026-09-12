@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.falkor/
+.graphiti-data/
+*.db
+out/live/
+.DS_Store
