@@ -155,6 +155,12 @@ class Settings(BaseSettings):
 
     # Session Configuration
     MEMANTO_SECRET_KEY: str = ""
+    # IPs / CIDRs whose connections may present ``X-Forwarded-*`` headers and
+    # still be treated as loopback-trusted management clients. Leave empty to
+    # disable loopback trust for any request that arrived via a proxy (the
+    # safe default: only direct loopback clients are trusted). Set this to your
+    # reverse proxy's address when you terminate TLS in front of MEMANTO.
+    TRUSTED_PROXIES: list[str] = []
     SESSION_DEFAULT_DURATION_HOURS: int = 6
     SESSION_AUTO_EXTEND: bool = True
     SESSION_EXTEND_THRESHOLD_MINUTES: int = 30
