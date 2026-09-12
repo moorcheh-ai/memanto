@@ -1,0 +1,21 @@
+{
+  "recorded_start_utc": "2026-09-12T09:44:48.428Z",
+  "capture_method": "125 real browser screenshots with wall-clock timestamps; no simulated output",
+  "real_elapsed_seconds": 36.062,
+  "playback_speed": 2,
+  "final_frame_hold_seconds": 5,
+  "video": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "width": 1728,
+        "height": 906
+      }
+    ],
+    "format": {
+      "duration": "23.133333",
+      "size": "482474"
+    }
+  }
+}
