@@ -177,3 +177,77 @@ class TestLoopbackDetection:
         mock_request.client.host = "::ffff:127.0.0.1"
         mock_request.headers = {}
         asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_local_rejects_forwarded_non_loopback(self):
+        """Requests from loopback but with remote X-Forwarded-For must be rejected."""
+        import pytest
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        # X-Forwarded-For with external IP
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"x-forwarded-for": "203.0.113.195"}
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(_require_local(mock_request))
+        assert exc_info.value.status_code == 403
+
+        # X-Real-IP with external IP
+        mock_request.headers = {"x-real-ip": "198.51.100.2"}
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(_require_local(mock_request))
+        assert exc_info.value.status_code == 403
+
+        # Forwarded header with external IP
+        mock_request.headers = {"forwarded": "for=203.0.113.195;proto=http"}
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(_require_local(mock_request))
+        assert exc_info.value.status_code == 403
+
+        # Internal loopback proxy chain is allowed
+        mock_request.headers = {"x-forwarded-for": "127.0.0.1, ::1"}
+        asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_management_access_rejects_forwarded_non_loopback(self):
+        """require_management_access must refuse loopback trust when forwarded from remote."""
+        import pytest
+        from fastapi import HTTPException
+
+        from memanto.app.routes.auth_deps import require_management_access
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {
+            "host": "localhost:8000",
+            "x-forwarded-for": "203.0.113.195",
+        }
+        with pytest.raises(HTTPException) as exc_info:
+            require_management_access(mock_request)
+        assert exc_info.value.status_code == 401
+
+    def test_has_forwarded_non_loopback_variants(self):
+        """Test _has_forwarded_non_loopback across various header permutations."""
+        from memanto.app.routes.auth_deps import _has_forwarded_non_loopback
+
+        req = MagicMock()
+        req.headers = {}
+        assert _has_forwarded_non_loopback(req) is False
+
+        req.headers = {"x-forwarded-for": "127.0.0.1"}
+        assert _has_forwarded_non_loopback(req) is False
+
+        req.headers = {"x-forwarded-for": "127.0.0.1, 192.168.1.50"}
+        assert _has_forwarded_non_loopback(req) is True
+
+        req.headers = {"x-real-ip": "10.0.0.5"}
+        assert _has_forwarded_non_loopback(req) is True
+
+        req.headers = {"x-real-ip": "::1"}
+        assert _has_forwarded_non_loopback(req) is False
+
+        req.headers = {"forwarded": 'for="[::1]"'}
+        assert _has_forwarded_non_loopback(req) is False
+
+        req.headers = {"forwarded": "for=198.51.100.1:443;proto=https"}
+        assert _has_forwarded_non_loopback(req) is True

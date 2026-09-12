@@ -81,9 +81,9 @@ def _extract_presented_credential(
     x_api_key: str | None,
 ) -> str | None:
     """Extract a client-presented management credential from request headers."""
-    if x_api_key and x_api_key.strip():
+    if isinstance(x_api_key, str) and x_api_key.strip():
         return x_api_key.strip()
-    if authorization:
+    if isinstance(authorization, str):
         parts = authorization.split(None, 1)
         if len(parts) == 2 and parts[0].lower() == "bearer" and parts[1].strip():
             return parts[1].strip()
@@ -144,6 +144,47 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     return fetch_site in {"cross-site", "same-site"}
 
 
+def _has_forwarded_non_loopback(request: Request) -> bool:
+    """Return True when proxy forwarding headers indicate a non-loopback originator.
+
+    When Memanto is deployed behind a reverse proxy (e.g. Nginx/Caddy on localhost),
+    ``request.client.host`` evaluates to 127.0.0.1. If the proxy forwards requests from
+    an external client, headers such as ``X-Forwarded-For``, ``X-Real-IP``, or
+    ``Forwarded`` will contain non-loopback addresses. In such cases, the request must
+    NOT inherit localhost/loopback trust.
+    """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        for ip in xff.split(","):
+            cleaned = ip.strip()
+            if cleaned and not _is_loopback_host(cleaned):
+                return True
+
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        cleaned = x_real_ip.strip()
+        if cleaned and not _is_loopback_host(cleaned):
+            return True
+
+    forwarded = request.headers.get("forwarded")
+    if forwarded:
+        for item in forwarded.split(";"):
+            item = item.strip()
+            if item.lower().startswith("for="):
+                val = item[4:].strip().strip('"').strip("[]")
+                if ":" in val and not val.startswith(":"):
+                    try:
+                        import ipaddress
+
+                        ipaddress.ip_address(val)
+                    except ValueError:
+                        val = val.rsplit(":", 1)[0].strip()
+                if val and not _is_loopback_host(val):
+                    return True
+
+    return False
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -195,6 +236,7 @@ def require_management_access(
         _is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
+        and not _has_forwarded_non_loopback(request)
     ):
         return server_key
 
