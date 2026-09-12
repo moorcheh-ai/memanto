@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1 PIP_DEFAULT_TIMEOUT=120
+WORKDIR /src
+COPY pyproject.toml README.md ./
+COPY memanto ./memanto
+RUN pip install --no-cache-dir . agno==3.0.6 sqlalchemy==2.0.52 moorcheh-client==0.1.5
+RUN pip install --no-cache-dir ollama==0.6.2 openai==3.8.0
+COPY examples/migrations/agno-sqlite /example
+WORKDIR /example
+CMD ["python", "demo_source.py", "/run-artifacts/agno.db"]
