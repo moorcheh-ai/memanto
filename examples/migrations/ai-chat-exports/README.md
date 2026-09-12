@@ -205,4 +205,5 @@ pytest
 
 - [Memanto migrate CLI](https://docs.memanto.ai/cli/migrate/migrate)
 - [OKF integration guide](https://docs.memanto.ai/integrations/okf)
+- [Demo on X](https://x.com/Lidiya_299/status/2098788801183416621)
 - [Issue #1609](https://github.com/moorcheh-ai/memanto/issues/1609)
