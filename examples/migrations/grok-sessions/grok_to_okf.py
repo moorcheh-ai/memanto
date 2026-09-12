@@ -10,7 +10,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,19 +49,31 @@ SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
 def redact(text: str) -> str:
+    """Replace emails and token-shaped strings with a placeholder."""
     return SECRET_RE.sub("[REDACTED]", text or "")
 
 
 def slugify(title: str, fallback: str = "memory") -> str:
+    """Turn a title into a filesystem-safe slug."""
     s = SLUG_RE.sub("-", title.lower()).strip("-")
     return (s[:80] or fallback).strip("-")
 
 
 def now_iso() -> str:
+    """UTC timestamp with second precision, `Z` suffix."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+def public_leaf(path: str | Path | None) -> str:
+    """Keep only the last path component so live exports do not leak home dirs."""
+    if not path:
+        return ""
+    name = Path(str(path).replace("\\", "/")).name
+    return redact(name)
+
+
 def yaml_escape(value: str) -> str:
+    """Quote a YAML scalar when it contains reserved characters."""
     value = value.replace("\n", " ").replace("\r", " ").strip()
     if any(c in value for c in ":#{}[]&*!|>'\"%@`"):
         return json.dumps(value, ensure_ascii=False)
@@ -78,8 +92,14 @@ def write_okf_doc(
     generated_by: str = "process:grok-to-okf",
     resource: str | None = None,
 ) -> None:
+    """Write one OKF markdown document with redacted front matter and body."""
     if mem_type not in MEMANTO_TYPES:
         mem_type = "observation"
+    title = redact(title)
+    description = redact(description)
+    body = redact(body)
+    tags = [redact(t) for t in tags]
+    resource = public_leaf(resource) if resource else None
     lines = [
         "---",
         f"type: {mem_type}",
@@ -100,7 +120,7 @@ def write_okf_doc(
             "  source: grok-build-tui",
             "---",
             "",
-            redact(body).strip() or description,
+            body.strip() or description,
             "",
         ]
     )
@@ -109,6 +129,7 @@ def write_okf_doc(
 
 
 def extract_text(content) -> str:
+    """Flatten Grok JSONL content (string, list of parts, or dict) to text."""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -125,6 +146,7 @@ def extract_text(content) -> str:
 
 
 def user_queries_from_jsonl(path: Path, limit: int = 40) -> list[str]:
+    """Collect operator `<user_query>` lines, skipping compaction dumps."""
     if not path.is_file():
         return []
     found: list[str] = []
@@ -155,11 +177,17 @@ def user_queries_from_jsonl(path: Path, limit: int = 40) -> list[str]:
 
 
 def parse_memory_md(path: Path) -> list[dict]:
+    """Parse MEMORY.md sections into typed memory dicts.
+
+    The first table row after a heading is treated as a header (PT or EN)
+    and is not emitted as a fact.
+    """
     if not path.is_file():
         return []
     text = redact(path.read_text(encoding="utf-8", errors="replace"))
     section = "general"
     items: list[dict] = []
+    seen_table_row = False
     type_for_section = {
         "preferências": "preference",
         "preferences": "preference",
@@ -172,9 +200,15 @@ def parse_memory_md(path: Path) -> list[dict]:
         line = raw.strip()
         if line.startswith("## "):
             section = line[3:].strip().lower()
+            seen_table_row = False
             continue
-        if line.startswith("|") and "---" not in line and "Onde" not in line:
+        if line.startswith("|") and set(line.replace("|", "").replace("-", "").replace(":", "").strip()) == set():
+            continue
+        if line.startswith("|") and "---" not in line:
             cells = [c.strip() for c in line.strip("|").split("|")]
+            if not seen_table_row:
+                seen_table_row = True
+                continue
             if len(cells) >= 2 and cells[0] and cells[1]:
                 items.append(
                     {
@@ -201,6 +235,7 @@ def parse_memory_md(path: Path) -> list[dict]:
 
 
 def load_summary(session_dir: Path) -> dict:
+    """Load summary.json, or {} if missing or invalid."""
     p = session_dir / "summary.json"
     if not p.is_file():
         return {}
@@ -211,6 +246,7 @@ def load_summary(session_dir: Path) -> dict:
 
 
 def load_goal(session_dir: Path) -> dict:
+    """Load goal/state.json, or {} if missing or invalid."""
     p = session_dir / "goal" / "state.json"
     if not p.is_file():
         return {}
@@ -221,6 +257,7 @@ def load_goal(session_dir: Path) -> dict:
 
 
 def plan_deviations(session_dir: Path) -> list[str]:
+    """Return redacted bullets under `## Deviations` in plan.md."""
     p = session_dir / "goal" / "plan.md"
     if not p.is_file():
         return []
@@ -237,25 +274,27 @@ def plan_deviations(session_dir: Path) -> list[str]:
     return items
 
 
-def memories_from_session(session_dir: Path) -> list[dict]:
+def memories_from_session(session_dir: Path, generated_at: str | None = None) -> list[dict]:
+    """Map one Grok session directory onto episode/goal/decision/observation records."""
     summary = load_summary(session_dir)
     goal = load_goal(session_dir)
-    created = (summary.get("created_at") or now_iso())[:32]
+    created = generated_at or (summary.get("created_at") or now_iso())[:32]
     title = redact(summary.get("generated_title") or summary.get("session_summary") or session_dir.name)
+    cwd_leaf = public_leaf((summary.get("info") or {}).get("cwd"))
+    workspace_bit = f" Workspace leaf: `{cwd_leaf}`." if cwd_leaf else ""
     memories: list[dict] = [
         {
             "type": "episode",
             "title": f"Grok session: {title}",
             "body": (
-                f"Session `{session_dir.name}` ran as `{summary.get('agent_name') or 'grok'}` "
+                f"Session `{public_leaf(session_dir)}` ran as `{summary.get('agent_name') or 'grok'}` "
                 f"on `{summary.get('current_model_id') or 'unknown-model'}`. "
                 f"Messages: {summary.get('num_messages')}. "
-                f"Chat turns: {summary.get('num_chat_messages')}. "
-                f"Workspace: {redact(str(summary.get('info', {}).get('cwd') or ''))}."
+                f"Chat turns: {summary.get('num_chat_messages')}.{workspace_bit}"
             ),
             "tags": ["grok", "session", "episode"],
             "at": created,
-            "resource": str(session_dir / "summary.json"),
+            "resource": "summary.json",
         }
     ]
     obj = redact(str(goal.get("objective") or ""))
@@ -293,9 +332,11 @@ def memories_from_session(session_dir: Path) -> list[dict]:
     return memories
 
 
-def write_bundle(out_dir: Path, memories: list[dict]) -> dict:
+def _emit_bundle(out_dir: Path, memories: list[dict], stamp: str) -> dict:
+    """Write indexes and documents into an empty directory. Does not replace `out_dir`."""
     out_dir.mkdir(parents=True, exist_ok=True)
     mem_root = out_dir / "memories"
+    mem_root.mkdir(parents=True, exist_ok=True)
     counts: dict[str, int] = {}
     written = 0
     used_slugs: set[str] = set()
@@ -317,7 +358,7 @@ def write_bundle(out_dir: Path, memories: list[dict]) -> dict:
             description=mem["body"][:180],
             body=mem["body"],
             tags=mem.get("tags") or ["grok"],
-            generated_at=mem.get("at") or now_iso(),
+            generated_at=mem.get("at") or stamp,
             resource=mem.get("resource"),
         )
         written += 1
@@ -331,7 +372,7 @@ def write_bundle(out_dir: Path, memories: list[dict]) -> dict:
                 "title: Grok Build TUI memory export",
                 "generated:",
                 "  by: process:grok-to-okf",
-                f"  at: {now_iso()}",
+                f"  at: {stamp}",
                 "---",
                 "",
                 "# Grok Build TUI → OKF",
@@ -349,7 +390,7 @@ def write_bundle(out_dir: Path, memories: list[dict]) -> dict:
         encoding="utf-8",
     )
     (mem_root / "index.md").write_text(
-        f"---\nokf_version: \"{OKF_VERSION}\"\ntype: index\n---\n\n# Memories\n\n{type_links}\n",
+        f"---\nokf_version: \"{OKF_VERSION}\"\ntype: index\n---\n\n# Memories\n\n{type_links or '- (empty)'}\n",
         encoding="utf-8",
     )
     for mtype, n in counts.items():
@@ -360,27 +401,56 @@ def write_bundle(out_dir: Path, memories: list[dict]) -> dict:
     return {"written": written, "by_type": counts}
 
 
-def collect(session: Path | None, memory_md: Path | None) -> list[dict]:
+def write_bundle(out_dir: Path, memories: list[dict], generated_at: str | None = None) -> dict:
+    """Write a complete bundle, replacing any previous files in `out_dir` atomically."""
+    stamp = generated_at or now_iso()
+    out_dir = out_dir.resolve()
+    out_dir.parent.mkdir(parents=True, exist_ok=True)
+    tmp = Path(tempfile.mkdtemp(prefix="okf-bundle-", dir=str(out_dir.parent)))
+    try:
+        stats = _emit_bundle(tmp, memories, stamp)
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+        shutil.copytree(tmp, out_dir)
+        return stats
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def collect(
+    session: Path | None,
+    memory_md: Path | None,
+    generated_at: str | None = None,
+) -> list[dict]:
+    """Gather memories from MEMORY.md and/or a session directory."""
+    stamp = generated_at or now_iso()
     memories: list[dict] = []
     if memory_md:
         for item in parse_memory_md(memory_md):
+            item.setdefault("at", stamp)
             memories.append(item)
     if session:
-        memories.extend(memories_from_session(session))
+        memories.extend(memories_from_session(session, generated_at=stamp if generated_at else None))
     return memories
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entry: `--session` and/or `--memory` into `--out`."""
     p = argparse.ArgumentParser(description="Grok session/MEMORY.md → OKF v0.2")
     p.add_argument("--session", type=Path, help="Path to a Grok session directory")
     p.add_argument("--memory", type=Path, help="Path to MEMORY.md")
     p.add_argument("--out", type=Path, required=True, help="Output OKF bundle directory")
+    p.add_argument(
+        "--generated-at",
+        default=None,
+        help="Fixed UTC timestamp for generated.at (keeps checked-in samples stable)",
+    )
     args = p.parse_args(argv)
     if not args.session and not args.memory:
         print("provide --session and/or --memory", file=sys.stderr)
         return 2
-    memories = collect(args.session, args.memory)
-    stats = write_bundle(args.out, memories)
+    memories = collect(args.session, args.memory, generated_at=args.generated_at)
+    stats = write_bundle(args.out, memories, generated_at=args.generated_at)
     print(json.dumps({"ok": True, **stats, "out": str(args.out)}, indent=2))
     return 0
 

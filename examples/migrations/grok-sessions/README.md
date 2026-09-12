@@ -29,8 +29,17 @@ Optional: a [Moorcheh](https://moorcheh.ai/) key if you want to run `memanto mig
 From this directory:
 
 ```bash
-python grok_to_okf.py --session ./fixtures/mini-session --memory ./fixtures/MEMORY.md --out ./sample-okf
+python scripts/run_showcase.py
+```
+
+That converts the committed fixture, runs unittest, and scores the golden Q&A set against the generated wiki. If `memanto` is on PATH it also runs `memanto migrate okf ./sample-okf --dry-run`.
+
+Manual steps:
+
+```bash
+python grok_to_okf.py --session ./fixtures/mini-session --memory ./fixtures/MEMORY.md --out ./sample-okf --generated-at 2026-09-12T00:51:03Z
 python -m unittest tests/test_grok_to_okf.py
+python scripts/validate_qa.py
 ```
 
 Against a live Grok home (your machine):

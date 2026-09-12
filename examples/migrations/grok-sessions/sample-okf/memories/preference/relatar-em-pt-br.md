@@ -5,7 +5,7 @@ description: Relatar em PT-BR.
 tags: [memory-md, preferências]
 generated:
   by: "process:grok-to-okf"
-  at: 2026-09-12T15:22:43Z
+  at: 2026-09-12T00:51:03Z
 x_memanto:
   type: preference
   provenance: grok_session_export

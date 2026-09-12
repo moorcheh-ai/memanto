@@ -5,7 +5,7 @@ description: ffmpeg ausente no PATH Windows.
 tags: [memory-md, padrões-que-voltam]
 generated:
   by: "process:grok-to-okf"
-  at: 2026-09-12T15:22:43Z
+  at: 2026-09-12T00:51:03Z
 x_memanto:
   type: observation
   provenance: grok_session_export

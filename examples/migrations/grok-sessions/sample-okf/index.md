@@ -3,7 +3,7 @@ okf_version: "0.2"
 title: Grok Build TUI memory export
 generated:
   by: process:grok-to-okf
-  at: 2026-09-12T15:22:43Z
+  at: 2026-09-12T00:51:03Z
 ---
 
 # Grok Build TUI → OKF
