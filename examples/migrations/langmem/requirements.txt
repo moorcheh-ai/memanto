@@ -1,0 +1,13 @@
+# LangMem -> Memanto (OKF) migration example.
+#
+# The offline pipeline (python run.py) needs only these two plus Memanto
+# itself (install the repo with `pip install -e .` from the repo root, or
+# `pip install memanto`).
+langmem>=0.0.27
+langgraph>=0.2.0
+
+# --- optional ---
+# For `--extract live` (LLM-driven memory extraction) you also need a chat +
+# embedding provider, e.g.:
+#   pip install "langchain[openai]"
+# and an OPENAI_API_KEY. See .env.example.
