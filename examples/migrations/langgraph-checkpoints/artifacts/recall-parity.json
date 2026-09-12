@@ -1,0 +1,44 @@
+{
+  "source": "examples\\migrations\\langgraph-checkpoints\\artifacts\\demo-checkpoints.sqlite",
+  "bundle": "examples\\migrations\\langgraph-checkpoints\\artifacts\\demo-okf",
+  "passed": 5,
+  "total": 5,
+  "recall_parity": 1.0,
+  "results": [
+    {
+      "question": "Which flight seat does Mira currently prefer?",
+      "expected": "window",
+      "source_answer": "window",
+      "okf_answer": "window",
+      "passed": true
+    },
+    {
+      "question": "Where does Mira live?",
+      "expected": "Shanghai",
+      "source_answer": "Shanghai",
+      "okf_answer": "Shanghai",
+      "passed": true
+    },
+    {
+      "question": "Which database version does Atlas use?",
+      "expected": "PostgreSQL 16",
+      "source_answer": "Atlas uses PostgreSQL 16.",
+      "okf_answer": "PostgreSQL 16",
+      "passed": true
+    },
+    {
+      "question": "Who owns launch-week on-call coverage?",
+      "expected": "Priya",
+      "source_answer": "Priya owns on-call coverage for Atlas launch week.",
+      "okf_answer": "Priya",
+      "passed": true
+    },
+    {
+      "question": "How long is each focused study session?",
+      "expected": "25 minutes",
+      "source_answer": "25 minutes",
+      "okf_answer": "25 minutes",
+      "passed": true
+    }
+  ]
+}

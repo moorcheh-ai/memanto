@@ -1,0 +1,12 @@
+{
+  "format": "okf",
+  "generated_at": "2026-07-29T10:14:47.754523+00:00",
+  "per_type": {
+    "decision": 2,
+    "event": 22,
+    "fact": 5,
+    "preference": 5
+  },
+  "source": "langgraph-sqlite-checkpoints",
+  "total_records": 34
+}
