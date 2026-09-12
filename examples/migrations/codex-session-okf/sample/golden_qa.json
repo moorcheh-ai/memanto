@@ -1,0 +1,14 @@
+[
+  {
+    "question": "What date did the assistant report?",
+    "expected": ["2026 年 7 月 29 日", "星期三"]
+  },
+  {
+    "question": "Which Python project was present in the workspace?",
+    "expected": ["memanto", "Python 项目"]
+  },
+  {
+    "question": "Which TypeScript/Node.js project was present?",
+    "expected": ["bounty-radar", "TypeScript/Node.js"]
+  }
+]

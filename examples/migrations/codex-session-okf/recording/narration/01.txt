@@ -1,0 +1,1 @@
+This demonstration begins with a genuine Codex rollout, reduced to four privacy-safe user and assistant messages. Reasoning, tool calls, system prompts, credentials, and transport metadata are rejected before export.

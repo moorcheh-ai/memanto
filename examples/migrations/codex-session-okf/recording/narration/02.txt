@@ -1,0 +1,1 @@
+The adapter converts those records into four deterministic, human-readable OKF Markdown memories. It preserves useful conversation context while replacing sensitive source identity with a fingerprint.
