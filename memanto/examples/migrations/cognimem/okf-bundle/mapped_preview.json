@@ -1,0 +1,735 @@
+[
+  {
+    "title": "agt_mrqfl8vx4sp8 创建了文件 /home/ecs-user/双色球_5组推荐_20260718.txt",
+    "content": "# agt_mrqfl8vx4sp8 创建了文件 /home/ecs-user/双色球_5组推荐_20260718.txt\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `a00824ee-f93f-4626-94b0-8464d5f4403a`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-创建了文件-homeecs-user双色球_5组推荐_20260718txt-a00824ee.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 22:02:49.960936+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 创建了文件 /home/ecs-user/双色球_红球_最新20期_20260718.txt",
+    "content": "# agt_mrqfl8vx4sp8 创建了文件 /home/ecs-user/双色球_红球_最新20期_20260718.txt\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `79a49474-334f-428f-8a9d-6f58cf416284`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-创建了文件-homeecs-user双色球_红球_最新20期_20260718txt-79a49474.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 21:58:11.569168+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 创建了文件 /home/ecs-user/双色球_蓝球_最新20期_20260718.txt",
+    "content": "# agt_mrqfl8vx4sp8 创建了文件 /home/ecs-user/双色球_蓝球_最新20期_20260718.txt\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `2dcf9380-3351-40c1-9e56-e8078fa47e25`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-创建了文件-homeecs-user双色球_蓝球_最新20期_20260718txt-2dcf9380.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 21:58:11.569204+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 执行了命令 cat << 'PYEOF' > /home/ecs-user/gen_ssq2.py\nimport itertools\nimport random...",
+    "content": "# agt_mrqfl8vx4sp8 执行了命令 cat << 'PYEOF' > /home/ecs-user/gen_ssq2.py\nimport itertools\nimport random...\n\nagt_mrqfl8vx4sp8 执行了命令 cat << 'PYEOF' > /home/ecs-user/gen_ssq2.py\nimport iterto\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `2700551d-0c96-4077-a83e-22b77978b637`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-执行了命令-cat-pyeof-homeecs-usergen_ssq2py-impo-2700551d.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 22:02:49.960856+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 执行了命令 cat << 'PYEOF' > /home/ecs-user/gen_ssq.py\nimport itertools\nimport random\n...",
+    "content": "# agt_mrqfl8vx4sp8 执行了命令 cat << 'PYEOF' > /home/ecs-user/gen_ssq.py\nimport itertools\nimport random\n...\n\nagt_mrqfl8vx4sp8 执行了命令 cat << 'PYEOF' > /home/ecs-user/gen_ssq.py\nimport itertoo\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `f22830bc-8296-40b0-8417-17d9a080082a`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-执行了命令-cat-pyeof-homeecs-usergen_ssqpy-impor-f22830bc.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 22:02:49.960786+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 执行了命令 python3 -c \"\ngroups = [\n    ([1,3,14,19,23,28], 6),\n    ([3,4,17,19,27,32]...",
+    "content": "# agt_mrqfl8vx4sp8 执行了命令 python3 -c \"\ngroups = [\n    ([1,3,14,19,23,28], 6),\n    ([3,4,17,19,27,32]...\n\nagt_mrqfl8vx4sp8 执行了命令 python3 -c \"\ngroups = [\n    ([1,3,14,19,23,28], 6),\n    (\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `e4afe38f-44ff-44db-afbc-650421407fbd`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-执行了命令-python3-c-groups-1314192328-6-3417192-e4afe38f.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 22:02:49.960895+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 搜索了 双色球 最新20期 开奖号码 2026年",
+    "content": "# agt_mrqfl8vx4sp8 搜索了 双色球 最新20期 开奖号码 2026年\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `03a6d83f-e0b3-4e16-94ae-3fbff9e03cb4`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-搜索了-双色球-最新20期-开奖号码-2026年-03a6d83f.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 21:58:11.569099+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 读取了文件 /home/ecs-user/双色球_红球_最新20期_20260718.txt",
+    "content": "# agt_mrqfl8vx4sp8 读取了文件 /home/ecs-user/双色球_红球_最新20期_20260718.txt\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 35%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `3087fae6-28fd-4685-8ca8-2ea59a3d28e7`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-读取了文件-homeecs-user双色球_红球_最新20期_20260718txt-3087fae6.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 21:58:56.292729+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrqfl8vx4sp8 读取了文件 /home/ecs-user/双色球_蓝球_最新20期_20260718.txt",
+    "content": "# agt_mrqfl8vx4sp8 读取了文件 /home/ecs-user/双色球_蓝球_最新20期_20260718.txt\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 35%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 8 条\n- **记忆ID**: `7cb8e7f7-2fc9-4b6f-8315-7f89c57ec21f`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrqfl8vx4sp8-读取了文件-homeecs-user双色球_蓝球_最新20期_20260718txt-7cb8e7f7.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 22:00:10.549598+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "agt_mrr7hzai3xq6 搜索了 AI 科技圈 新闻 热闻 2025",
+    "content": "# agt_mrr7hzai3xq6 搜索了 AI 科技圈 新闻 热闻 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `4fa397dc-bdea-4fc9-aa78-00f82d62a395`\n\n---\n[Supporting data]\n- OKF source: memories/event/agt_mrr7hzai3xq6-搜索了-ai-科技圈-新闻-热闻-2025-4fa397dc.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 13:06:43.110684+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 创建了文件 /home/ecs-user/双色球分析_20260719.txt",
+    "content": "# default 创建了文件 /home/ecs-user/双色球分析_20260719.txt\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 6 条\n- **记忆ID**: `79c1973b-bdbc-4155-97bd-3f343a8818dd`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-创建了文件-homeecs-user双色球分析_20260719txt-79c1973b.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 09:00:57.978873+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 回想记忆 双色球 号码 生成 策略 热号 冷号",
+    "content": "# default 回想记忆 双色球 号码 生成 策略 热号 冷号\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `83f9c211-b3f3-4ae3-b555-5b493a157e18`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-回想记忆-双色球-号码-生成-策略-热号-冷号-83f9c211.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 09:00:57.978768+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 回想记忆 时间日期查询教训 系统时间",
+    "content": "# default 回想记忆 时间日期查询教训 系统时间\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `4124bfa3-e37f-4829-a120-e936a6b53bf0`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-回想记忆-时间日期查询教训-系统时间-4124bfa3.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:27:02.526647+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 cat << 'PYEOF' | python3\nimport random\nfrom collections import Counter\n\n# 最近20期红",
+    "content": "# default 执行了命令 cat << 'PYEOF' | python3\nimport random\nfrom collections import Counter\n\n# 最近20期红\n\ndefault 执行了命令 cat << 'PYEOF' | python3\nimport random\nfrom collections import Cou\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `29501b99-7cba-4467-80d0-d7d91f9c875a`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-cat-pyeof-python3-import-random-from-collectio-29501b99.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 09:00:57.978818+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 cat << 'PYEOF' | python3\nimport random\n\n# 策略组合生成几注\n\n# 红球热号池（4次以上）\nhot_reds = [1,",
+    "content": "# default 执行了命令 cat << 'PYEOF' | python3\nimport random\n\n# 策略组合生成几注\n\n# 红球热号池（4次以上）\nhot_reds = [1,\n\ndefault 执行了命令 cat << 'PYEOF' | python3\nimport random\n\n# 策略组合生成几注\n\n# 红球热号池（4次以上）\n\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 11 条\n- **记忆ID**: `7187b54f-19dc-4b7b-b4ee-840f786b0bde`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-cat-pyeof-python3-import-random-策略组合生成几注-红球热号池-7187b54f.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:59:48.725526+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 cat << 'PYEOF' | python3\n# 最近20期双色球开奖数据\ndata = [\n    (\"2026081\", [6,10,12,15,24,",
+    "content": "# default 执行了命令 cat << 'PYEOF' | python3\n# 最近20期双色球开奖数据\ndata = [\n    (\"2026081\", [6,10,12,15,24,\n\ndefault 执行了命令 cat << 'PYEOF' | python3\n# 最近20期双色球开奖数据\ndata = [\n    (\"2026081\", [\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `8f61f685-8b1f-49e9-9c4f-d98adc785b11`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-cat-pyeof-python3-最近20期双色球开奖数据-data-2026081-61-8f61f685.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:59:48.725465+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 date '+%Y %m'",
+    "content": "# default 执行了命令 date '+%Y %m'\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `9a0e27cb-bf48-473c-a391-05e7b8678518`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-date-y-m-9a0e27cb.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:42:11.232633+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 date '+%Y-%m-%d %A'",
+    "content": "# default 执行了命令 date '+%Y-%m-%d %A'\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `c76ae6c2-8234-4716-b2cc-f0c0708e8053`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-date-y-m-d-a-c76ae6c2.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:25:36.198973+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 date '+%Y年%m月%d日 %…",
+    "content": "# default 执行了命令 date '+%Y年%m月%d日 %…\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 4 条\n- **记忆ID**: `14175c07-d092-470f-ba63-57f24c866239`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-date-y年m月d日-14175c07.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 11:13:15.859407+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 date '+%Y年%m月%d日 %A'",
+    "content": "# default 执行了命令 date '+%Y年%m月%d日 %A'\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `2bad7816-2f69-433e-b75b-09f34b200497`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-date-y年m月d日-a-2bad7816.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:59:48.724996+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 date '+%Y年%m月%d日 %A %H:%M'",
+    "content": "# default 执行了命令 date '+%Y年%m月%d日 %A %H:%M'\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 5 条\n- **记忆ID**: `a4ac3e35-665e-4486-9910-838c9d404ff0`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-date-y年m月d日-a-hm-a4ac3e35.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 09:01:43.938028+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 执行了命令 date '+%Y年%m月%d日 %A %H:%M:%S'",
+    "content": "# default 执行了命令 date '+%Y年%m月%d日 %A %H:%M:%S'\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `3fa33293-6393-4325-bfa0-fea565a08004`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-执行了命令-date-y年m月d日-a-hms-3fa33293.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 09:00:57.978414+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 2025年本周新闻要闻",
+    "content": "# default 搜索了 2025年本周新闻要闻\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 55%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `e74811f9-e86b-4a5a-8e8a-5f0c8d3200d6`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-2025年本周新闻要闻-e74811f9.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 12:44:41.250574+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 2026年7月18日 新闻 要闻",
+    "content": "# default 搜索了 2026年7月18日 新闻 要闻\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `7785de15-7776-4a00-bf5c-2900fd8d2b70`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-2026年7月18日-新闻-要闻-7785de15.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 12:51:13.239955+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 AI 人工智能 最新新闻 2025",
+    "content": "# default 搜索了 AI 人工智能 最新新闻 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 1 条\n- **记忆ID**: `0aac3abc-9d41-4beb-af19-ccb65f37ec4f`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-ai-人工智能-最新新闻-2025-0aac3abc.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 11:39:43.076102+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 Grok Build open source github xai-org",
+    "content": "# default 搜索了 Grok Build open source github xai-org\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `2770044f-390c-41e8-88fe-e71e9df7c535`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-grok-build-open-source-github-xai-org-2770044f.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-17 10:38:18.080494+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 grok build 完全开源",
+    "content": "# default 搜索了 grok build 完全开源\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 27 条\n- **记忆ID**: `b0387649-8942-445a-be6c-a0147af8fed8`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-grok-build-完全开源-b0387649.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-17 10:29:53.981032+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 Grok Build 开源 源码 GitHub xAI",
+    "content": "# default 搜索了 Grok Build 开源 源码 GitHub xAI\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 27 条\n- **记忆ID**: `d9ba92ce-4127-4200-9419-fa31245f6980`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-grok-build-开源-源码-github-xai-d9ba92ce.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-17 10:31:33.776147+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 Grok Build 开源 源码 GitHub xAI 智能体",
+    "content": "# default 搜索了 Grok Build 开源 源码 GitHub xAI 智能体\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 27 条\n- **记忆ID**: `ecf4e68f-96e8-401b-bb71-ec30b89d752c`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-grok-build-开源-源码-github-xai-智能体-ecf4e68f.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-17 10:32:33.873125+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 Python 最新版本 2025",
+    "content": "# default 搜索了 Python 最新版本 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 2 条\n- **记忆ID**: `4eab45d5-5589-4fc5-977a-d6edda5e70f7`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-python-最新版本-2025-4eab45d5.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 11:24:58.223118+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 今天日期 2025年7月",
+    "content": "# default 搜索了 今天日期 2025年7月\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `4dba0a9e-3cd0-49e0-b585-6d6c2c3054cd`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-今天日期-2025年7月-4dba0a9e.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:24:40.704702+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 双色球 最新20期 开奖号码 2025",
+    "content": "# default 搜索了 双色球 最新20期 开奖号码 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 21 条\n- **记忆ID**: `79d8e11a-8a8a-4318-8ee0-0064f0729104`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-双色球-最新20期-开奖号码-2025-79d8e11a.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 20:57:01.349209+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 双色球 最新开奖号码 2026年7月",
+    "content": "# default 搜索了 双色球 最新开奖号码 2026年7月\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `d9bab16b-790c-47ce-955d-93a0928af11f`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-双色球-最新开奖号码-2026年7月-d9bab16b.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:59:48.725371+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 本周新闻要闻 2025",
+    "content": "# default 搜索了 本周新闻要闻 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `06ee3b62-e32c-4ea6-8345-6efc8cfe9838`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-本周新闻要闻-2025-06ee3b62.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-18 12:45:42.696080+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 搜索了 量子计算 最新进展 2025",
+    "content": "# default 搜索了 量子计算 最新进展 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 45%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 3 条\n- **记忆ID**: `be35f3ac-12f3-4df6-8d28-45245679ca38`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-搜索了-量子计算-最新进展-2025-be35f3ac.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 11:22:44.485176+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 记住了 任何时间/日期相关问题，必须先执行 date 命令查系统时间，不能凭记忆回答，也不能凭之前的搜索记录回答。2026年7月19日被用户严厉批评过这个问题",
+    "content": "# default 记住了 任何时间/日期相关问题，必须先执行 date 命令查系统时间，不能凭记忆回答，也不能凭之前的搜索记录回答。2026年7月19日被用户严厉批评过这个问题\n\ndefault 记住了 任何时间/日期相关问题，必须先执行 date 命令查系统时间，不能凭记忆回答，也不能凭之前的搜索记录回答。2026年7月19日被用户严厉\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 55%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 16 条\n- **记忆ID**: `e9a2fe25-02da-4282-9008-6ce353a29289`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-记住了-任何时间日期相关问题必须先执行-date-命令查系统时间不能凭记忆回答也不能凭之前的搜索记录回答-e9a2fe25.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:27:02.526747+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 记住了 当前正确时间是：2026年7月24日…",
+    "content": "# default 记住了 当前正确时间是：2026年7月24日…\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `ccbfdbc1-8ce4-471f-a6f3-203c3ee5d34e`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-记住了-当前正确时间是2026年7月24日-ccbfdbc1.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-24 18:28:37.717629+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 记住了 教训：任何时间/日期相关的问题，必须先查系统时间再回答，不能凭记忆直接说。2026年7月19日被用户批评过这个问题",
+    "content": "# default 记住了 教训：任何时间/日期相关的问题，必须先查系统时间再回答，不能凭记忆直接说。2026年7月19日被用户批评过这个问题\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `4972b775-3d5a-413d-9137-cf2a428a942f`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-记住了-教训任何时间日期相关的问题必须先查系统时间再回答不能凭记忆直接说2026年7月19日被用户批评过-4972b775.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 08:25:36.199058+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "default 记住了 用户对双色球感兴趣，查了2026年7月最新开奖号码，做了热号冷号分析并生成了5注参考号码",
+    "content": "# default 记住了 用户对双色球感兴趣，查了2026年7月最新开奖号码，做了热号冷号分析并生成了5注参考号码\n\n## 元数据 (Metadata)\n\n- **置信度**: 100% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 28 条\n- **记忆ID**: `242fb8d4-58c6-4553-90c4-9ca32692688f`\n\n---\n[Supporting data]\n- OKF source: memories/event/default-记住了-用户对双色球感兴趣查了2026年7月最新开奖号码做了热号冷号分析并生成了5注参考号码-242fb8d4.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 1.0,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 09:00:57.978844+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "speed_test 搜索了 最近科技新闻",
+    "content": "# speed_test 搜索了 最近科技新闻\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `5080eec8-4db5-4850-8e82-15039551fc11`\n\n---\n[Supporting data]\n- OKF source: memories/event/speed_test-搜索了-最近科技新闻-5080eec8.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-10 06:50:44.879693+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "test-agent 回想记忆 用户信息",
+    "content": "# test-agent 回想记忆 用户信息\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `06b82d0f-eda8-43b1-82c5-19c15fd9f769`\n\n---\n[Supporting data]\n- OKF source: memories/event/test-agent-回想记忆-用户信息-06b82d0f.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-14 20:50:39.850145+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "test 执行了命令 find / -name \"test.txt\" -type f 2>/dev/null",
+    "content": "# test 执行了命令 find / -name \"test.txt\" -type f 2>/dev/null\n\n## 元数据 (Metadata)\n\n- **置信度**: 94% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 1 条\n- **记忆ID**: `0edb4ccb-d29d-4db2-83b4-be333df33c58`\n\n---\n[Supporting data]\n- OKF source: memories/event/test-执行了命令-find-name-testtxt-type-f-2devnull-0edb4ccb.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.94,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-14 22:21:55.847728+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "test 浏览了目录 .",
+    "content": "# test 浏览了目录 .\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 30%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 1 条\n- **记忆ID**: `5597aacf-2639-4397-9e5c-adcfcadcc366`\n\n---\n[Supporting data]\n- OKF source: memories/event/test-浏览了目录-5597aacf.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-14 22:31:50.946646+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "test_final 搜索了 最近的科技新闻",
+    "content": "# test_final 搜索了 最近的科技新闻\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `2474422e-0212-4179-a4ae-502083a842d0`\n\n---\n[Supporting data]\n- OKF source: memories/event/test_final-搜索了-最近的科技新闻-2474422e.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-10 06:18:06.383903+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "test_final2 搜索了 最近的科技新闻",
+    "content": "# test_final2 搜索了 最近的科技新闻\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 40%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `3526d881-1491-465d-ae5f-1dfeeac9a63e`\n\n---\n[Supporting data]\n- OKF source: memories/event/test_final2-搜索了-最近的科技新闻-3526d881.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-10 06:19:46.308081+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "xiaoqi 搜索了 AI 科技圈 新闻 热闻 2025",
+    "content": "# xiaoqi 搜索了 AI 科技圈 新闻 热闻 2025\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: action\n- **关联事实**: 1 条\n- **记忆ID**: `3b2e0396-5370-466d-a054-ce7b2959bdd7`\n\n---\n[Supporting data]\n- OKF source: memories/event/xiaoqi-搜索了-ai-科技圈-新闻-热闻-2025-3b2e0396.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 14:46:35.287783+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "xiaoqi 搜索了 AI 科技圈 新闻 热闻 2026年…",
+    "content": "# xiaoqi 搜索了 AI 科技圈 新闻 热闻 2026年…\n\n## 元数据 (Metadata)\n\n- **置信度**: 90% (确信)\n- **重要性**: 60%\n- **编码级别**: raw\n- **原始类型**: action\n- **记忆ID**: `4b5902fd-880a-4a83-846f-357551761fa1`\n\n---\n[Supporting data]\n- OKF source: memories/event/xiaoqi-搜索了-ai-科技圈-新闻-热闻-2026年-4b5902fd.md",
+    "type": "event",
+    "tags": [
+      "action"
+    ],
+    "confidence": 0.9,
+    "source": "user",
+    "source_ref": null,
+    "provenance": "imported",
+    "created_at": "2026-07-19 14:54:21.422289+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "CogniMem 部署到 47.99.151.253",
+    "content": "# CogniMem 部署到 47.99.151.253\n\n部署测试：CogniMem 成功部署到 47.99.151.253\n\n## 证据链 (Evidence Chain)\n\n- **来源**: api remember:test-session-1784033435\n  **陈述**: 部署测试：CogniMem 成功部署到 47.99.151.253\n\n## 元数据 (Metadata)\n\n- **置信度**: 60% (可能)\n- **重要性**: 80%\n- **编码级别**: raw\n- **原始类型**: fact\n- **记忆ID**: `5856d326-7016-4dd7-a17f-ef44040728f2`\n\n---\n[Supporting data]\n- OKF source: memories/fact/cognimem-部署到-4799151253-5856d326.md\n- OKF resource: api_remember:test-session-1784033435",
+    "type": "fact",
+    "tags": [
+      "部署",
+      "CogniMem",
+      "IP地址",
+      "fact"
+    ],
+    "confidence": 0.6,
+    "source": "user",
+    "source_ref": "api_remember:test-session-1784033435",
+    "provenance": "imported",
+    "created_at": "2026-07-14 20:50:37.080408+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "当前正确时间是：2026年7月24日 星期五 18:27（北京时间 UTC+8）。之前系统date命令和联网搜索返回 日期 不准确",
+    "content": "# 当前正确时间是：2026年7月24日 星期五 18:27（北京时间 UTC+8）。之前系统date命令和联网搜索返回 日期 不准确\n\n当前正确时间是：2026年7月24日 星期五 18:27（北京时间 UTC+8）。之前系统date命令和联网搜索返回的日期不准确，以用户告知为准。\n\n## 证据链 (Evidence Chain)\n\n- **来源**: agent tool:ses mrusygz1sbeg\n  **陈述**: 当前正确时间是：2026年7月24日 星期五 18:27（北京时间 UTC+8）。之前系统date命令和联网搜索返回的日期不准确，以用户告知为准。\n\n## 元数据 (Metadata)\n\n- **置信度**: 60% (可能)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: observation\n- **记忆ID**: `21604dcb-88cc-461b-a667-8ac2a97e2166`\n\n---\n[Supporting data]\n- OKF source: memories/observation/当前正确时间是2026年7月24日-星期五-1827北京时间-utc8之前系统date命令和联网搜索返回-日期-不准确-21604dcb.md\n- OKF resource: agent_tool:ses_mrusygz1sbeg",
+    "type": "observation",
+    "tags": [
+      "observation"
+    ],
+    "confidence": 0.6,
+    "source": "user",
+    "source_ref": "agent_tool:ses_mrusygz1sbeg",
+    "provenance": "imported",
+    "created_at": "2026-07-24 18:28:35.526178+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "用户 说了 测试部署验证",
+    "content": "# 用户 说了 测试部署验证\n\n测试部署验证\n\n## 证据链 (Evidence Chain)\n\n- **来源**: api remember:sess v\n  **陈述**: 测试部署验证\n\n## 元数据 (Metadata)\n\n- **置信度**: 48% (存疑)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: observation\n- **记忆ID**: `f25ec8eb-3d1a-4b66-bc7a-6662f4488cc6`\n\n---\n[Supporting data]\n- OKF source: memories/observation/用户-说了-测试部署验证-f25ec8eb.md\n- OKF resource: api_remember:sess_v",
+    "type": "observation",
+    "tags": [
+      "observation"
+    ],
+    "confidence": 0.4816,
+    "source": "user",
+    "source_ref": "api_remember:sess_v",
+    "provenance": "imported",
+    "created_at": "2026-07-12 03:28:14.501810+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "user 不喜欢 喝冰美式",
+    "content": "# user 不喜欢 喝冰美式\n\n用户不喜欢喝冰美式\n\n## 证据链 (Evidence Chain)\n\n- **来源**: api remember:b2\n  **陈述**: 用户不喜欢喝冰美式\n\n## 元数据 (Metadata)\n\n- **置信度**: 59% (可能)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: preference\n- **记忆ID**: `0a59e653-4c03-40be-85c3-a3c5c4c0a665`\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-不喜欢-喝冰美式-0a59e653.md\n- OKF resource: api_remember:b2",
+    "type": "preference",
+    "tags": [
+      "咖啡",
+      "preference"
+    ],
+    "confidence": 0.5863,
+    "source": "user",
+    "source_ref": "api_remember:b2",
+    "provenance": "imported",
+    "created_at": "2026-07-08 15:31:36.554482+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  },
+  {
+    "title": "user 喜欢 喝冰美式",
+    "content": "# user 喜欢 喝冰美式\n\n用户喜欢喝冰美式\n\n## 证据链 (Evidence Chain)\n\n- **来源**: api remember:b1\n  **陈述**: 用户喜欢喝冰美式\n\n## 元数据 (Metadata)\n\n- **置信度**: 59% (可能)\n- **重要性**: 50%\n- **编码级别**: raw\n- **原始类型**: preference\n- **记忆ID**: `eefd9c77-39fe-4d88-826f-b49e7ba3b16f`\n\n---\n[Supporting data]\n- OKF source: memories/preference/user-喜欢-喝冰美式-eefd9c77.md\n- OKF resource: api_remember:b1",
+    "type": "preference",
+    "tags": [
+      "咖啡",
+      "preference"
+    ],
+    "confidence": 0.5863,
+    "source": "user",
+    "source_ref": "api_remember:b1",
+    "provenance": "imported",
+    "created_at": "2026-07-08 15:31:36.380590+08:00",
+    "updated_at": "2026-07-25 18:54:24.336559+00:00"
+  }
+]
