@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import shutil
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -17,19 +16,14 @@ SPEC.loader.exec_module(live)
 
 
 def _prepare(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int = 1
 ) -> tuple[Path, Path, Path]:
+    records = [
+        {"namespace": ["n"], "key": f"k-{index}", "value": {"content": "fact"}}
+        for index in range(count)
+    ]
     source = tmp_path / "source.json"
-    source.write_text(
-        json.dumps(
-            {
-                "memories": [
-                    {"namespace": ["n"], "key": "k", "value": {"content": "fact"}}
-                ]
-            }
-        ),
-        encoding="utf-8",
-    )
+    source.write_text(json.dumps({"memories": records}), encoding="utf-8")
     bundle = tmp_path / "bundle"
     from examples.migrations.langmem import run
 
@@ -51,7 +45,11 @@ def _prepare(
 
 
 def _fake_commands(
-    monkeypatch: pytest.MonkeyPatch, bundle: Path, *, mismatch: bool = False
+    monkeypatch: pytest.MonkeyPatch,
+    bundle: Path,
+    *,
+    mismatch: bool = False,
+    extra: bool = False,
 ):
     calls: list[list[str]] = []
 
@@ -59,23 +57,23 @@ def _fake_commands(
         calls.append(command)
         if "export" in command:
             export = Path(command[command.index("--output") + 1])
-            if mismatch:
-                from examples.migrations.langmem import run
+            from examples.migrations.langmem import run
 
-                run.to_okf(
+            records = json.loads((bundle.parent / "source.json").read_text())[
+                "memories"
+            ]
+            if mismatch:
+                records[0] = {**records[0], "value": {"content": "changed"}}
+            if extra:
+                records.append(
                     {
-                        "memories": [
-                            {
-                                "namespace": ["n"],
-                                "key": "k",
-                                "value": {"content": "changed"},
-                            }
-                        ]
-                    },
-                    export,
+                        "namespace": ["n"],
+                        "key": "extra",
+                        "value": {"content": "sentinel"},
+                    }
                 )
-            else:
-                shutil.copytree(bundle, export)
+            limit = int(command[command.index("--limit") + 1])
+            run.to_okf({"memories": records[:limit]}, export)
         return 0.1, "ok\n"
 
     monkeypatch.setattr(live, "run_command", command)
@@ -167,13 +165,17 @@ def test_retry_after_import_uses_resume_and_publishes(
     assert not list(output.parent.glob(f".{output.name}.staging-*"))
 
 
+@pytest.mark.parametrize("extra", [(), ("--resume-after-import",)])
 def test_snapshot_mismatch_cleans_staging_and_prints_diagnostic(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    extra: tuple[str, ...],
 ) -> None:
     source, bundle, output = _prepare(tmp_path, monkeypatch)
     _fake_commands(monkeypatch, bundle, mismatch=True)
     with pytest.raises(SystemExit, match="snapshot comparison"):
-        _invoke(monkeypatch, source, bundle, output)
+        _invoke(monkeypatch, source, bundle, output, *extra)
     assert not output.exists()
     assert not list(output.parent.glob(f".{output.name}.staging-*"))
     assert '"exact_match": false' in capsys.readouterr().out
@@ -191,3 +193,48 @@ def test_existing_destination_is_preserved_without_cli_calls(
         _invoke(monkeypatch, source, bundle, output)
     assert marker.read_text(encoding="utf-8") == "keep"
     assert calls == []
+
+
+@pytest.mark.parametrize("count, expected_limit", [(0, 1), (99, 100)])
+def test_export_limit_includes_unexpected_record_sentinel(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    count: int,
+    expected_limit: int,
+) -> None:
+    source, bundle, output = _prepare(tmp_path, monkeypatch, count=count)
+    calls = _fake_commands(monkeypatch, bundle)
+    _invoke(monkeypatch, source, bundle, output)
+    export = next(call for call in calls if "export" in call)
+    assert export[export.index("--limit") + 1] == str(expected_limit)
+
+
+@pytest.mark.parametrize("count", [100, 101])
+def test_export_limit_above_cli_maximum_is_rejected_before_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int
+) -> None:
+    source, bundle, output = _prepare(tmp_path, monkeypatch, count=count)
+    calls = _fake_commands(monkeypatch, bundle)
+    with pytest.raises(ValueError, match="maximum is 100"):
+        _invoke(monkeypatch, source, bundle, output)
+    assert calls == []
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("extra", [(), ("--resume-after-import",)])
+def test_export_limit_detects_unexpected_same_type_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    extra: tuple[str, ...],
+) -> None:
+    source, bundle, output = _prepare(tmp_path, monkeypatch)
+    calls = _fake_commands(monkeypatch, bundle, extra=True)
+    with pytest.raises(SystemExit, match="snapshot comparison"):
+        _invoke(monkeypatch, source, bundle, output, *extra)
+    comparison = json.loads(capsys.readouterr().out)["snapshot_comparison"]
+    assert comparison["exact_match"] is False
+    assert comparison["unexpected"] == [live.canonical([["n"], "extra"])]
+    assert comparison["missing"] == comparison["changed"] == []
+    assert not output.exists()
+    assert calls and calls[-1][calls[-1].index("--limit") + 1] == "2"

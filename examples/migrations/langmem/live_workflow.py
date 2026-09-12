@@ -210,10 +210,17 @@ def main() -> None:
     if args.output.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {args.output}")
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-
     source_export = json.loads(args.source_export.read_text(encoding="utf-8"))
     source_records = validate_export(source_export)
+    # Reserve one per-type export slot so an unexpected target record is visible.
+    export_limit = len(source_records) + 1
+    if export_limit > 100:
+        raise ValueError(
+            "source snapshot requires an export limit of "
+            f"{export_limit}, but the CLI maximum is 100; reduce the source "
+            "snapshot before running the live workflow"
+        )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     report_path = args.source_report or args.source_export.with_name("run-report.json")
     if not report_path.exists():
         raise FileNotFoundError(
@@ -283,7 +290,7 @@ def main() -> None:
                 "--agent",
                 args.agent,
                 "--limit",
-                str(max(1, len(source_records))),
+                str(export_limit),
                 "--split",
                 "file",
                 "--output",

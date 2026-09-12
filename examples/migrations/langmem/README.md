@@ -68,6 +68,8 @@ agent in the Memanto CLI. The runner checks the active agent/session before impo
 Keep `MOORCHEH_API_KEY` in the process environment; it is never printed or
 written to the report.
 
+Live validation supports at most 99 source records. It requests the source count plus one from every target memory type, so a larger target is detectable instead of truncating its export at the expected count. Keep the target unchanged during validation; the CLI recall calls do not provide a transactional snapshot. The CLI permits at most 100 records per type; larger sources are rejected before import rather than silently truncating this check. This limit applies only to the optional live validator, not the local adapter.
+
 ```sh
 export MOORCHEH_API_KEY='...'
 .venv/bin/python -m memanto agent create <unique-demo-agent-id>
