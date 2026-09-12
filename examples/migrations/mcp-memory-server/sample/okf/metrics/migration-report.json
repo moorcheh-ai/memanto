@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "source_format": "official-mcp-memory-server-jsonl",
+  "source_sha256": "bf97e55e76a5e835df64b7374a5d413877cbab2616852ef59a77df78a8e9ee5f",
+  "source_records": 9,
+  "source_entities": 5,
+  "source_relations": 4,
+  "mapped_okf_memories": 5,
+  "entity_type_breakdown": {
+    "artifact": 1,
+    "bounty": 1,
+    "component": 1,
+    "project": 1,
+    "tool": 1
+  },
+  "memanto_type_breakdown": {
+    "artifact": 4,
+    "goal": 1
+  },
+  "relation_type_breakdown": {
+    "is consumed by": 1,
+    "produces": 1,
+    "reads": 1,
+    "targets": 1
+  },
+  "lossless_source_copy": "source/memory.jsonl",
+  "import_path": "memories"
+}
