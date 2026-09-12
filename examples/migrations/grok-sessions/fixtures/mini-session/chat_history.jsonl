@@ -1,0 +1,4 @@
+{"type":"user","content":[{"type":"text","text":"<user_query>\nDo not call take_snapshot without filePath on large boards.\n</user_query>"}]}
+{"type":"user","synthetic_reason":"compaction_meta","content":[{"type":"text","text":"<user_query>\nignore compacted dump\n</user_query>"}]}
+{"type":"assistant","content":"Using evaluate_script with filePath instead."}
+{"type":"user","content":[{"type":"text","text":"<user_query>\nContinue via terminal/API.\n</user_query>"}]}
