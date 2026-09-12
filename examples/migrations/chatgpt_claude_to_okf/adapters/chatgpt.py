@@ -1,0 +1,123 @@
+"""Parse a real ChatGPT (chat.openai.com) export into normalized conversations.
+
+Real export layout (unzipped):
+    chatgpt/conversations.json
+        [ { "title": ..., "create_time": ..., "update_time": ...,
+            "mapping": { "<node-id>": { "message": { "author": {"role": "user"|"assistant"},
+                                                   "content": {"content_type": "text", "parts": ["..."]},
+                                                   "create_time": ... },
+                                         "parent": "<node-id>" } } }, ... ]
+
+Tolerant fallbacks: conversations.json may also sit directly at the export root,
+and some exports store text in content.parts[0] as str vs {"text": ...}.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+def _find_conversations_file(export_dir: Path) -> Path | None:
+    candidates = [
+        export_dir / "chatgpt" / "conversations.json",
+        export_dir / "conversations.json",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    return None
+
+
+def _node_text(message: dict) -> str | None:
+    content = message.get("content") or {}
+    parts = content.get("parts") or []
+    if not parts:
+        return None
+    texts: list[str] = []
+    for p in parts:
+        if isinstance(p, str):
+            texts.append(p)
+        elif isinstance(p, dict) and p.get("text"):
+            texts.append(str(p["text"]))
+    joined = "\n".join(t for t in texts if t.strip())
+    return joined or None
+
+
+def load_chatgpt(export_dir: str | Path) -> list[dict]:
+    """Return list of conversations:
+    {id, title, created, updated, source: "chatgpt", turns: [{role, text, ts}]}
+    """
+    export_dir = Path(export_dir)
+    conv_file = _find_conversations_file(export_dir)
+    if conv_file is None:
+        raise FileNotFoundError(
+            f"No conversations.json found under {export_dir} "
+            f"(looked for chatgpt/conversations.json and conversations.json)"
+        )
+    data = json.loads(conv_file.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        # Some exports wrap the array under a key (e.g. {"conversations": [...]}).
+        data = data.get("conversations") or data.get("data") or []
+    if not isinstance(data, list):
+        raise ValueError(
+            f"Unexpected conversations.json shape: expected a list of conversations, "
+            f"got {type(data).__name__}"
+        )
+    conversations = []
+    for conv in data:
+        if not isinstance(conv, dict):
+            continue
+        conv_id = str(conv.get("id") or conv.get("conversation_id") or "")
+        title = conv.get("title") or conv.get("name") or f"conversation-{conv_id[:8] or len(conversations)}"
+        mapping = conv.get("mapping") or {}
+
+        # Follow only the ACTIVE path (current_node -> parent chain): abandoned
+        # branches from regenerated replies are not part of the conversation.
+        current = conv.get("current_node")
+        path_nodes: list[dict] = []
+        if current and isinstance(mapping.get(current), dict):
+            visited: set[int] = set()
+            node = mapping[current]
+            while isinstance(node, dict) and id(node) not in visited:
+                visited.add(id(node))
+                path_nodes.append(node)
+                parent = node.get("parent")
+                node = mapping.get(parent) if parent else None
+            path_nodes.reverse()
+        else:
+            # No usable current_node in this export: fall back to all nodes so
+            # real exports without the field are not silently dropped.
+            path_nodes = [n for n in mapping.values() if isinstance(n, dict)]
+
+        turns = []
+        for node in path_nodes:
+            msg = node.get("message")
+            if not isinstance(msg, dict):
+                continue
+            author = msg.get("author") or {}
+            role = author.get("role")
+            if role not in ("user", "assistant"):
+                continue
+            text = _node_text(msg)
+            if not text:
+                continue
+            ts = msg.get("create_time")
+            turns.append({"role": role, "text": text, "ts": float(ts) if isinstance(ts, (int, float)) else None})
+        if not turns:
+            continue
+        # Turns without a timestamp sort AFTER dated turns, keeping their
+        # original relative order — never map a missing ts to epoch 0.
+        ordered = sorted(
+            enumerate(turns),
+            key=lambda it: (it[1]["ts"] if it[1]["ts"] is not None else float("inf"), it[0]),
+        )
+        turns = [t for _, t in ordered]
+        conversations.append({
+            "id": conv_id or f"chatgpt-{len(conversations)}",
+            "title": str(title),
+            "created": conv.get("create_time"),
+            "updated": conv.get("update_time"),
+            "source": "chatgpt",
+            "turns": turns,
+        })
+    return conversations
