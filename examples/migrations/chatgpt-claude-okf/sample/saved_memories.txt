@@ -1,0 +1,11 @@
+# Saved memories copied from ChatGPT -> Settings -> Personalization -> Manage memories.
+# One memory per line. Lines starting with '#' are ignored.
+#
+# NOTE: this file is a small format fixture so the pipeline runs without a
+# personal export. It is not migration evidence — see README.md.
+
+Prefers Python and FastAPI for backend services, and dislikes heavy ORMs.
+Is deploying a Kubernetes cluster on bare metal and cares about GitOps workflows.
+Wants code answers to show the failing case first, then the fix.
+Decided to standardise on Prometheus and Grafana for observability.
+Is preparing for the CKA exam and wants practice questions to be scenario based.
