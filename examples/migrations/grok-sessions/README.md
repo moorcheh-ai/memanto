@@ -11,7 +11,7 @@ This is a **new source** (not Mem0/Letta/Supermemory/ChatGPT zip). It uses **rea
 | `MEMORY.md` → Preferências | `preference` |
 | `MEMORY.md` → Mapa de trabalho table | `fact` |
 | `MEMORY.md` → Padrões que voltam | `observation` |
-| `summary.json` | `episode` |
+| `summary.json` | `event` (session episode; Memanto has no `episode` type) |
 | `goal/state.json` objective (redacted) | `goal` |
 | `goal/plan.md` Deviations | `decision` |
 | `<user_query>` lines in `chat_history.jsonl` | `observation` |

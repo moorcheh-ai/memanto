@@ -2,6 +2,6 @@
 type: index
 ---
 
-# episode
+# event
 
 1 documents.

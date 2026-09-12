@@ -5,7 +5,7 @@
 | Operator preference | `MEMORY.md` `## Preferências` bullets | `preference` | title, body, tags, generated.at | Durable, git-friendly |
 | Project map row | `MEMORY.md` table | `fact` | title = path, body = path → meaning | Skips header rows |
 | Recurring failure | `MEMORY.md` `## Padrões` | `observation` | title, body | Not a secret dump |
-| Session identity | `summary.json` | `episode` | title, body, resource | Model, counts, cwd |
+| Session identity | `summary.json` | `event` | title, body, resource | Memanto has no `episode` slot; session summary is an event |
 | Goal text | `goal/state.json` `objective` | `goal` | body redacted | Emails stripped |
 | Plan change | `goal/plan.md` `## Deviations` | `decision` | one doc per bullet | |
 | Operator utterance | `chat_history.jsonl` `<user_query>` | `observation` | first 20 queries | compaction_meta skipped |

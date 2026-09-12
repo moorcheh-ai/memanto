@@ -93,13 +93,13 @@ class GrokToOkfTests(unittest.TestCase):
         bundle = self._bundle_text()
         self.assertNotIn("secret@example.com", bundle)
         self.assertIn("[REDACTED]", bundle)
-        self.assertIn("type: episode", bundle)
+        self.assertIn("type: event", bundle)
         self.assertNotIn("C:/Users/demo", bundle)
         self.assertNotIn("C:\\Users", bundle)
         self.assertIn("Workspace leaf: `demo`", bundle)
-        episode = (self.out / "memories" / "episode" / "grok-session-ship-the-adapter.md").read_text(encoding="utf-8")
-        self.assertIn("resource: summary.json", episode)
-        self.assertNotIn("session\\summary.json", episode.replace("/", "\\"))
+        event = (self.out / "memories" / "event" / "grok-session-ship-the-adapter.md").read_text(encoding="utf-8")
+        self.assertIn("resource: summary.json", event)
+        self.assertNotIn("session\\summary.json", event.replace("/", "\\"))
 
     def test_redact_tokens(self):
         mj = "mj_live_ABCDEFG"

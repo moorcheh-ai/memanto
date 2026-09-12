@@ -13,7 +13,7 @@ Portable memories extracted from Grok Build TUI session files and MEMORY.md.
 ## Counts
 
 - `decision`: 2
-- `episode`: 1
+- `event`: 1
 - `fact`: 2
 - `goal`: 1
 - `observation`: 3

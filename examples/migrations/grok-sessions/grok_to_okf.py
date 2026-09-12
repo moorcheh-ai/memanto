@@ -17,16 +17,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 OKF_VERSION = "0.2"
+# Must match memanto.app.constants.VALID_MEMORY_TYPES so migrate okf does not
+# fall through to auto-classification.
 MEMANTO_TYPES = frozenset(
     {
         "fact",
         "preference",
-        "decision",
-        "observation",
-        "episode",
-        "procedure",
-        "constraint",
         "goal",
+        "decision",
+        "artifact",
+        "learning",
+        "event",
+        "instruction",
+        "relationship",
+        "context",
+        "observation",
+        "commitment",
+        "error",
     }
 )
 
@@ -284,7 +291,7 @@ def memories_from_session(session_dir: Path, generated_at: str | None = None) ->
     workspace_bit = f" Workspace leaf: `{cwd_leaf}`." if cwd_leaf else ""
     memories: list[dict] = [
         {
-            "type": "episode",
+            "type": "event",
             "title": f"Grok session: {title}",
             "body": (
                 f"Session `{public_leaf(session_dir)}` ran as `{summary.get('agent_name') or 'grok'}` "
@@ -292,7 +299,7 @@ def memories_from_session(session_dir: Path, generated_at: str | None = None) ->
                 f"Messages: {summary.get('num_messages')}. "
                 f"Chat turns: {summary.get('num_chat_messages')}.{workspace_bit}"
             ),
-            "tags": ["grok", "session", "episode"],
+            "tags": ["grok", "session", "event"],
             "at": created,
             "resource": "summary.json",
         }
