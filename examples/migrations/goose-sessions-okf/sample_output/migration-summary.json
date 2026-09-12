@@ -1,0 +1,18 @@
+{
+  "provider": "goose",
+  "source": "examples\\migrations\\goose-sessions-okf\\fixtures\\goose-session-export.json",
+  "source_sessions": 1,
+  "source_messages": 6,
+  "source_tokens": 3610,
+  "source_input_tokens": 3567,
+  "source_output_tokens": 43,
+  "mapped_memories": 4,
+  "type_counts": {
+    "error": 1,
+    "event": 1,
+    "fact": 1,
+    "preference": 1
+  },
+  "output_path": "examples\\migrations\\goose-sessions-okf\\sample_output\\goose-okf",
+  "generated_at": "2026-09-08T17:00:26+00:00"
+}
