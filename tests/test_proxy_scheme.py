@@ -10,6 +10,7 @@ session cookie's Secure flag on or off.
 import asyncio
 import logging
 
+import pytest
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -221,6 +222,36 @@ class TestProxySettingsDefault:
     def test_proxy_allowed_ips_ignores_empty_string(self, monkeypatch):
         monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
         assert settings.proxy_allowed_ips == []
+
+    def test_proxy_allowed_ips_rejects_cidr(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5/32")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_hostname(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "proxy.example.com")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_invalid_entry(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5,not-an-ip")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_invalid_json_entry(self, monkeypatch):
+        monkeypatch.setattr(
+            settings, "MEMANTO_PROXY_ALLOWED_IPS", '["10.0.0.5","oops"]'
+        )
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_canonicalizes_ipv6(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "2001:0DB8::0001")
+        assert settings.proxy_allowed_ips == ["2001:db8::1"]
+
+    def test_proxy_allowed_ips_strips_entries(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", " 10.0.0.5 , ::1 ")
+        assert settings.proxy_allowed_ips == ["10.0.0.5", "::1"]
 
 
 def _proxy_client(allowed_ips: list[str], peer: str) -> TestClient:

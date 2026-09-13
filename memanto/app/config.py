@@ -220,6 +220,13 @@ class Settings(BaseSettings):
         or a comma-separated list. Empty or unset means the forwarded header is
         never trusted, so the session cookie is only marked ``Secure`` when the
         browser connection really arrived over HTTPS.
+
+        Every entry must be a valid IP address; CIDRs, hostnames and other
+        malformed values fail loudly at startup so a bad allowlist can never
+        silently approve startup under ``MEMANTO_REQUIRE_SECURE`` while
+        rejecting the real peer at request time. Entries are returned in
+        canonical form (e.g. ``2001:0DB8::1`` becomes ``2001:db8::1``) so they
+        match the peer address reported in ``scope["client"]``.
         """
         raw = (self.MEMANTO_PROXY_ALLOWED_IPS or "").strip()
         if not raw:
@@ -229,8 +236,16 @@ class Settings(BaseSettings):
                 values = json.loads(raw)
             except json.JSONDecodeError:
                 return []
-            return [str(ip).strip() for ip in values if str(ip).strip()]
-        return [ip.strip() for ip in raw.split(",") if ip.strip()]
+        else:
+            values = raw.split(",")
+        entries = [str(v).strip() for v in values if str(v).strip()]
+        try:
+            return [str(ipaddress.ip_address(entry)) for entry in entries]
+        except ValueError as exc:
+            raise ValueError(
+                "MEMANTO_PROXY_ALLOWED_IPS must contain valid IP addresses "
+                "(CIDR blocks and hostnames are not supported)"
+            ) from exc
 
 
 # Global settings instance
