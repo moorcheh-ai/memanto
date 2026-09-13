@@ -91,3 +91,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @amyelchristian
 - @walterwagner
 - @rasadregmi
+- @jaonnvoller-ai
