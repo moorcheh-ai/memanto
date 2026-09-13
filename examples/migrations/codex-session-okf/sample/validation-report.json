@@ -1,0 +1,30 @@
+{
+  "questions": 3,
+  "source_recalled": 3,
+  "okf_recalled": 3,
+  "exact_recall_parity": 3,
+  "passed": 3,
+  "results": [
+    {
+      "question": "What date did the assistant report?",
+      "expected_terms": ["2026 年 7 月 29 日", "星期三"],
+      "source_recall": true,
+      "okf_recall": true,
+      "parity": true
+    },
+    {
+      "question": "Which Python project was present in the workspace?",
+      "expected_terms": ["memanto", "Python 项目"],
+      "source_recall": true,
+      "okf_recall": true,
+      "parity": true
+    },
+    {
+      "question": "Which TypeScript/Node.js project was present?",
+      "expected_terms": ["bounty-radar", "TypeScript/Node.js"],
+      "source_recall": true,
+      "okf_recall": true,
+      "parity": true
+    }
+  ]
+}

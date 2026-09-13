@@ -1,0 +1,45 @@
+1
+00:00:00,000 --> 00:00:12,000
+Agent memory is valuable, but it should not be trapped inside one product.
+
+2
+00:00:12,000 --> 00:00:31,000
+This privacy-first adapter starts with a genuine Codex session and keeps only
+reusable user and assistant messages.
+
+3
+00:00:31,000 --> 00:00:44,000
+System prompts, reasoning, tool calls, credentials, and transport metadata
+remain excluded.
+
+4
+00:00:44,000 --> 00:01:00,000
+The session becomes Open Knowledge Format: plain, readable Markdown that can be
+inspected, versioned, and carried anywhere.
+
+5
+00:01:00,000 --> 00:01:17,000
+Privacy tests pass, and all three golden questions have exact source-to-OKF
+recall parity.
+
+6
+00:01:17,000 --> 00:01:34,000
+Memanto's official dry run maps all four OKF nodes into four context memories.
+
+7
+00:01:34,000 --> 00:01:52,000
+The live cloud import completes with four memories imported and zero failures.
+
+8
+00:01:52,000 --> 00:02:22,000
+After migration, the expected answer ranks first for all three validation
+questions. The agent has not forgotten.
+
+9
+00:02:22,000 --> 00:02:43,000
+All four memories can be exported from Memanto back into readable OKF.
+
+10
+00:02:43,000 --> 00:02:58,000
+Codex session. Portable OKF. Memanto memory. Portable OKF again.
+The agent keeps its knowledge, and the user keeps ownership.
