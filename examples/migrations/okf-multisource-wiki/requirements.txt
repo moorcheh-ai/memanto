@@ -1,0 +1,6 @@
+chromadb>=0.5.0,<2
+PyYAML>=6.0
+pytest>=8.0
+
+# Optional: run the official CLI dry-run against the consolidated bundle
+# memanto  # install from repo root: pip install -e ".[dev]"

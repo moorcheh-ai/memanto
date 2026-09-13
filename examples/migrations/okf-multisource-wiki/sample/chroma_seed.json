@@ -1,0 +1,30 @@
+{
+  "backend": "chromadb.PersistentClient",
+  "path": "/Users/vikasy/projects/placement/moorcheh-ai-bounty/examples/migrations/okf-multisource-wiki/data/chroma",
+  "collection": "agent_long_term_memory",
+  "count": 14,
+  "ids": [
+    "chroma-name",
+    "chroma-lang",
+    "chroma-editor",
+    "chroma-db",
+    "chroma-deploy",
+    "chroma-tests",
+    "chroma-lang-correction",
+    "chroma-timezone",
+    "chroma-incident",
+    "chroma-decision-pool",
+    "chroma-rel",
+    "chroma-goal",
+    "chroma-style",
+    "chroma-secret-policy"
+  ],
+  "sessions": [
+    "week-1-onboarding",
+    "week-2-stack",
+    "week-3-correction",
+    "week-4-incident",
+    "week-5-team",
+    "week-6-style"
+  ]
+}
