@@ -278,12 +278,21 @@ def plain_http_exposure_message(host: str) -> str | None:
 
 
 def check_secure_deployment(host: str) -> None:
-    """Warn (or hard-fail) when Memanto would serve plain HTTP on the network."""
+    """Warn (or hard-fail) when Memanto would serve plain HTTP on the network.
+
+    A non-empty ``MEMANTO_PROXY_ALLOWED_IPS`` is an exception to hard-failing
+    under ``MEMANTO_REQUIRE_SECURE``: a trusted TLS-terminating proxy is
+    expected to front the deployment, so plain HTTP on the bind is acceptable.
+    The request path still rejects plain HTTP from any non-allowlisted peer
+    (``TrustedProxySchemeMiddleware``).
+    """
     if is_loopback_host(host):
         return
     message = plain_http_exposure_message(host)
     if settings.MEMANTO_REQUIRE_SECURE:
-        raise RuntimeError(f"MEMANTO_REQUIRE_SECURE is set. {message}")
+        if not settings.proxy_allowed_ips:
+            raise RuntimeError(f"MEMANTO_REQUIRE_SECURE is set. {message}")
+        return
     if not settings.DEBUG:
         logger.warning("%s", message)
 

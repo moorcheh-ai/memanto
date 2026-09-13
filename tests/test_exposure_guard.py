@@ -136,6 +136,32 @@ class TestCheckSecureDeployment:
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
         check_secure_deployment("127.0.0.1")  # must not raise
 
+    def test_require_secure_allows_trusted_proxy_wildcard(self, monkeypatch):
+        """REQUIRE_SECURE may not block a TLS-proxy-fronted deployment.
+
+        The __main__ entrypoint and the Docker pre-start check both call
+        check_secure_deployment('0.0.0.0') directly, so this guards those
+        launch paths too.
+        """
+        monkeypatch.setattr(settings, "DEBUG", False)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5")
+        check_secure_deployment("0.0.0.0")  # must not raise
+
+    def test_require_secure_allows_trusted_proxy_lan(self, monkeypatch):
+        monkeypatch.setattr(settings, "DEBUG", False)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", '["10.0.0.5"]')
+        check_secure_deployment("192.168.1.15")  # must not raise
+
+    def test_require_secure_still_fails_without_proxy(self, monkeypatch):
+        """Empty allowlist keeps the hard failure even when REQUIRE_SECURE is on."""
+        monkeypatch.setattr(settings, "DEBUG", False)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
+        with pytest.raises(RuntimeError, match="MEMANTO_REQUIRE_SECURE"):
+            check_secure_deployment("0.0.0.0")
+
 
 class TestRequireSecureRequestEnforcement:
     """MEMANTO_REQUIRE_SECURE also blocks plain HTTP on the app entrypoint.
@@ -210,6 +236,38 @@ class TestNotifyExposedDeployment:
         monkeypatch.setattr(core, "_error", fail)
         with pytest.raises(typer.Exit):
             self._notify()("0.0.0.0")
+
+    def test_require_secure_allows_trusted_proxy(self, monkeypatch):
+        """serve/ui may start when a TLS-terminating proxy is allowlisted."""
+        monkeypatch.setattr(settings, "DEBUG", True)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5")
+        called: dict[str, bool] = {"error": False}
+
+        import memanto.cli.commands.core as core
+
+        def recorder(message: str) -> None:
+            called["error"] = True
+
+        monkeypatch.setattr(core, "_error", recorder)
+        self._notify()("0.0.0.0")
+        assert called["error"] is False
+
+    def test_warning_kept_for_exposed_bind_without_proxy(self, monkeypatch):
+        """Without an allowlist the shared message logic still reports exposure."""
+        monkeypatch.setattr(settings, "DEBUG", False)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", False)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
+        called: dict[str, bool] = {"warn": False}
+
+        import memanto.cli.commands.core as core
+
+        def recorder(message: str) -> None:
+            called["warn"] = True
+
+        monkeypatch.setattr(core, "_warn", recorder)
+        self._notify()("192.168.1.15")
+        assert called["warn"] is True
 
     def test_debug_suppresses_warning_only(self, monkeypatch):
         monkeypatch.setattr(settings, "DEBUG", True)

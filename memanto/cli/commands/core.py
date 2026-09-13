@@ -45,7 +45,10 @@ def _notify_exposed_deployment(host: str) -> None:
     """Warn (or hard-fail) when MEMANTO serves plain HTTP on the network.
 
     ``DEBUG`` suppresses the non-fatal warning only; it must never disable the
-    ``MEMANTO_REQUIRE_SECURE`` enforcement.
+    ``MEMANTO_REQUIRE_SECURE`` enforcement. A non-empty
+    ``MEMANTO_PROXY_ALLOWED_IPS`` permits startup under
+    ``MEMANTO_REQUIRE_SECURE``: a trusted TLS-terminating proxy fronts the
+    deployment (see ``check_secure_deployment``).
     """
     if is_loopback_host(host):
         return
@@ -53,7 +56,9 @@ def _notify_exposed_deployment(host: str) -> None:
     if message is None:
         return
     if settings.MEMANTO_REQUIRE_SECURE:
-        _error(message)
+        if not settings.proxy_allowed_ips:
+            _error(message)
+        return
     elif not settings.DEBUG:
         _warn(message)
 

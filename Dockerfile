@@ -44,7 +44,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Run a pre-start exposure check against the resolved bind host before Uvicorn
 # serves plain HTTP: when MEMANTO_REQUIRE_SECURE=true this refuses to start the
-# container (the container always resolves its bind to the network-facing
+# container unless a trusted proxy allowlist (MEMANTO_PROXY_ALLOWED_IPS) is
+# configured (the container always resolves its bind to the network-facing
 # 0.0.0.0, so the guard cannot be skipped the way the python ``__main__`` guard
 # would be when Uvicorn is started directly).
 CMD ["sh", "-c", "python -c \"from memanto.app.config import check_secure_deployment; check_secure_deployment('0.0.0.0')\" && exec uvicorn memanto.app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]
