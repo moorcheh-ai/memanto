@@ -11,10 +11,12 @@ That ``text`` field is what gets embedded and persisted, and what
 ``memory_read_service`` parses back apart on retrieval (splitting on the first
 ``\\n\\n`` and stripping the ``[TYPE]`` prefix with a regex).
 
-``_normalize_title_newlines`` is supposed to keep titles single-line, but its
-character class covers only ``\\n`` and ``\\r``. A title carrying U+2028 (or
-U+2029, U+000B, U+000C, U+0085) therefore reaches the stored document intact,
-and is handed back to the caller as a **multi-line title** on recall.
+``_normalize_title_newlines`` was written to keep titles single-line, but before
+this patch its character class covered only ``\\n`` and ``\\r``. A title carrying
+U+2028 (or U+2029, U+000B, U+000C, U+0085) therefore reached the stored document
+intact, and was handed back to the caller as a **multi-line title** on recall.
+The contract in ``memanto/app/core.py`` now folds all seven separators, so a
+clean run against this branch reflects the fix rather than a surviving bypass.
 
 This script needs no server, no API key and no network: it exercises the exact
 serialization and the exact parse-back logic, so the finding is reproducible in
