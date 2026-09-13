@@ -23,13 +23,15 @@ DOCS_ENDPOINTS = ("/docs", "/redoc", "/openapi.json")
 def reloaded_main(monkeypatch):
     import memanto.app.main as main
 
+    original_docs_enabled = settings.MEMANTO_ENABLE_DOCS
+
     def _reload(enabled: bool) -> None:
         monkeypatch.setattr(settings, "MEMANTO_ENABLE_DOCS", enabled)
         importlib.reload(main)
 
     yield _reload
-    # Restore the shipped default state for later tests, regardless of order.
-    monkeypatch.setattr(settings, "MEMANTO_ENABLE_DOCS", False)
+    # Restore the original state for later tests, regardless of order.
+    monkeypatch.setattr(settings, "MEMANTO_ENABLE_DOCS", original_docs_enabled)
     importlib.reload(main)
 
 

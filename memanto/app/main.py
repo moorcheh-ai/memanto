@@ -174,7 +174,7 @@ async def root():
         "service": "MEMANTO",
         "description": "A companion memory agent that lets your agents focus and improve while you keep ownership of everything they learn.",
         "version": __version__,
-        "docs": "/docs",
+        "docs": "/docs" if settings.MEMANTO_ENABLE_DOCS else None,
     }
 
 

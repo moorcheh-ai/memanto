@@ -1104,8 +1104,6 @@ def ui(
         host = "0.0.0.0"
     port = port or server_cfg.get("port", 8000)
 
-    _notify_exposed_deployment(host)
-
     # Check if configured
     if config_manager.get_backend() == Backend.ON_PREM:
         os.environ["MEMANTO_BACKEND"] = "on-prem"
@@ -1157,6 +1155,8 @@ def ui(
 
     browser_thread = threading.Thread(target=_open_browser, daemon=True)
     browser_thread.start()
+
+    _notify_exposed_deployment(host)
 
     # Start server
     try:
