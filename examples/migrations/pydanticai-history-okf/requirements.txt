@@ -1,0 +1,4 @@
+pydantic-ai-slim==2.27.1
+
+# Install Memanto from this checkout for the shipped OKF dry run:
+# python -m pip install -e ../../..
