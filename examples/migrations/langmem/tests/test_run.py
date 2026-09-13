@@ -17,6 +17,7 @@ SPEC.loader.exec_module(run)
 
 
 def test_pagination_and_overlapping_namespaces() -> None:
+    """Overlapping prefix searches must export every identity exactly once."""
     store = InMemoryStore()
     for number in range(1001):
         store.put(("parent", "child"), str(number), {"content": f"record {number}"})
@@ -26,6 +27,7 @@ def test_pagination_and_overlapping_namespaces() -> None:
 
 
 def test_namespace_identity_and_exact_snapshot_survive_mapping(tmp_path: Path) -> None:
+    """Delimiter-like content and namespace separators must survive OKF loading."""
     from memanto.cli.migrate.mappers import map_okf
     from memanto.cli.migrate.okf_loader import load_okf_bundle
 
@@ -63,12 +65,14 @@ def test_namespace_identity_and_exact_snapshot_survive_mapping(tmp_path: Path) -
     ],
 )
 def test_malformed_export_is_rejected(value: object, tmp_path: Path) -> None:
+    """Invalid source records must fail before an output bundle is created."""
     with pytest.raises(ValueError):
         run.to_okf(value, tmp_path / "bundle")
     assert not (tmp_path / "bundle").exists()
 
 
 def test_duplicate_and_oversized_records_are_rejected(tmp_path: Path) -> None:
+    """Reject identity collisions and oversized content instead of losing data."""
     record = {"namespace": ["a"], "key": "k", "value": {"content": "x"}}
     with pytest.raises(ValueError, match="duplicate"):
         run.to_okf({"memories": [record, record]}, tmp_path / "duplicate")
@@ -81,6 +85,7 @@ def test_duplicate_and_oversized_records_are_rejected(tmp_path: Path) -> None:
 def test_file_import_does_not_generate_unrelated_source_or_retrieval(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """A supplied export must not produce synthetic retrieval claims or overwrite."""
     source = tmp_path / "source.json"
     source.write_text(
         json.dumps(
@@ -97,6 +102,7 @@ def test_file_import_does_not_generate_unrelated_source_or_retrieval(
     )
 
     def no_source() -> None:
+        """Fail if the supplied-export path tries to construct the demo store."""
         raise AssertionError("file input must not construct synthetic memories")
 
     monkeypatch.setattr(run, "build_source", no_source)
@@ -121,6 +127,7 @@ def test_file_import_does_not_generate_unrelated_source_or_retrieval(
 
 
 def test_export_preserves_namespaces_and_update_history() -> None:
+    """Export the updated value under its original LangMem namespace."""
     store = InMemoryStore()
     ns = ("memories", "synthetic/team")
     tool = create_manage_memory_tool(namespace=ns, store=store)
@@ -134,6 +141,7 @@ def test_export_preserves_namespaces_and_update_history() -> None:
 
 
 def test_source_scenario_deletes_record() -> None:
+    """The indexed demo must exclude the memory deleted through the real tool."""
     store, scopes = run.build_source()
     exported = run.export_records(store, scopes)
     assert exported["count"] == 4
@@ -143,6 +151,7 @@ def test_source_scenario_deletes_record() -> None:
 def test_okf_round_trip_keeps_source_snapshot_and_refuses_overwrite(
     tmp_path: Path,
 ) -> None:
+    """A bundle must retain its encoded snapshot and resist accidental replacement."""
     store = InMemoryStore()
     ns = ("memories", "synthetic-user")
     create_manage_memory_tool(namespace=ns, store=store).invoke(
@@ -164,6 +173,7 @@ def test_okf_round_trip_keeps_source_snapshot_and_refuses_overwrite(
 
 
 def test_live_snapshot_comparison_reports_exact_differences() -> None:
+    """Distinguish missing, extra, and changed records; reject ambiguous sessions."""
     live_spec = importlib.util.spec_from_file_location(
         "langmem_live_workflow", Path(__file__).parents[1] / "live_workflow.py"
     )
@@ -194,6 +204,7 @@ def test_live_snapshot_comparison_reports_exact_differences() -> None:
 
 
 def test_live_reads_actual_shipped_okf_bundle(tmp_path: Path) -> None:
+    """Use the shipped loader and mapper to verify a written bundle's snapshots."""
     spec = importlib.util.spec_from_file_location(
         "langmem_live_workflow", Path(__file__).parents[1] / "live_workflow.py"
     )
@@ -211,6 +222,7 @@ def test_live_reads_actual_shipped_okf_bundle(tmp_path: Path) -> None:
 def test_default_output_does_not_collide_with_committed_sample(
     tmp_path: Path, monkeypatch
 ) -> None:
+    """An omitted output option must create a fresh run and preserve sample files."""
     sample = tmp_path / "artifacts" / "sample-run"
     sample.mkdir(parents=True)
     marker = sample / "preserve.txt"
@@ -235,6 +247,7 @@ def test_default_output_does_not_collide_with_committed_sample(
 
 
 def test_committed_cloud_report_preserves_raw_recall() -> None:
+    """The recorded report must embed the original recall data without enrichment."""
     artifacts = Path(__file__).parents[1] / "artifacts" / "cloud-run"
     report = json.loads((artifacts / "live-report.json").read_text())
     recall = json.loads((artifacts / "target-recall.json").read_text())

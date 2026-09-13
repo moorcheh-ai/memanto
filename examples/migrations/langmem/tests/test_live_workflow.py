@@ -18,6 +18,7 @@ SPEC.loader.exec_module(live)
 def _prepare(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int = 1
 ) -> tuple[Path, Path, Path]:
+    """Write synthetic source artifacts and isolate config, SDK, and recall calls."""
     records = [
         {"namespace": ["n"], "key": f"k-{index}", "value": {"content": "fact"}}
         for index in range(count)
@@ -32,7 +33,10 @@ def _prepare(
     monkeypatch.setattr(live.Path, "home", staticmethod(lambda: tmp_path))
 
     class Config:
+        """Provide an already active test session without reading user config."""
+
         def get_active_session(self) -> tuple[str, str]:
+            """Return the synthetic agent and token expected by the test runner."""
             return "demo", "token"
 
     monkeypatch.setattr(live, "ConfigManager", Config)
@@ -51,9 +55,11 @@ def _fake_commands(
     mismatch: bool = False,
     extra: bool = False,
 ):
+    """Record CLI calls and emulate bounded exports with optional snapshot defects."""
     calls: list[list[str]] = []
 
     def command(command: list[str], cwd: Path) -> tuple[float, str]:
+        """Write an export fixture honoring the CLI limit without calling a server."""
         calls.append(command)
         if "export" in command:
             export = Path(command[command.index("--output") + 1])
@@ -87,6 +93,7 @@ def _invoke(
     output: Path,
     *extra: str,
 ) -> None:
+    """Run the actual argument parser against the isolated source and target paths."""
     monkeypatch.setattr(
         live.sys,
         "argv",
@@ -112,9 +119,11 @@ def _invoke(
 def test_export_failure_removes_final_and_staging_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """An export failure after import must not leave publishable local artifacts."""
     source, bundle, output = _prepare(tmp_path, monkeypatch)
 
     def fail_export(command: list[str], cwd: Path) -> tuple[float, str]:
+        """Model a completed import followed by a failing export command."""
         if "export" in command:
             raise RuntimeError("export failed")
         return 0.1, "imported\n"
@@ -135,12 +144,14 @@ def test_export_failure_removes_final_and_staging_output(
 def test_retry_after_import_uses_resume_and_publishes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """A resumed validation must publish complete artifacts without importing twice."""
     source, bundle, output = _prepare(tmp_path, monkeypatch)
     calls = _fake_commands(monkeypatch, bundle)
     original = live.run_command
     failed = True
 
     def fail_once(command: list[str], cwd: Path) -> tuple[float, str]:
+        """Fail the first export, then delegate retry calls to the bounded fixture."""
         nonlocal failed
         if "export" in command and failed:
             failed = False
@@ -172,6 +183,7 @@ def test_snapshot_mismatch_cleans_staging_and_prints_diagnostic(
     capsys: pytest.CaptureFixture[str],
     extra: tuple[str, ...],
 ) -> None:
+    """Failed fidelity checks must preserve diagnostics while discarding staging."""
     source, bundle, output = _prepare(tmp_path, monkeypatch)
     _fake_commands(monkeypatch, bundle, mismatch=True)
     with pytest.raises(SystemExit, match="snapshot comparison"):
@@ -184,6 +196,7 @@ def test_snapshot_mismatch_cleans_staging_and_prints_diagnostic(
 def test_existing_destination_is_preserved_without_cli_calls(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Reject an existing report directory before any import or export side effect."""
     source, bundle, output = _prepare(tmp_path, monkeypatch)
     output.mkdir(parents=True)
     marker = output / "keep.txt"
@@ -202,6 +215,7 @@ def test_export_limit_includes_unexpected_record_sentinel(
     count: int,
     expected_limit: int,
 ) -> None:
+    """Reserve one extra result at both supported source-count boundaries."""
     source, bundle, output = _prepare(tmp_path, monkeypatch, count=count)
     calls = _fake_commands(monkeypatch, bundle)
     _invoke(monkeypatch, source, bundle, output)
@@ -213,6 +227,7 @@ def test_export_limit_includes_unexpected_record_sentinel(
 def test_export_limit_above_cli_maximum_is_rejected_before_cli(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int
 ) -> None:
+    """Reject sources too large for the extra result before remote side effects."""
     source, bundle, output = _prepare(tmp_path, monkeypatch, count=count)
     calls = _fake_commands(monkeypatch, bundle)
     with pytest.raises(ValueError, match="maximum is 100"):
@@ -228,6 +243,7 @@ def test_export_limit_detects_unexpected_same_type_record(
     capsys: pytest.CaptureFixture[str],
     extra: tuple[str, ...],
 ) -> None:
+    """An extra target record must fail validation on initial and resumed runs."""
     source, bundle, output = _prepare(tmp_path, monkeypatch)
     calls = _fake_commands(monkeypatch, bundle, extra=True)
     with pytest.raises(SystemExit, match="snapshot comparison"):

@@ -126,6 +126,7 @@ def bind_client_session(
 
 
 def run_command(command: list[str], cwd: Path) -> tuple[float, str]:
+    """Time a CLI command and redact its captured output before return or failure."""
     started = time.perf_counter()
     result = subprocess.run(
         command, cwd=cwd, text=True, capture_output=True, timeout=120
@@ -142,6 +143,11 @@ def run_command(command: list[str], cwd: Path) -> tuple[float, str]:
 
 
 def main() -> None:
+    """Validate a prepared live target, publishing artifacts only on exact match.
+
+    Import is optional when resuming a prior run. Local staging is removed on
+    failure; cloud imports and the CLI's separate export copy are retained.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--bundle", type=Path, required=True, help="Local OKF bundle to import"

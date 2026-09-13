@@ -85,9 +85,11 @@ def decode_snapshots(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def build_source() -> tuple[InMemoryStore, list[tuple[str, ...]]]:
+    """Create indexed synthetic memories through LangMem create/update/delete tools."""
     model = TextEmbedding("BAAI/bge-small-en-v1.5")
 
     def embed(texts: Sequence[str]) -> list[list[float]]:
+        """Adapt local FastEmbed vectors to the LangGraph embedding interface."""
         return [v.tolist() for v in model.embed(texts)]
 
     index: IndexConfig = {"dims": model.embedding_size, "embed": embed}
@@ -123,6 +125,7 @@ def build_source() -> tuple[InMemoryStore, list[tuple[str, ...]]]:
 def export_records(
     store: InMemoryStore, scopes: list[tuple[str, ...]]
 ) -> dict[str, Any]:
+    """Page through scopes and deduplicate overlapping namespace/key identities."""
     records = []
     seen: set[tuple[tuple[str, ...], str]] = set()
     for namespace in scopes:
@@ -155,6 +158,7 @@ def export_records(
 
 
 def to_okf(export: dict[str, Any], output: Path) -> dict[str, Any]:
+    """Write a new OKF bundle and verify its decoded snapshots match the source."""
     records = validate_export(export)
     groups: dict[str, list[dict[str, Any]]] = {
         "fact": [],
@@ -237,6 +241,7 @@ def to_okf(export: dict[str, Any], output: Path) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Publish a local export and CLI dry-run report in a new run directory."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output",
