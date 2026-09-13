@@ -306,8 +306,16 @@ def main(argv: list[str] | None = None) -> int:
                         help="Replace a non-empty destination directory.")
     args = parser.parse_args(argv)
 
+    # Check the lexical path before resolve(): resolve() follows a symlink, and
+    # a --force rmtree would then delete whatever the link points at.
+    raw_out = Path(args.out).expanduser()
+    if raw_out.is_symlink():
+        print(f"[error] refusing to write through a symlink: {raw_out}", file=sys.stderr)
+        print("        Pass the real directory instead.", file=sys.stderr)
+        return 2
+
     try:
-        result = build(Path(args.out).expanduser().resolve(), force=args.force)
+        result = build(raw_out.resolve(), force=args.force)
     except StoreExists as exc:
         print(f"[error] {exc}", file=sys.stderr)
         return 2

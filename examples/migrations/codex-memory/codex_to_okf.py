@@ -627,16 +627,25 @@ def write_bundle(
     parent = out_dir.parent
     parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".okf-staging-", dir=str(parent)))
+    backup: Path | None = None
     try:
         result = _write_into(memories, staging, stacked=stacked)
-        backup = out_dir.with_name(out_dir.name + ".replaced")
-        if backup.exists():
-            shutil.rmtree(backup)
         if out_dir.exists():
+            # Unique backup name: a pre-existing `<out>.replaced` sibling is
+            # unrelated data and must never be deleted by --force.
+            backup = Path(tempfile.mkdtemp(prefix=".okf-backup-", dir=str(parent)))
+            backup.rmdir()  # free the name for the rename target
             out_dir.rename(backup)
-        staging.rename(out_dir)
-        if backup.exists():
-            shutil.rmtree(backup)
+        try:
+            staging.rename(out_dir)
+        except BaseException:
+            # Put the original bundle back before propagating.
+            if backup is not None and backup.exists() and not out_dir.exists():
+                backup.rename(out_dir)
+            raise
+        # Only once the swap has succeeded is the old bundle expendable.
+        if backup is not None and backup.exists():
+            shutil.rmtree(backup, ignore_errors=True)
         return result
     except BaseException:
         if staging.exists():
@@ -714,7 +723,14 @@ def main(argv: list[str] | None = None) -> int:
         print("\n[dry-run] nothing written. Re-run without --dry-run to build the bundle.")
         return 0
 
-    out_dir = Path(args.out).expanduser().resolve()
+    # Validate the lexical path first: Path.resolve() would follow a symlink,
+    # and a later rmtree/rename could then act on the link's target.
+    raw_out = Path(args.out).expanduser()
+    if raw_out.is_symlink():
+        print(f"[error] refusing to write through a symlink: {raw_out}", file=sys.stderr)
+        print("        Pass the real directory instead.", file=sys.stderr)
+        return 2
+    out_dir = raw_out.resolve()
     try:
         result = write_bundle(stream(), out_dir, stacked=args.stacked, force=args.force)
     except BundleExists as exc:
