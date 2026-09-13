@@ -1,0 +1,2 @@
+# Bundle reader/writer lock, recreated on every export and import.
+sample/.*.lock
