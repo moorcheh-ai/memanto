@@ -1,0 +1,40 @@
+{
+  "description": "Golden Q&A set for round-trip recall validation of the Claude Code -> Memanto migration demo. Each question must be answerable from the demo session archive, and the same answers must survive migration into an OKF bundle and back out through Memanto's loader/mapper.",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Which ORM does the user prefer over raw SQL?",
+      "answer_keywords": ["sqlalchemy"]
+    },
+    {
+      "id": "q2",
+      "question": "Which validation library must be used for request validation?",
+      "answer_keywords": ["pydantic", "v2"]
+    },
+    {
+      "id": "q3",
+      "question": "What must never be logged?",
+      "answer_keywords": ["api", "keys"]
+    },
+    {
+      "id": "q4",
+      "question": "Where did we decide to put the Stripe client?",
+      "answer_keywords": ["stripe", "interface"]
+    },
+    {
+      "id": "q5",
+      "question": "Who needs the API documentation?",
+      "answer_keywords": ["sarah"]
+    },
+    {
+      "id": "q6",
+      "question": "When is the beta planned to ship?",
+      "answer_keywords": ["september"]
+    },
+    {
+      "id": "q7",
+      "question": "When is the compliance review meeting?",
+      "answer_keywords": ["aug", "10"]
+    }
+  ]
+}
