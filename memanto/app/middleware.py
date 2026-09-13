@@ -27,8 +27,18 @@ class TrustedProxySchemeMiddleware:
     forwarding header; any other peer is untrusted, so a random network client
     cannot force ``https`` (or spoof ``http``) merely by sending a header.
     When a forwarded scheme is present from an untrusted peer, it is ignored
-    and the scheme is reset to ``http`` — even if a lower layer (such as
-    Uvicorn's built-in proxy-header handling) already rewrote it.
+    and the scheme is reset to ``http``. That reset only holds when
+    ``scope["client"]`` still identifies the direct connection peer: Uvicorn's
+    built-in proxy-header handling rewrites both the scheme *and* the client
+    address from forwarding headers, so it must be disabled (``proxy_headers=
+    False`` / ``--no-proxy-headers``) for the allowlist to be meaningful.
+
+    Every built-in launch path already disables it (``memanto serve``/``ui``,
+    the ``__main__`` entrypoint, and the Dockerfile command). A direct
+    ``uvicorn memanto.app.main:app`` launch must also pass ``--no-proxy-headers``;
+    otherwise an untrusted peer can inject ``X-Forwarded-For`` set to an
+    allowlisted address, have Uvicorn rewrite ``scope["client"]``, and then
+    forge ``X-Forwarded-Proto: https`` to bypass ``MEMANTO_REQUIRE_SECURE``.
 
     When ``require_secure`` is set, requests whose final scheme is still
     ``http`` are rejected with ``403`` before reaching the application, so the

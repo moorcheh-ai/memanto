@@ -107,7 +107,9 @@ def _validate_cors_settings(
 # default: X-Forwarded-Proto is only honored from explicit peers. The
 # middleware is always installed so MEMANTO_REQUIRE_SECURE is enforced on every
 # entrypoint, including direct `uvicorn memanto.app.main:app` launches that
-# skip the `__main__` startup guard.
+# skip the `__main__` startup guard. Tools then must also run Uvicorn with
+# --no-proxy-headers (as `memanto serve`/`ui` and the Dockerfile do), or Uvicorn
+# can rewrite scope["client"] from X-Forwarded-For and defeat the peer allowlist.
 app.add_middleware(
     TrustedProxySchemeMiddleware,
     allowed_ips=settings.proxy_allowed_ips,
