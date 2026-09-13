@@ -24,14 +24,20 @@ def reloaded_main(monkeypatch):
     import memanto.app.main as main
 
     original_docs_enabled = settings.MEMANTO_ENABLE_DOCS
+    original_require_secure = settings.MEMANTO_REQUIRE_SECURE
 
     def _reload(enabled: bool) -> None:
+        # Isolate the docs-routing tests from secure mode: TestClient uses a
+        # non-loopback peer and the http scheme, so the middleware would 403
+        # before docs routing when MEMANTO_REQUIRE_SECURE is enabled in env.
         monkeypatch.setattr(settings, "MEMANTO_ENABLE_DOCS", enabled)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", False)
         importlib.reload(main)
 
     yield _reload
     # Restore the original state for later tests, regardless of order.
     monkeypatch.setattr(settings, "MEMANTO_ENABLE_DOCS", original_docs_enabled)
+    monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", original_require_secure)
     importlib.reload(main)
 
 

@@ -15,6 +15,7 @@ import typer
 from fastapi.testclient import TestClient
 
 from memanto.app.config import (
+    Settings,
     check_secure_deployment,
     is_loopback_host,
     plain_http_exposure_message,
@@ -26,10 +27,12 @@ class TestSecurityDefaults:
     """New security settings default to the safe posture."""
 
     def test_settings_defaults(self):
-        assert settings.MEMANTO_ENABLE_DOCS is False
-        assert settings.MEMANTO_REQUIRE_SECURE is False
-        assert settings.MEMANTO_PROXY_ALLOWED_IPS == ""
-        assert settings.proxy_allowed_ips == []
+        assert Settings.model_fields["MEMANTO_ENABLE_DOCS"].default is False
+        assert Settings.model_fields["MEMANTO_REQUIRE_SECURE"].default is False
+        assert Settings.model_fields["MEMANTO_PROXY_ALLOWED_IPS"].default == ""
+
+    def test_proxy_allowed_ips_defaults_to_empty(self):
+        assert Settings.model_construct().proxy_allowed_ips == []
 
 
 class TestIsLoopbackHost:
@@ -121,6 +124,7 @@ class TestCheckSecureDeployment:
     def test_require_secure_hard_fails(self, monkeypatch):
         monkeypatch.setattr(settings, "DEBUG", False)
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
         with pytest.raises(RuntimeError, match="MEMANTO_REQUIRE_SECURE"):
             check_secure_deployment("0.0.0.0")
 
@@ -128,6 +132,7 @@ class TestCheckSecureDeployment:
         """DEBUG suppresses the warning only, never the enforcement."""
         monkeypatch.setattr(settings, "DEBUG", True)
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
         with pytest.raises(RuntimeError, match="MEMANTO_REQUIRE_SECURE"):
             check_secure_deployment("0.0.0.0")
 
@@ -174,10 +179,11 @@ class TestRequireSecureRequestEnforcement:
     def secure_app(self, monkeypatch):
         import memanto.app.main as main
 
+        original_require_secure = settings.MEMANTO_REQUIRE_SECURE
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
         importlib.reload(main)
         yield main
-        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", False)
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", original_require_secure)
         importlib.reload(main)
 
     def test_plain_http_blocked_when_require_secure(self, secure_app):
@@ -191,6 +197,7 @@ class TestRequireSecureRequestEnforcement:
     def test_plain_http_allowed_when_secure_mode_off(self, monkeypatch):
         import memanto.app.main as main
 
+        original_require_secure = settings.MEMANTO_REQUIRE_SECURE
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", False)
         importlib.reload(main)
         with patch(
@@ -198,6 +205,8 @@ class TestRequireSecureRequestEnforcement:
         ):
             with TestClient(main.app) as client:
                 assert client.get("/").status_code == 200
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", original_require_secure)
+        importlib.reload(main)
 
 
 class TestNotifyExposedDeployment:
@@ -227,6 +236,7 @@ class TestNotifyExposedDeployment:
         """The exact CodeRabbit finding: DEBUG must not mute the hard failure."""
         monkeypatch.setattr(settings, "DEBUG", True)
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
 
         import memanto.cli.commands.core as core
 
