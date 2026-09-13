@@ -6,10 +6,13 @@ must warn operators when a non-loopback bind would expose the server on the
 network, and hard-fail when MEMANTO_REQUIRE_SECURE is set.
 """
 
+import importlib
 import logging
+from unittest.mock import patch
 
 import pytest
 import typer
+from fastapi.testclient import TestClient
 
 from memanto.app.config import (
     check_secure_deployment,
@@ -132,6 +135,43 @@ class TestCheckSecureDeployment:
         monkeypatch.setattr(settings, "DEBUG", False)
         monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
         check_secure_deployment("127.0.0.1")  # must not raise
+
+
+class TestRequireSecureRequestEnforcement:
+    """MEMANTO_REQUIRE_SECURE also blocks plain HTTP on the app entrypoint.
+
+    Direct launches (`uvicorn memanto.app.main:app`) skip the startup guard, so
+    the ASGI middleware must reject plain-HTTP requests as well.
+    """
+
+    @pytest.fixture
+    def secure_app(self, monkeypatch):
+        import memanto.app.main as main
+
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", True)
+        importlib.reload(main)
+        yield main
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", False)
+        importlib.reload(main)
+
+    def test_plain_http_blocked_when_require_secure(self, secure_app):
+        main = secure_app
+        with patch(
+            "memanto.app.main._validate_startup_dependencies", return_value=None
+        ):
+            with TestClient(main.app) as client:
+                assert client.get("/").status_code == 403
+
+    def test_plain_http_allowed_when_secure_mode_off(self, monkeypatch):
+        import memanto.app.main as main
+
+        monkeypatch.setattr(settings, "MEMANTO_REQUIRE_SECURE", False)
+        importlib.reload(main)
+        with patch(
+            "memanto.app.main._validate_startup_dependencies", return_value=None
+        ):
+            with TestClient(main.app) as client:
+                assert client.get("/").status_code == 200
 
 
 class TestNotifyExposedDeployment:

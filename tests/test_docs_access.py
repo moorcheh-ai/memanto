@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from memanto.app.config import settings
+from memanto.app.config import Settings, settings
 
 DOCS_ENDPOINTS = ("/docs", "/redoc", "/openapi.json")
 
@@ -39,9 +39,10 @@ class TestDocsAccessDefault:
     """Docs/schema are inaccessible unless MEMANTO_ENABLE_DOCS is set."""
 
     def test_enable_docs_defaults_to_false(self):
-        assert settings.MEMANTO_ENABLE_DOCS is False
+        assert Settings.model_fields["MEMANTO_ENABLE_DOCS"].default is False
 
-    def test_docs_routes_disabled_on_default_app(self):
+    def test_docs_routes_disabled_on_default_app(self, reloaded_main):
+        reloaded_main(enabled=False)
         import memanto.app.main as main
 
         assert main.app.docs_url is None

@@ -1048,6 +1048,7 @@ def serve(
             port=port,
             reload=reload,
             log_level="info",
+            proxy_headers=False,
         )
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Server stopped.[/yellow]")
@@ -1161,7 +1162,13 @@ def ui(
     # Start server
     try:
         os.environ["MEMANTO_UI_MODE"] = "true"
-        uvicorn.run("memanto.app.main:app", host=host, port=port, log_level="info")
+        uvicorn.run(
+            "memanto.app.main:app",
+            host=host,
+            port=port,
+            log_level="info",
+            proxy_headers=False,
+        )
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Dashboard stopped.[/yellow]")
     except Exception as e:

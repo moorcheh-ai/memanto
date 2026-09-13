@@ -104,12 +104,15 @@ def _validate_cors_settings(
 
 # If TLS terminates at a trusted reverse proxy, restore the browser-facing
 # scheme so the session cookie is marked Secure (see auth_deps.py). Off by
-# default: X-Forwarded-Proto is only honored from explicit peers.
-if settings.proxy_allowed_ips:
-    app.add_middleware(
-        TrustedProxySchemeMiddleware,
-        allowed_ips=settings.proxy_allowed_ips,
-    )
+# default: X-Forwarded-Proto is only honored from explicit peers. The
+# middleware is always installed so MEMANTO_REQUIRE_SECURE is enforced on every
+# entrypoint, including direct `uvicorn memanto.app.main:app` launches that
+# skip the `__main__` startup guard.
+app.add_middleware(
+    TrustedProxySchemeMiddleware,
+    allowed_ips=settings.proxy_allowed_ips,
+    require_secure=settings.MEMANTO_REQUIRE_SECURE,
+)
 
 # Add CORS middleware
 _validate_cors_settings(settings.ALLOWED_ORIGINS, settings.CORS_ALLOW_CREDENTIALS)
@@ -185,4 +188,9 @@ if __name__ == "__main__":
         check_secure_deployment(host="0.0.0.0")
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        proxy_headers=False,
+    )

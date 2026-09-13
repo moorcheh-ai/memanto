@@ -47,4 +47,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # container (the container always resolves its bind to the network-facing
 # 0.0.0.0, so the guard cannot be skipped the way the python ``__main__`` guard
 # would be when Uvicorn is started directly).
-CMD ["sh", "-c", "python -c \"from memanto.app.config import check_secure_deployment; check_secure_deployment('0.0.0.0')\" && exec uvicorn memanto.app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -c \"from memanto.app.config import check_secure_deployment; check_secure_deployment('0.0.0.0')\" && exec uvicorn memanto.app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]

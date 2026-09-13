@@ -84,6 +84,68 @@ class TestTrustedProxySchemeMiddleware:
         assert _run_middleware(scope, [TRUSTED_PEER]) == "ws"
 
 
+def _run_with_enforcement(
+    scope: dict, allowed_ips: list[str], require_secure: bool
+) -> tuple[bool, int | None]:
+    """Drive the middleware, reporting whether the app ran and any response status."""
+
+    called = {"app": False}
+    start_status = {"value": None}
+
+    async def child(scope_: dict, receive, send) -> None:
+        called["app"] = True
+
+    async def noop_receive():
+        return {}
+
+    async def send(message: dict) -> None:
+        if message.get("type") == "http.response.start":
+            start_status["value"] = message.get("status")
+
+    middleware = TrustedProxySchemeMiddleware(
+        child, allowed_ips, require_secure=require_secure
+    )
+    asyncio.run(middleware(scope, noop_receive, send))
+    return called["app"], start_status["value"]
+
+
+class TestTrustedProxySchemeEnforcement:
+    """MEMANTO_REQUIRE_SECURE also blocks plain HTTP on the request path."""
+
+    def test_require_secure_rejects_plain_http(self):
+        scope = _http_scope(TRUSTED_PEER, None)
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is False
+        assert status == 403
+
+    def test_require_secure_allows_https_from_allowlisted_proxy(self):
+        scope = _http_scope(TRUSTED_PEER, "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_rejects_untrusted_https_spoof(self):
+        scope = _http_scope(UNTRUSTED_PEER, "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is False
+        assert status == 403
+
+    def test_secure_mode_disabled_passes_http_through(self):
+        scope = _http_scope(TRUSTED_PEER, None)
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], False)
+        assert called is True
+        assert status is None
+
+    def test_untrusted_peer_spoofed_https_reset_to_http(self):
+        scope = {
+            "type": "http",
+            "scheme": "https",
+            "client": (UNTRUSTED_PEER, 50000),
+            "headers": [(b"x-forwarded-proto", b"https")],
+        }
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
+
+
 class TestSanitizeLogValue:
     """CWE-117: request-derived values must not forge log lines via CR/LF."""
 
