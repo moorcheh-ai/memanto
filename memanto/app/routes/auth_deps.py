@@ -5,7 +5,7 @@ Shared authentication utilities to avoid circular imports.
 """
 
 import logging
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
@@ -34,6 +34,18 @@ def _sanitize_log_value(value: object) -> str:
     return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
 
 
+def _redact_and_sanitize_url(url: str) -> str:
+    """Make a request URL safe to log.
+
+    Query strings and fragments may carry sensitive client data (e.g. tokens),
+    so they are dropped before the remaining URL is sanitized (CWE-532).
+    """
+    parts = urlsplit(url)
+    return _sanitize_log_value(
+        urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    )
+
+
 def set_session_cookie(
     response: Response, session_token: str, request: Request
 ) -> None:
@@ -51,7 +63,7 @@ def set_session_cookie(
             "Any network peer that can reach this port can intercept it and "
             "gain full memory read/write for the active agent. Terminate TLS "
             "in front of Memanto or bind to a loopback address.",
-            _sanitize_log_value(request.url),
+            _redact_and_sanitize_url(str(request.url)),
         )
     response.set_cookie(
         SESSION_COOKIE_NAME,

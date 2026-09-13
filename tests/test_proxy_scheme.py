@@ -17,7 +17,11 @@ from starlette.testclient import TestClient
 
 from memanto.app.config import settings
 from memanto.app.middleware import TrustedProxySchemeMiddleware
-from memanto.app.routes.auth_deps import _sanitize_log_value, set_session_cookie
+from memanto.app.routes.auth_deps import (
+    _redact_and_sanitize_url,
+    _sanitize_log_value,
+    set_session_cookie,
+)
 
 TRUSTED_PEER = "10.0.0.5"
 UNTRUSTED_PEER = "203.0.113.9"
@@ -145,6 +149,24 @@ class TestTrustedProxySchemeEnforcement:
         }
         assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
 
+    def test_require_secure_allows_loopback_plain_http(self):
+        scope = _http_scope("127.0.0.1", None)
+        called, status = _run_with_enforcement(scope, [], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_allows_ipv6_mapped_loopback(self):
+        scope = _http_scope("::ffff:127.0.0.1", None)
+        called, status = _run_with_enforcement(scope, [], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_still_rejects_lan_plain_http(self):
+        scope = _http_scope("192.168.1.15", None)
+        called, status = _run_with_enforcement(scope, [], True)
+        assert called is False
+        assert status == 403
+
 
 class TestSanitizeLogValue:
     """CWE-117: request-derived values must not forge log lines via CR/LF."""
@@ -161,6 +183,26 @@ class TestSanitizeLogValue:
 
     def test_non_string_value_stringified(self):
         assert "127.0.0.1" in _sanitize_log_value(("127.0.0.1", 8000))
+
+
+class TestRedactAndSanitizeUrl:
+    """CWE-532: query data must never reach logs."""
+
+    def test_strips_query_and_fragment(self):
+        url = "http://testserver/login?token=SECRET&next=%2Fadmin#frag"
+        assert _redact_and_sanitize_url(url) == "http://testserver/login"
+
+    def test_control_chars_stripped_from_components(self):
+        result = _redact_and_sanitize_url("http://h/\r\n?q=1")
+        assert result == "http://h/"
+        assert "\r" not in result
+        assert "\n" not in result
+
+    def test_unchanged_when_no_query_or_fragment(self):
+        assert (
+            _redact_and_sanitize_url("https://127.0.0.1:8000/docs")
+            == "https://127.0.0.1:8000/docs"
+        )
 
 
 class TestProxySettingsDefault:
@@ -215,3 +257,15 @@ class TestCookieBehindProxy:
             response = client.get("/login", headers={"X-Forwarded-Proto": "https"})
         assert "Secure" not in response.headers["set-cookie"]
         assert "plain HTTP" in caplog.text
+
+    def test_cookie_warning_redacts_query_data(self, caplog):
+        client = _proxy_client([TRUSTED_PEER], UNTRUSTED_PEER)
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get(
+                "/login?token=SECRET&next=/admin",
+                headers={"X-Forwarded-Proto": "https"},
+            )
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "/login" in caplog.text
+        assert "SECRET" not in caplog.text
+        assert "next=" not in caplog.text

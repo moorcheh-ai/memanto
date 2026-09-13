@@ -8,6 +8,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from memanto.app.config import is_loopback_host
+
 logger = logging.getLogger(__name__)
 
 _HTTPS = "https"
@@ -46,6 +48,12 @@ class TrustedProxySchemeMiddleware:
     app.main:app``, which never runs the startup guard. The deployer's proxy
     must overwrite any client-supplied ``X-Forwarded-Proto`` before it reaches
     MEMANTO.
+
+    Requests from a verified loopback peer escape the ``require_secure``
+    rejection, matching ``check_secure_deployment``'s startup guard: the
+    local browser UI and in-container health checks (e.g. the Dockerfile
+    ``/ready`` probe) must keep working on plain HTTP without disabling secure
+    mode for the network-facing deployment.
     """
 
     def __init__(
@@ -74,7 +82,11 @@ class TrustedProxySchemeMiddleware:
                     scope["scheme"] = proto
             elif proto:
                 scope["scheme"] = _HTTP
-            if self.require_secure and scope.get("scheme") == _HTTP:
+            if (
+                self.require_secure
+                and scope.get("scheme") == _HTTP
+                and not is_loopback_host(peer)
+            ):
                 await self._reject_plain_http(send)
                 return
         await self.app(scope, receive, send)
