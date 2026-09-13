@@ -225,8 +225,9 @@ class Settings(BaseSettings):
         malformed values fail loudly at startup so a bad allowlist can never
         silently approve startup under ``MEMANTO_REQUIRE_SECURE`` while
         rejecting the real peer at request time. Entries are returned in
-        canonical form (e.g. ``2001:0DB8::1`` becomes ``2001:db8::1``) so they
-        match the peer address reported in ``scope["client"]``.
+        canonical form (e.g. ``2001:0DB8::1`` becomes ``2001:db8::1`` and
+        ``::ffff:10.0.0.5`` becomes ``10.0.0.5``) so they match the peer address
+        reported in ``scope["client"]``.
         """
         raw = (self.MEMANTO_PROXY_ALLOWED_IPS or "").strip()
         if not raw:
@@ -243,7 +244,7 @@ class Settings(BaseSettings):
             values = raw.split(",")
         entries = [str(v).strip() for v in values if str(v).strip()]
         try:
-            return [str(ipaddress.ip_address(entry)) for entry in entries]
+            return [_canonical_ip_string(entry) for entry in entries]
         except ValueError as exc:
             raise ValueError(
                 "MEMANTO_PROXY_ALLOWED_IPS must contain valid IP addresses "
@@ -253,6 +254,19 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
+
+
+def _canonical_ip_string(value: str) -> str:
+    """Canonical string form of an IP address.
+
+    IPv4-mapped IPv6 (``::ffff:10.0.0.5``) is unwrapped to its IPv4 form so a
+    proxy reached through either address family matches the same allowlist
+    entry (``TrustedProxySchemeMiddleware`` normalizes the peer the same way).
+    """
+    addr = ipaddress.ip_address(value)
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        return str(addr.ipv4_mapped)
+    return str(addr)
 
 
 def is_loopback_host(host: str | None) -> bool:

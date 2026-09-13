@@ -4,6 +4,7 @@ Small, dependency-light middleware that Starlette does not provide in the
 version pinned by this project.
 """
 
+import ipaddress
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -15,6 +16,24 @@ logger = logging.getLogger(__name__)
 _HTTPS = "https"
 _HTTP = "http"
 _PROTO_HEADER = "x-forwarded-proto"
+
+
+def _normalize_peer_address(peer: str) -> str:
+    """Return the canonical form of a connected peer host.
+
+    Dual-stack servers report IPv4 connections through an IPv6-wildcard bind as
+    IPv4-mapped addresses (``::ffff:10.0.0.5``). Unwrapping them keeps the
+    connection peer comparable with the allowlist entries returned by
+    ``Settings.proxy_allowed_ips`` (which canonicalizes the same way), so a
+    trusted proxy seen through either address family matches.
+    """
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return peer
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        return str(addr.ipv4_mapped)
+    return peer
 
 
 class TrustedProxySchemeMiddleware:
@@ -71,7 +90,7 @@ class TrustedProxySchemeMiddleware:
     ) -> None:
         if scope.get("type") == "http":
             client = scope.get("client")
-            peer = client[0] if client else ""
+            peer = _normalize_peer_address(client[0] if client else "")
             headers = {
                 k.decode("latin-1").lower(): v.decode("latin-1")
                 for k, v in scope.get("headers", [])

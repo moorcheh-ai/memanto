@@ -88,6 +88,10 @@ class TestTrustedProxySchemeMiddleware:
         scope = {"type": "websocket", "scheme": "ws", "client": (TRUSTED_PEER, 1)}
         assert _run_middleware(scope, [TRUSTED_PEER]) == "ws"
 
+    def test_ipv4_mapped_peer_matches_allowlist(self):
+        scope = _http_scope("::ffff:10.0.0.5", "https")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "https"
+
 
 def _run_with_enforcement(
     scope: dict, allowed_ips: list[str], require_secure: bool
@@ -165,6 +169,18 @@ class TestTrustedProxySchemeEnforcement:
     def test_require_secure_still_rejects_lan_plain_http(self):
         scope = _http_scope("192.168.1.15", None)
         called, status = _run_with_enforcement(scope, [], True)
+        assert called is False
+        assert status == 403
+
+    def test_require_secure_allows_ipv4_mapped_trusted_proxy_https(self):
+        scope = _http_scope("::ffff:10.0.0.5", "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_rejects_mapped_lan_untrusted(self):
+        scope = _http_scope("::ffff:192.168.1.15", "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
         assert called is False
         assert status == 403
 
@@ -261,6 +277,10 @@ class TestProxySettingsDefault:
     def test_proxy_allowed_ips_strips_entries(self, monkeypatch):
         monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", " 10.0.0.5 , ::1 ")
         assert settings.proxy_allowed_ips == ["10.0.0.5", "::1"]
+
+    def test_proxy_allowed_ips_canonicalizes_ipv4_mapped(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "::ffff:10.0.0.5")
+        assert settings.proxy_allowed_ips == ["10.0.0.5"]
 
 
 def _proxy_client(allowed_ips: list[str], peer: str) -> TestClient:
