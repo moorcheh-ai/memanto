@@ -234,8 +234,11 @@ class Settings(BaseSettings):
         if raw.startswith("["):
             try:
                 values = json.loads(raw)
-            except json.JSONDecodeError:
-                return []
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    "MEMANTO_PROXY_ALLOWED_IPS must be a valid JSON array of IP "
+                    "addresses or a comma-separated list"
+                ) from exc
         else:
             values = raw.split(",")
         entries = [str(v).strip() for v in values if str(v).strip()]

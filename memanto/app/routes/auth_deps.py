@@ -57,7 +57,8 @@ def set_session_cookie(
     default. Mark it Secure only when the current request actually arrived over HTTPS.
     """
     secure = request.url.scheme == "https"
-    if not secure and not is_loopback_host(request.url.hostname):
+    peer_host = request.client.host if request.client else None
+    if not secure and not is_loopback_host(peer_host):
         logger.warning(
             "Issuing the browser UI session cookie over plain HTTP from %s. "
             "Any network peer that can reach this port can intercept it and "

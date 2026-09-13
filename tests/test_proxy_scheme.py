@@ -245,6 +245,15 @@ class TestProxySettingsDefault:
         with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
             _ = settings.proxy_allowed_ips
 
+    def test_proxy_allowed_ips_rejects_malformed_json(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "[10.0.0.5")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_accepts_empty_array(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "[]")
+        assert settings.proxy_allowed_ips == []
+
     def test_proxy_allowed_ips_canonicalizes_ipv6(self, monkeypatch):
         monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "2001:0DB8::0001")
         assert settings.proxy_allowed_ips == ["2001:db8::1"]
@@ -300,3 +309,20 @@ class TestCookieBehindProxy:
         assert "/login" in caplog.text
         assert "SECRET" not in caplog.text
         assert "next=" not in caplog.text
+
+    def test_spoofed_localhost_host_still_warns(self, caplog):
+        client = _proxy_client([TRUSTED_PEER], UNTRUSTED_PEER)
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get(
+                "/login",
+                headers={"Host": "localhost", "X-Forwarded-Proto": "https"},
+            )
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "plain HTTP" in caplog.text
+
+    def test_loopback_peer_does_not_warn(self, caplog):
+        client = _proxy_client([], "127.0.0.1")
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get("/login")
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "plain HTTP" not in caplog.text
