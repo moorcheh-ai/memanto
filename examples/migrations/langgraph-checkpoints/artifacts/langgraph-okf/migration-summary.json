@@ -1,0 +1,18 @@
+{
+  "source": "langgraph-checkpoints.sqlite",
+  "output": "langgraph-okf",
+  "threads": 2,
+  "checkpoints": 21,
+  "memories": 8,
+  "memories_by_type": {
+    "artifact": 2,
+    "preference": 2,
+    "decision": 1,
+    "fact": 2,
+    "goal": 1
+  },
+  "thread_ids": [
+    "product-launch",
+    "travel-planning"
+  ]
+}

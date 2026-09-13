@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Which format should Atlas launch reports use now?",
+    "expected_terms": ["Markdown"],
+    "source_selector": {"thread": "product-launch", "channel": "profile", "key": "report_format_preference"}
+  },
+  {
+    "question": "When is the Atlas release scheduled?",
+    "expected_terms": ["September 14"],
+    "source_selector": {"thread": "product-launch", "channel": "decisions", "index": 0}
+  },
+  {
+    "question": "Who owns the Atlas launch?",
+    "expected_terms": ["Maya Chen"],
+    "source_selector": {"thread": "product-launch", "channel": "facts", "index": 0}
+  },
+  {
+    "question": "How should short work trips be made?",
+    "expected_terms": ["Train", "under four hours"],
+    "source_selector": {"thread": "travel-planning", "channel": "profile", "key": "short_trip_preference"}
+  },
+  {
+    "question": "What is the budget goal for the Lyon trip?",
+    "expected_terms": ["below 450 euros"],
+    "source_selector": {"thread": "travel-planning", "channel": "goals", "index": 0}
+  }
+]

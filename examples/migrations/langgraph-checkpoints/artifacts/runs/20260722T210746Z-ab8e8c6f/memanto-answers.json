@@ -1,0 +1,55 @@
+{
+  "system": "Memanto RAG",
+  "agent": "langgraph-migration-20260722t210746z-ab8e8c6f",
+  "questions": 5,
+  "passed": 5,
+  "score": 1.0,
+  "results": [
+    {
+      "question": "Which format should Atlas launch reports use now?",
+      "answer": "Based on your stored preferences, Atlas launch reports should use **Markdown** format.\n\nThis reflects a correction you made — you initially preferred PDF files, but updated your preference to Markdown instead. This is confirmed by both the conversation transcript (Chunk 1) and your saved preference (Chunk 4: *\"Report Format Preference: Markdown\"*).",
+      "expected_terms": [
+        "Markdown"
+      ],
+      "passed": true,
+      "context": []
+    },
+    {
+      "question": "When is the Atlas release scheduled?",
+      "answer": "Based on the stored memories, the **Atlas release is scheduled for September 14**.\n\nThis comes from a recorded decision in the product-launch thread: *\"Ship the Atlas release on September 14\"* (Chunk 1). Additionally, **Maya Chen** has been noted as the owner of the Atlas launch (Chunk 2).",
+      "expected_terms": [
+        "September 14"
+      ],
+      "passed": true,
+      "context": []
+    },
+    {
+      "question": "Who owns the Atlas launch?",
+      "answer": "Based on the stored memories, **Maya Chen** owns the Atlas launch.\n\nThis is recorded as a confirmed fact in memory (source: `facts-maya-chen-owns-the-atlas-launch.md`).",
+      "expected_terms": [
+        "Maya Chen"
+      ],
+      "passed": true,
+      "context": []
+    },
+    {
+      "question": "How should short work trips be made?",
+      "answer": "Based on your saved preferences, **short work trips (under four hours) should be made by train**.\n\nThis is directly from your stored travel preference: *\"For work trips, I prefer trains for journeys under four hours.\"* (Chunk 1 & 4)\n\nThis preference would apply, for example, to your upcoming **Lyon trip for the October planning workshop**, assuming the travel time is under four hours.",
+      "expected_terms": [
+        "Train",
+        "under four hours"
+      ],
+      "passed": true,
+      "context": []
+    },
+    {
+      "question": "What is the budget goal for the Lyon trip?",
+      "answer": "Based on your memories, the budget goal for the Lyon trip is to **keep it below 450 euros**. This was saved as an explicit goal in your travel planning memory (Goal: *\"Keep the Lyon work trip below 450 euros\"*).",
+      "expected_terms": [
+        "below 450 euros"
+      ],
+      "passed": true,
+      "context": []
+    }
+  ]
+}
