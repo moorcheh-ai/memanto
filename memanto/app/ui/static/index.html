@@ -285,6 +285,21 @@
 
         .page-header {
             margin-bottom: 32px;
+            position: relative;
+            padding-right: 110px;
+        }
+
+        .page-refresh {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+
+        .page-refresh svg {
+            width: 13px;
+            height: 13px;
+            vertical-align: -2px;
+            margin-right: 5px;
         }
 
         .page-header h2 {
@@ -632,6 +647,24 @@
 
         tr.expandable {
             cursor: pointer;
+        }
+
+        /* Chevron in the first cell of an expandable row: points right when the
+           row is closed, down when it's open, so the row advertises that it
+           expands without the user having to click one to find out. */
+        .row-caret {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
+            vertical-align: -1px;
+            color: var(--text-dim);
+            transition: transform 0.15s ease;
+        }
+
+        tr.expandable.open .row-caret {
+            transform: rotate(90deg);
+            color: var(--accent);
         }
 
         .expand-row {
@@ -1080,6 +1113,346 @@
             font-size: 12px;
             color: var(--text-secondary);
         }
+
+        /* ── Live context mesh ── */
+        .mesh-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 20px 0;
+            margin-bottom: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mesh-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .mesh-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mesh-sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        .mesh-canvas {
+            position: relative;
+            height: 340px;
+            width: 100%;
+        }
+
+        /* Direct child only: this is the spoke layer. Nested SVGs (the hub ant)
+           lay themselves out inside their own node. */
+        .mesh-canvas > svg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .mesh-edge {
+            stroke: var(--border-hover);
+            stroke-width: 1;
+            fill: none;
+        }
+
+        .mesh-edge.live {
+            stroke: var(--accent);
+            stroke-width: 1.5;
+            opacity: 0.55;
+        }
+
+        .mesh-node {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        /* The logo sits bare on the panel - no ring, no plate, no rounding.
+           agentLogo() paints a per-agent background inline, so !important is
+           what actually removes it. */
+        .mesh-node .agent-logo {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0;
+            box-shadow: none;
+            transition: transform 0.2s ease;
+        }
+
+        .mesh-node.idle .agent-logo {
+            opacity: 0.5;
+            filter: grayscale(0.6);
+        }
+
+        .mesh-node:hover .agent-logo {
+            transform: scale(1.1);
+        }
+
+        .mesh-node .mesh-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .mesh-node .mesh-meta {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--text-dim);
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        @keyframes meshBreathe {
+            0%, 100% { box-shadow: 0 0 0 3px var(--success-bg); }
+            50%      { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.04); }
+        }
+
+        .mesh-hub {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 40%, #0d1b20, var(--bg-card));
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            z-index: 3;
+        }
+
+        /* The hub is MEMANTO itself, so it wears the logo ant rather than the
+           wordmark. Purple is the brand fill; the cyan ring stays the accent. */
+        .mesh-hub .hub-ant {
+            height: 38px;
+            width: auto;
+            color: #9d7ad6;
+        }
+
+        .mesh-hub .hub-ant-legs {
+            transform-box: fill-box;
+            transform-origin: 50% 0%;
+        }
+
+        /* Nothing moves unless a tool is actually live: a still ant is the
+           honest picture of an idle hub. */
+        .mesh-hub.live .hub-ant {
+            animation: hubAntBob 2.6s ease-in-out infinite;
+        }
+
+        .mesh-hub.live .hub-ant-legs {
+            animation: hubAntLegs 2.6s ease-in-out infinite;
+        }
+
+        .mesh-hub.live .hub-ant-eyes {
+            animation: hubAntBlink 5.5s steps(1, end) infinite;
+        }
+
+        @keyframes hubAntBob {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-3px); }
+        }
+
+        @keyframes hubAntLegs {
+            0%, 100% { transform: rotate(-3deg); }
+            50%      { transform: rotate(3deg); }
+        }
+
+        @keyframes hubAntBlink {
+            0%, 87%   { opacity: 1; }
+            88%, 93%  { opacity: 0; }
+            94%, 100% { opacity: 1; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .mesh-hub.live .hub-ant,
+            .mesh-hub.live .hub-ant-legs,
+            .mesh-hub.live .hub-ant-eyes {
+                animation: none;
+            }
+        }
+
+        .mesh-hub:not(.live) .hub-ant {
+            opacity: 0.55;
+        }
+
+        .mesh-hub .mesh-hub-count {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .mesh-hub .mesh-hub-unit {
+            font-size: 8px;
+            font-family: var(--font-mono);
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mesh-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-dim);
+            font-size: 13px;
+            text-align: center;
+            padding: 0 30px;
+            line-height: 1.6;
+        }
+
+        /* ── MEMANTO sessions ── */
+        /* Collapsible section header. The session list can run long enough to
+           push the connection cards off-screen, so it folds away. */
+        .conn-collapse {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 0;
+            margin: 18px 0 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .conn-collapse .conn-section-label {
+            margin: 0;
+        }
+
+        .conn-collapse:hover .conn-section-label {
+            color: var(--text-secondary);
+        }
+
+        .conn-collapse[aria-expanded="true"] .row-caret {
+            transform: rotate(90deg);
+            color: var(--accent);
+        }
+
+        .conn-collapse-count {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .sess-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s ease;
+        }
+
+        .sess-row:hover {
+            border-color: var(--border-hover);
+        }
+
+        .sess-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: var(--text-dim);
+        }
+
+        .sess-dot.live {
+            background: var(--success);
+            box-shadow: 0 0 0 3px var(--success-bg);
+            animation: meshBreathe 2.4s ease-in-out infinite;
+        }
+
+        .sess-dot.active { background: var(--accent); }
+
+        .sess-agent {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 120px;
+        }
+
+        .sess-id {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .sess-tools {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 8px;
+        }
+
+        .sess-tools .agent-logo {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0;
+        }
+
+        .sess-meta {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-left: auto;
+            font-family: var(--font-mono);
+            white-space: nowrap;
+        }
+
+        .conn-live-badge {
+            position: absolute;
+            top: 10px;
+            left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 9px;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--success);
+        }
+
+        .evt-row {
+            display: grid;
+            grid-template-columns: 150px 90px 1fr;
+            gap: 12px;
+            padding: 7px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        .evt-row .evt-op.remember { color: var(--success); }
+        .evt-row .evt-op.recall { color: var(--accent); }
+        .evt-row .evt-op.answer { color: var(--indigo); }
 
         /* ── Modal ── */
         .modal-backdrop {
@@ -2362,9 +2735,22 @@
         <main class="main">
             <!-- DASHBOARD -->
             <section class="page active" id="page-dashboard">
+                <!-- Update Banner (Hidden by default) -->
+                <div id="templateUpdateBanner" style="display: none; background: #fff3cd; color: #856404; padding: 8px 16px; border-radius: 4px; margin: 0 0 16px 0; border: 1px solid #ffeeba; align-items: center; justify-content: space-between; font-size: 14px;">
+                    <div>
+                        <span style="margin-right: 6px;">⚠️</span>
+                        <strong style="margin-right: 4px;">Agent Instruction Update Available</strong>
+                        <span id="templateUpdateMsg">Your workspace is using outdated agent instructions.</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="dismissTemplateUpdate()" style="background: transparent; border: 1px solid #856404; color: #856404; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Dismiss</button>
+                        <button onclick="updateTemplates()" style="background: #856404; border: none; color: white; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Update Now</button>
+                    </div>
+                </div>
                 <div class="page-header">
                     <h2>Dashboard</h2>
                     <p>System overview at a glance</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('dashboard', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div class="cards-row" id="dashCards"></div>
                 <div class="panel">
@@ -2386,9 +2772,7 @@
                 <div class="page-header">
                     <h2>Agents</h2>
                     <p>View all registered agents and activate one to start a session</p>
-                </div>
-                <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-                    <button class="btn btn-secondary btn-sm" onclick="loadAgents()">Refresh</button>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="agentsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>
@@ -2519,6 +2903,7 @@
                 <div class="page-header">
                     <h2>Memory Explorer</h2>
                     <p>Browse, search, and filter all stored memories</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('explorer', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div class="time-machine-bar" style="flex-wrap:wrap">
                     <span>🕰️</span>
@@ -2577,10 +2962,10 @@
                 <div class="page-header">
                     <h2>Conflict Resolution</h2>
                     <p>Review and resolve contradicting memories</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('conflicts', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-primary btn-sm" id="btnDetectConflicts" onclick="detectConflictsNow()">⚡ Detect Conflicts Now</button>
-                    <button class="btn btn-secondary btn-sm" onclick="loadConflicts()">Refresh</button>
                     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
                         <label for="conflictsDateInput" style="color:var(--text-dim);font-size:13px">Date</label>
                         <input type="date" id="conflictsDateInput" onchange="loadConflicts()" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:inherit;font-size:13px">
@@ -2596,11 +2981,13 @@
                 <div class="page-header">
                     <h2>Connections</h2>
                     <p>Manage AI tools connected to Memanto</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('connections', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:18px">
                     <button class="btn btn-primary btn-sm" onclick="openConnectModal()">+ Connect a Project</button>
-                    <button class="btn btn-secondary btn-sm" onclick="loadConnections()">Refresh</button>
                 </div>
+                <div id="contextMesh"></div>
+                <div id="sessionList"></div>
                 <div id="connectionsGrid">
                     <div class="loading-overlay"><span class="spinner"></span> Loading connections...</div>
                 </div>
@@ -2612,9 +2999,7 @@
                 <div class="page-header">
                     <h2>Memory History</h2>
                     <p>Contribution graph and timeline of stored memories</p>
-                </div>
-                <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-                    <button class="btn btn-secondary btn-sm" onclick="loadHistory()">Refresh</button>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('history', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="historyContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading history...</div>
@@ -2626,6 +3011,7 @@
                 <div class="page-header">
                     <h2>Expiry Policy</h2>
                     <p>Decide what ages out. Nothing expires until you run a sweep.</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('policy', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="policyContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading policy...</div>
@@ -2636,6 +3022,7 @@
                 <div class="page-header">
                     <h2>Migrate</h2>
                     <p>Import memories from Mem0, Letta, or Supermemory into your active Memanto agent.</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('migrate', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="migrateContent"></div>
             </section>
@@ -2645,6 +3032,7 @@
                 <div class="page-header">
                     <h2>Configuration</h2>
                     <p>View and manage MEMANTO settings</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('config', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="configContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading configuration...</div>
@@ -2656,6 +3044,7 @@
                 <div class="page-header">
                     <h2>Usage & Analytics</h2>
                     <p>Memory statistics and distribution</p>
+                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('analytics', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div class="cards-row" id="analyticsCards"></div>
                 <div class="charts-row">
@@ -2690,7 +3079,7 @@
            ================================================================ */
 
         // State
-        const S = { config: null, agentId: null, token: null, memories: [], charts: {}, connections: [], activeConnection: null, cwd: '' };
+        const S = { config: null, agentId: null, token: null, memories: [], charts: {}, connections: [], activeConnection: null, cwd: '', activity: null, sessionsOpen: false };
 
         // API helper
         async function api(method, path, body) {
@@ -2818,7 +3207,8 @@
                 if (btn.dataset.page === 'dashboard') loadDashboard();
                 if (btn.dataset.page === 'conflicts') loadConflicts();
                 if (btn.dataset.page === 'policy') loadPolicyPage();
-                if (btn.dataset.page === 'connections') loadConnections();
+                if (btn.dataset.page === 'connections') { loadConnections(); startMeshPolling(); }
+                else stopMeshPolling();
                 if (btn.dataset.page === 'migrate') openMigrate();
                 if (btn.dataset.page === 'history' && !S._historyLoaded) { loadHistory(); S._historyLoaded = true; }
             });
@@ -2828,6 +3218,35 @@
         function goToPage(page) {
             const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
             if (btn) btn.click();
+        }
+
+        // Per-page reload used by the Refresh button in each page header. The
+        // map mirrors the nav-item handler above, minus its once-only guards —
+        // an explicit Refresh should always re-fetch, even on pages that
+        // normally load lazily (Explorer, History).
+        const PAGE_RELOADERS = {
+            dashboard: () => loadDashboard(),
+            agents: () => loadAgents(),
+            explorer: () => loadExplorer(),
+            history: () => loadHistory(),
+            conflicts: () => loadConflicts(),
+            policy: () => loadPolicyPage(),
+            connections: () => loadConnections(),
+            migrate: () => openMigrate(),
+            config: () => loadConfig(),
+            analytics: () => loadAnalytics(),
+        };
+
+        async function refreshPage(page, btn) {
+            const reload = PAGE_RELOADERS[page];
+            if (!reload) return;
+            const orig = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Refreshing...'; }
+            try {
+                await reload();
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+            }
         }
 
         // Playground tabs
@@ -2861,6 +3280,56 @@
             loadDashboard();
             // Load conflict count for badge
             loadConflictBadge();
+            // Check for template updates
+            checkTemplateStatus();
+        }
+
+        async function checkTemplateStatus() {
+            try {
+                const ts = new Date().getTime();
+                const status = await api('GET', `/api/ui/template-status?_t=${ts}`);
+                if (!status) return;
+
+                const banner = document.getElementById('templateUpdateBanner');
+                if (status.outdated && status.installed_version) {
+                    const dismissed = await api('GET', `/api/ui/template-status/dismissed?_t=${ts}`);
+                    if (dismissed && dismissed.version !== status.latest_version) {
+                        document.getElementById('templateUpdateMsg').innerText = `Your workspace is using outdated agent instructions (v${status.installed_version}). Version ${status.latest_version} is now available.`;
+                        banner.style.display = 'flex';
+                    } else {
+                        banner.style.display = 'none';
+                    }
+                } else {
+                    banner.style.display = 'none';
+                }
+            } catch (err) {
+                console.warn("Failed to check template status", err);
+            }
+        }
+
+        async function dismissTemplateUpdate() {
+            try {
+                await api('POST', '/api/ui/template-status/dismiss');
+                document.getElementById('templateUpdateBanner').style.display = 'none';
+                toast("Update dismissed for this version");
+            } catch (err) {
+                toast("Failed to dismiss update", "error");
+            }
+        }
+
+        async function updateTemplates() {
+            try {
+                toast("Updating templates...");
+                const res = await api('POST', '/api/ui/template-status/update');
+                if (res && res.status === "success") {
+                    document.getElementById('templateUpdateBanner').style.display = 'none';
+                    toast("Templates updated successfully!");
+                } else {
+                    toast("Failed to update templates", "error");
+                }
+            } catch (err) {
+                toast("Error updating templates", "error");
+            }
         }
 
         function isOnPrem() {
@@ -3511,8 +3980,11 @@
                 }
                 const provBadge = m.provenance ? `<span class="badge badge-accent">${escHtml(m.provenance)}</span>` : '—';
                 const mJson = attrEsc(JSON.stringify(m));
+                const caret = expandable
+                    ? '<svg class="row-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 6 15 12 9 18" /></svg>'
+                    : '';
                 html += `<tr class="${expandable ? 'expandable' : ''}" ${expandable ? 'onclick="toggleRow(this)"' : ''}>
-            <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
+            <td style="color:var(--text-primary);font-weight:500">${caret}${escHtml(trunc(m.title || 'Untitled', 60))}</td>
             <td><span class="badge badge-info">${escHtml(m.type || '—')}</span></td>
             <td>${m.source ? `<span class="badge badge-accent">${escHtml(m.source)}</span>` : '—'}</td>
             <td>${confBadge(m.confidence)}</td>
@@ -3545,7 +4017,7 @@
         // buildMemoryTable() renders on several pages that stay in the DOM at once
         // (.page uses display:none, not removal), so ids like "exp-0" collided
         // across pages and toggled the wrong (hidden) table's row.
-        function toggleRow(rowEl) { const r = rowEl.nextElementSibling; if (r) r.classList.toggle('open'); }
+        function toggleRow(rowEl) { const r = rowEl.nextElementSibling; if (r) r.classList.toggle('open'); rowEl.classList.toggle('open'); }
 
         // Toggle one memory between active and expired. Unlike forgetMemory
         // this destroys nothing, so it needs no confirm dialog — the button
@@ -4195,6 +4667,7 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
                     ${cfgToggle('cfgSessAutoRenew', 'Auto-renew sessions before expiry', sess.auto_renew_enabled ?? true)}
+                    ${cfgToggle('cfgSessAutoRecreate', 'Auto-create a fresh session after expiry (next request)', sess.auto_recreate_enabled ?? true)}
                 </div>
             </div>
             <!-- ANSWER CONFIG -->
@@ -4328,6 +4801,7 @@
                         extend_threshold_minutes: parseInt(document.getElementById('cfgSessExtendThreshold').value) || 30,
                         auto_renew_enabled: document.getElementById('cfgSessAutoRenew').checked,
                         auto_renew_interval_hours: parseInt(document.getElementById('cfgSessRenewInterval').value) || 6,
+                        auto_recreate_enabled: document.getElementById('cfgSessAutoRecreate').checked,
                     },
                     answer: isOnPrem()
                         ? (() => {
@@ -4397,16 +4871,183 @@
             return v || todayKey();
         }
 
+        // ----- Conflict detection progress (mirrors migrate overlay) -----
+        const CONFLICT_STEPS = [
+            { id: 'start', label: 'Starting' },
+            { id: 'search', label: 'Loading & similarity' },
+            { id: 'detect', label: 'Analyzing contradictions' },
+            { id: 'done', label: 'Complete' },
+        ];
+
+        function conflictProgressMarkup(title, sub, activeStep) {
+            const pills = CONFLICT_STEPS.map(s => {
+                let cls = '';
+                if (s.id === activeStep) cls = 'active';
+                else {
+                    const order = CONFLICT_STEPS.findIndex(x => x.id === activeStep);
+                    const me = CONFLICT_STEPS.findIndex(x => x.id === s.id);
+                    if (order > me) cls = 'done';
+                }
+                return `<span class="mig-step-pill ${cls}"><span class="dot"></span>${escHtml(s.label)}</span>`;
+            }).join('');
+            return `
+                <div class="mig-progress">
+                    <div class="mig-progress-inner">
+                        <div class="mig-orbit"><div class="ring"></div><div class="ring inner"></div><div class="core"></div></div>
+                        <div class="mig-progress-title" id="conflictProgressTitle">${escHtml(title)}</div>
+                        <div class="mig-progress-sub" id="conflictProgressSub">${escHtml(sub || '')}</div>
+                        <div class="mig-step-list" id="conflictStepList">${pills}</div>
+                        <div class="mig-bar indeterminate" id="conflictBar"><div class="mig-bar-fill"></div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setConflictProgress(step, sub) {
+            const root = document.getElementById('conflictsContent');
+            if (!root) return;
+            const titles = {
+                start: 'Detecting conflicts',
+                search: 'Loading & finding similar pairs',
+                detect: 'Analyzing contradictions',
+                done: 'Finishing up',
+            };
+            root.innerHTML = conflictProgressMarkup(titles[step] || 'Detecting conflicts', sub || '', step);
+        }
+
+        function parseSseBlock(block) {
+            if (!block || !block.trim()) return null;
+            let eventName = 'message';
+            const dataLines = [];
+            for (const line of block.split('\n')) {
+                if (line.startsWith('event:')) eventName = line.slice(6).trim();
+                else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+            }
+            if (!dataLines.length) return null;
+            try {
+                return { eventName, data: JSON.parse(dataLines.join('')) };
+            } catch {
+                return null;
+            }
+        }
+
+        function conflictRunSubline(state, message) {
+            const parts = [];
+            if (message) parts.push(message);
+            if (state.runId) parts.push(`Run ${state.runId}`);
+            return parts.join(' · ');
+        }
+
+        function handleConflictStreamEvent(eventName, data, state) {
+            if (eventName === 'progress') {
+                const detail = data.detail || {};
+                if (detail.run_id) state.runId = detail.run_id;
+                const step = data.step || 'start';
+                let message = data.message || '';
+                if (data.event === 'run_started' && detail.run_id) {
+                    state.runId = detail.run_id;
+                }
+                if (data.event === 'conflict_detection_completed') {
+                    const count = typeof detail.count === 'number' ? detail.count : null;
+                    if (count !== null) {
+                        message = count > 0
+                            ? `Found ${count} conflict${count === 1 ? '' : 's'} — saving report…`
+                            : 'No conflicts found — saving report…';
+                    }
+                }
+                if (detail.phase === 'waiting') {
+                    message = message || `Waiting for Moorche run ${state.runId || detail.run_id || ''}…`;
+                }
+                setConflictProgress(step, conflictRunSubline(state, message));
+            } else if (eventName === 'result') {
+                state.result = data;
+                const conflictResult = (data.conflicts && data.conflicts.status)
+                    ? data.conflicts
+                    : (data.conflicts && data.conflicts.conflicts) || {};
+                const count = conflictResult.conflict_count || 0;
+                setConflictProgress('done', count > 0
+                    ? `Saved ${count} conflict${count === 1 ? '' : 's'} for ${data.date || conflictsDateValue()}`
+                    : 'Conflict report saved');
+            } else if (eventName === 'error') {
+                throw new Error(data.message || 'Conflict detection failed');
+            }
+        }
+
+        async function streamConflictGenerate(body) {
+            const headers = { 'Content-Type': 'application/json', Accept: 'text/event-stream' };
+            if (S.token) headers['X-Session-Token'] = S.token;
+            const started = Date.now();
+            const state = { result: null, runId: null };
+            const tick = setInterval(() => {
+                const secs = Math.round((Date.now() - started) / 1000);
+                const sub = document.getElementById('conflictProgressSub');
+                if (sub && secs >= 10) {
+                    const runHint = state.runId ? ` · Run ${state.runId}` : '';
+                    sub.textContent = `Analysis in progress (${secs}s) — large sessions can take 1–2 minutes${runHint}`;
+                }
+            }, 5000);
+            try {
+                const res = await fetch('/api/ui/conflicts/generate/stream', {
+                    method: 'POST',
+                    headers,
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body || {}),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ detail: res.statusText }));
+                    let msg = err.detail || res.statusText;
+                    if (typeof msg === 'object') msg = JSON.stringify(msg);
+                    throw new Error(msg);
+                }
+                if (!res.body) {
+                    throw new Error('Conflict detection stream returned no response body');
+                }
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (value) {
+                        buffer += decoder.decode(value, { stream: true });
+                        const blocks = buffer.split('\n\n');
+                        buffer = blocks.pop() || '';
+                        for (const block of blocks) {
+                            const parsed = parseSseBlock(block);
+                            if (parsed) handleConflictStreamEvent(parsed.eventName, parsed.data, state);
+                        }
+                    }
+                    if (done) break;
+                }
+                buffer += decoder.decode();
+                if (buffer.trim()) {
+                    const parsed = parseSseBlock(buffer);
+                    if (parsed) handleConflictStreamEvent(parsed.eventName, parsed.data, state);
+                }
+            } finally {
+                clearInterval(tick);
+            }
+            if (!state.result) throw new Error('Conflict detection returned no result');
+            return state.result;
+        }
+
         async function detectConflictsNow() {
             const btn = document.getElementById('btnDetectConflicts');
             const prev = btn ? btn.innerHTML : null;
+            if (!hasActiveSession()) {
+                toast('No active agent/session. Activate an agent on the Agents page first.', 'error');
+                return;
+            }
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Detecting...'; }
+            const date = conflictsDateValue();
+            setConflictProgress('start', `Scanning ${date} for ${S.agentId}…`);
             try {
-                const date = conflictsDateValue();
-                const data = await api('POST', '/api/ui/conflicts/generate', { date });
-                const status = (data.conflicts && data.conflicts.status) || 'unknown';
+                const data = await streamConflictGenerate({ date, agent_id: S.agentId });
+                const conflictResult = (data.conflicts && data.conflicts.status)
+                    ? data.conflicts
+                    : (data.conflicts && data.conflicts.conflicts) || {};
+                const status = conflictResult.status || 'unknown';
                 if (status === 'success') {
-                    const count = (data.conflicts && data.conflicts.conflict_count) || 0;
+                    const count = conflictResult.conflict_count || 0;
                     toast(count > 0
                         ? `Conflict detection complete: ${count} conflict(s) found.`
                         : 'Conflict detection complete: no conflicts found.');
@@ -4423,6 +5064,7 @@
                 await invalidateConflictState();
             } catch (e) {
                 toast('Failed to detect conflicts: ' + e.message, 'error');
+                await loadConflicts();
             } finally {
                 if (btn) { btn.disabled = false; btn.innerHTML = prev; }
             }
@@ -4999,7 +5641,8 @@
                 const dateInput = document.getElementById('conflictsDateInput');
                 if (dateInput && !dateInput.value) dateInput.value = todayKey();
                 const date = conflictsDateValue();
-                const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}`);
+                const agentQ = S.agentId ? `&agent_id=${encodeURIComponent(S.agentId)}` : '';
+                const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}${agentQ}`);
                 const conflicts = data.conflicts || [];
                 await fetchConflictScans();
                 await fetchRecentMemories();
@@ -5874,6 +6517,275 @@
             if (activePage === 'analytics') { try { await loadAnalytics(); } catch { } }
         }
 
+        // ================================================================
+        // LIVE CONNECTIONS + MEMANTO SESSIONS
+        // "Installed" lives in /api/ui/connections; this is what actually ran.
+        // ================================================================
+
+        const MESH_REFRESH_MS = 15000;
+        const MESH_MAX_NODES = 8;
+        let meshTimer = null;
+
+        // The logo ant (body, eyes, legs) inlined so its parts can be animated
+        // individually — an <img> of logo.svg could only ever move as one block.
+        const HUB_ANT = `<svg class="hub-ant" viewBox="10 -2 76 112" fill="currentColor" aria-hidden="true">
+            <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+            <g class="hub-ant-eyes">
+                <polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+                <polygon points="42,32 44,36 42,40 40,36" />
+                <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+                <polygon points="54,32 56,36 54,40 52,36" />
+            </g>
+            <path class="hub-ant-legs" d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
+        </svg>`;
+
+        async function loadSessionActivity() {
+            try {
+                S.activity = await api('GET', '/api/ui/sessions?days=7');
+            } catch (e) {
+                S.activity = { sessions: [], tools: [], live_count: 0, error: e.message };
+            }
+            renderContextMesh();
+            renderSessionList();
+            // Live badges decorate the connection cards, so they have to be
+            // repainted whenever the activity data changes.
+            if (S.connections.length) renderConnectionsGrid();
+        }
+
+        function startMeshPolling() {
+            stopMeshPolling();
+            // Liveness decays on a timer, so a static page would keep claiming a
+            // tool is connected long after it went quiet.
+            meshTimer = setInterval(loadSessionActivity, MESH_REFRESH_MS);
+        }
+
+        function stopMeshPolling() {
+            if (meshTimer) { clearInterval(meshTimer); meshTimer = null; }
+        }
+
+        function toolDisplay(tool) {
+            const conn = S.connections.find(c => c.name === tool);
+            if (conn) return conn.display_name;
+            const entry = (S.activity?.tools || []).find(t => t.tool === tool);
+            return entry?.display || tool;
+        }
+
+        function renderContextMesh() {
+            const box = document.getElementById('contextMesh');
+            if (!box) return;
+            const data = S.activity;
+            if (!data) { box.innerHTML = ''; return; }
+            if (data.error) {
+                box.innerHTML = `<div class="mesh-panel"><div class="mesh-head">
+                        <div class="mesh-title">Connected tools</div>
+                    </div>
+                    <div class="mesh-canvas"><div class="mesh-empty">
+                        <div>
+                            <div style="color:var(--error);margin-bottom:8px">Could not load activity: ${escHtml(data.error)}</div>
+                            <div>If Memanto was updated while the server was running, restart it
+                            (<code>memanto serve</code>) so it picks up the new routes.</div>
+                        </div>
+                    </div></div></div>`;
+                return;
+            }
+
+            const nodes = (data.tools || [])
+                .filter(t => t.tool !== 'unknown')
+                .slice(0, MESH_MAX_NODES);
+            // Count what the diagram shows, not what the log saw: an
+            // unidentified caller is not a connected tool.
+            const liveNodes = nodes.filter(t => t.live).length;
+
+            const header = `<div class="mesh-head">
+                <div class="mesh-title">
+                    <span class="sess-dot ${liveNodes ? 'live' : ''}"></span>
+                    Connected tools
+                </div>
+                <div class="mesh-sub">${liveNodes} live now · ${nodes.length} active in last 7 days</div>
+            </div>`;
+
+            if (!nodes.length) {
+                box.innerHTML = `<div class="mesh-panel">${header}
+                    <div class="mesh-canvas"><div class="mesh-empty">
+                        No tool activity recorded yet.<br>
+                        Run <code>memanto remember</code> or <code>recall</code> from a connected
+                        editor and it will appear here.
+                    </div></div></div>`;
+                return;
+            }
+
+            box.innerHTML = `<div class="mesh-panel">${header}
+                <div class="mesh-canvas" id="meshCanvas"></div>
+            </div>`;
+            drawMesh(nodes, liveNodes);
+        }
+
+        function drawMesh(nodes, liveCount) {
+            const canvas = document.getElementById('meshCanvas');
+            if (!canvas) return;
+            const W = canvas.clientWidth || 720;
+            const H = canvas.clientHeight || 340;
+            const cx = W / 2, cy = H / 2;
+            const ry = Math.max(90, H / 2 - 58);
+            // Capped against the vertical radius: a full-width ellipse flattens
+            // into a line and stops reading as tools around a hub.
+            const rx = Math.min(Math.max(160, W / 2 - 120), ry * 1.9);
+
+            const pos = {};
+            nodes.forEach((n, i) => {
+                const angle = -Math.PI / 2 + (i * 2 * Math.PI) / nodes.length;
+                pos[n.tool] = { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+            });
+
+            // Spokes only: every tool is joined to MEMANTO and to nothing else,
+            // because MEMANTO is the only thing they actually share. Each line
+            // stops short at both ends so it neither underlaps the hub disc nor
+            // strikes through the tool's label.
+            const HUB_GAP = 52, NODE_GAP = 40;
+            const spokes = nodes.map(n => {
+                const p = pos[n.tool];
+                const dx = p.x - cx, dy = p.y - cy;
+                const len = Math.hypot(dx, dy) || 1;
+                const ux = dx / len, uy = dy / len;
+                return `<line class="mesh-edge${n.live ? ' live' : ''}"
+                    x1="${cx + ux * HUB_GAP}" y1="${cy + uy * HUB_GAP}"
+                    x2="${p.x - ux * NODE_GAP}" y2="${p.y - uy * NODE_GAP}"></line>`;
+            }).join('');
+
+            const nodeHtml = nodes.map(n => {
+                const p = pos[n.tool];
+                const detail = n.live ? 'live now' : relAgo(n.last_seen);
+                return `<div class="mesh-node ${n.live ? 'live' : 'idle'}" style="left:${p.x}px;top:${p.y}px"
+                        title="${escHtml(toolDisplay(n.tool))} — ${n.memories_written} written, ${n.memories_read} read"
+                        onclick="selectConnection('${escHtml(n.tool)}')">
+                    ${agentLogo(n.tool, true)}
+                    <div class="mesh-label">${escHtml(toolDisplay(n.tool))}</div>
+                    <div class="mesh-meta">${escHtml(detail)}</div>
+                </div>`;
+            }).join('');
+
+            canvas.innerHTML = `<svg width="${W}" height="${H}">${spokes}</svg>
+                <div class="mesh-hub ${liveCount ? 'live' : ''}" style="left:${cx}px;top:${cy}px" title="MEMANTO">
+                    ${HUB_ANT}
+                    <div class="mesh-hub-count">${liveCount}</div>
+                    <div class="mesh-hub-unit">live</div>
+                </div>
+                ${nodeHtml}`;
+        }
+
+        // Redraw on resize: node positions are computed in pixels, so a resized
+        // panel would leave them detached from their spokes.
+        let meshResizeTimer = null;
+        window.addEventListener('resize', () => {
+            if (!document.getElementById('meshCanvas')) return;
+            clearTimeout(meshResizeTimer);
+            meshResizeTimer = setTimeout(renderContextMesh, 150);
+        });
+
+        function renderSessionList() {
+            const box = document.getElementById('sessionList');
+            if (!box) return;
+            if (S.activity?.error) { box.innerHTML = ''; return; }
+            const sessions = S.activity?.sessions || [];
+            if (!sessions.length) {
+                box.innerHTML = `<div class="conn-section-label">Sessions (last 7 days)</div>
+                    <p style="color:var(--text-dim);font-size:13px;padding:4px 0">
+                    No MEMANTO sessions recorded yet.
+                    <a href="#" onclick="goToPage('agents');return false" style="color:var(--accent);text-decoration:none">Activate an agent</a>
+                    to start one.</p>`;
+                return;
+            }
+            const open = !!S.sessionsOpen;
+            const live = sessions.filter(s => s.status === 'live').length;
+            const rows = sessions.map(s => {
+                const logos = s.tools.length
+                    ? s.tools.map(t => `<span title="${escHtml(toolDisplay(t.tool))}">${agentLogo(t.tool)}</span>`).join('')
+                    : '<span style="font-size:11px;color:var(--text-dim)">no tool identified</span>';
+                return `<div class="sess-row" onclick="openSessionTimeline('${escHtml(s.session_id)}')">
+                    <span class="sess-dot ${s.status}"></span>
+                    <span class="sess-agent">${escHtml(s.agent_id || '—')}</span>
+                    <span class="sess-id">${escHtml(s.session_id)}</span>
+                    <span class="sess-tools">${logos}</span>
+                    <span class="sess-meta">${s.memories_written}w / ${s.memories_read}r · ${relAgo(s.last_seen)}</span>
+                </div>`;
+            }).join('');
+            box.innerHTML = `<button class="conn-collapse" aria-expanded="${open}" onclick="toggleSessionList()">
+                    <svg class="row-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 6 15 12 9 18" /></svg>
+                    <span class="conn-section-label">Sessions (last 7 days)</span>
+                    <span class="conn-collapse-count">${sessions.length}${live ? ` · ${live} live` : ''}</span>
+                </button>
+                <div ${open ? '' : 'hidden'}>${rows}</div>`;
+        }
+
+        // Collapsed by default so the connection cards stay above the fold; the
+        // choice is kept in memory so the 15s activity poll can't fold the list
+        // back up while the user is reading it.
+        function toggleSessionList() {
+            S.sessionsOpen = !S.sessionsOpen;
+            renderSessionList();
+        }
+
+        function closeSessionTimeline() {
+            document.getElementById('sessionTimelineModal')?.remove();
+        }
+
+        async function openSessionTimeline(sessionId) {
+            closeSessionTimeline();
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'sessionTimelineModal';
+            modal.onclick = closeSessionTimeline;
+            modal.innerHTML = `<div class="modal" onclick="event.stopPropagation()" style="max-width:760px;width:100%">
+                <div class="modal-header">
+                    <h3>Session ${escHtml(sessionId)}</h3>
+                    <button class="modal-close" onclick="closeSessionTimeline()">×</button>
+                </div>
+                <div id="sessTimeline" style="max-height:60vh;overflow:auto">
+                    <div class="loading-overlay"><span class="spinner"></span> Loading session...</div>
+                </div>
+            </div>`;
+            document.body.appendChild(modal);
+            try {
+                const res = await api('GET', `/api/ui/sessions/${encodeURIComponent(sessionId)}?days=30`);
+                const s = res.session || {};
+                const events = res.events || [];
+                const rows = events.map(e => {
+                    const detail = e.op === 'remember' ? `wrote ${e.n || 1}` : `returned ${e.n || 0}`;
+                    return `<div class="evt-row">
+                        <span>${fmtDate(e.ts)}</span>
+                        <span class="evt-op ${escHtml(e.op)}">${escHtml(e.op)}</span>
+                        <span>${escHtml(toolDisplay(e.tool))} · ${detail}</span>
+                    </div>`;
+                }).join('');
+                document.getElementById('sessTimeline').innerHTML = `
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">
+                        Agent ${escHtml(s.agent_id || '—')} · ${escHtml(s.status || '')} ·
+                        ${s.memories_written || 0} written / ${s.memories_read || 0} read ·
+                        started ${fmtDate(s.started_at)}${s.expires_at ? ' · expires ' + fmtDate(s.expires_at) : ''}
+                    </div>
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);word-break:break-all;margin-bottom:14px">
+                        ${escHtml(s.project_dir || '')}
+                    </div>
+                    ${rows || '<p style="color:var(--text-dim);font-size:13px">No events recorded for this session.</p>'}`;
+            } catch (e) {
+                document.getElementById('sessTimeline').innerHTML =
+                    `<p style="color:var(--error)">Failed to load session: ${escHtml(e.message)}</p>`;
+            }
+        }
+
+        function relAgo(iso) {
+            if (!iso) return '—';
+            const then = new Date(iso).getTime();
+            if (isNaN(then)) return '—';
+            const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+            if (secs < 60) return 'just now';
+            const mins = Math.round(secs / 60);
+            if (mins < 60) return `${mins}m ago`;
+            const hours = Math.round(mins / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return `${Math.round(hours / 24)}d ago`;
+        }
+
         async function loadConnections() {
             const grid = document.getElementById('connectionsGrid');
             const details = document.getElementById('connectionDetails');
@@ -5884,6 +6796,7 @@
                 S.connections = res.connections || [];
                 S.cwd = res.cwd || '';
                 renderConnectionsGrid();
+                loadSessionActivity();
                 if (S.activeConnection) {
                     const stillThere = S.connections.find(c => c.name === S.activeConnection);
                     if (stillThere) renderConnectionDetails(stillThere);
@@ -5902,7 +6815,12 @@
                 const isMuted = count === 0 && !c.installed_global;
                 const isActive = S.activeConnection === c.name;
                 const projectsLabel = count === 1 ? '1 project' : `${count} projects`;
-                html += `<div class="conn-card${isActive ? ' active' : ''}${isMuted ? ' muted' : ''}" onclick="selectConnection('${escHtml(c.name)}')">
+                const toolStats = (S.activity?.tools || []).find(t => t.tool === c.name);
+                const liveHtml = toolStats?.live
+                    ? '<div class="conn-live-badge"><span class="sess-dot live"></span>live</div>'
+                    : '';
+                html += `<div class="conn-card${isActive ? ' active' : ''}${isMuted && !toolStats?.live ? ' muted' : ''}" onclick="selectConnection('${escHtml(c.name)}')">
+                    ${liveHtml}
                     <button class="conn-add" onclick="event.stopPropagation(); openConnectModal('${escHtml(c.name)}')" title="Connect this agent to a project">+</button>
                     <div class="conn-name">${agentLogo(c.name, true)}<span>${escHtml(c.display_name)}</span></div>
                     <div class="conn-id">${escHtml(c.name)}</div>
@@ -5934,7 +6852,7 @@
                 projectsHtml = projects.map(p => {
                     const missingTag = p.exists ? '' : ' <span class="badge badge-warning" style="margin-left:8px">missing</span>';
                     const btnLabel = p.exists ? 'Disconnect' : 'Untrack';
-                    const safePath = escHtml(p.path).replace(/'/g, "&#39;");
+                    const safePath = escHtml(p.path).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `<div class="conn-project-row${p.exists ? '' : ' missing'}" id="proj-row-${btoa(unescape(encodeURIComponent(p.path))).replace(/=/g, '')}">
                         <div>
                             <div class="conn-project-path">${escHtml(p.path)}${missingTag}</div>

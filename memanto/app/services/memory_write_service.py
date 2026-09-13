@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 from memanto.app.constants import VALID_STATUS_TYPES
 from memanto.app.core import MemoryRecord, is_valid_expired_by, is_valid_source
+from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.ids import generate_memory_id
@@ -148,6 +149,8 @@ class MemoryWriteService:
             result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+
+            log_memory_activity(op="remember", agent_id=memory.agent_id, count=1)
 
             return {
                 "id": memory.id,
@@ -305,6 +308,12 @@ class MemoryWriteService:
                     # Non-standard upload statuses are absorbed here too.
                     failed += 1
                     r["status"] = "failed"
+
+            log_memory_activity(
+                op="remember",
+                agent_id=memories[0].agent_id if memories else None,
+                count=successful,
+            )
 
             return {
                 "total_submitted": len(results),

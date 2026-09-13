@@ -10,6 +10,7 @@ from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
+from memanto.app.utils.client_identity import set_memanto_session
 from memanto.app.utils.errors import (
     InvalidSessionTokenError,
     SessionExpiredError,
@@ -226,12 +227,16 @@ def get_current_session(
     response: Response,
     x_session_token: str | None = Header(None),
     session_cookie: str | None = Cookie(None, alias=SESSION_COOKIE_NAME),
+    authorization: str | None = Header(None),
+    x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Session:
     """
     Get and validate current session
 
     Args:
         x_session_token: Session token header
+        authorization: Bearer management credential (for auto-recreate)
+        x_api_key: Management credential header (for auto-recreate)
 
     Returns:
         Validated Session
@@ -276,7 +281,64 @@ def get_current_session(
             if x_session_token:
                 response.headers["X-Session-Token"] = renewed.session_token
 
+        # Bind the session for activity logging: the memory services below
+        # only receive an agent_id and cannot tell which session a request
+        # belongs to.
+        set_memanto_session(session.session_id)
         return session
 
-    except (SessionExpiredError, SessionNotFoundError, InvalidSessionTokenError) as e:
+    except SessionExpiredError as e:
+        # The presented token belongs to a session that has fully lapsed.
+        # With SESSION_AUTO_RECREATE_ENABLED the caller gets a fresh session
+        # on this first operation — but only after passing the same
+        # management-access check as explicit activation (valid API key or
+        # loopback origin), so a stolen stale token alone is worthless.
+        recreated = _maybe_auto_recreate_session(
+            request=request,
+            response=response,
+            session_token=session_token,
+            x_session_token=x_session_token,
+            session_cookie=session_cookie,
+            authorization=authorization,
+            x_api_key=x_api_key,
+        )
+        if recreated is None:
+            raise map_error_to_http_exception(e)
+        return recreated
+
+    except (SessionNotFoundError, InvalidSessionTokenError) as e:
         raise map_error_to_http_exception(e)
+
+
+def _maybe_auto_recreate_session(
+    request: Request,
+    response: Response,
+    session_token: str,
+    x_session_token: str | None,
+    session_cookie: str | None,
+    authorization: str | None,
+    x_api_key: str | None,
+) -> Session | None:
+    """Attempt transparent recreation of an expired session.
+
+    Returns the fresh Session, or None when recreation does not apply
+    (disabled by config, terminated/logout session, superseded token) or is
+    not authorized — in which case the original expiry error surfaces.
+    """
+    try:
+        require_management_access(request, authorization, x_api_key)
+    except HTTPException:
+        return None
+
+    recreated = get_session_service().check_and_auto_recreate(session_token)
+    if recreated is None:
+        return None
+
+    # Mirror the auto-renewal handoff: refresh the browser cookie and/or
+    # return the replacement token so the next request authenticates.
+    if session_cookie:
+        set_session_cookie(response, recreated.session_token, request)
+    if x_session_token:
+        response.headers["X-Session-Token"] = recreated.session_token
+
+    return recreated

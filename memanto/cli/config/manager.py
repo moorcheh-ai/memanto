@@ -56,7 +56,11 @@ _SESSION_CONFIG_LIMITS = {
     "warn_before_expiry_minutes": (1, 1440),
     "auto_renew_interval_hours": (1, 168),
 }
-_SESSION_CONFIG_BOOLEANS = {"auto_extend", "auto_renew_enabled"}
+_SESSION_CONFIG_BOOLEANS = {
+    "auto_extend",
+    "auto_renew_enabled",
+    "auto_recreate_enabled",
+}
 
 
 def _validate_positive_int_config(name: str, value, minimum: int, maximum: int) -> int:
@@ -444,6 +448,7 @@ class ConfigManager:
             "warn_before_expiry_minutes": 15,
             "auto_renew_enabled": True,
             "auto_renew_interval_hours": 6,
+            "auto_recreate_enabled": True,
         }
         defaults.update(self._dict_section(self.load_yaml(), "session"))
         return defaults

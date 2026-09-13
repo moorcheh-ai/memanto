@@ -101,6 +101,24 @@ class TestRemainingUnauthenticatedEndpoints:
         resp = client.get("/api/ui/connections")
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
 
+    def test_sessions_rejected_from_remote(self):
+        """GET /api/ui/sessions must return 403 for non-local callers."""
+        app = _make_app()
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/ui/sessions")
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_session_detail_rejected_from_remote(self):
+        """GET /api/ui/sessions/{id} must return 403 for non-local callers.
+
+        The event timeline names project paths and agent ids, so it must be
+        gated exactly like the rest of the local-only dashboard surface.
+        """
+        app = _make_app()
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/ui/sessions/whatever")
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
 
 class TestGlobInjectionGuard:
     """agent_id=* (or any glob special char) in /api/ui/conflict-scans must be rejected.

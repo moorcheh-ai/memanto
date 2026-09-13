@@ -15,6 +15,8 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 
 import logging
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Annotated, Any, Literal, TypeVar
 
 from mcp.server.fastmcp import Context
@@ -26,6 +28,12 @@ from memanto.app.core import (
     SOURCE_MAX_LENGTH,
     SOURCE_PATTERN,
     is_valid_source,
+)
+from memanto.app.utils.client_identity import (
+    ClientIdentity,
+    normalize_tool,
+    reset_client,
+    set_client,
 )
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
@@ -259,6 +267,26 @@ def _client_source(ctx: Context | None) -> str:
     return _sanitize_source(name) or DEFAULT_SOURCE
 
 
+@contextmanager
+def _attributed(ctx: Context | None) -> Iterator[None]:
+    """Attribute activity logged during this tool call to the MCP client.
+
+    The MCP server runs as its own process, so its environment says nothing
+    about which editor is driving it. Binding the handshake's ``clientInfo``
+    here is the only way a recall through MCP gets credited to Cursor rather
+    than to an anonymous caller.
+    """
+    name = _client_source(ctx)
+    if name == DEFAULT_SOURCE:
+        yield
+        return
+    token = set_client(ClientIdentity(tool=normalize_tool(name), display=name))
+    try:
+        yield
+    finally:
+        reset_client(token)
+
+
 def _normalize_tags(raw: Any) -> list[str]:
     """Accept MCP client tag shapes while preserving SDK list semantics."""
     if raw is None:
@@ -385,30 +413,31 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
-            resolved_title = title or (
-                content[: _MAX_TITLE_LENGTH - 3] + "..."
-                if len(content) > _MAX_TITLE_LENGTH
-                else content
-            )
-            result = client.remember(
-                agent_id=resolved,
-                memory_type=type,
-                title=resolved_title,
-                content=content,
-                confidence=confidence,
-                tags=_normalize_tags(tags),
-                source=source or _client_source(ctx),
-                provenance=provenance,
-            )
-            return RememberResult(
-                status="ok",
-                memory_id=result.get("memory_id"),
-                agent_id=resolved,
-                namespace=result.get("namespace"),
-                confidence=result.get("confidence", confidence),
-            )
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                client = lifecycle.ensure_ready(resolved)
+                resolved_title = title or (
+                    content[: _MAX_TITLE_LENGTH - 3] + "..."
+                    if len(content) > _MAX_TITLE_LENGTH
+                    else content
+                )
+                result = client.remember(
+                    agent_id=resolved,
+                    memory_type=type,
+                    title=resolved_title,
+                    content=content,
+                    confidence=confidence,
+                    tags=_normalize_tags(tags),
+                    source=source or _client_source(ctx),
+                    provenance=provenance,
+                )
+                return RememberResult(
+                    status="ok",
+                    memory_id=result.get("memory_id"),
+                    agent_id=resolved,
+                    namespace=result.get("namespace"),
+                    confidence=result.get("confidence", confidence),
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(RememberResult, str(exc), agent_id=agent_id or "")
         except Exception as exc:
@@ -451,59 +480,60 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> BatchRememberResult:
         """Validate and store multiple memories for the resolved agent."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            default_source = _client_source(ctx)
-            # Validate before round-trip so we fail fast with a clear error.
-            normalized_memories: list[dict[str, Any]] = []
-            for i, item in enumerate(memories):
-                if not isinstance(item, dict):
-                    raise ValueError(
-                        f"memories[{i}] must be an object, got {type(item).__name__}"
-                    )
-                if "content" not in item or not str(item["content"]).strip():
-                    raise ValueError(
-                        f"memories[{i}] is missing required field 'content'"
-                    )
-                m_type = item.get("type", "fact")
-                if m_type not in VALID_MEMORY_TYPES:
-                    raise ValueError(
-                        f"memories[{i}].type={m_type!r} is not a valid memory type. "
-                        f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
-                    )
-                prov = item.get("provenance", "explicit_statement")
-                if prov not in VALID_PROVENANCE_TYPES:
-                    raise ValueError(
-                        f"memories[{i}].provenance={prov!r} is not valid. "
-                        f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
-                    )
-                src = item.get("source") or default_source
-                if not is_valid_source(src):
-                    raise ValueError(
-                        f"memories[{i}].source={src!r} is not valid. Use up to "
-                        f"{SOURCE_MAX_LENGTH} letters, digits, '.', '_', or '-'."
-                    )
-                normalized_item = dict(item)
-                normalized_item["tags"] = _normalize_tags(item.get("tags"))
-                # The SDK defaults a missing source to "user"; attribute the
-                # write to the calling client instead, like `remember` does.
-                normalized_item["source"] = src
-                normalized_memories.append(normalized_item)
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                default_source = _client_source(ctx)
+                # Validate before round-trip so we fail fast with a clear error.
+                normalized_memories: list[dict[str, Any]] = []
+                for i, item in enumerate(memories):
+                    if not isinstance(item, dict):
+                        raise ValueError(
+                            f"memories[{i}] must be an object, got {type(item).__name__}"
+                        )
+                    if "content" not in item or not str(item["content"]).strip():
+                        raise ValueError(
+                            f"memories[{i}] is missing required field 'content'"
+                        )
+                    m_type = item.get("type", "fact")
+                    if m_type not in VALID_MEMORY_TYPES:
+                        raise ValueError(
+                            f"memories[{i}].type={m_type!r} is not a valid memory type. "
+                            f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
+                        )
+                    prov = item.get("provenance", "explicit_statement")
+                    if prov not in VALID_PROVENANCE_TYPES:
+                        raise ValueError(
+                            f"memories[{i}].provenance={prov!r} is not valid. "
+                            f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
+                        )
+                    src = item.get("source") or default_source
+                    if not is_valid_source(src):
+                        raise ValueError(
+                            f"memories[{i}].source={src!r} is not valid. Use up to "
+                            f"{SOURCE_MAX_LENGTH} letters, digits, '.', '_', or '-'."
+                        )
+                    normalized_item = dict(item)
+                    normalized_item["tags"] = _normalize_tags(item.get("tags"))
+                    # The SDK defaults a missing source to "user"; attribute the
+                    # write to the calling client instead, like `remember` does.
+                    normalized_item["source"] = src
+                    normalized_memories.append(normalized_item)
 
-            client = lifecycle.ensure_ready(resolved)
-            result = client.batch_remember(
-                agent_id=resolved,
-                memories=normalized_memories,
-            )
-            sub_results = _to_batch_item_results(result.get("results"))
-            return BatchRememberResult(
-                status="ok",
-                agent_id=resolved,
-                namespace=result.get("namespace"),
-                total_submitted=result.get("total_submitted", len(memories)),
-                successful=result.get("successful", 0),
-                failed=result.get("failed", 0),
-                results=sub_results,
-            )
+                client = lifecycle.ensure_ready(resolved)
+                result = client.batch_remember(
+                    agent_id=resolved,
+                    memories=normalized_memories,
+                )
+                sub_results = _to_batch_item_results(result.get("results"))
+                return BatchRememberResult(
+                    status="ok",
+                    agent_id=resolved,
+                    namespace=result.get("namespace"),
+                    total_submitted=result.get("total_submitted", len(memories)),
+                    successful=result.get("successful", 0),
+                    failed=result.get("failed", 0),
+                    results=sub_results,
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(
                 BatchRememberResult, str(exc), agent_id=agent_id or ""
@@ -570,27 +600,29 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             ),
         ] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> RecallResult:
         """Search memories semantically for the resolved agent."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
-            result = client.recall(
-                agent_id=resolved,
-                query=query,
-                limit=limit,
-                type=list(type) if type else None,
-                min_similarity=min_similarity,
-            )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
-            return RecallResult(
-                status="ok",
-                agent_id=resolved,
-                query=query,
-                mode="semantic",
-                count=len(hits),
-                memories=hits,
-            )
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                client = lifecycle.ensure_ready(resolved)
+                result = client.recall(
+                    agent_id=resolved,
+                    query=query,
+                    limit=limit,
+                    type=list(type) if type else None,
+                    min_similarity=min_similarity,
+                )
+                hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+                return RecallResult(
+                    status="ok",
+                    agent_id=resolved,
+                    query=query,
+                    mode="semantic",
+                    count=len(hits),
+                    memories=hits,
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(
                 RecallResult, str(exc), agent_id=agent_id or "", query=query
@@ -625,24 +657,26 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             Field(default=None, description="Optional type filter."),
         ] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> RecallResult:
         """Return the most recent memories for the resolved agent."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
-            result = client.recall_recent(
-                agent_id=resolved,
-                limit=limit,
-                type=list(type) if type else None,
-            )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
-            return RecallResult(
-                status="ok",
-                agent_id=resolved,
-                mode="recent",
-                count=len(hits),
-                memories=hits,
-            )
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                client = lifecycle.ensure_ready(resolved)
+                result = client.recall_recent(
+                    agent_id=resolved,
+                    limit=limit,
+                    type=list(type) if type else None,
+                )
+                hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+                return RecallResult(
+                    status="ok",
+                    agent_id=resolved,
+                    mode="recent",
+                    count=len(hits),
+                    memories=hits,
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(RecallResult, str(exc), agent_id=agent_id or "")
         except Exception as exc:
@@ -682,26 +716,28 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             Field(default=None, description="Optional type filter."),
         ] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> RecallResult:
         """Recall memories that were valid at a point in time."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
-            result = client.recall_as_of(
-                agent_id=resolved,
-                as_of=as_of,
-                limit=limit,
-                type=list(type) if type else None,
-            )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
-            return RecallResult(
-                status="ok",
-                agent_id=resolved,
-                mode="as_of",
-                count=len(hits),
-                memories=hits,
-                message=f"as_of={as_of}",
-            )
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                client = lifecycle.ensure_ready(resolved)
+                result = client.recall_as_of(
+                    agent_id=resolved,
+                    as_of=as_of,
+                    limit=limit,
+                    type=list(type) if type else None,
+                )
+                hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+                return RecallResult(
+                    status="ok",
+                    agent_id=resolved,
+                    mode="as_of",
+                    count=len(hits),
+                    memories=hits,
+                    message=f"as_of={as_of}",
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(RecallResult, str(exc), agent_id=agent_id or "")
         except Exception as exc:
@@ -740,26 +776,28 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             Field(default=None, description="Optional type filter."),
         ] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> RecallResult:
         """Recall memories changed after the supplied timestamp."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
-            result = client.recall_changed_since(
-                agent_id=resolved,
-                since=since,
-                limit=limit,
-                type=list(type) if type else None,
-            )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
-            return RecallResult(
-                status="ok",
-                agent_id=resolved,
-                mode="changed_since",
-                count=len(hits),
-                memories=hits,
-                message=f"since={since}",
-            )
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                client = lifecycle.ensure_ready(resolved)
+                result = client.recall_changed_since(
+                    agent_id=resolved,
+                    since=since,
+                    limit=limit,
+                    type=list(type) if type else None,
+                )
+                hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+                return RecallResult(
+                    status="ok",
+                    agent_id=resolved,
+                    mode="changed_since",
+                    count=len(hits),
+                    memories=hits,
+                    message=f"since={since}",
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(RecallResult, str(exc), agent_id=agent_id or "")
         except Exception as exc:
@@ -818,26 +856,28 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             ),
         ] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> AnswerResult:
         """Answer a question using memories from the resolved agent."""
         try:
-            resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
-            result = client.answer(
-                agent_id=resolved,
-                question=question,
-                limit=limit,
-                temperature=temperature,
-                kiosk_mode=kiosk_mode,
-            )
-            return AnswerResult(
-                status="ok",
-                agent_id=resolved,
-                question=question,
-                answer=result.get("answer"),
-                sources=result.get("sources", []),
-                namespace=result.get("namespace"),
-            )
+            with _attributed(ctx):
+                resolved = lifecycle.resolve_agent_id(agent_id)
+                client = lifecycle.ensure_ready(resolved)
+                result = client.answer(
+                    agent_id=resolved,
+                    question=question,
+                    limit=limit,
+                    temperature=temperature,
+                    kiosk_mode=kiosk_mode,
+                )
+                return AnswerResult(
+                    status="ok",
+                    agent_id=resolved,
+                    question=question,
+                    answer=result.get("answer"),
+                    sources=result.get("sources", []),
+                    namespace=result.get("namespace"),
+                )
         except NoAgentConfiguredError as exc:
             return _error_payload(
                 AnswerResult, str(exc), agent_id=agent_id or "", question=question

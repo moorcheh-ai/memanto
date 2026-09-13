@@ -11,10 +11,18 @@ from pathlib import Path
 from typing import cast
 
 import typer
+from rich.live import Live
 from rich.panel import Panel
+from rich.text import Text
 
+from memanto.app.clients.agent_conflict import describe_conflict_progress
 from memanto.app.constants import SourceType
 from memanto.app.core import is_valid_source
+from memanto.app.utils.client_identity import (
+    client_from_tool,
+    detect_client,
+    set_client,
+)
 from memanto.app.utils.temporal_helpers import get_yesterday_range, utc_date_str
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
@@ -48,6 +56,36 @@ def _as_float(value: object, default: float = 0.0) -> float:
     return default
 
 
+# Agent-facing: an AI tool naming itself is exact, where sniffing the
+# environment is a guess that fails entirely for tools that leave no marker.
+# Hidden because a human running `memanto` by hand has nothing to declare.
+_TOOL_OPTION = typer.Option(
+    None,
+    "--tool",
+    hidden=True,
+    help="Slug of the AI tool making this call (e.g. claude-code, cursor).",
+)
+
+
+# `--source` values that name a person rather than a tool. A memory dictated
+# by a human is still made by some tool, so these fall through to environment
+# detection instead of putting "user" on the connected-tools diagram.
+_NON_TOOL_SOURCES = frozenset({"user", "agent", "human"})
+
+
+def _tool_from_source(source: str | None) -> str | None:
+    """Read the calling tool off `remember --source`, when it names one."""
+    if source and source.strip().lower() not in _NON_TOOL_SOURCES:
+        return source
+    return None
+
+
+def _bind_calling_tool(tool: str | None) -> None:
+    """Attribute this invocation to the tool that named itself, if any."""
+    if tool:
+        set_client(client_from_tool(tool))
+
+
 @app.command()
 def remember(
     content: str | None = typer.Argument(None, help="Memory content to store"),
@@ -64,11 +102,12 @@ def remember(
         0.8, "--confidence", "-c", help="Confidence score (0.0-1.0)"
     ),
     tags: str | None = typer.Option(None, "--tags", help="Comma-separated tags"),
-    source: str = typer.Option(
-        "user",
+    source: str | None = typer.Option(
+        None,
         "--source",
         "-s",
-        help="Who wrote the memory (e.g., user, agent, cursor, codex, claude_code)",
+        help="Who wrote the memory. Defaults to the detected calling tool "
+        "(e.g. claude-code, cursor), or 'user' when no tool is identified.",
     ),
     provenance: str = typer.Option(
         "explicit_statement",
@@ -105,6 +144,9 @@ def remember(
     Single memory:  memanto remember "some fact"
     Batch mode:     memanto remember --batch memories.json
     """
+    # `--source` already names the writer, so it doubles as the caller's
+    # identity here - no second flag. Bind before the batch path returns.
+    _bind_calling_tool(_tool_from_source(source))
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
@@ -269,6 +311,13 @@ def remember(
 
     # Parse tags
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
+
+    # An explicit --source always wins. Otherwise attribute the write to the
+    # tool that ran this command, so the Connections view can show which agent
+    # produced which memory; a bare terminal stays "user".
+    if source is None:
+        detected = detect_client()
+        source = detected.tool if detected.is_known else "user"
 
     if not is_valid_source(source):
         _error(
@@ -603,12 +652,14 @@ def recall(
         False, "--active", help="Only active memories (exclude expired)"
     ),
     expired_only: bool = typer.Option(False, "--expired", help="Only expired memories"),
+    tool: str | None = _TOOL_OPTION,
 ):
     """Search and retrieve memories for the active agent with temporal query support.
 
     By default both active and expired memories are returned, each clearly
     labelled. Narrow with --active or --expired.
     """
+    _bind_calling_tool(tool)
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
@@ -856,8 +907,10 @@ def answer(
     limit: int | None = typer.Option(
         None, "--limit", "-n", help="Number of context memories to use"
     ),
+    tool: str | None = _TOOL_OPTION,
 ):
     """Answer a question using RAG (Retrieval-Augmented Generation)."""
+    _bind_calling_tool(tool)
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
@@ -1010,17 +1063,48 @@ def detect_conflicts(
     client = get_client()
 
     try:
-        with console.status(
-            f"[cyan]Detecting conflicts for '{agent_id}' on {date}...",
-            spinner="dots",
-        ):
-            result = client.generate_conflict_report(agent_id=agent_id, date=date)
+        progress_state = {
+            "message": f"Detecting conflicts for '{agent_id}' on {date}…",
+            "run_id": None,
+        }
+
+        def on_progress(event_name: str, data: dict) -> None:
+            if event_name == "run_started" and data.get("run_id"):
+                progress_state["run_id"] = data["run_id"]
+            message = describe_conflict_progress(event_name, data)
+            if message:
+                progress_state["message"] = message
+            elif progress_state.get("run_id"):
+                progress_state["message"] = (
+                    f"Conflict detection in progress (run {progress_state['run_id']})…"
+                )
+
+        progress_message = progress_state["message"] or ""
+        with Live(
+            Text(progress_message, style="cyan"),
+            console=console,
+            refresh_per_second=4,
+            transient=True,
+        ) as live:
+
+            def _tick_progress() -> None:
+                live.update(Text(progress_state["message"] or "", style="cyan"))
+
+            def _on_progress(event_name: str, data: dict) -> None:
+                on_progress(event_name, data)
+                _tick_progress()
+
+            result = client.generate_conflict_report(
+                agent_id=agent_id, date=date, on_progress=_on_progress
+            )
         elapsed = time.perf_counter() - start
 
         conflicts = result.get("conflicts", {})
 
         if conflicts.get("status") == "success":
             count = conflicts.get("conflict_count", 0)
+            if progress_state.get("run_id"):
+                console.print(f"[dim]Moorche run:[/dim] {progress_state['run_id']}")
             console.print(
                 f"[green]Conflict report generated:[/green] {conflicts.get('json_path')}"
             )

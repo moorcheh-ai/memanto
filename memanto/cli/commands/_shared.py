@@ -11,6 +11,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from memanto.app.config import settings
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import InvalidSessionTokenError, SessionExpiredError
 
@@ -119,16 +120,19 @@ def get_client() -> SdkClient:
 
     # Restore active session if available
     active_agent_id, active_session_token = config_manager.get_active_session()
-    session_cfg = config_manager.get_session_config()
 
     if active_session_token and active_agent_id:
         client.session_token = active_session_token
         client.agent_id = active_agent_id
 
-        # Validate the stored token (signature + expiry) and silently re-activate
-        # when auto-renew is enabled. The old expiry-only check missed invalid
-        # signatures, which broke analyze LLM narratives mid-run.
-        if session_cfg.get("auto_renew_enabled", True):
+        # Expiry is already handled upstream: get_active_session() auto-recreates
+        # a lapsed session, so the token above is fresh. What remains here is a
+        # token that no longer verifies at all - typically a rotated
+        # MEMANTO_SECRET_KEY - which used to break analyze LLM narratives
+        # mid-run. Gate it on the same single toggle as every other path
+        # (settings, which config.yaml feeds) rather than re-reading the YAML,
+        # so turning auto-recreate off disables it everywhere.
+        if settings.SESSION_AUTO_RECREATE_ENABLED:
             session_service = get_session_service()
             needs_reactivate = False
             try:

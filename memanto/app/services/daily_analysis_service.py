@@ -10,9 +10,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.clients.agent_conflict import detect_conflicts_via_agent
 from memanto.app.clients.backend import (
+    Backend,
     get_active_embedding_model,
     get_active_llm_model,
+    parse_backend,
 )
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
@@ -230,46 +233,153 @@ Format the output as a Markdown report:
             "date": date,
         }
 
-    def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
-        """
-        Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
-        """
-        validate_safe_id(agent_id, "agent_id")
-        validate_safe_id(date, "date")
+    def _enrich_conflict_metadata(
+        self,
+        client: Any,
+        namespace: str,
+        conflicts_data: list[dict[str, Any]],
+    ) -> None:
+        """Attach created_at/source fields by fetching document metadata."""
+        for item in conflicts_data:
+            item.setdefault("resolved", False)
+            item.setdefault("resolution", None)
 
+            for prefix in ["old", "new"]:
+                mem_id = item.get(f"{prefix}_memory_id")
+                item[f"{prefix}_created_at"] = None
+                item[f"{prefix}_source"] = "unknown"
+
+                if not mem_id or mem_id == "candidate":
+                    continue
+                try:
+                    doc_result = client.documents.get(
+                        namespace_name=namespace, ids=[mem_id]
+                    )
+                    doc_dict = cast(dict[str, Any], doc_result)
+                    if doc_dict and doc_dict.get("items"):
+                        doc = doc_dict["items"][0]
+                        metadata = doc.get("metadata") or {}
+                        created_at = metadata.get("created_at") or doc.get("created_at")
+                        source = (
+                            metadata.get("source") or doc.get("source") or "unknown"
+                        )
+                        item[f"{prefix}_created_at"] = format_local_time(created_at)
+                        item[f"{prefix}_source"] = source
+                except Exception as e:
+                    print(f"Note: Could not fetch metadata for memory {mem_id}: {e}")
+
+    def _normalize_agent_conflicts(
+        self, report: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Map Moorche agent conflict report items to Memanto conflict schema."""
+        raw_conflicts = report.get("conflicts") or []
+        if not isinstance(raw_conflicts, list):
+            raise ValueError("Agent conflict report conflicts field must be a list")
+
+        normalized: list[dict[str, Any]] = []
+        for item in raw_conflicts:
+            if not isinstance(item, dict):
+                continue
+            if item.get("conflict") is False:
+                continue
+
+            old_id = item.get("old_memory_id")
+            new_id = item.get("new_memory_id")
+            if old_id and new_id and old_id == new_id:
+                continue
+
+            conflict_type = item.get("type") or "conflict"
+            if conflict_type in ("compatible", "duplicate"):
+                continue
+            if conflict_type != "contradiction" and item.get("conflict") is not True:
+                continue
+
+            recommendation = item.get("recommendation") or "keep_new"
+            if recommendation == "keep_both":
+                recommendation = "merge"
+
+            normalized.append(
+                {
+                    "type": conflict_type,
+                    "title": item.get("title") or "Memory conflict",
+                    "old_memory_id": old_id,
+                    "old_content": item.get("old_text") or item.get("old_content"),
+                    "new_memory_id": new_id if new_id != "candidate" else None,
+                    "new_content": item.get("new_text") or item.get("new_content"),
+                    "description": item.get("reason") or item.get("description"),
+                    "recommendation": recommendation,
+                    "resolved": False,
+                    "resolution": None,
+                }
+            )
+        return normalized
+
+    def _save_conflict_report(
+        self, agent_id: str, date: str, conflicts_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         from memanto.app.config import get_conflicts_dir
 
         conflicts_dir = get_conflicts_dir()
-        pattern = f"{agent_id}_{date}_*_summary.md"
-        session_files = list(self.sessions_dir.glob(pattern))
+        json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(conflicts_data, f, indent=2, default=str)
 
-        if not session_files:
-            return {"status": "no_sessions"}
+        return {
+            "status": "success",
+            "json_path": str(json_path),
+            "conflict_count": len(conflicts_data),
+        }
 
-        combined_content = []
-        for file_path in session_files:
-            with open(file_path, encoding="utf-8") as f:
-                combined_content.append(f.read())
+    def _generate_conflict_report_via_agent(
+        self,
+        agent_id: str,
+        date: str,
+        namespace: str,
+        client: Any,
+        on_progress=None,
+        cancel_event=None,
+    ) -> dict[str, Any]:
+        ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+        generate_kwargs: dict[str, Any] = {
+            "base_url": client.base_url,
+            "api_key": client.api_key,
+            "namespace": namespace,
+            "date": date,
+            "memory_types": ["fact", "preference"],
+        }
+        if ai_model is not None:
+            generate_kwargs["ai_model"] = ai_model
 
-        full_text = "\n\n---\n\n".join(combined_content)
+        if on_progress is not None:
+            generate_kwargs["on_event"] = on_progress
+        if cancel_event is not None:
+            generate_kwargs["cancel_event"] = cancel_event
 
-        client = get_moorcheh_client()
-        namespace = agent_namespace(agent_id)
+        try:
+            report = detect_conflicts_via_agent(**generate_kwargs)
+        except Exception as e:
+            raise MemoryOperationError(f"Conflict detection failed: {str(e)}") from e
 
-        # Use a truncated digest of the session content as the retrieval
-        # query so it stays within the embedding context window, and also
-        # use it in the prompt to prevent LLM context overflow.
+        try:
+            conflicts_data = self._normalize_agent_conflicts(report)
+        except ValueError as e:
+            raise MemoryOperationError(f"Conflict detection failed: {str(e)}") from e
+
+        self._enrich_conflict_metadata(client, namespace, conflicts_data)
+        return self._save_conflict_report(agent_id, date, conflicts_data)
+
+    def _generate_conflict_report_legacy(
+        self,
+        agent_id: str,
+        date: str,
+        namespace: str,
+        client: Any,
+        full_text: str,
+    ) -> dict[str, Any]:
         query_digest = _truncate_embedding_query(
             full_text,
             model=get_active_embedding_model(),
         )
-
-        # --- Decouple instructions from the embedded query (issue #1329) ---
-        # The ``query`` parameter is embedded for similarity retrieval and
-        # must stay within the embedding model's context window (e.g. 2048
-        # tokens for nomic-embed-text).  Instructions and full session content
-        # go into ``header_prompt`` / ``footer_prompt`` which are passed to
-        # the LLM but NOT embedded.
 
         header_prompt = f"""Analyze the following session memories from {date} against historical knowledge for this agent.
 
@@ -318,15 +428,12 @@ Example response format:
             result = client.answer.generate(**generate_kwargs)
             conflict_text = result.get("answer", "[]")
         except Exception as e:
-            raise MemoryOperationError(f"Conflict detection failed: {str(e)}")
+            raise MemoryOperationError(f"Conflict detection failed: {str(e)}") from e
 
-        # Parse JSON from the AI response
-        conflicts_data = []
+        conflicts_data: list[dict[str, Any]] = []
         try:
-            # Strip markdown code fences if the model wraps the JSON
             clean_text = conflict_text.strip()
             if clean_text.startswith("```"):
-                # Remove opening fence (```json or ```)
                 clean_text = (
                     clean_text.split("\n", 1)[1]
                     if "\n" in clean_text
@@ -343,7 +450,6 @@ Example response format:
                     "AI response parsed as JSON but is not a list of objects"
                 )
 
-            # Filter out self-referencing conflicts (same ID on both sides)
             parsed = [
                 item
                 for item in parsed
@@ -353,51 +459,9 @@ Example response format:
                     and item["old_memory_id"] == item["new_memory_id"]
                 )
             ]
-            # Add resolved=False, resolution, and timestamps to each conflict
-            for item in parsed:
-                item.setdefault("resolved", False)
-                item.setdefault("resolution", None)
-
-                # Fetch timestamps and source
-                for prefix in ["old", "new"]:
-                    mem_id = item.get(f"{prefix}_memory_id")
-                    # Default values
-                    item[f"{prefix}_created_at"] = None
-                    item[f"{prefix}_source"] = "unknown"
-
-                    if mem_id:
-                        try:
-                            doc_result = client.documents.get(
-                                namespace_name=namespace, ids=[mem_id]
-                            )
-                            # Note: Moorcheh SDK documents.get returns the list under "items", not "documents" contrary to its typed response model
-                            doc_dict = cast(dict[str, Any], doc_result)
-                            if doc_dict and doc_dict.get("items"):
-                                doc = doc_dict["items"][0]
-                                metadata = doc.get("metadata") or {}
-
-                                # Fallback to flat fields if metadata object is empty
-                                created_at = metadata.get("created_at") or doc.get(
-                                    "created_at"
-                                )
-                                source = (
-                                    metadata.get("source")
-                                    or doc.get("source")
-                                    or "unknown"
-                                )
-
-                                item[f"{prefix}_created_at"] = format_local_time(
-                                    created_at
-                                )
-                                item[f"{prefix}_source"] = source
-                        except Exception as e:
-                            print(
-                                f"Note: Could not fetch metadata for memory {mem_id}: {e}"
-                            )
-
+            self._enrich_conflict_metadata(client, namespace, parsed)
             conflicts_data = parsed
         except (json.JSONDecodeError, ValueError):
-            # If AI didn't return valid JSON (or returned wrong shape), wrap the raw text as a single conflict
             if conflict_text.strip() and conflict_text.strip() != "[]":
                 conflicts_data = [
                     {
@@ -414,13 +478,41 @@ Example response format:
                     }
                 ]
 
-        # Save structured JSON for interactive resolution
-        json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(conflicts_data, f, indent=2, default=str)
+        return self._save_conflict_report(agent_id, date, conflicts_data)
 
-        return {
-            "status": "success",
-            "json_path": str(json_path),
-            "conflict_count": len(conflicts_data),
-        }
+    def generate_conflict_report(
+        self, agent_id: str, date: str, on_progress=None, cancel_event=None
+    ) -> dict[str, Any]:
+        """
+        Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
+        """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
+
+        client = get_moorcheh_client()
+        namespace = agent_namespace(agent_id)
+
+        if parse_backend(settings.MEMANTO_BACKEND) == Backend.CLOUD:
+            return self._generate_conflict_report_via_agent(
+                agent_id,
+                date,
+                namespace,
+                client,
+                on_progress=on_progress,
+                cancel_event=cancel_event,
+            )
+
+        pattern = f"{agent_id}_{date}_*_summary.md"
+        session_files = list(self.sessions_dir.glob(pattern))
+
+        if not session_files:
+            return {"status": "no_sessions"}
+
+        combined_content = []
+        for file_path in session_files:
+            with open(file_path, encoding="utf-8") as f:
+                combined_content.append(f.read())
+        full_text = "\n\n---\n\n".join(combined_content)
+        return self._generate_conflict_report_legacy(
+            agent_id, date, namespace, client, full_text
+        )

@@ -35,6 +35,8 @@ from memanto.app.constants import (
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
+from memanto.app.services.activity_service import log_memory_activity
+from memanto.app.utils.client_identity import set_memanto_session
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -180,6 +182,17 @@ class SdkClient:
     # Internal helpers
 
     def _get_validated_session_for_agent(self, agent_id: str):
+        """Return the active session for *agent_id*, and bind it for activity logging.
+
+        Every memory operation passes through here, which makes it the one
+        place that reliably knows both the agent and its live session id - the
+        memory services below only ever receive an agent_id.
+        """
+        session = self._resolve_validated_session(agent_id)
+        set_memanto_session(session.session_id)
+        return session
+
+    def _resolve_validated_session(self, agent_id: str):
         """
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
@@ -221,7 +234,17 @@ class SdkClient:
         try:
             # Validate JWT token
             token_payload = session_service.validate_session(self.session_token)
-        except (SessionExpiredError, InvalidSessionTokenError):
+        except SessionExpiredError:
+            # The stored session fully lapsed (e.g. the process was idle past
+            # its expiry). With auto-recreate enabled, transparently issue a
+            # fresh session on this first operation instead of failing.
+            recreated = session_service.check_and_auto_recreate(self.session_token)
+            if recreated is None:
+                raise
+            self._cached_session = recreated
+            self.session_token = recreated.session_token
+            return recreated
+        except InvalidSessionTokenError:
             # Surface the same specific session errors as the service
             raise
 
@@ -1291,6 +1314,11 @@ class SdkClient:
             footer_prompt=footer_prompt,
         )
 
+        # The RAG path calls Moorcheh directly rather than going through
+        # MemoryReadService, so it needs its own activity entry - otherwise
+        # `answer` is the one memory operation that leaves no trace.
+        log_memory_activity(op="answer", agent_id=agent_id)
+
         return {
             "agent_id": agent_id,
             "question": question,
@@ -1345,7 +1373,9 @@ class SdkClient:
             "export": export_result,
         }
 
-    def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
+    def generate_conflict_report(
+        self, agent_id: str, date: str, on_progress=None, cancel_event=None
+    ) -> dict[str, Any]:
         """
         Generate the conflict report for an agent/date.
 
@@ -1369,7 +1399,9 @@ class SdkClient:
         )
 
         service = self._get_daily_analysis_service()
-        conflict_result = service.generate_conflict_report(agent_id, date)
+        conflict_result = service.generate_conflict_report(
+            agent_id, date, on_progress=on_progress, cancel_event=cancel_event
+        )
         return {"conflicts": conflict_result}
 
     # Conflict Resolution

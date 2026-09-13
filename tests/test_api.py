@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import tempfile
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -3099,3 +3100,166 @@ class TestRealpathGuard:
         assert not os.path.realpath(malicious_path).startswith(
             os.path.realpath(tmp_dir) + os.sep
         )
+
+
+class TestSessionAutoRecreate:
+    """Coming back to MEMANTO after a session has fully lapsed.
+
+    ``SESSION_AUTO_RECREATE_ENABLED`` (default on) issues a brand-new session
+    on the first operation that presents an expired-but-not-terminated token,
+    instead of failing with 401. It is gated by the same management-access
+    check as explicit activation, so a stolen stale token alone is worthless.
+    """
+
+    TEST_AGENT_ID = "test-agent"
+
+    @staticmethod
+    def _remote_client():
+        """Client whose requests look like they came from a network peer.
+
+        The default ``ASGITransport`` reports ``127.0.0.1``, which satisfies
+        ``require_management_access``'s loopback branch and would hide any
+        regression in the credential check.
+        """
+        transport = ASGITransport(app=app, client=("203.0.113.5", 5000))
+        return AsyncClient(transport=transport, base_url="http://test")
+
+    async def _activate_expired(self, client, auth_headers):
+        """Create the agent and return a session token that has already lapsed."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        # duration 0 makes expires_at == started_at, so the JWT is fully
+        # lapsed once the clock moves past it.
+        with patch.object(settings, "SESSION_DEFAULT_DURATION_HOURS", 0):
+            activate_resp = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+            )
+        assert activate_resp.status_code == 200
+        time.sleep(1)
+        client.cookies = Cookies()
+        return activate_resp.json()["session_token"]
+
+    @pytest.mark.asyncio
+    async def test_header_expired_session_auto_recreates_fresh_token(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """The first operation after expiry succeeds and hands back a new token."""
+        old_token = await self._activate_expired(client, auth_headers)
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": old_token},
+            json={},
+        )
+        assert response.status_code == 200
+
+        new_token = response.headers.get("x-session-token")
+        assert new_token
+        assert new_token != old_token
+
+        # The expired token no longer authenticates; the new one does.
+        stale_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": old_token},
+            json={},
+        )
+        assert stale_response.status_code == 401
+
+        fresh_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": new_token},
+            json={},
+        )
+        assert fresh_response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_remote_caller_without_credential_gets_no_new_session(
+        self, mock_moorcheh
+    ):
+        """A stale token alone must not buy a session from off-box.
+
+        Auto-recreate is gated on ``require_management_access``. For a
+        non-loopback peer that means a valid management credential; without one
+        (or with the wrong one) the plain expiry 401 has to stand and no
+        replacement token may be handed out.
+        """
+        auth_headers = {"Authorization": f"Bearer {settings.MOORCHEH_API_KEY}"}
+
+        async with self._remote_client() as remote:
+            expired_token = await self._activate_expired(remote, auth_headers)
+
+            for label, headers in (
+                ("no credential", {"X-Session-Token": expired_token}),
+                (
+                    "wrong credential",
+                    {
+                        "X-Session-Token": expired_token,
+                        "Authorization": "Bearer not-the-management-key",
+                    },
+                ),
+            ):
+                response = await remote.post(
+                    f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+                    headers=headers,
+                    json={},
+                )
+                assert response.status_code == 401, label
+                assert "x-session-token" not in response.headers, label
+
+            # Same expired token, correct credential: recreation applies.
+            authorized = await remote.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+                headers={**auth_headers, "X-Session-Token": expired_token},
+                json={},
+            )
+            assert authorized.status_code == 200
+            assert authorized.headers.get("x-session-token")
+
+    @pytest.mark.asyncio
+    async def test_terminated_session_is_not_auto_recreated(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Logout is authoritative: an explicitly ended session stays dead."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        deactivate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/deactivate",
+            headers={**auth_headers, "X-Session-Token": token},
+        )
+        assert deactivate_resp.status_code == 200
+
+        client.cookies = Cookies()
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": token},
+            json={},
+        )
+        assert response.status_code == 401
+        assert "x-session-token" not in response.headers
+
+    @pytest.mark.asyncio
+    async def test_expired_session_auto_recreate_can_be_disabled(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Disabling SESSION_AUTO_RECREATE_ENABLED restores the plain 401."""
+        token = await self._activate_expired(client, auth_headers)
+
+        with patch.object(settings, "SESSION_AUTO_RECREATE_ENABLED", False):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+                headers={**auth_headers, "X-Session-Token": token},
+                json={},
+            )
+        assert response.status_code == 401
+        assert "x-session-token" not in response.headers

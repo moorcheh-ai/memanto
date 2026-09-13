@@ -8,7 +8,7 @@ Uses extensive mocking to intercept API calls across all command modules.
 
 import json
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import jwt
 import pytest
@@ -280,6 +280,35 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         mock_all_clients.remember.assert_called_once()
         assert mock_all_clients.remember.call_args.kwargs["title"] == "Custom Title"
+
+    def test_remember_attributes_the_write_to_the_calling_tool(
+        self, mock_all_clients, monkeypatch
+    ):
+        """Without --source, the write is credited to the tool that ran it.
+
+        This is what makes the Connections view able to say which agent
+        produced which memory; a bare terminal still writes as "user".
+        """
+        mock_all_clients.remember.return_value = {"memory_id": "m1", "status": "queued"}
+        monkeypatch.setenv("CLAUDECODE", "1")
+
+        result = runner.invoke(app, ["remember", "Detected source memory"])
+
+        assert result.exit_code == 0
+        assert mock_all_clients.remember.call_args.kwargs["source"] == "claude-code"
+
+    def test_remember_source_flag_overrides_detection(
+        self, mock_all_clients, monkeypatch
+    ):
+        mock_all_clients.remember.return_value = {"memory_id": "m1", "status": "queued"}
+        monkeypatch.setenv("CLAUDECODE", "1")
+
+        result = runner.invoke(
+            app, ["remember", "Explicit source memory", "--source", "user"]
+        )
+
+        assert result.exit_code == 0
+        assert mock_all_clients.remember.call_args.kwargs["source"] == "user"
 
     def test_recall_displays_string_numeric_fields(self, mock_all_clients):
         """Recall output should not crash when API metadata numbers are strings."""
@@ -1238,6 +1267,7 @@ class TestMEMANTOCLI:
         mock_all_clients.generate_conflict_report.assert_called_once_with(
             agent_id="test-agent",
             date="2026-07-30",
+            on_progress=ANY,
         )
 
     def test_conflicts_list(self, mock_all_clients):
