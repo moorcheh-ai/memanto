@@ -92,3 +92,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @walterwagner
 - @rasadregmi
 - @jaonnvoller-ai
+- @benediktirsch-rgb
