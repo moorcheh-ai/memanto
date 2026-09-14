@@ -884,7 +884,9 @@ def status():
     # Registered Agents
     try:
         direct = get_client()
-        agents = direct.list_agents()
+        listed = direct.list_agents()
+        # Both clients return {"agents": [...], "count": n, "warnings": [...]}.
+        agents = listed.get("agents", []) if isinstance(listed, dict) else listed
 
         if agents:
             agent_table = Table(
