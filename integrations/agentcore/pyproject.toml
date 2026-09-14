@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memanto-agentcore"
+version = "0.0.1"
+description = "Amazon Bedrock AgentCore Runtime adapter for Memanto persistent memory (preview)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [{ name = "Memanto", email = "info@memanto.ai" }]
+dependencies = [
+    "memanto>=0.2.21",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["memanto_agentcore"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]

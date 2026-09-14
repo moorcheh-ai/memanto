@@ -110,6 +110,7 @@ ruff check .
 |-------------|---------|--------------|
 | `integrations/mcp` | `memanto-mcp` | MCP server for any MCP-compatible client (Claude, Cursor). |
 | `integrations/crewai` | `crewai-memanto` | CrewAI tools for multi-agent memory sharing. |
+| `integrations/agentcore` | `memanto-agentcore` | Amazon Bedrock AgentCore Runtime — cross-session recall/retain. |
 | `integrations/hermes-agents` | `hermes-memanto` | **This** — a memory provider for the Hermes agent. |
 | `integrations/langfuse` | `langfuse-memanto` | Turns Langfuse errors and anomalies into memories, live from your app. |
 
