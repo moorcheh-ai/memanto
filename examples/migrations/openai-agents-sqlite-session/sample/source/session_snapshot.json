@@ -1,0 +1,156 @@
+{
+  "_comment": "Verbatim dump of the SQLite database written by the OpenAI Agents SDK (agents.Runner + agents.SQLiteSession). Committed because *.db is gitignored; message_data holds the exact TEXT the SDK stored.",
+  "source": {
+    "tool": "openai-agents (OpenAI Agents SDK) SQLiteSession",
+    "package_version": "0.19.4",
+    "python": "3.12.3",
+    "db_file": "agent_sessions.db",
+    "db_file_sha256": "87269384df5c62b3f7705f8d3b13eb82a5824398c0ecfdffd0f019a9f41bedff",
+    "read_snapshot_sha256": "834c34b0c7416af40a349ff0a1dc68116a684fa74cdf84c2ad1ac92b41f4a9ec"
+  },
+  "captured_at": "2026-08-05T17:48:32+00:00",
+  "schema": {
+    "agent_messages": "CREATE TABLE agent_messages (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                session_id TEXT NOT NULL,\n                message_data TEXT NOT NULL,\n                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n                FOREIGN KEY (session_id) REFERENCES agent_sessions (session_id)\n                    ON DELETE CASCADE\n            )",
+    "agent_sessions": "CREATE TABLE agent_sessions (\n                session_id TEXT PRIMARY KEY,\n                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n            )"
+  },
+  "agent_sessions": [
+    {
+      "session_id": "sandbox-smoke-test",
+      "created_at": "2026-08-05 17:48:32",
+      "updated_at": "2026-08-05 17:48:32"
+    },
+    {
+      "session_id": "workspace-buddy-demo",
+      "created_at": "2026-08-05 17:48:25",
+      "updated_at": "2026-08-05 17:48:32"
+    }
+  ],
+  "agent_messages": [
+    {
+      "id": 1,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"content\": \"Standing rule for this workspace: reply in metric units and keep answers to three sentences or fewer.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:25"
+    },
+    {
+      "id": 2,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0001\", \"content\": [{\"annotations\": [], \"text\": \"Understood \\u2014 metric units only, three sentences maximum. I have stored that as a standing rule for this workspace.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:25"
+    },
+    {
+      "id": 3,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"content\": \"The orders service runs on PostgreSQL 16 and deploys from the release branch.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:26"
+    },
+    {
+      "id": 4,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0002\", \"content\": [{\"annotations\": [], \"text\": \"Noted: the orders service runs on PostgreSQL 16 and ships from the release branch. I will assume that stack for future answers.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:26"
+    },
+    {
+      "id": 5,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"What is the deploy window for the platform team over the next month?\"}]}",
+      "created_at": "2026-08-05 17:48:27"
+    },
+    {
+      "id": 6,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"rs_0001\", \"summary\": [], \"type\": \"reasoning\"}",
+      "created_at": "2026-08-05 17:48:27"
+    },
+    {
+      "id": 7,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"arguments\": \"{\\\"team\\\": \\\"platform\\\", \\\"horizon_days\\\": 30}\", \"call_id\": \"call_0001\", \"name\": \"lookup_team_calendar\", \"type\": \"function_call\", \"id\": \"fc_call_0001\"}",
+      "created_at": "2026-08-05 17:48:27"
+    },
+    {
+      "id": 8,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"call_id\": \"call_0001\", \"output\": \"{\\\"team\\\": \\\"platform\\\", \\\"horizon_days\\\": 30, \\\"deploy_window\\\": \\\"Tuesday 14:00-16:00 UTC\\\", \\\"freeze\\\": \\\"none\\\", \\\"source\\\": \\\"demo-calendar-fixture\\\"}\", \"type\": \"function_call_output\"}",
+      "created_at": "2026-08-05 17:48:27"
+    },
+    {
+      "id": 9,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0003\", \"content\": [{\"annotations\": [], \"text\": \"The platform team's deploy window is Tuesday 14:00-16:00 UTC, with no freeze in the next 30 days.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:27"
+    },
+    {
+      "id": 10,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"content\": \"Correction: the deploy window moved to Thursday 09:00 UTC. The Tuesday slot is retired, so ignore what the calendar returned.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:28"
+    },
+    {
+      "id": 11,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0004\", \"content\": [{\"annotations\": [], \"text\": \"Corrected: the deploy window is Thursday 09:00 UTC and the Tuesday slot is retired. I will use the Thursday window from now on.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:28"
+    },
+    {
+      "id": 12,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"content\": \"Actually, drop the three-sentence rule. I would rather get detailed answers with bullet points.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:30"
+    },
+    {
+      "id": 13,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0005\", \"content\": [{\"annotations\": [], \"text\": \"The three-sentence limit is dropped. I will answer in detail with bullet points from here on.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:30"
+    },
+    {
+      "id": 14,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"content\": \"I promised the platform team a migration plan for the orders service by 2026-08-14.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:31"
+    },
+    {
+      "id": 15,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0006\", \"content\": [{\"annotations\": [], \"text\": \"Recorded your commitment: a migration plan for the orders service, due to the platform team by 2026-08-14.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:31"
+    },
+    {
+      "id": 16,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"content\": \"Log an incident: the staging rollout failed twice last week because the pgbouncer connection pool was too small.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:32"
+    },
+    {
+      "id": 17,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"arguments\": \"{\\\"component\\\": \\\"pgbouncer\\\", \\\"summary\\\": \\\"Staging rollout failed: connection pool too small\\\", \\\"occurrences\\\": 2}\", \"call_id\": \"call_0002\", \"name\": \"record_incident\", \"type\": \"function_call\", \"id\": \"fc_call_0002\"}",
+      "created_at": "2026-08-05 17:48:32"
+    },
+    {
+      "id": 18,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"call_id\": \"call_0002\", \"output\": \"{\\\"incident_id\\\": \\\"INC-2141\\\", \\\"component\\\": \\\"pgbouncer\\\", \\\"summary\\\": \\\"Staging rollout failed: connection pool too small\\\", \\\"occurrences\\\": 2, \\\"status\\\": \\\"open\\\"}\", \"type\": \"function_call_output\"}",
+      "created_at": "2026-08-05 17:48:32"
+    },
+    {
+      "id": 19,
+      "session_id": "workspace-buddy-demo",
+      "message_data": "{\"id\": \"msg_0007\", \"content\": [{\"annotations\": [], \"text\": \"Logged as INC-2141 against pgbouncer, two occurrences, status open.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:32"
+    },
+    {
+      "id": 20,
+      "session_id": "sandbox-smoke-test",
+      "message_data": "{\"content\": \"Ping the sandbox.\", \"role\": \"user\"}",
+      "created_at": "2026-08-05 17:48:32"
+    },
+    {
+      "id": 21,
+      "session_id": "sandbox-smoke-test",
+      "message_data": "{\"id\": \"msg_1001\", \"content\": [{\"annotations\": [], \"text\": \"Sandbox session acknowledged.\", \"type\": \"output_text\"}], \"role\": \"assistant\", \"status\": \"completed\", \"type\": \"message\"}",
+      "created_at": "2026-08-05 17:48:32"
+    }
+  ]
+}
