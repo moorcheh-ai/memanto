@@ -12,6 +12,7 @@ while leaving markdown headers and bare hashtags intact.
 from pathlib import Path
 from unittest.mock import patch
 
+from memanto.app.clients.backend import Backend
 from memanto.app.services.daily_analysis_service import DailyAnalysisService
 from memanto.app.utils.query_safety import neutralize_filter_syntax
 
@@ -88,3 +89,80 @@ class TestDailySummaryQueryIsDefused:
         assert "#agent:guest" not in query
         # ...while the semantic content survives for embedding.
         assert "Redis for caching" in query
+
+
+class TestTruncationCannotReassembleFilterTokens:
+    """_truncate_embedding_query concatenates non-contiguous slices, so it can
+    reassemble a ``#key:value`` token from pieces that were harmless in the
+    sanitized source. The final query must be re-sanitized after truncation."""
+
+    OVERSIZED = "x" * 4000
+
+    def _build_service(self, tmp_path: Path, content: str):
+        sessions = tmp_path / "sessions"
+        sessions.mkdir()
+        summaries = tmp_path / "summaries"
+        summaries.mkdir()
+        (sessions / "agent1_2026-09-14_s1_summary.md").write_text(content, encoding="utf-8")
+        return DailyAnalysisService(sessions_dir=sessions, summaries_dir=summaries)
+
+    def test_summary_digest_stays_defused_on_oversized_input(self, tmp_path: Path):
+        captured: dict = {}
+
+        class RecordingClient:
+            class answer:
+                @staticmethod
+                def generate(**kwargs):
+                    captured.update(kwargs)
+                    return {"answer": "summary", "sources": []}
+
+            namespaces = type("ns", (), {"list": staticmethod(lambda: {"namespaces": []})})
+
+        # '#' far from 'key:value': harmless separately, but the digest's
+        # slice concatenation would join them into a live filter token.
+        text = self.OVERSIZED
+        text = text[:179] + "#" + text[180:400] + "key:value" + text[410:]
+        service = self._build_service(tmp_path, text)
+
+        with patch(
+            "memanto.app.services.daily_analysis_service.get_moorcheh_client",
+            return_value=RecordingClient(),
+        ):
+            result = service.generate_summary("agent1", "2026-09-14")
+
+        assert result["status"] == "success"
+        query = captured["query"]
+        assert "#key:value" not in query
+
+    def test_conflict_digest_stays_defused_on_oversized_input(self, tmp_path: Path):
+        captured: dict = {}
+
+        class RecordingClient:
+            base_url = "http://localhost:8080"
+            api_key = "test-key"
+
+            class answer:
+                @staticmethod
+                def generate(**kwargs):
+                    captured.update(kwargs)
+                    return {"answer": "[]", "sources": []}
+
+            namespaces = type("ns", (), {"list": staticmethod(lambda: {"namespaces": []})})
+
+        text = self.OVERSIZED
+        text = text[:179] + "#" + text[180:400] + "key:value" + text[410:]
+        service = self._build_service(tmp_path, text)
+
+        # The digest sink lives in the legacy (on-prem) conflict-report path.
+        with (
+            patch("memanto.app.services.daily_analysis_service.parse_backend",
+                  return_value=Backend.ON_PREM),
+            patch(
+                "memanto.app.services.daily_analysis_service.get_moorcheh_client",
+                return_value=RecordingClient(),
+            ),
+        ):
+            service.generate_conflict_report("agent1", "2026-09-14")
+
+        digest = captured.get("query", "")
+        assert "#key:value" not in digest

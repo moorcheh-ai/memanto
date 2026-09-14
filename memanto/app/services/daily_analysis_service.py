@@ -165,11 +165,18 @@ class DailyAnalysisService:
         # full_text is memory content: the backend parses ``#key:value``
         # tokens in the query field, so a poisoned memory must not steer the
         # retrieval filter channel when its text becomes the query
-        # (FINDING-05). Defuse before truncating so the filter token cannot
-        # survive at the tail of the final query either.
-        retrieval_query = _truncate_embedding_query(
-            neutralize_filter_syntax(full_text),
-            model=get_active_embedding_model(),
+        # (FINDING-05). Sanitization must run on the FINAL truncated query:
+        # _truncate_embedding_query concatenates non-contiguous slices without
+        # separators, so it can reassemble a ``#key:value`` token from pieces
+        # that were harmless in the pre-truncation text. Sanitizing only the
+        # source would therefore be bypassable; the trailing sanitize call is
+        # the authoritative one (the source pass additionally keeps filter
+        # tokens out of the header prompt rendering).
+        retrieval_query = neutralize_filter_syntax(
+            _truncate_embedding_query(
+                neutralize_filter_syntax(full_text),
+                model=get_active_embedding_model(),
+            )
         )
 
         header_prompt = f"""
@@ -383,10 +390,13 @@ Format the output as a Markdown report:
         full_text: str,
     ) -> dict[str, Any]:
         # Same untrusted-content-to-query channel as the summary retrieval
-        # above (FINDING-05): defuse filter tokens before building the digest.
-        query_digest = _truncate_embedding_query(
-            neutralize_filter_syntax(full_text),
-            model=get_active_embedding_model(),
+        # above (FINDING-05): the digest concatenates slices, so sanitize the
+        # final truncated query — tokens can re-form across slice boundaries.
+        query_digest = neutralize_filter_syntax(
+            _truncate_embedding_query(
+                neutralize_filter_syntax(full_text),
+                model=get_active_embedding_model(),
+            )
         )
 
         header_prompt = f"""Analyze the following session memories from {date} against historical knowledge for this agent.
