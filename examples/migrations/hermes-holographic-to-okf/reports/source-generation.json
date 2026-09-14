@@ -1,0 +1,27 @@
+{
+  "database": "/home/j/Documents/LargeProjects/memanto-holo-bounty/examples/migrations/hermes-holographic-to-okf/fixtures/memory_store.db",
+  "entity_count": 10,
+  "fact_count": 72,
+  "fact_entity_association_count": 50,
+  "hermes_commit": "bf096c36f848214b63d9fb0e4678b2d1468bb3d1",
+  "source_operations": {
+    "add_fact": 72,
+    "record_feedback": 10,
+    "search_facts": 8,
+    "update_fact": 1
+  },
+  "source_search_latency_median_ms": 2.829,
+  "source_search_latency_ms": [
+    3.239,
+    2.877,
+    2.941,
+    2.666,
+    2.274,
+    2.78,
+    2.468,
+    2.898
+  ],
+  "source_tool": "Hermes Holographic MemoryStore",
+  "sqlite_integrity_check": "ok",
+  "stored_fact_count": 72
+}

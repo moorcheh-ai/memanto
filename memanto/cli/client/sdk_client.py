@@ -1734,31 +1734,43 @@ class SdkClient:
         """
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
-        memories_by_type: dict[str, list] = {}
-        failed_types: list[str] = []
+        memories_by_type: dict[str, list] = {
+            mem_type: [] for mem_type in MEMORY_TYPE_ORDER
+        }
+        session = self._get_validated_session_for_agent(agent_id)
+        reader = self._get_read_service()
+        next_token: str | None = None
 
-        for mem_type in MEMORY_TYPE_ORDER:
-            try:
-                result = self.recall(
-                    agent_id=agent_id,
-                    query="*",
-                    limit=limit_per_type,
-                    type=[mem_type],
+        try:
+            while True:
+                response = self._get_moorcheh().documents.fetch_text_data(
+                    namespace_name=session.namespace,
+                    limit=min(limit_per_type * len(MEMORY_TYPE_ORDER), 100),
+                    next_token=next_token,
                 )
-                memories_by_type[mem_type] = result.get("memories", [])
-            except Exception:
-                memories_by_type[mem_type] = []
-                failed_types.append(mem_type)
+                for raw_item in response.get("items", []):
+                    memory = reader._format_memory_item(raw_item)
+                    mem_type = memory.get("type") or "memory"
+                    if (
+                        mem_type in memories_by_type
+                        and len(memories_by_type[mem_type]) < limit_per_type
+                    ):
+                        memories_by_type[mem_type].append(memory)
 
-        if failed_types:
-            if len(failed_types) == len(MEMORY_TYPE_ORDER):
-                detail = "the backend appears unreachable"
-            else:
-                detail = f"failed types: {', '.join(failed_types)}"
+                pagination = response.get("pagination") or {}
+                if not pagination.get("has_more"):
+                    break
+                next_token = pagination.get("next_token")
+                if not next_token:
+                    raise ConnectionError(
+                        "Backend reported more export data without a continuation token"
+                    )
+        except Exception as exc:
             raise ConnectionError(
-                f"Failed to recall a complete memory set for agent '{agent_id}' — "
-                f"{detail}. Refusing to write an incomplete export."
-            )
+                f"Failed to fetch a complete memory set for agent '{agent_id}'. "
+                "Refusing to write an incomplete export."
+            ) from exc
+
         return memories_by_type
 
     def export_okf_bundle(

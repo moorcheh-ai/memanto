@@ -1,0 +1,32 @@
+[
+  {
+    "id": "warm-light-preference",
+    "query": "What kind of work lights are preferred after sunset?",
+    "must_contain": ["warm", "work lights"]
+  },
+  {
+    "id": "source-truth",
+    "query": "Which parts of Holographic memory are source truth rather than derived retrieval data?",
+    "must_contain": ["fact", "metadata"]
+  },
+  {
+    "id": "fresh-destination-gate",
+    "query": "What must happen before a migration result is accepted?",
+    "must_contain": ["fresh destination", "recall"]
+  },
+  {
+    "id": "verification-update",
+    "query": "What verification stages does Project Atlas use before publication?",
+    "must_contain": ["structural", "operational", "portability"]
+  },
+  {
+    "id": "derived-index-policy",
+    "query": "Which derived Holographic indexes are rebuilt from canonical content during migration?",
+    "must_contain": ["rebuilt", "canonical"]
+  },
+  {
+    "id": "okf-portability",
+    "query": "What should the final OKF bundle look like after leaving Memanto?",
+    "must_contain": ["human", "Markdown"]
+  }
+]
