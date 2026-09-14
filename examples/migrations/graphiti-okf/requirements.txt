@@ -1,0 +1,14 @@
+# Graphiti → OKF example (Path B / Memanto #1609)
+# Core dry-run needs only the stdlib + these light deps:
+pyyaml>=6.0
+pytest>=8.0
+
+# Optional — live Graphiti seed ($0 with mocks; no OpenAI key):
+#   pip install "graphiti-core[kuzu]>=0.30.0"
+# Or FalkorDB via Docker:
+#   docker run -p 6379:6379 -d --name falkor falkordb/falkordb:latest
+#   pip install "graphiti-core[falkordb]>=0.30.0"
+#
+# Optional live Memanto migrate/export (needs free Moorcheh key):
+#   pip install memanto
+#   export MOORCHEH_API_KEY=...

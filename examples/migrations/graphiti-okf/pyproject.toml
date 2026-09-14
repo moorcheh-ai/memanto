@@ -1,0 +1,17 @@
+[project]
+name = "graphiti-okf"
+version = "0.1.0"
+description = "Graphiti temporal graph → OKF v0.2 → Memanto (examples-only Path B showcase)"
+requires-python = ">=3.11"
+dependencies = [
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+live = ["graphiti-core[kuzu]>=0.30.0"]
+falkordb = ["graphiti-core[falkordb]>=0.30.0"]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

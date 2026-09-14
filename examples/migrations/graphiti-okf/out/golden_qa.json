@@ -1,0 +1,70 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Where does Alex Rivera live?",
+      "expect_any": [
+        "seattle"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q2",
+      "question": "What seat does Alex prefer?",
+      "expect_any": [
+        "aisle"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q3",
+      "question": "What meal preference was superseded?",
+      "expect_any": [
+        "vegetarian"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q4",
+      "question": "What is the current diet after the flip?",
+      "expect_any": [
+        "fish",
+        "poultry"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q5",
+      "question": "Work-trip fare policy?",
+      "expect_any": [
+        "refundable"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q6",
+      "question": "Who is Alex's partner?",
+      "expect_any": [
+        "jordan"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q7",
+      "question": "October travel goal destination?",
+      "expect_any": [
+        "tokyo"
+      ],
+      "export_hit": true
+    },
+    {
+      "id": "q8",
+      "question": "Backup hotel payment card?",
+      "expect_any": [
+        "9001",
+        "amex"
+      ],
+      "export_hit": true
+    }
+  ]
+}
