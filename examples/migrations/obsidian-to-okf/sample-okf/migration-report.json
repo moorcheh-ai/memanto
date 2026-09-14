@@ -1,0 +1,25 @@
+{
+  "converted_files": 21,
+  "embeds_converted": 0,
+  "skipped_files": 0,
+  "source_files": 21,
+  "source_sha256": "5edc939e73e6e23eaf936ce1d76f33d1f9415cab03999ce061aaddd7a47e53e7",
+  "type_counts": {
+    "artifact": 10,
+    "context": 1,
+    "decision": 1,
+    "fact": 7,
+    "goal": 2
+  },
+  "unresolved_links": [
+    {
+      "source": "_Start Here.md",
+      "target": "wikilinks"
+    },
+    {
+      "source": "_Start Here.md",
+      "target": "Book"
+    }
+  ],
+  "wikilinks_converted": 6
+}
