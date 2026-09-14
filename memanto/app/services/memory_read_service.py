@@ -32,6 +32,19 @@ def _validate_filter_token(value: Any, field_name: str) -> str:
     return token
 
 
+def _sanitize_query_text(query: str | None) -> str:
+    """Neutralize '#' filter prefixes in user query terms to prevent filter injection.
+
+    Moorcheh query syntax treats tokens starting with '#' as server-side metadata/tag
+    filters (e.g. '#status:expired' or '#memory_type:fact'). To ensure user search text
+    is treated strictly as semantic search content, leading '#' characters at token boundaries
+    are stripped while preserving trailing syntax like 'C#' or 'F#'.
+    """
+    if not query:
+        return ""
+    return re.sub(r"(?:\A|\s)#+", " ", str(query)).strip()
+
+
 def _coerce_timestamp_str(value: Any) -> Any:
     """Return a timestamp field as an ISO string, tolerating raw epoch numbers.
 
@@ -749,11 +762,11 @@ class MemoryReadService:
                 filter_parts.append(f"#{key}:{value}")
 
         # Combine query with filters
+        base = _sanitize_query_text(query)
         if filter_parts:
-            base = (query or "").strip()
             joined = " ".join(filter_parts)
             return f"{base} {joined}".strip() if base else joined
-        return (query or "").strip()
+        return base
 
     def _apply_temporal_filter(
         self,
