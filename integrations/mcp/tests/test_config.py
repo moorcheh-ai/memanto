@@ -98,3 +98,36 @@ def test_transport_enum_from_env(
 ) -> None:
     monkeypatch.setenv("MEMANTO_MCP_TRANSPORT", "sse")
     assert MCPServerSettings().transport is TransportType.SSE  # type: ignore[call-arg]
+
+
+def test_remote_http_bind_requires_inbound_auth_token(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MEMANTO_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("MEMANTO_MCP_HOST", "0.0.0.0")
+
+    with pytest.raises(ValidationError, match="MEMANTO_MCP_AUTH_TOKEN"):
+        MCPServerSettings()  # type: ignore[call-arg]
+
+
+def test_remote_http_bind_accepts_inbound_auth_token(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    token = "local-test-token"
+    monkeypatch.setenv("MEMANTO_MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("MEMANTO_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("MEMANTO_MCP_AUTH_TOKEN", token)
+
+    settings = MCPServerSettings()  # type: ignore[call-arg]
+    assert settings.auth_token_value() == token
+    assert token not in repr(settings)
+    assert token not in str(settings)
+
+
+def test_empty_inbound_auth_token_rejected(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MEMANTO_MCP_AUTH_TOKEN", "   ")
+
+    with pytest.raises(ValidationError, match="MEMANTO_MCP_AUTH_TOKEN"):
+        MCPServerSettings()  # type: ignore[call-arg]
