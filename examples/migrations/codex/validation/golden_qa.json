@@ -1,0 +1,47 @@
+[
+  {
+    "id": "shared-worker-storage",
+    "question": "Which database should Atlas Relay use for shared workers, and why?",
+    "expected_all": [
+      "PostgreSQL 16",
+      "workers share state"
+    ]
+  },
+  {
+    "id": "runtime-minimum",
+    "question": "What is the minimum supported Python runtime?",
+    "expected_all": [
+      "Python 3.10"
+    ]
+  },
+  {
+    "id": "timestamp-policy",
+    "question": "How must Atlas Relay store timestamps?",
+    "expected_all": [
+      "every timestamp in UTC"
+    ]
+  },
+  {
+    "id": "production-logging",
+    "question": "Which production log format is required?",
+    "expected_all": [
+      "structured JSON"
+    ]
+  },
+  {
+    "id": "status-preference",
+    "question": "How should progress status be communicated?",
+    "expected_all": [
+      "concise status updates"
+    ]
+  },
+  {
+    "id": "failure-workflow",
+    "question": "What should happen before a test failure is fixed?",
+    "expected_all": [
+      "test failures",
+      "before"
+    ]
+  }
+]
+
