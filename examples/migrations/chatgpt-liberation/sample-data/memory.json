@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mem-001",
+    "memory": "User prefers concise, bulleted summaries.",
+    "type": "preference",
+    "created_at": "2026-07-03T10:00:00+00:00"
+  },
+  {
+    "id": "mem-002",
+    "memory": "User is vegetarian and has a serious peanut allergy \u2014 carries EpiPen on hikes.",
+    "type": "fact",
+    "created_at": "2026-07-08T10:00:00+00:00"
+  },
+  {
+    "id": "mem-003",
+    "memory": "Project Atlas is a graph-augmented retrieval system, deadline Sep 10 (moved from Aug 30). Team: Maya (design), user (PM).",
+    "type": "goal",
+    "created_at": "2026-07-11T10:00:00+00:00"
+  },
+  {
+    "id": "mem-004",
+    "memory": "User switched from coffee to green tea to water 3L daily \u2014 latest is water only.",
+    "type": "preference",
+    "created_at": "2026-07-28T10:00:00+00:00"
+  },
+  {
+    "id": "mem-005",
+    "memory": "Dog Luna, golden retriever, 2 years old, adopted on day 17.",
+    "type": "fact",
+    "created_at": "2026-07-20T10:00:00+00:00"
+  }
+]
