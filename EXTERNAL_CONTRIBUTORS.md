@@ -93,3 +93,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @rasadregmi
 - @jaonnvoller-ai
 - @benediktirsch-rgb
+- @filtede98
