@@ -1,0 +1,18 @@
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from examples/migrations/chatgpt/sample_output/okf-bundle
+  … Mapping OKF nodes onto Memanto schema...
+
+╭────────────────────────────── Dry run complete ──────────────────────────────╮
+│ OKF nodes: 13                                                                │
+│ Mapped memories: 13  (skipped 0)                                             │
+│ Type breakdown: commitment: 1, decision: 1, event: 1, fact: 2, goal: 1,      │
+│ instruction: 2, preference: 2, relationship: 3                               │
+│                                                                              │
+│ Dry run — no writes performed.                                               │
+│                                                                              │
+│ Run dir: /Users/colincasson/.memanto/migrate/okf/20260723_002623             │
+│ Mapped preview:                                                              │
+│ /Users/colincasson/.memanto/migrate/okf/20260723_002623/mapped_preview.json  │
+╰──────────────────────────────────────────────────────────────────────────────╯
