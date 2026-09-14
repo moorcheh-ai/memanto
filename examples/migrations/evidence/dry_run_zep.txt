@@ -1,0 +1,14 @@
+$ python examples/migrations/scripts/migrate_zep.py --dry-run
+
+Fetching Zep export...
+  Listing Zep users...
+  Found 2 users
+  Fetching edges [1/2] samuel-memanto-test
+    samuel-memanto-test: 12 edges
+  Fetching edges [2/2] test-user-memanto
+    test-user-memanto: 0 edges
+
+Dry run complete
+  Source records : 12
+  Mapped memories: 12  (skipped 0)
+  Type breakdown : fact: 12

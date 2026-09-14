@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""
+Migrate a Claude conversation export into Memanto.
+
+Configure:
+    ZIP_PATH = "/path/to/claude_export.zip"   # set this
+
+Run:
+    python scripts/migrate_claude.py [--dry-run] [--agent <id>]
+"""
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+_HERE = Path(__file__).parent
+_MIGRATIONS = _HERE.parent
+_REPO_ROOT = _MIGRATIONS.parent.parent
+for _p in (_HERE, _MIGRATIONS, _REPO_ROOT):
+    s = str(_p)
+    if s not in sys.path:
+        sys.path.insert(0, s)
+
+# ── configure ────────────────────────────────────────────────────────────────
+ZIP_PATH = str(_MIGRATIONS / "sample_data" / "claude_export.zip")
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Migrate Claude export to Memanto")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--agent", default=None)
+    parser.add_argument("--file", default=ZIP_PATH, help="Path to Claude export ZIP")
+    args = parser.parse_args()
+
+    zip_path = Path(args.file)
+    if not zip_path.exists():
+        print(f"ZIP not found: {zip_path}", file=sys.stderr)
+        print("Set ZIP_PATH at the top of this script or pass --file.", file=sys.stderr)
+        return 1
+
+    from _load_zip import load_conversation_zip
+    from _shared import print_summary, require_agent
+    from runner import run_migration
+
+    export = load_conversation_zip(zip_path, "claude")
+    if export is None:
+        return 1
+
+    if not args.dry_run:
+        agent = require_agent(args.agent, "migrate_claude.py")
+        if agent is None:
+            return 1
+        api_key = os.environ.get("MOORCHEH_API_KEY", "")
+        if not api_key:
+            print("MOORCHEH_API_KEY is not set.", file=sys.stderr)
+            return 1
+        from memanto.cli.client.sdk_client import SdkClient
+        client = SdkClient(api_key=api_key)
+        client.activate_agent(agent, duration_hours=2)
+    else:
+        agent = args.agent
+        client = None
+
+    try:
+        summary, _ = run_migration(
+            provider="claude",
+            export=export,
+            client=client,
+            agent_id=agent or "",
+            dry_run=args.dry_run,
+            on_progress=lambda msg: print(f"  {msg}"),
+        )
+    finally:
+        if client is not None:
+            client.deactivate_agent(agent)
+
+    print_summary(summary, args.dry_run)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
