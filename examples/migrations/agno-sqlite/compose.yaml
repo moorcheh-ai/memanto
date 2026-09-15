@@ -1,0 +1,53 @@
+services:
+  cli:
+    profiles: [tools]
+    build:
+      context: ../../..
+      dockerfile: examples/migrations/agno-sqlite/Dockerfile.demo
+    environment:
+      MEMANTO_DEMO_CONTAINER: "1"
+      MEMANTO_BACKEND: on-prem
+      MOORCHEH_ONPREM_URL: http://server:8080
+    volumes:
+      - ./:/example:ro
+      - ./run:/run-artifacts
+      - cli-state:/root/.memanto
+  ollama:
+    image: ollama/ollama@sha256:32931b46719f673c05fdbaa81ccb26da18ea4a1c57590a754874ab28ba269eb2
+    volumes:
+      - models:/root/.ollama
+  init-data:
+    image: moorcheh/server@sha256:543158ca24391a6d83336f0cf5d20ab2fba79c46bfe89a357c31b7a26cb4e0fe
+    user: "0:0"
+    entrypoint: ["chown", "65532:65532", "/app/data"]
+    volumes:
+      - data:/app/data
+  server:
+    image: moorcheh/server@sha256:543158ca24391a6d83336f0cf5d20ab2fba79c46bfe89a357c31b7a26cb4e0fe
+    depends_on:
+      init-data:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:18088:8080"
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      EMBEDDING_PROVIDER: ollama
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_BASE_URL: http://ollama:11434
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: nomic-embed-text
+      LLM_PROVIDER: ollama
+      LLM_MODEL: qwen2.5:1.5b
+      LLM_BASE_URL: http://ollama:11434
+      DATA_FILE: /app/data/moorcheh_data_store.json
+      NAMESPACE_REGISTRY_FILE: /app/data/namespace_registry.json
+      FILE_REGISTRY_FILE: /app/data/file_registry.json
+      ALLOWED_UPLOAD_PATHS: /uploads
+      CHUNKER_URL: http://127.0.0.1:8090
+    volumes:
+      - data:/app/data
+volumes:
+  cli-state:
+  models:
+  data:
