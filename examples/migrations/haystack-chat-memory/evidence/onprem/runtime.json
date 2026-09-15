@@ -1,0 +1,38 @@
+{
+  "observed_at": "2026-09-11T19:18:35.952574+00:00",
+  "backend": "official Memanto on-prem + native Ollama",
+  "server_image": "moorcheh/server@sha256:10598b965f29e8f748ecc3fa345a7abdcd0340d44f32fa2019b5c83551ea3733",
+  "server_health": {
+    "embedding_provider": "ollama",
+    "items": 40,
+    "llm_model": "qwen2.5",
+    "llm_provider": "ollama",
+    "max_items": 100000,
+    "model": "all-minilm-haystack",
+    "remaining": 99960,
+    "status": "ok"
+  },
+  "ollama_version": {
+    "version": "0.34.0"
+  },
+  "model_parameters": "num_batch                      512\nnum_ctx                        512",
+  "model_info": {
+    "bert.context_length": 512,
+    "bert.embedding_length": 384,
+    "general.architecture": "bert"
+  },
+  "installed_models": [
+    {
+      "name": "all-minilm-haystack:latest",
+      "digest": "590a8b83d41871d3e73a8c5a0c11110a6e359b90eee1131d85727e6091bf8b04",
+      "size": 45960753
+    },
+    {
+      "name": "all-minilm:latest",
+      "digest": "1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef",
+      "size": 45960996
+    }
+  ],
+  "moorcheh_client_version": "0.1.5",
+  "generative_model_used": false
+}
