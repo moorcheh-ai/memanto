@@ -1,0 +1,9 @@
+{
+  "source_records": 4,
+  "snapshots_exact": true,
+  "source_positive_top1": 3,
+  "target_positive_top1": 2,
+  "answer_contains_expected_city_and_drink": true,
+  "cost_or_latency_savings_claimed": false,
+  "note": "Synthetic source. Record conservation and retrieval ranking are separate measurements."
+}
