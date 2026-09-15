@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "source_kind": "structured extraction from completed GitHub Actions job logs; not the artifact's original live_validation.json",
+  "run_id": 34788286157,
+  "run_attempt": 1,
+  "run_url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34788286157",
+  "run_conclusion": "success",
+  "automation_commit": "a4738d839e1d2de8889a4782ea82edc17f2e2373",
+  "tested_entry_commit": "9a821ca9b08673b570a63de7c23524600516a3e5",
+  "live_job_id": 103807753177,
+  "local_job_id": 103807686771,
+  "local_focused_tests_passed": 49,
+  "measurement_protocol": "v3: two consecutive complete native exports before one scored pass of eight queries per agent. No scored-query retries.",
+  "logged_summary": {
+    "data_round_trip_passed": true,
+    "retrieval_hits_out_of_8": {
+      "source_top5": 8,
+      "first_after_readiness_top5": 8,
+      "second_after_readiness_top5": 8
+    }
+  },
+  "independently_recomputed": {
+    "first_after_readiness_top5": {
+      "queries": 8,
+      "top5_hits": 8,
+      "rank1_hits": 8
+    },
+    "second_after_readiness_top5": {
+      "queries": 8,
+      "top5_hits": 8,
+      "rank1_hits": 8
+    }
+  },
+  "readiness_observations": [
+    {
+      "attempt": 1,
+      "complete": true,
+      "elapsed_seconds": 5.848,
+      "source_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+      "stage": "04_export_ready_01"
+    },
+    {
+      "attempt": 2,
+      "complete": true,
+      "elapsed_seconds": 13.069,
+      "source_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+      "stage": "04_export_ready_02"
+    },
+    {
+      "attempt": 1,
+      "complete": false,
+      "elapsed_seconds": 5.006,
+      "stage": "07_export_again_ready_01",
+      "validation_error": "Expected exactly one catalogue metadata record"
+    },
+    {
+      "attempt": 2,
+      "complete": true,
+      "elapsed_seconds": 11.806,
+      "source_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+      "stage": "07_export_again_ready_02"
+    },
+    {
+      "attempt": 3,
+      "complete": true,
+      "elapsed_seconds": 19.064,
+      "source_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+      "stage": "07_export_again_ready_03"
+    }
+  ],
+  "recall_observations": [
+    {
+      "expected_id": "attention-display",
+      "field": "first_after_readiness_top5",
+      "query": "What is the Attention Display concept?",
+      "returned_ids": [
+        "attention-display",
+        "adaptive-control",
+        "physical-building",
+        "ai-home"
+      ]
+    },
+    {
+      "expected_id": "ai-fisherman",
+      "field": "first_after_readiness_top5",
+      "query": "What is AI Fisherman designed to do?",
+      "returned_ids": [
+        "ai-fisherman",
+        "ai-clam",
+        "find-my-fish",
+        "ai-shipwreck",
+        "ai-octopus"
+      ]
+    },
+    {
+      "expected_id": "find-my-fish",
+      "field": "first_after_readiness_top5",
+      "query": "What is the Find My Fish concept?",
+      "returned_ids": [
+        "find-my-fish",
+        "ai-fisherman",
+        "smart-weight",
+        "fishing-toy",
+        "pot-carousel"
+      ]
+    },
+    {
+      "expected_id": "buildwave",
+      "field": "first_after_readiness_top5",
+      "query": "What is Buildwave intended to build?",
+      "returned_ids": [
+        "buildwave",
+        "physical-building",
+        "aquaflight",
+        "air-wings",
+        "ai-fairy-wings"
+      ]
+    },
+    {
+      "expected_id": "picture-us",
+      "field": "first_after_readiness_top5",
+      "query": "What is the Picture Us app concept?",
+      "returned_ids": [
+        "picture-us",
+        "picture-board",
+        "duet-river",
+        "attention-display",
+        "pot-carousel"
+      ]
+    },
+    {
+      "expected_id": "aquaflight",
+      "field": "first_after_readiness_top5",
+      "query": "What is the AquaFlight concept?",
+      "returned_ids": [
+        "aquaflight",
+        "air-wings",
+        "compact-breathing",
+        "ai-fairy-wings",
+        "ocean-bubbles"
+      ]
+    },
+    {
+      "expected_id": "ocean-bubbles",
+      "field": "first_after_readiness_top5",
+      "query": "What is the Ocean Bubbles proposal?",
+      "returned_ids": [
+        "ocean-bubbles",
+        "compact-breathing",
+        "lunar-habitats",
+        "light-bubble",
+        "aquaflight"
+      ]
+    },
+    {
+      "expected_id": "super-punch",
+      "field": "first_after_readiness_top5",
+      "query": "What is Super Punch intended for?",
+      "returned_ids": [
+        "super-punch",
+        "super-super-suits",
+        "adaptive-control",
+        "smart-reels",
+        "kitchen-poker"
+      ]
+    },
+    {
+      "expected_id": "attention-display",
+      "field": "second_after_readiness_top5",
+      "query": "What is the Attention Display concept?",
+      "returned_ids": [
+        "attention-display",
+        "adaptive-control",
+        "physical-building",
+        "ai-home"
+      ]
+    },
+    {
+      "expected_id": "ai-fisherman",
+      "field": "second_after_readiness_top5",
+      "query": "What is AI Fisherman designed to do?",
+      "returned_ids": [
+        "ai-fisherman",
+        "ai-clam",
+        "find-my-fish",
+        "smart-weight",
+        "ai-octopus"
+      ]
+    },
+    {
+      "expected_id": "find-my-fish",
+      "field": "second_after_readiness_top5",
+      "query": "What is the Find My Fish concept?",
+      "returned_ids": [
+        "find-my-fish",
+        "ai-fisherman",
+        "fishing-toy",
+        "smart-weight",
+        "pot-carousel"
+      ]
+    },
+    {
+      "expected_id": "buildwave",
+      "field": "second_after_readiness_top5",
+      "query": "What is Buildwave intended to build?",
+      "returned_ids": [
+        "buildwave",
+        "ai-fairy-wings",
+        "physical-building",
+        "air-wings",
+        "festival-river"
+      ]
+    },
+    {
+      "expected_id": "picture-us",
+      "field": "second_after_readiness_top5",
+      "query": "What is the Picture Us app concept?",
+      "returned_ids": [
+        "picture-us",
+        "picture-board",
+        "duet-river",
+        "attention-display",
+        "sidekicks"
+      ]
+    },
+    {
+      "expected_id": "aquaflight",
+      "field": "second_after_readiness_top5",
+      "query": "What is the AquaFlight concept?",
+      "returned_ids": [
+        "aquaflight",
+        "air-wings",
+        "ai-fairy-wings",
+        "compact-breathing",
+        "play-skins"
+      ]
+    },
+    {
+      "expected_id": "ocean-bubbles",
+      "field": "second_after_readiness_top5",
+      "query": "What is the Ocean Bubbles proposal?",
+      "returned_ids": [
+        "ocean-bubbles",
+        "lunar-habitats",
+        "aquaflight",
+        "compact-breathing",
+        "light-bubble"
+      ]
+    },
+    {
+      "expected_id": "super-punch",
+      "field": "second_after_readiness_top5",
+      "query": "What is Super Punch intended for?",
+      "returned_ids": [
+        "super-punch",
+        "super-super-suits",
+        "kitchen-poker",
+        "copper-circuit-supercar",
+        "adaptive-control"
+      ]
+    }
+  ],
+  "source_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+  "selected_public_tiles": 66,
+  "expected_memory_records": 67,
+  "cleanup": {
+    "verified_and_backed_up_documents_per_namespace": 67,
+    "removed_namespaces": [
+      "memanto_agent_voller-portable-054a48145260-a",
+      "memanto_agent_voller-portable-054a48145260-b"
+    ],
+    "backup_artifact_id": 10326783605,
+    "confirmed_at_least_two_free_slots_before_migration": true,
+    "verification_basis": "Completed prepare, upload and purge steps plus exact namespace removal and capacity confirmation lines in live job log."
+  },
+  "artifacts": [
+    {
+      "id": 10326783605,
+      "name": "voller-approved-backup-34788286157-1",
+      "size_in_bytes": 41057,
+      "github_reported_digest": "sha256:fd378e3ec18f4301de3fd8371aea29fb72921e74db1e660374718ad4c0489530",
+      "expires_at": "2026-10-13T22:58:28Z",
+      "url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34788286157/artifacts/10326783605"
+    },
+    {
+      "id": 10326634051,
+      "name": "voller-cleanup-result-34788286157-1",
+      "size_in_bytes": 342,
+      "github_reported_digest": "sha256:ef02099cc0d7c5b39223e2417e99aa8e95748c4e41905bc758603286284cf62c",
+      "expires_at": "2026-10-13T22:58:37Z",
+      "url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34788286157/artifacts/10326634051"
+    },
+    {
+      "id": 10326628938,
+      "name": "voller-local-34788286157-1",
+      "size_in_bytes": 122095,
+      "github_reported_digest": "sha256:6ce75dbceef56de48493058aba277b3a2efa260a1615c74b6c9183353219dc52",
+      "expires_at": "2026-10-13T22:57:57Z",
+      "url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34788286157/artifacts/10326628938"
+    },
+    {
+      "id": 10326609051,
+      "name": "voller-live-34788286157-1",
+      "size_in_bytes": 813623,
+      "github_reported_digest": "sha256:a89d0e8cd62d69579defd6fa25f72ee7b6c5d8bda5fbb5991881dc07535f0bd5",
+      "expires_at": "2026-10-13T22:59:31Z",
+      "url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34788286157/artifacts/10326609051"
+    }
+  ],
+  "archive_bytes_independently_downloaded_and_verified": false,
+  "artifact_access_note": "The GitHub connector returned download references, but fetching the live ZIP bytes into this workspace returned HTTP 403. Evidence here was independently parsed and scored from authenticated job logs; archive digests are GitHub-reported.",
+  "limits": [
+    "Eight named-record retrieval probes, not general LLM answer accuracy.",
+    "Complete native exports established the source digest after readiness; the second agent's first incomplete export remains disclosed.",
+    "Earlier immediate-recall runs remain failed and are retained as separate evidence.",
+    "One successful readiness-gated run does not establish universal readiness timing, reliability, or invention performance."
+  ],
+  "competition_entry_complete": false,
+  "remaining_submission_items": [
+    "Real live demonstration video",
+    "Public showcase",
+    "Upstream contribution PR",
+    "Linked BountyHub claim"
+  ]
+}

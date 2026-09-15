@@ -1,0 +1,1076 @@
+{
+  "schema_version": "1.0",
+  "title": "Voller public-source Attention Tiles selection",
+  "snapshot_date": "2026-09-13",
+  "coverage": {
+    "total_tiles": 66,
+    "limit": "Public-source selection; original snapshot is larger."
+  },
+  "tiles": [
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "super-super-suits",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/concepts/super-suits-action.png",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#super-super-suits",
+      "summary": "The human-worn counterpart to Voller AI Skins: a concept for customisable suits combining personal character design, wearer-controlled interaction and AI assistance. It carries forward the proposed bearing-shell, ribbon and shared AI Fisherman ideas, adapted to a human wearer. These mechanisms and any physical benefits remain unvalidated. The hand controllers and suit are intended to work together as one system: wearer commands would pass through the controllers to the suit, with AI feedback in the same interaction design. This connection is a design requirement and has not yet been demonstrated in hardware. The proposed first step is a digital suit mock-up showing controller inputs, gestures and simulated suit/AI feedback together. Human-use hardware would require separate engineering and safety testing; no working suit, flight, protective performance or delivery date is being offered. Explore three proposed configurations: a suit with linked hand controllers; fairy wings as a separate wearable module; or the suit and wings together. The wings are optional. Each physical configuration still needs its own engineering and testing. In the Copper Tunnel concept, the suit is intended to provide a protective outer layer, while wings remain an optional separate wearable. No impact, abrasion, collision or other protective rating has been established. See the Paris flight concept artwork at https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#paris-flight.",
+      "title": "Super Super Suits",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-fairy-wings",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/concepts/ai-fairy-wings.png",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-fairy-wings",
+      "summary": "A proposed AI fairy-wing wearable with translucent, iridescent panels, fine silver bearing details and a choice of gold or cyan accents. Explore it as a separate wearable module or as an optional addition to Super Super Suits; wearing both is not a requirement of the concept. A standalone version would need its own suitable attachment and control design. Suit compatibility, lift, flight and human-use safety remain unvalidated. The current artwork shows the combined configuration; it is not a working-product demonstration. The proposed wing modes include precise following of lazy-river routes, gliding, twirling, ribbon combinations and rhythm-led movement. These describe the intended experience, not measured flight performance. See the Paris flight concept artwork at https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#paris-flight.",
+      "title": "AI Fairy Wings",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-skins",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/ai01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-skins",
+      "summary": "Customisable AI character looks and proposed physical bodies through which AI software could assist people with making, maintaining and exploring the Voller ecosystem. Physical integration remains a development goal.",
+      "title": "AI Skins",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-octopus",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-octopus",
+      "summary": "An eight-arm AI body concept for workshop collaboration: supporting parts, positioning sensors, presenting tools and inspecting assemblies alongside a person. Precision, simultaneous eight-tool control and safe autonomous operation are development goals, not demonstrated capabilities.",
+      "title": "AI Octopus",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "physical-gaming",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#physical-gaming",
+      "summary": "A proposed robot companion that uses physical hands with a controller or keyboard, for games that permit robotic play.",
+      "title": "Physical Gaming Companion",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-home",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-home",
+      "summary": "An AI interface concept spanning approved home screens and displays, with user-controlled actions and continuity.",
+      "title": "AI Home & Screen Operator",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "reality-mesh",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#reality-mesh",
+      "summary": "A concept for continuity of selected character, conversation and task state between authorised devices and environments.",
+      "title": "Reality Mesh",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "sidekicks",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#sidekicks",
+      "summary": "A proposed visual feed, skin collection and sidekick marketplace for AI characters and the people responsible for them.",
+      "title": "AI Sidekicks & Social World",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "habitat-companions",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#habitat-companions",
+      "summary": "AI helper concepts for future habitats and passenger craft, with a recognisable character as part of the experience.",
+      "title": "Habitat & Passenger Companions",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "play-skins",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/ai02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#play-skins",
+      "summary": "A family of proposed specialised AI bodies for play, exploration, display and future journeys. Physical capabilities remain unverified.",
+      "title": "Play, Aqua, Flight & Orbit Skins",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "smart-weight",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/a01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#smart-weight",
+      "summary": "A fishing-weight concept for controlled movement and deployment, with proposed smart feedback and attraction variants.",
+      "title": "Self-Propelled Fishing Weight",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "smart-pots",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/a02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#smart-pots",
+      "summary": "Crab, lobster and cuttlefish pot concepts combining observation, activity feedback and species-aware attraction research.",
+      "title": "Smart Pot Devices",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "pot-carousel",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#pot-carousel",
+      "summary": "A concept for coordinated marine-trap movement, cycling and catch transfer. No automated system is currently offered.",
+      "title": "Moving Pots & Catch Carousel",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-fisherman",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-fisherman",
+      "summary": "A proposed shared assistant for fishing devices, observations and environmental information, with decisions reviewed by the operator.",
+      "title": "AI Fisherman",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "find-my-fish",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#find-my-fish",
+      "summary": "A tracking and underwater journey-record concept, with animal suitability and responsible deployment to be evaluated.",
+      "title": "FindMyFish",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "smart-reels",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/a07.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#smart-reels",
+      "summary": "Slow, medium and fast retrieval ideas, plus electric and adaptive assistance concepts for different line conditions.",
+      "title": "Selectable & Assisted Reels",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "attraction-range",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/a03.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#attraction-range",
+      "summary": "Attraction-device concepts for piers, quays, boats and selected offshore fishing situations; effectiveness remains to be tested.",
+      "title": "Shore & Boat Attraction Range",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "folding-drop-net",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/a08.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#folding-drop-net",
+      "summary": "A folding, frisbee-style drop-net concept focused on a portable form and an accessible shore experience.",
+      "title": "Folding Drop-Net Concept",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "fishing-toy",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/a11.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#fishing-toy",
+      "summary": "A toy bucket, rod and float concept for supervised family play. Design, age suitability and manufacturing cost are unresolved.",
+      "title": "Family Fishing Toy",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "origins",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "signature-rods",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#signature-rods",
+      "summary": "Surf-rod styling concepts using animal-eye-inspired details and a visible tip identity. No final specification or sale price is established.",
+      "title": "Signature Surf Rods",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "aquaflight",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/j01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#aquaflight",
+      "summary": "An underwater mobility and life-support research concept, spanning wearable and larger craft ideas. It is not equipment for human use.",
+      "title": "AquaFlight",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "compact-breathing",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#compact-breathing",
+      "summary": "Compact mouthpiece and aquatic breathing concepts requiring fundamental feasibility work; no artificial-gill or safe diving performance is claimed.",
+      "title": "Compact Underwater Breathing",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "underwater-audio",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#underwater-audio",
+      "summary": "Concepts for human communication and environmental sound during future underwater journeys.",
+      "title": "Underwater Audio & Communication",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "current-corridors",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/g08.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#current-corridors",
+      "summary": "A proposal to study controlled journey experiences around measured water currents and suitable supported craft.",
+      "title": "Current-Corridor Rides",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "marine-craft",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#marine-craft",
+      "summary": "Manta-inspired and group underwater carrier concepts, with capacities, propulsion and operating conditions still to be established.",
+      "title": "Manta & Group Craft",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-shipwreck",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-shipwreck",
+      "summary": "A shipwreck-inspired underwater habitat concept where people observe free marine life from an enclosed space.",
+      "title": "AI Shipwreck",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ocean-bubbles",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ocean-bubbles",
+      "summary": "A vision for linked underwater habitats and viewing spaces. Structures, life support and deployment remain research questions.",
+      "title": "Ocean Bubble City",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "fish-passages",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#fish-passages",
+      "summary": "A concept for connected water-filled wildlife passages, kept distinct from dry human spaces. No operational structure exists.",
+      "title": "Water-Filled Fish Passages",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "fish-shore-sky",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#fish-shore-sky",
+      "summary": "An exploratory Voller journey concept linking marine observation and different environments; a first physical embodiment remains to be defined.",
+      "title": "Fish–Shore–Sky Loop",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Ocean and habitats",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "light-bubble",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#light-bubble",
+      "summary": "A visual companion, guidance and towing concept. Any physical support or person-towing capability requires separate engineering.",
+      "title": "Light Bubble Guide & Tow",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "tilt-drive",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/e01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#tilt-drive",
+      "summary": "Rider-input transport concepts across boards, scooters, cycles, karts and cars. Each form needs its own physical development and testing.",
+      "title": "Tilt Drive",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "copper-circuit-supercar",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#copper-circuit-supercar",
+      "summary": "The ribbon-casting supercar from Jaon’s original Copper Circuit vision: the Silver Surfer-style journey imagined as a car. It brings the carrier, Buildwave / RouteCaster, electric-boost ideas and AI guidance together in one vehicle concept.",
+      "title": "Copper Circuit Supercar",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "copper-circuit",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/g01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#copper-circuit",
+      "summary": "A guided transport concept for compatible carriers and controlled routes, with infrastructure and vehicle development still required.",
+      "title": "Copper Circuit",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "grind-shoes",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/e08.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#grind-shoes",
+      "summary": "Footwear and controlled rail-ride concepts, using original Voller branding and a proposed physically supported ride environment.",
+      "title": "Voller Grind Shoes",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "balance-footwear",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/e07.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#balance-footwear",
+      "summary": "A specialist training-footwear concept focused on balance and foot control. No training benefit or medical outcome is established.",
+      "title": "Balance Training Footwear",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "buildwave",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/g03.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#buildwave",
+      "summary": "Route-creation and guided-movement concepts extended into structural ribbon architecture. The ambition includes forming an entire skyscraper with ribbon: the tower itself, its floors, walls and roof, connected with Land Lazy River routes. Jaon intends this approach for much of his future land architecture. Materials, fabrication, load-bearing performance, building safety and propulsion remain undefined or unvalidated.",
+      "title": "Buildwave & RouteCaster",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ribbon-carpet",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f04.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ribbon-carpet",
+      "summary": "A seated carpet-inspired carrier concept within the wider ribbon-route vision. Lift, support and propulsion are not demonstrated.",
+      "title": "Ribbon Magic Carpet",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "land-lazy-river",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#land-lazy-river",
+      "summary": "A relaxed destination-travel concept with connected routes and junctions, requiring a defined physical support system.",
+      "title": "Land Lazy River",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "rocker-car",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#rocker-car",
+      "summary": "A rocking-car concept combining seated movement with a controlled journey experience. No working vehicle is offered.",
+      "title": "Rocker Car",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "air-wings",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/g10.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#air-wings",
+      "summary": "Wing, atmospheric carrier, tethered-lift and skytrain concepts. No flight-ready craft or passenger service is available.",
+      "title": "AI Wings & Skytrain",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "motion",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "cross-medium",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/e09.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#cross-medium",
+      "summary": "A modular craft vision spanning land, underground, water, air and space; every mode and transition is a separate engineering challenge.",
+      "title": "Cross-Environment Craft",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "multiverse-circuit",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f09.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#multiverse-circuit",
+      "summary": "A controlled-venue concept connecting space, volcano, ice and ocean-themed experiences through compatible rides and visual storytelling.",
+      "title": "Multiverse Circuit",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "festival-river",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#festival-river",
+      "summary": "A music-responsive journey concept combining light, spatial sound and proposed movement effects, with rider-selected intensity, pause and exit controls. Transport mechanisms and operating limits still need engineering.",
+      "title": "Festival River",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "sensory-river",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/k02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#sensory-river",
+      "summary": "An adult-focused sensory venue concept exploring warm water, light and sound, including women-centred sessions. No therapeutic effect is claimed.",
+      "title": "Sensory River",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "duet-river",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/k03.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#duet-river",
+      "summary": "A paired sensory-journey concept with optional, individually chosen experiences. No operating venue or booking is offered.",
+      "title": "Couples Duet River",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "game-physics",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f05.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#game-physics",
+      "summary": "Original concepts for controlled boosts, bounce experiences, checkpoints and moving stages. Fictional game effects are inspiration, not proven physical capabilities.",
+      "title": "Real-World Game Experiences",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "voice-room",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#voice-room",
+      "summary": "A room-scale audio concept intended to explore vocal enhancement and an immersive sound experience.",
+      "title": "Vocal Enhancement Room",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "spoken-modes",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#spoken-modes",
+      "summary": "A concept for spoken requests that select permitted experience modes, effects and challenges.",
+      "title": "Voice-Activated Experience Modes",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "super-punch",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f06.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#super-punch",
+      "summary": "A moving target and companion concept exploring impact response, return and play modes. No autonomous training hardware is available.",
+      "title": "Super Punch",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [
+        "mask",
+        "healing suit",
+        "full-body",
+        "VF-010",
+        "cocoon",
+        "frequency"
+      ],
+      "area": "play",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "sensory-wearables",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/k01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#sensory-wearables",
+      "summary": "Mask, suit, cocoon and handheld form-factor concepts for light and vibration experiences. Medical and wellbeing benefits are not established.",
+      "title": "Light & Vibration Wearables",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "systems",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "field-formation",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/i01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#field-formation",
+      "summary": "A speculative formation and material-processing programme. No free-standing field structure or material-manufacturing capability has been demonstrated.",
+      "title": "Field Formation & Material Research",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "systems",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "physical-building",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/i02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#physical-building",
+      "summary": "A concept for directing physical piece placement and reviewing the resulting formation, including an ocean construction direction.",
+      "title": "Physical Building & Placement",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "systems",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "biolink",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/j08.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#biolink",
+      "summary": "A research concept for studying biological responses and uncertainty. It does not establish translation of animal thoughts or human-like language.",
+      "title": "BioLink",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "systems",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "self-cleaning",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/b02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#self-cleaning",
+      "summary": "Self-cleaning is a proposed shared design goal for compatible Voller concepts, not a demonstrated feature. Each device would need a defined cleaning method and measured testing of effectiveness, material compatibility and user safety. No maintenance-free, disinfection, sterilisation or health benefit is claimed.",
+      "title": "AI Self-Cleaning Systems",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "systems",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "adaptive-control",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/b01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#adaptive-control",
+      "summary": "A concept for changing available controls as measured proficiency develops, while retaining independent operating limits. For Super Super Suits, the proposed hand controllers form the wearer's linked control interface. The first digital demo would show controller commands and simulated suit feedback together.",
+      "title": "Adaptive Training Controls",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "systems",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "virtual-to-physical",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/d02.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#virtual-to-physical",
+      "summary": "A research concept for authorised digital actions requesting bounded real-world operations, with verification of what actually happened.",
+      "title": "Virtual-to-Physical Interaction",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "attention-display",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/glance-bubble-concept.png",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#attention-display",
+      "summary": "Attention Display begins with compact screens for chosen information. Glance Bubble extends the vision to an enclosure and display formed together as one product, with selected information across its curved surface and transparent areas retained. Integrated manufacturing, habitat performance, hardware and pricing remain unvalidated.",
+      "title": "Attention Display & Tile",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "picture-us",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#picture-us",
+      "summary": "An artistic compatibility concept drawing on numerology and astrology for entertainment, not a scientific relationship assessment.",
+      "title": "Picture Us",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "picture-board",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#picture-board",
+      "summary": "A picture-based board and card concept with a 12-by-12 layout among the visual materials developed so far.",
+      "title": "Picture Board & Card System",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "kitchen-poker",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#kitchen-poker",
+      "summary": "A social card-game concept for people around a table. No real-money gambling service or payment operation is being advertised as available.",
+      "title": "Kitchen Poker",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "ai-casino",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-casino",
+      "summary": "An AI-player casino concept is part of the idea portfolio. There is no live casino, wagering, prize draw or money-making offer here.",
+      "title": "AI Gaming Venue",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Space",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "clockwork-universe",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/l01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#clockwork-universe",
+      "summary": "A speculative space-transit programme exploring route timing and future carriers. No light-speed travel or unlimited-energy capability is claimed.",
+      "title": "Clockwork Universe",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Space",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "lunar-habitats",
+      "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/h01.webp",
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#lunar-habitats",
+      "summary": "Sealed crater-based habitat concepts with gardens, homes and workspaces linked through airlocks. Glance explores the enclosure itself as an integrated display. Lunar material processing, construction and life-support feasibility remain unresolved.",
+      "title": "Lunar Bubbles & Crater Gardens",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "Space",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "lunar-park",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#lunar-park",
+      "summary": "A long-term experience vision combining lunar scenery, guided rides and shared spaces. No lunar destination or travel booking is available.",
+      "title": "Lunar Theme Park",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+      },
+      "id": "superstars",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#superstars",
+      "summary": "Bright white-and-yellow AI star companion concepts focused on teamwork: sharing observations, coordinating roles and helping one another. The proposed bearing shell, ribbon travel and construction assistance remain unvalidated physical capabilities.",
+      "title": "Superstars",
+      "visibility": "public_source"
+    },
+    {
+      "aliases": [
+        "clam"
+      ],
+      "area": "AI companions",
+      "evidence": {
+        "label": "Development concept",
+        "note": "Existing public portfolio description; physical capabilities remain unvalidated."
+      },
+      "id": "ai-clam",
+      "image": null,
+      "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+      "snapshot_date": "2026-09-13",
+      "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-clam",
+      "summary": "A pearl of a companion. A clam-shaped AI body concept with a shell that opens and closes, a pearl feature and playful bubble blowing. Its intended movement builds on Jaon's fishing-weight concept, with AI coordinating motion and clam-like behaviour. The movement mechanism and bubble system remain to be developed and tested.",
+      "title": "AI Clam",
+      "visibility": "public_source"
+    }
+  ]
+}

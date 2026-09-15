@@ -1,0 +1,30 @@
+{
+  "source_tiles": 66,
+  "selected_tiles": 66,
+  "excluded_tiles": 0,
+  "okf_memories": 67,
+  "selected_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+  "selection": "all_source_records",
+  "checked_at": "2026-09-13T16:00:53.746561+00:00",
+  "memanto_version": "0.0.1.dev1+gaa3f6f1f4",
+  "official_cli_preview_exit_code": 0,
+  "official_mapped_count": 67,
+  "per_type_counts": {
+    "artifact": 66,
+    "context": 1
+  },
+  "all_selected_source_fields_preserved": true,
+  "native_format_round_trip_passed": true,
+  "restored_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+  "selected_canonical_json_bytes": 51613,
+  "input_okf_bytes": 106910,
+  "remote_import_executed": false,
+  "semantic_recall_tested": false,
+  "prize_submission_complete": false,
+  "limitations": [
+    "Native format serialization was executed locally; no remote memory store was used.",
+    "The source is a real Voller Attention Tiles snapshot, not a ChatGPT conversation export.",
+    "Checksums check content integrity, not authorship or resistance to malicious rewriting.",
+    "No token, cloud-latency, semantic-recall, compression or financial benefit is claimed."
+  ]
+}

@@ -1,0 +1,57 @@
+---
+type: artifact
+title: AI Octopus
+description: 'Source record only: preserve its evidence limitations. Importing this
+  record does not verify its claims.'
+tags:
+- voller-attention-tiles
+- source-record
+- record-6da95e396256d351
+generated:
+  by: process:voller-attention-tiles
+  at: '2026-09-13T20:45:21.019791+00:00'
+resource: urn:voller:attention-tile:6da95e396256d35187fd9f80a5eff0a6536d994f0d2876448dc05d41dd36456c
+x_memanto:
+  id: a3d09ada-6452-4b39-a3d7-bd67f582a4bf
+  confidence: 0.8
+  provenance: imported
+  source: voller-attention-tiles
+  status: active
+  updated_at: '2026-09-13T20:45:25.500122+00:00'
+  type: artifact
+---
+
+Source record only: preserve its evidence limitations. Importing this record does not verify its claims.
+
+<!-- voller-record:v1 -->
+```json
+{
+  "data": {
+    "aliases": [],
+    "area": "AI companions",
+    "evidence": {
+      "label": "Development concept",
+      "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+    },
+    "id": "ai-octopus",
+    "image": null,
+    "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+    "snapshot_date": "2026-09-13",
+    "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-octopus",
+    "summary": "An eight-arm AI body concept for workshop collaboration: supporting parts, positioning sensors, presenting tools and inspecting assemblies alongside a person. Precision, simultaneous eight-tool control and safe autonomous operation are development goals, not demonstrated capabilities.",
+    "title": "AI Octopus",
+    "visibility": "public_source"
+  },
+  "kind": "tile",
+  "ordinal": 3,
+  "sha256": "25f9cf3c615420d6550bb768735ec3fc7acb9a37bfbda017d4bd46d2e3752f3e",
+  "snapshot_sha256": null
+}
+```
+<!-- /voller-record -->
+
+---
+[Supporting data]
+- OKF source: memories/artifact/6da95e396256d35187fd9f80a5eff0a6536d994f0d2876448dc05d41dd36456c.md
+- OKF resource: urn:voller:attention-tile:6da95e396256d35187fd9f80a5eff0a6536d994f0d2876448dc05d41dd36456c
+- OKF generated: by=process:voller-attention-tiles-adapter; at=2026-09-13T20:45:21.019791+00:00

@@ -1,0 +1,57 @@
+---
+type: artifact
+title: AI Fisherman
+description: 'Source record only: preserve its evidence limitations. Importing this
+  record does not verify its claims.'
+tags:
+- voller-attention-tiles
+- source-record
+- record-7ee6c012a6facc09
+generated:
+  by: process:voller-attention-tiles
+  at: '2026-09-13T20:45:21.019791+00:00'
+resource: urn:voller:attention-tile:7ee6c012a6facc09d4945d9a34cc4d50cd4435808e55a99d042922db0fb68d9c
+x_memanto:
+  id: 9ac333a6-26aa-48d0-bcd3-cae460982a9e
+  confidence: 0.8
+  provenance: imported
+  source: voller-attention-tiles
+  status: active
+  updated_at: '2026-09-13T20:45:25.500122+00:00'
+  type: artifact
+---
+
+Source record only: preserve its evidence limitations. Importing this record does not verify its claims.
+
+<!-- voller-record:v1 -->
+```json
+{
+  "data": {
+    "aliases": [],
+    "area": "origins",
+    "evidence": {
+      "label": "Development concept",
+      "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+    },
+    "id": "ai-fisherman",
+    "image": null,
+    "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+    "snapshot_date": "2026-09-13",
+    "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-fisherman",
+    "summary": "A proposed shared assistant for fishing devices, observations and environmental information, with decisions reviewed by the operator.",
+    "title": "AI Fisherman",
+    "visibility": "public_source"
+  },
+  "kind": "tile",
+  "ordinal": 13,
+  "sha256": "03d1c96db4c266ef9e52a5bfb9e5ecc258aeddb9ee25fd90081c4623bd421474",
+  "snapshot_sha256": null
+}
+```
+<!-- /voller-record -->
+
+---
+[Supporting data]
+- OKF source: memories/artifact/7ee6c012a6facc09d4945d9a34cc4d50cd4435808e55a99d042922db0fb68d9c.md
+- OKF resource: urn:voller:attention-tile:7ee6c012a6facc09d4945d9a34cc4d50cd4435808e55a99d042922db0fb68d9c
+- OKF generated: by=process:voller-attention-tiles-adapter; at=2026-09-13T20:45:21.019791+00:00

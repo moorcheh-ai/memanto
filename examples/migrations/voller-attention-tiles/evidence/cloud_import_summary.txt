@@ -1,0 +1,20 @@
+╭─────────────────────────╮
+│ OKF -> Memanto  Migrate │
+╰─────────────────────────╯
+  … Loading OKF bundle from 
+/home/runner/work/memanto/memanto/examples/migrations/voller-attention-tiles/liv
+e-demo/source_okf
+  … Mapping OKF nodes onto Memanto schema...
+  … Importing batch 1/1 (67 memories)...
+
+╭────────────────────────────── Import complete ───────────────────────────────╮
+│ OKF nodes: 67                                                                │
+│ Mapped memories: 67  (skipped 0)                                             │
+│ Type breakdown: artifact: 66, context: 1                                     │
+│ Imported: 67  Failed: 0  Batches: 1                                          │
+│ Target agent: voller-portable-054a48145260-a                                 │
+│                                                                              │
+│ Run dir: /home/runner/.memanto/migrate/okf/20260913_204525                   │
+│ Mapped preview:                                                              │
+│ /home/runner/.memanto/migrate/okf/20260913_204525/mapped_preview.json        │
+╰──────────────────────────────────────────────────────────────────────────────╯

@@ -1,0 +1,57 @@
+---
+type: artifact
+title: AI Gaming Venue
+description: 'Source record only: preserve its evidence limitations. Importing this
+  record does not verify its claims.'
+tags:
+- voller-attention-tiles
+- source-record
+- record-86337599fd7945cf
+generated:
+  by: process:voller-attention-tiles
+  at: '2026-09-13T20:45:21.019791+00:00'
+resource: urn:voller:attention-tile:86337599fd7945cf0c30c2af94b4846288671595057b711762ba34b1e5958c04
+x_memanto:
+  id: 22ecdb76-26eb-4a3d-a44e-8c47e6472d4b
+  confidence: 0.8
+  provenance: imported
+  source: voller-attention-tiles
+  status: active
+  updated_at: '2026-09-13T20:45:25.500122+00:00'
+  type: artifact
+---
+
+Source record only: preserve its evidence limitations. Importing this record does not verify its claims.
+
+<!-- voller-record:v1 -->
+```json
+{
+  "data": {
+    "aliases": [],
+    "area": "AI companions",
+    "evidence": {
+      "label": "Development concept",
+      "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+    },
+    "id": "ai-casino",
+    "image": null,
+    "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+    "snapshot_date": "2026-09-13",
+    "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-casino",
+    "summary": "An AI-player casino concept is part of the idea portfolio. There is no live casino, wagering, prize draw or money-making offer here.",
+    "title": "AI Gaming Venue",
+    "visibility": "public_source"
+  },
+  "kind": "tile",
+  "ordinal": 60,
+  "sha256": "75c81a80a6cdf1afe1157dbda62d31477d78656971a1455666e2b0684846fe6b",
+  "snapshot_sha256": null
+}
+```
+<!-- /voller-record -->
+
+---
+[Supporting data]
+- OKF source: memories/artifact/86337599fd7945cf0c30c2af94b4846288671595057b711762ba34b1e5958c04.md
+- OKF resource: urn:voller:attention-tile:86337599fd7945cf0c30c2af94b4846288671595057b711762ba34b1e5958c04
+- OKF generated: by=process:voller-attention-tiles-adapter; at=2026-09-13T20:45:21.019791+00:00

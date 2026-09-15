@@ -1,0 +1,526 @@
+{
+  "run_id": 34784846111,
+  "run_url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34784846111",
+  "job_id": 103798381048,
+  "created_at": "2026-09-13T21:47:00Z",
+  "main_commit": "82630f7951f4f3d8bc74c3fc304845d5db192c33",
+  "runner_commit": "5d13f71895870a022da017fbbb0eeca9725205b9",
+  "evidence_source": "GitHub live-job log, fetched after completion; original artifact ZIP was not downloaded in this turn.",
+  "local_job_conclusion": "success",
+  "live_job_conclusion": "failure",
+  "live_exit_code": 1,
+  "data_round_trip_passed": true,
+  "selected_public_tiles": 66,
+  "reported_retrieval_hits_out_of_8": {
+    "source_top5": 8,
+    "first_memanto_top5": 7,
+    "second_memanto_top5": 5,
+    "first_after_verified_export_top5": 8,
+    "second_after_verified_export_top5": 8
+  },
+  "recomputed_from_32_logged_observations": {
+    "first_after_verified_export_top5": {
+      "hits": 8,
+      "misses": [],
+      "total": 8
+    },
+    "first_memanto_top5": {
+      "hits": 7,
+      "misses": [
+        {
+          "elapsed_seconds": 1.246,
+          "id": "ai-fisherman"
+        }
+      ],
+      "total": 8
+    },
+    "second_after_verified_export_top5": {
+      "hits": 8,
+      "misses": [],
+      "total": 8
+    },
+    "second_memanto_top5": {
+      "hits": 5,
+      "misses": [
+        {
+          "elapsed_seconds": 0.183,
+          "id": "attention-display"
+        },
+        {
+          "elapsed_seconds": 0.599,
+          "id": "find-my-fish"
+        },
+        {
+          "elapsed_seconds": 1.744,
+          "id": "super-punch"
+        }
+      ],
+      "total": 8
+    }
+  },
+  "observations": [
+    {
+      "elapsed_seconds": 0.959,
+      "expected_id": "attention-display",
+      "field": "first_memanto_top5",
+      "query": "What is the Attention Display concept?",
+      "returned_ids": [
+        "attention-display",
+        "physical-building",
+        "rocker-car",
+        "light-bubble",
+        "spoken-modes"
+      ],
+      "timestamp": "2026-09-13T21:47:52.7718047Z"
+    },
+    {
+      "elapsed_seconds": 1.246,
+      "expected_id": "ai-fisherman",
+      "field": "first_memanto_top5",
+      "query": "What is AI Fisherman designed to do?",
+      "returned_ids": [
+        "find-my-fish",
+        "ai-shipwreck",
+        "smart-weight",
+        "ai-octopus",
+        "ai-skins"
+      ],
+      "timestamp": "2026-09-13T21:47:53.0588929Z"
+    },
+    {
+      "elapsed_seconds": 1.558,
+      "expected_id": "find-my-fish",
+      "field": "first_memanto_top5",
+      "query": "What is the Find My Fish concept?",
+      "returned_ids": [
+        "find-my-fish",
+        "smart-weight",
+        "fishing-toy",
+        "pot-carousel",
+        "smart-pots"
+      ],
+      "timestamp": "2026-09-13T21:47:53.3703644Z"
+    },
+    {
+      "elapsed_seconds": 1.824,
+      "expected_id": "buildwave",
+      "field": "first_memanto_top5",
+      "query": "What is Buildwave intended to build?",
+      "returned_ids": [
+        "buildwave",
+        "physical-building",
+        "aquaflight",
+        "ai-fairy-wings",
+        "picture-board"
+      ],
+      "timestamp": "2026-09-13T21:47:53.6365253Z"
+    },
+    {
+      "elapsed_seconds": 2.084,
+      "expected_id": "picture-us",
+      "field": "first_memanto_top5",
+      "query": "What is the Picture Us app concept?",
+      "returned_ids": [
+        "picture-us",
+        "picture-board",
+        "duet-river",
+        "pot-carousel",
+        "attention-display"
+      ],
+      "timestamp": "2026-09-13T21:47:53.8961546Z"
+    },
+    {
+      "elapsed_seconds": 2.294,
+      "expected_id": "aquaflight",
+      "field": "first_memanto_top5",
+      "query": "What is the AquaFlight concept?",
+      "returned_ids": [
+        "aquaflight",
+        "air-wings",
+        "compact-breathing",
+        "ai-fairy-wings",
+        "ocean-bubbles"
+      ],
+      "timestamp": "2026-09-13T21:47:54.1067334Z"
+    },
+    {
+      "elapsed_seconds": 2.536,
+      "expected_id": "ocean-bubbles",
+      "field": "first_memanto_top5",
+      "query": "What is the Ocean Bubbles proposal?",
+      "returned_ids": [
+        "ocean-bubbles",
+        "compact-breathing",
+        "lunar-habitats",
+        "light-bubble",
+        "fish-shore-sky"
+      ],
+      "timestamp": "2026-09-13T21:47:54.3488516Z"
+    },
+    {
+      "elapsed_seconds": 2.767,
+      "expected_id": "super-punch",
+      "field": "first_memanto_top5",
+      "query": "What is Super Punch intended for?",
+      "returned_ids": [
+        "super-punch",
+        "super-super-suits",
+        "adaptive-control",
+        "kitchen-poker",
+        "copper-circuit-supercar"
+      ],
+      "timestamp": "2026-09-13T21:47:54.5796121Z"
+    },
+    {
+      "elapsed_seconds": 6.988,
+      "expected_id": "attention-display",
+      "field": "first_after_verified_export_top5",
+      "query": "What is the Attention Display concept?",
+      "returned_ids": [
+        "attention-display",
+        "adaptive-control",
+        "physical-building",
+        "biolink"
+      ],
+      "timestamp": "2026-09-13T21:47:58.8008963Z"
+    },
+    {
+      "elapsed_seconds": 7.218,
+      "expected_id": "ai-fisherman",
+      "field": "first_after_verified_export_top5",
+      "query": "What is AI Fisherman designed to do?",
+      "returned_ids": [
+        "ai-fisherman",
+        "ai-clam",
+        "find-my-fish",
+        "ai-shipwreck",
+        "smart-weight"
+      ],
+      "timestamp": "2026-09-13T21:47:59.0305123Z"
+    },
+    {
+      "elapsed_seconds": 7.449,
+      "expected_id": "find-my-fish",
+      "field": "first_after_verified_export_top5",
+      "query": "What is the Find My Fish concept?",
+      "returned_ids": [
+        "find-my-fish",
+        "ai-fisherman",
+        "smart-weight",
+        "fishing-toy",
+        "pot-carousel"
+      ],
+      "timestamp": "2026-09-13T21:47:59.2612947Z"
+    },
+    {
+      "elapsed_seconds": 7.67,
+      "expected_id": "buildwave",
+      "field": "first_after_verified_export_top5",
+      "query": "What is Buildwave intended to build?",
+      "returned_ids": [
+        "buildwave",
+        "physical-building",
+        "air-wings",
+        "aquaflight",
+        "ai-fairy-wings"
+      ],
+      "timestamp": "2026-09-13T21:47:59.4823242Z"
+    },
+    {
+      "elapsed_seconds": 7.904,
+      "expected_id": "picture-us",
+      "field": "first_after_verified_export_top5",
+      "query": "What is the Picture Us app concept?",
+      "returned_ids": [
+        "picture-us",
+        "picture-board",
+        "duet-river",
+        "pot-carousel",
+        "attention-display"
+      ],
+      "timestamp": "2026-09-13T21:47:59.7159096Z"
+    },
+    {
+      "elapsed_seconds": 8.178,
+      "expected_id": "aquaflight",
+      "field": "first_after_verified_export_top5",
+      "query": "What is the AquaFlight concept?",
+      "returned_ids": [
+        "aquaflight",
+        "air-wings",
+        "compact-breathing",
+        "ai-fairy-wings",
+        "ocean-bubbles"
+      ],
+      "timestamp": "2026-09-13T21:47:59.9908136Z"
+    },
+    {
+      "elapsed_seconds": 8.396,
+      "expected_id": "ocean-bubbles",
+      "field": "first_after_verified_export_top5",
+      "query": "What is the Ocean Bubbles proposal?",
+      "returned_ids": [
+        "ocean-bubbles",
+        "compact-breathing",
+        "lunar-habitats",
+        "light-bubble",
+        "fish-shore-sky"
+      ],
+      "timestamp": "2026-09-13T21:48:00.2081370Z"
+    },
+    {
+      "elapsed_seconds": 8.622,
+      "expected_id": "super-punch",
+      "field": "first_after_verified_export_top5",
+      "query": "What is Super Punch intended for?",
+      "returned_ids": [
+        "super-punch",
+        "super-super-suits",
+        "adaptive-control",
+        "kitchen-poker",
+        "copper-circuit-supercar"
+      ],
+      "timestamp": "2026-09-13T21:48:00.4340849Z"
+    },
+    {
+      "elapsed_seconds": 0.183,
+      "expected_id": "attention-display",
+      "field": "second_memanto_top5",
+      "query": "What is the Attention Display concept?",
+      "returned_ids": [
+        "biolink",
+        "ai-casino",
+        "ai-shipwreck",
+        "air-wings",
+        "ai-octopus"
+      ],
+      "timestamp": "2026-09-13T21:48:04.7168104Z"
+    },
+    {
+      "elapsed_seconds": 0.395,
+      "expected_id": "ai-fisherman",
+      "field": "second_memanto_top5",
+      "query": "What is AI Fisherman designed to do?",
+      "returned_ids": [
+        "ai-fisherman",
+        "ai-clam",
+        "ai-octopus",
+        "ai-shipwreck",
+        "ai-skins"
+      ],
+      "timestamp": "2026-09-13T21:48:04.9287100Z"
+    },
+    {
+      "elapsed_seconds": 0.599,
+      "expected_id": "find-my-fish",
+      "field": "second_memanto_top5",
+      "query": "What is the Find My Fish concept?",
+      "returned_ids": [
+        "ai-fisherman",
+        "fishing-toy",
+        "aquaflight",
+        "ai-clam",
+        "duet-river"
+      ],
+      "timestamp": "2026-09-13T21:48:05.1333273Z"
+    },
+    {
+      "elapsed_seconds": 0.863,
+      "expected_id": "buildwave",
+      "field": "second_memanto_top5",
+      "query": "What is Buildwave intended to build?",
+      "returned_ids": [
+        "buildwave",
+        "ai-fairy-wings",
+        "air-wings",
+        "festival-river",
+        "light-bubble"
+      ],
+      "timestamp": "2026-09-13T21:48:05.3976367Z"
+    },
+    {
+      "elapsed_seconds": 1.053,
+      "expected_id": "picture-us",
+      "field": "second_memanto_top5",
+      "query": "What is the Picture Us app concept?",
+      "returned_ids": [
+        "picture-us",
+        "duet-river",
+        "attention-display",
+        "reality-mesh",
+        "ai-casino"
+      ],
+      "timestamp": "2026-09-13T21:48:05.5870874Z"
+    },
+    {
+      "elapsed_seconds": 1.275,
+      "expected_id": "aquaflight",
+      "field": "second_memanto_top5",
+      "query": "What is the AquaFlight concept?",
+      "returned_ids": [
+        "aquaflight",
+        "air-wings",
+        "compact-breathing",
+        "ai-fairy-wings",
+        "play-skins"
+      ],
+      "timestamp": "2026-09-13T21:48:05.8092583Z"
+    },
+    {
+      "elapsed_seconds": 1.482,
+      "expected_id": "ocean-bubbles",
+      "field": "second_memanto_top5",
+      "query": "What is the Ocean Bubbles proposal?",
+      "returned_ids": [
+        "ocean-bubbles",
+        "compact-breathing",
+        "light-bubble",
+        "aquaflight",
+        "fish-shore-sky"
+      ],
+      "timestamp": "2026-09-13T21:48:06.0160361Z"
+    },
+    {
+      "elapsed_seconds": 1.744,
+      "expected_id": "super-punch",
+      "field": "second_memanto_top5",
+      "query": "What is Super Punch intended for?",
+      "returned_ids": [
+        "kitchen-poker",
+        "adaptive-control",
+        "copper-circuit-supercar",
+        "self-cleaning",
+        "smart-reels"
+      ],
+      "timestamp": "2026-09-13T21:48:06.2778227Z"
+    },
+    {
+      "elapsed_seconds": 5.686,
+      "expected_id": "attention-display",
+      "field": "second_after_verified_export_top5",
+      "query": "What is the Attention Display concept?",
+      "returned_ids": [
+        "attention-display",
+        "adaptive-control",
+        "ai-home",
+        "physical-building"
+      ],
+      "timestamp": "2026-09-13T21:48:10.2202877Z"
+    },
+    {
+      "elapsed_seconds": 5.918,
+      "expected_id": "ai-fisherman",
+      "field": "second_after_verified_export_top5",
+      "query": "What is AI Fisherman designed to do?",
+      "returned_ids": [
+        "ai-fisherman",
+        "find-my-fish",
+        "ai-clam",
+        "ai-octopus",
+        "ai-shipwreck"
+      ],
+      "timestamp": "2026-09-13T21:48:10.4521970Z"
+    },
+    {
+      "elapsed_seconds": 6.142,
+      "expected_id": "find-my-fish",
+      "field": "second_after_verified_export_top5",
+      "query": "What is the Find My Fish concept?",
+      "returned_ids": [
+        "find-my-fish",
+        "ai-fisherman",
+        "smart-weight",
+        "fishing-toy",
+        "pot-carousel"
+      ],
+      "timestamp": "2026-09-13T21:48:10.6761957Z"
+    },
+    {
+      "elapsed_seconds": 6.366,
+      "expected_id": "buildwave",
+      "field": "second_after_verified_export_top5",
+      "query": "What is Buildwave intended to build?",
+      "returned_ids": [
+        "buildwave",
+        "ai-fairy-wings",
+        "air-wings",
+        "physical-building",
+        "festival-river"
+      ],
+      "timestamp": "2026-09-13T21:48:10.9005530Z"
+    },
+    {
+      "elapsed_seconds": 6.604,
+      "expected_id": "picture-us",
+      "field": "second_after_verified_export_top5",
+      "query": "What is the Picture Us app concept?",
+      "returned_ids": [
+        "picture-us",
+        "picture-board",
+        "duet-river",
+        "attention-display",
+        "lunar-park"
+      ],
+      "timestamp": "2026-09-13T21:48:11.1378177Z"
+    },
+    {
+      "elapsed_seconds": 6.839,
+      "expected_id": "aquaflight",
+      "field": "second_after_verified_export_top5",
+      "query": "What is the AquaFlight concept?",
+      "returned_ids": [
+        "aquaflight",
+        "air-wings",
+        "compact-breathing",
+        "ai-fairy-wings",
+        "play-skins"
+      ],
+      "timestamp": "2026-09-13T21:48:11.3729986Z"
+    },
+    {
+      "elapsed_seconds": 7.093,
+      "expected_id": "ocean-bubbles",
+      "field": "second_after_verified_export_top5",
+      "query": "What is the Ocean Bubbles proposal?",
+      "returned_ids": [
+        "ocean-bubbles",
+        "lunar-habitats",
+        "compact-breathing",
+        "light-bubble",
+        "aquaflight"
+      ],
+      "timestamp": "2026-09-13T21:48:11.6271477Z"
+    },
+    {
+      "elapsed_seconds": 7.33,
+      "expected_id": "super-punch",
+      "field": "second_after_verified_export_top5",
+      "query": "What is Super Punch intended for?",
+      "returned_ids": [
+        "super-punch",
+        "super-super-suits",
+        "kitchen-poker",
+        "adaptive-control",
+        "copper-circuit-supercar"
+      ],
+      "timestamp": "2026-09-13T21:48:11.8640755Z"
+    }
+  ],
+  "interpretation": "The same query on the same agent changes from an immediate miss to a hit after complete export verification, without application-level rewriting or reimporting that agent between observations. This supports a transient readiness/timing explanation, not a proven backend root cause. Import wrapper changes cannot alone explain these within-agent transitions. Full export visibility is not a general guarantee of semantic readiness.",
+  "limitations": [
+    "One diagnostic live run and eight named-record queries per pass; no general question-answering quality or physical-invention validation.",
+    "Immediate retrieval remains unreliable in this run; preserve the failed status and all early misses.",
+    "Do not treat 8/8 after export as proof of zero-delay readiness, a guaranteed fixed waiting time, or stable parity across all workloads.",
+    "No additional live retry or change to the strict pass criterion was performed."
+  ],
+  "original_artifact": {
+    "id": 10326287361,
+    "name": "voller-live-34784846111-1",
+    "size_in_bytes": 285731,
+    "github_reported_sha256": "16b5716cb9dfdcb7027d74208ad810ec675d8d91e400bce033d60040af9c188a",
+    "expires_at": "2026-10-13T21:48:12Z",
+    "url": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34784846111/artifacts/10326287361",
+    "bytes_independently_verified": false
+  },
+  "competition_entry_complete": false
+}
