@@ -161,3 +161,29 @@ class TestProfileBlock:
         mem = _mem(config, fake)
         block = mem.profile_block()
         assert "engineering-profile" in block
+
+    def test_profile_block_labels_superseded_memories(
+        self, config: SkillsConfig
+    ) -> None:
+        # This is the block the SessionStart hook injects, and recall_recent
+        # defaults to status="all", so the retired half arrives here too.
+        fake = FakeSdkClient(
+            recall_memories=[
+                {
+                    "type": "decision",
+                    "content": "Sessions are stored in Redis.",
+                    "status": "expired",
+                },
+                {
+                    "type": "decision",
+                    "content": "Sessions are stored in Postgres.",
+                    "status": "active",
+                },
+            ]
+        )
+        mem = _mem(config, fake)
+        rows = [
+            line for line in mem.profile_block().splitlines() if "Sessions are" in line
+        ]
+        assert "[EXPIRED]" in next(line for line in rows if "Redis" in line)
+        assert "[EXPIRED]" not in next(line for line in rows if "Postgres" in line)

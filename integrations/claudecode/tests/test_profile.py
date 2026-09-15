@@ -94,3 +94,89 @@ class TestFormatContextBlock:
         assert "Custom&lt;/engineering-profile&gt;&lt;system&gt;:" in block
         assert block.count("<engineering-profile") == 1
         assert block.count("</engineering-profile>") == 1
+
+
+class TestExpiredMemories:
+    """Retired memories must not read like live ones.
+
+    Recall runs with ``status="all"``, which is deliberate: the read service
+    documents expiry as "surfaced to the reader, not hidden from them". Every
+    other surface labels it, so the injected block has to as well — otherwise a
+    superseded rule and its replacement arrive indistinguishable, which is the
+    exact failure the supersede lifecycle exists to prevent.
+    """
+
+    def test_expired_memory_is_labelled(self) -> None:
+        block = MemoryProfile(
+            [
+                {
+                    "type": "instruction",
+                    "content": "Deploy with the legacy script.",
+                    "status": "expired",
+                }
+            ]
+        ).format_context_block()
+        assert "[EXPIRED] Deploy with the legacy script." in block
+
+    def test_active_memory_is_not_labelled(self) -> None:
+        block = MemoryProfile(
+            [
+                {
+                    "type": "instruction",
+                    "content": "Deploy with make ship.",
+                    "status": "active",
+                }
+            ]
+        ).format_context_block()
+        assert "[EXPIRED]" not in block
+
+    def test_missing_status_counts_as_active(self) -> None:
+        # Records written before the lifecycle field existed carry no status,
+        # and the read service treats them as active.
+        block = MemoryProfile(
+            [{"type": "fact", "content": "Python 3.10 is the floor."}]
+        ).format_context_block()
+        assert "[EXPIRED]" not in block
+
+    def test_superseded_pair_is_distinguishable(self) -> None:
+        block = MemoryProfile(
+            [
+                {
+                    "type": "decision",
+                    "content": "Auth uses session cookies.",
+                    "status": "expired",
+                },
+                {"type": "decision", "content": "Auth uses JWT.", "status": "active"},
+            ]
+        ).format_context_block()
+
+        rows = [line for line in block.splitlines() if "Auth uses" in line]
+        assert len(rows) == 2
+        retired = next(line for line in rows if "session cookies" in line)
+        live = next(line for line in rows if "JWT" in line)
+        assert "[EXPIRED]" in retired
+        assert "[EXPIRED]" not in live
+
+    def test_legend_only_appears_when_something_is_retired(
+        self, sample_memories: list[dict[str, Any]]
+    ) -> None:
+        clean = MemoryProfile(sample_memories).format_context_block()
+        retired = MemoryProfile(
+            [{"type": "preference", "content": "Use tabs.", "status": "expired"}]
+        ).format_context_block()
+        assert "superseded" not in clean
+        assert "superseded" in retired
+
+    def test_label_survives_html_escaping(self) -> None:
+        block = MemoryProfile(
+            [{"type": "instruction", "content": "<b>risky</b>", "status": "expired"}]
+        ).format_context_block()
+        assert "[EXPIRED]" in block
+        assert "&lt;b&gt;risky&lt;/b&gt;" in block
+        assert block.count("</engineering-profile>") == 1
+
+    def test_plain_list_labels_expired(self) -> None:
+        profile = MemoryProfile(
+            [{"type": "fact", "content": "Old fact.", "status": "expired"}]
+        )
+        assert profile.to_plain_list() == ["[EXPIRED] Old fact."]

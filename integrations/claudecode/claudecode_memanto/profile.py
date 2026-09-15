@@ -49,6 +49,20 @@ _TYPE_LABEL = {
     "goal": "Goals",
 }
 
+# Recall runs with ``status="all"``, which the read service documents as
+# deliberate: expiry is surfaced to the reader, not hidden. The CLI, the REST
+# layer and the user guide all honour that by labelling retired memories, so
+# this renderer has to do the same. An expired rule injected unlabelled next to
+# its replacement reproduces the contradictory-beliefs problem the supersede
+# lifecycle exists to prevent — and the SessionStart hook is the one push path
+# Claude Code cannot opt out of.
+_EXPIRED_LABEL = "[EXPIRED]"
+
+_EXPIRED_LEGEND = (
+    "Some entries below are marked [EXPIRED] — the lifecycle retired them "
+    "(superseded or aged out). Read them as history, not as current rules."
+)
+
 
 @dataclass
 class MemoryProfile:
@@ -104,6 +118,8 @@ class MemoryProfile:
             "(carried over from previous skill sessions — honour it, "
             "do not re-ask the user):",
         ]
+        if any(_is_expired(mem) for mem in self.memories):
+            lines.append(_EXPIRED_LEGEND)
 
         ordered_types = [t for t in _TYPE_ORDER if t in grouped]
         ordered_types += [t for t in grouped if t not in _TYPE_ORDER]
@@ -122,8 +138,20 @@ class MemoryProfile:
         return [_render_memory(m) for m in self.memories]
 
 
+def _is_expired(mem: dict[str, Any]) -> bool:
+    """True when the lifecycle has retired this memory.
+
+    Mirrors the read service's own comparison: one exact lowercase value from
+    the enum, and anything else — including a record that predates the field —
+    counts as active.
+    """
+    return mem.get("status") == "expired"
+
+
 def _render_memory(mem: dict[str, Any]) -> str:
     content = (mem.get("content") or mem.get("title") or "").strip()
+    if _is_expired(mem):
+        content = f"{_EXPIRED_LABEL} {content}"
     confidence = mem.get("confidence")
     if isinstance(confidence, (int, float)) and confidence < 0.6:
         return f"{content} (tentative)"
