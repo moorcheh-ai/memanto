@@ -1,0 +1,33 @@
+# Dawn Chorus - Tensor-Green ASCII Hybrid Walkthrough
+
+I have successfully pivoted the UI to a "Tensor-Green ASCII" hybrid aesthetic. This combines the charm of the original ASCII concept with the polish and structure of a modern data interface.
+
+## Key Improvements
+
+### 1. Visual Language
+- **Deep Charcoal Background**: Replaced the plain black with `#0A0A0A` and a subtle grid pattern for a technical feel.
+- **Mint Green Accents**: Used `#4ade80` as the primary action color, giving a high-contrast, "phosphor" look.
+- **Typography**: Retained `JetBrains Mono` but improved hierarchy with weight and color (Slate for labels, White/Mint for data).
+
+### 2. Components
+- **Hybrid Panels**: Cards now use clean CSS borders with ASCII corner markers (`+`) for a refined technical look.
+- **Technical Buttons**: Sharp, rectangular buttons with subtle ASCII decoration (`>`) and solid Mint hover states.
+- **High-Res Progress Bars**: Replaced ASCII text bars with smooth CSS bars that feature a "tick mark" overlay.
+
+### 3. Layout
+- **Bento Grid Dashboard**: The Dashboard is now a strict 12-column grid, with clear separation between the "Command Center", "Metrics", and "Feed" zones.
+- **Tensor Header/Footer**: A cleaner, semi-transparent header and a minimal status bar footer.
+
+## Verification
+
+![Tensor-Green Dashboard]([redacted-path])
+
+## How to Run
+
+The development server is currently running. You can access the prototype at:
+**[redacted-url]**
+
+If you need to restart it:
+```bash
+npm run dev
+```
