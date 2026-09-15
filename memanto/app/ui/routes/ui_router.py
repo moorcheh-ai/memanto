@@ -37,6 +37,7 @@ from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
     SESSION_COOKIE_NAME,
     _is_cross_site_browser_request,
+    _is_loopback_host_header,
     clear_session_cookie,
     set_session_cookie,
 )
@@ -145,6 +146,21 @@ async def _require_local(request: Request) -> None:
         raise HTTPException(
             status_code=403,
             detail="UI management endpoints reject cross-site browser requests.",
+        )
+
+    # A loopback peer is not by itself proof that the request came from the
+    # local UI. A browser can be pointed at 127.0.0.1 by DNS rebinding, in
+    # which case it opens a connection from the loopback interface but still
+    # sends the attacker's hostname in the Host header. Require the header to
+    # name a loopback interface too -- exactly the check
+    # ``require_management_access`` already performs.
+    if not _is_loopback_host_header(request.headers.get("host")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints require a loopback Host header. "
+                f"Request host: {request.headers.get('host')}"
+            ),
         )
 
 

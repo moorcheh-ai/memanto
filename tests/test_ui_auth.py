@@ -81,6 +81,29 @@ class TestUnauthenticatedUIEndpoints:
         resp = client.put("/api/ui/api-key", json={"api_key": "stolen"})
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
 
+    def test_loopback_peer_with_foreign_host_rejected(self):
+        """A DNS-rebinding request must not reach a UI endpoint.
+
+        Rebinding gives the attacker's page a loopback peer address while the
+        Host header still names the attacker's origin, so the loopback check
+        alone is satisfied.  Both /api/ui/browse (directory listing) and
+        /api/ui/shutdown must still be refused.
+        """
+        app = _make_app()
+        client = _make_loopback_client(app)
+        headers = {"Host": "attacker.example:8000"}
+
+        resp = client.get("/api/ui/browse?path=/etc", headers=headers)
+        assert resp.status_code == 403, f"browse: expected 403, got {resp.status_code}"
+
+        resp = client.post("/api/ui/shutdown", headers=headers)
+        assert resp.status_code == 403, f"shutdown: expected 403, got {resp.status_code}"
+
+        resp = client.put(
+            "/api/ui/api-key", json={"api_key": "stolen"}, headers=headers
+        )
+        assert resp.status_code == 403, f"api-key: expected 403, got {resp.status_code}"
+
     def test_loopback_cross_site_origin_rejected(self):
         """Local browser requests from another website must not reach UI endpoints."""
         app = _make_app()
@@ -166,7 +189,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "127.0.0.1:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -175,5 +198,47 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
+        mock_request.headers = {"host": "localhost:8000"}
+        asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_local_rejects_foreign_host(self):
+        """A loopback peer with a foreign Host header is a DNS-rebinding request.
+
+        The browser opened the connection from the loopback interface but still
+        believes it is talking to the attacker's origin, so it sends that
+        hostname in the Host header.  Loopback trust must not be granted.
+        """
+        import pytest
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"host": "attacker.example:8000"}
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(_require_local(mock_request))
+        assert exc_info.value.status_code == 403
+
+    def test_require_local_rejects_missing_host(self):
+        """HTTP/1.1 requires a Host header; its absence must not grant trust."""
+        import pytest
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
         mock_request.headers = {}
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(_require_local(mock_request))
+        assert exc_info.value.status_code == 403
+
+    def test_require_local_allows_mapped_loopback_host_header(self):
+        """A loopback Host header in IPv4-mapped form is still loopback."""
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"host": "[::ffff:127.0.0.1]:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
