@@ -1,0 +1,36 @@
+questions:
+  - id: atlas-priority-route
+    question: How was the Atlas Fleet lead qualified and what should happen next?
+    memory_title: "Lead Atlas Fleet: hot (100)"
+    must_contain:
+      - "**Qualification score**: 100"
+      - "**Route**: hot"
+      - "**Next action**: Offer a priority discovery call."
+    live_must_contain:
+      - Atlas Fleet
+      - "100"
+      - priority discovery call
+
+  - id: beacon-nurture-route
+    question: How was the Beacon Studio lead qualified and what should happen next?
+    memory_title: "Lead Beacon Studio: warm (65)"
+    must_contain:
+      - "**Qualification score**: 65"
+      - "**Route**: warm"
+      - "**Next action**: Send a relevant case study and ask one qualifying question."
+    live_must_contain:
+      - Beacon Studio
+      - "65"
+      - case study
+
+  - id: cedar-education-route
+    question: How was the Cedar Hobby lead qualified and what should happen next?
+    memory_title: "Lead Cedar Hobby: cold (25)"
+    must_contain:
+      - "**Qualification score**: 25"
+      - "**Route**: cold"
+      - "**Next action**: Add to educational nurture; no sales notification."
+    live_must_contain:
+      - Cedar Hobby
+      - "25"
+      - educational nurture
