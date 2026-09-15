@@ -1,0 +1,17 @@
+╭──────────────────────────────────────────────────────────────────────────╮
+│ OKF Export                                                               │
+│ Agent: autogen-handoff-20260912094448  •  Split: file  •  Limit: 25/type │
+╰──────────────────────────────────────────────────────────────────────────╯
+
+   OKF Bundle Counts    
+┏━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Type         ┃ Count ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━┩
+│ Instructions │     1 │
+│ Facts        │     2 │
+│ Decisions    │     5 │
+└──────────────┴───────┘
+
+OK Exported 8 memories to OKF bundle!
+Bundle: ~/.memanto/exports/autogen-handoff-20260912094448_okf
+Completed in 10.56s

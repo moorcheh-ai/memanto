@@ -1,0 +1,13 @@
+Review fixes validated 2026-09-12T10:22:08.161657+00:00
+
+python -m pytest -q --override-ini=addopts= examples/migrations/autogen-design-handoff/test_adapter.py
+38 passed, 2 warnings in 3.73s. No cloud requests; HTTP tests use loopback with pipeline replaced.
+Warnings: repository asyncio_mode and timeout options are unknown because the optional pytest-asyncio/pytest-timeout plugins are not in the minimal example environment.
+
+ruff 0.14.14 check examples/migrations/autogen-design-handoff
+All checks passed.
+ruff 0.14.14 format --check examples/migrations/autogen-design-handoff
+4 files already formatted.
+
+AST docstring check: 31/31 functions have docstrings.
+Original live migration data, timings, recall results, and video were not regenerated or edited.
