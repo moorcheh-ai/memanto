@@ -70,8 +70,22 @@ def test_normalize_host_handles_cloud_and_self_hosted():
     assert normalize_host("https://us.cloud.langfuse.com/") == (
         "https://us.cloud.langfuse.com"
     )
-    assert normalize_host("langfuse.internal") == "https://langfuse.internal"
-    assert normalize_host("http://localhost:3000") == "http://localhost:3000"
+    assert normalize_host("eu.cloud.langfuse.com") == "https://eu.cloud.langfuse.com"
+
+
+@pytest.mark.parametrize(
+    "bad_host",
+    [
+        "https://langfuse.internal",  # arbitrary internal host
+        "http://localhost:3000",  # loopback
+        "http://169.254.169.254",  # cloud metadata
+        "http://127.0.0.1:9999",  # attacker listener
+        "https://us.cloud.langfuse.com.evil.com",  # suffix trick
+    ],
+)
+def test_normalize_host_rejects_ssrf_targets(bad_host):
+    with pytest.raises(ValueError, match="official cloud regions"):
+        normalize_host(bad_host)
 
 
 # --------------------------------------------------------------------------
