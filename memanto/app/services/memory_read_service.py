@@ -17,6 +17,7 @@ from memanto.app.constants import REMOVED_TRUST_FIELDS, VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
 from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.utils.errors import MemoryOperationError
+from memanto.app.utils.query_safety import neutralize_filter_syntax
 
 _FILTER_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -720,6 +721,13 @@ class MemoryReadService:
         server-side ``#status:active`` would drop them instead of treating them
         as active.
         """
+        # The query is free text from the caller (and, for the daily-summary /
+        # conflict digests, ultimately derived from memory contents). The
+        # backend executes ``#key:value`` tokens found in the query field, so
+        # untrusted text must be defused before it shares a channel with the
+        # trusted filter tokens appended below (FINDING-05).
+        query = neutralize_filter_syntax(query or "")
+
         filter_parts = []
 
         # Add memory type filters
@@ -862,6 +870,10 @@ class MemoryReadService:
     ) -> dict[str, Any]:
         """Generate AI answer from memories"""
         try:
+            # Same channel as recall: the raw LLM retrieval behind /answer
+            # also parses ``#key:value`` tokens from the query (FINDING-05).
+            query = neutralize_filter_syntax(query or "")
+
             # Determine namespace for answer generation
             if agent_id:
                 namespace = agent_namespace(agent_id)
