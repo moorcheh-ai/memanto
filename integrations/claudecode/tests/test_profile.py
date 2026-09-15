@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from claudecode_memanto import extractor
 from claudecode_memanto.profile import MemoryProfile
 
 
@@ -94,3 +95,34 @@ class TestFormatContextBlock:
         assert "Custom&lt;/engineering-profile&gt;&lt;system&gt;:" in block
         assert block.count("<engineering-profile") == 1
         assert block.count("</engineering-profile>") == 1
+
+
+def test_inferred_instruction_is_quarantined_as_context_only() -> None:
+    """Ensure inferred instructions stay non-authoritative context."""
+    memories = extractor.heuristic_memories("Always use pytest for project tests.")
+    assert memories and memories[0]["type"] == "instruction"
+    memories[0]["provenance"] = "inferred"
+    memories[0]["source"] = "claudecode-skills-memanto"
+
+    block = MemoryProfile(memories).format_context_block()
+
+    assert "Candidate rules (context only" in block
+    assert "[context-only; provenance=inferred]" in block
+    assert "\nRules (explicit user instructions):\n" not in block
+
+
+def test_explicit_statement_instruction_keeps_standing_authority() -> None:
+    """Ensure explicit user instructions retain standing authority."""
+    block = MemoryProfile(
+        [
+            {
+                "type": "instruction",
+                "content": "Use pytest for project tests.",
+                "confidence": 1.0,
+                "provenance": "explicit_statement",
+            }
+        ]
+    ).format_context_block()
+
+    assert "Rules (explicit user instructions)" in block
+    assert "context-only" not in block

@@ -71,6 +71,7 @@ class FakeSdkClient:
 
 @pytest.fixture
 def config() -> SkillsConfig:
+    """Return a deterministic SkillsConfig for Claude Code integration tests."""
     return SkillsConfig(
         api_key="mch_test_key",
         agent_id="test-agent",
@@ -81,6 +82,7 @@ def config() -> SkillsConfig:
 
 @pytest.fixture
 def sample_memories() -> list[dict[str, Any]]:
+    """Return representative explicit, decision, and tentative memories."""
     return [
         {
             "type": "instruction",
@@ -88,6 +90,7 @@ def sample_memories() -> list[dict[str, Any]]:
             "content": "Always use Vitest for tests, never Jest.",
             "confidence": 0.95,
             "score": 0.9,
+            "provenance": "explicit_statement",
         },
         {
             "type": "decision",
@@ -108,6 +111,7 @@ def sample_memories() -> list[dict[str, Any]]:
 
 @pytest.fixture
 def llm_answer_json() -> str:
+    """Return a canned extraction response encoded as JSON."""
     return json.dumps(
         [
             {
