@@ -1,0 +1,10 @@
+# Never commit real exports or the patterns that redact them.
+.private-patterns
+*.zip
+my_memories.txt
+saved_memories.txt
+!sample/saved_memories.txt
+
+# Memanto's exporter and loader leave a sibling lock file beside any bundle
+# they touch, and keep it on purpose (see okf_bundle_lock). It is not content.
+.*.lock
