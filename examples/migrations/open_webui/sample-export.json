@@ -1,0 +1,18 @@
+[
+  {
+    "id": "planning-chat",
+    "created_at": 1784764800,
+    "meta": {"tags": ["release"]},
+    "chat": {
+      "title": "Atlas release plan",
+      "history": {
+        "currentId": "a2",
+        "messages": {
+          "u1": {"id": "u1", "role": "user", "content": "Ship Atlas on September 14.", "parentId": null, "childrenIds": ["a1", "a2"], "timestamp": 1784764800},
+          "a1": {"id": "a1", "role": "assistant", "content": "I will remember September 13.", "parentId": "u1", "childrenIds": [], "timestamp": 1784764801, "model": "model-old"},
+          "a2": {"id": "a2", "role": "assistant", "content": "The Atlas release date is September 14.", "parentId": "u1", "childrenIds": [], "timestamp": 1784764802, "model": "model-current"}
+        }
+      }
+    }
+  }
+]
