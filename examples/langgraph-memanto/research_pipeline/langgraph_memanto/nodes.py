@@ -15,6 +15,7 @@ from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
 from langgraph_memanto import create_memanto_tools
+from langgraph_memanto.llm_config import chat_openai_kwargs
 from memanto.cli.client.sdk_client import SdkClient
 
 client = SdkClient(api_key=os.environ.get("MOORCHEH_API_KEY", ""))
@@ -26,7 +27,6 @@ memanto_answer = next(t for t in tools if t.name == "memanto_answer")
 load_dotenv()
 
 MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 
 def _get_moorcheh_api_key() -> str:
@@ -46,12 +46,11 @@ def _get_moorcheh_api_key() -> str:
 def _get_llm():
     """Build a flexible ChatOpenAI model."""
     return ChatOpenAI(
-        model=os.getenv("LLM_MODEL", "openai/gpt-4o-mini"),
-        api_key=os.getenv("OPENROUTER_API_KEY")
-        or os.getenv("OPENAI_API_KEY")
-        or OPENROUTER_API_KEY,
-        base_url=os.getenv("OPENAI_API_BASE", "https://openrouter.ai/api/v1"),
-        temperature=0.7,
+        **chat_openai_kwargs(
+            temperature=0.7,
+            openai_default_model="gpt-4o-mini",
+            openrouter_default_model="openai/gpt-4o-mini",
+        )
     )
 
 

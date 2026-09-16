@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import uuid
 from typing import Literal
@@ -36,6 +35,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import RetryPolicy
 from langgraph_memanto import MemantoStore
+from memanto_base_store.llm_config import chat_openai_kwargs
 from memanto_base_store.state import SupportState
 from pydantic import BaseModel, Field, model_validator
 
@@ -250,9 +250,11 @@ def _try_load_memories(text: str) -> ExtractedMemories | None:
 
 
 def _make_llm(temperature: float = 0.2, max_tokens: int | None = None) -> ChatOpenAI:
-    """Build a ChatOpenAI instance routed through OpenRouter.
+    """Build a ChatOpenAI instance for an OpenAI-compatible provider.
 
-    Requires ``OPENROUTER_API_KEY``. Override the model via ``LANGGRAPH_LLM``.
+    Requires ``OPENAI_API_KEY``, ``OPENROUTER_API_KEY``, or
+    ``ATLASCLOUD_API_KEY``. Override the model via ``LANGGRAPH_LLM`` or
+    ``LLM_MODEL``.
     Called twice inside build_support_graph: once at temperature=0.2 for the
     conversational responder, once at temperature=0.1 for the extractor.
     Two separate instances are used because chaining .bind(temperature=0) onto
@@ -270,27 +272,12 @@ def _make_llm(temperature: float = 0.2, max_tokens: int | None = None) -> ChatOp
     # Free, no credits required. Subject to OpenRouter's shared free-tier
     # rate limits; the graph's RetryPolicy handles 429s with 32s backoff.
     # See .env.example for paid alternatives (tencent/hy3-preview etc).
-    model = os.environ.get("LLM_MODEL", os.environ.get("LANGGRAPH_LLM", "gpt-4o-mini"))
-    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY or OPENROUTER_API_KEY is not set. Copy .env.example to .env and add "
-            "your API key."
-        )
-    kwargs: dict = {
-        "model": model,
-        "temperature": temperature,
-        "api_key": api_key,
-        "base_url": os.environ.get(
-            "OPENAI_API_BASE",
-            "https://openrouter.ai/api/v1"
-            if os.environ.get("OPENROUTER_API_KEY")
-            else None,
-        )
-        or None,
-    }
-    if max_tokens is not None:
-        kwargs["max_tokens"] = max_tokens
+    kwargs = chat_openai_kwargs(
+        temperature=temperature,
+        openai_default_model="gpt-4o-mini",
+        openrouter_default_model="openai/gpt-4o-mini",
+        max_tokens=max_tokens,
+    )
     return ChatOpenAI(**kwargs)
 
 
