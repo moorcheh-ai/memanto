@@ -209,6 +209,76 @@ def test_reminder_intent_beats_artifact_mention():
     assert memory.type == "commitment"
 
 
+def test_desire_framing_beats_topical_error_terms():
+    """A desire about how work is reported is a preference, not an incident."""
+
+    parser = MemoryParsingService()
+
+    cases = [
+        "I want error messages explained in plain English.",
+        "I would like the logs to show the raw payload.",
+        "I'd prefer errors surfaced inline rather than at the end.",
+        "Prefer answers that explain what went wrong before the solution.",
+    ]
+
+    for content in cases:
+        memory = make_memory(content)
+
+        parser.parse_memory(memory)
+
+        assert memory.type == "preference", content
+
+
+def test_presentation_imperative_beats_topical_error_terms():
+    """A sentence opening on a presentation directive is an instruction."""
+
+    parser = MemoryParsingService()
+
+    memory = make_memory("Show the failing case first, then the fix.")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "instruction"
+
+
+def test_desire_framing_does_not_steal_goals():
+    """A desire followed by "to <verb>" still belongs to the goal ruleset."""
+
+    parser = MemoryParsingService()
+
+    cases = [
+        "I want to achieve 99.9 percent uptime by Q4",
+        "I would like to reduce build time this quarter",
+        "We want to improve conversion by next sprint",
+    ]
+
+    for content in cases:
+        memory = make_memory(content)
+
+        parser.parse_memory(memory)
+
+        assert memory.type == "goal", content
+
+
+def test_work_choice_preference_still_loses_to_hard_requirement():
+    """The desire rule stays narrow: a choice about the work is not upgraded.
+
+    "I prefer the new approach" is a preference about the work itself, not
+    about how it is reported, so it keeps its existing weaker score and the
+    "must" requirement in the same sentence still wins.
+    """
+
+    parser = MemoryParsingService()
+
+    memory = make_memory(
+        "I prefer the new approach because we decided it must be implemented before the next client meeting."
+    )
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "instruction"
+
+
 # Fuzzy fallback: typo'd decisive terms the deterministic rules miss
 def test_fuzzy_fallback_rescues_typo_decision():
     parser = MemoryParsingService()
