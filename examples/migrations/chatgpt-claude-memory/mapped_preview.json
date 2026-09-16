@@ -1,0 +1,201 @@
+{
+  "claude": [
+    {
+      "title": "I prefer dark themes in my editor and terminal.",
+      "content": "I prefer dark themes in my editor and terminal.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m4f198e\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": "preference",
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m4f198e",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "Let's build a FastAPI service for our todo app.",
+      "content": "Let's build a FastAPI service for our todo app.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m206ecf\n- Original timestamp: 2026-08-01 00:05:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m206ecf",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:05:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "Pin all dependency versions — I've been burned by float updates.",
+      "content": "Pin all dependency versions — I've been burned by float updates.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: mc6ea7f\n- Original timestamp: 2026-08-01 00:10:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "mc6ea7f",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:10:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "I use a Dell XPS 15 for work.",
+      "content": "I use a Dell XPS 15 for work.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m075666\n- Original timestamp: 2026-08-01 00:15:00+00:00",
+      "type": "context",
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m075666",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:15:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "Ship the MVP by Friday.",
+      "content": "Ship the MVP by Friday.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m5efc0e\n- Original timestamp: 2026-08-01 00:20:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m5efc0e",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:20:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "The JWT auth is failing in production but works locally.",
+      "content": "The JWT auth is failing in production but works locally.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: me1e00c\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "me1e00c",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "We use Azure AD as our identity provider.",
+      "content": "We use Azure AD as our identity provider.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: mc89bb3\n- Original timestamp: 2026-08-01 00:05:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "mc89bb3",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:05:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "Always add tests before you merge.",
+      "content": "Always add tests before you merge.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m06161b\n- Original timestamp: 2026-08-01 00:15:00+00:00",
+      "type": "instruction",
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m06161b",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:15:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "I prefer async SQLAlchemy over the sync ORM.",
+      "content": "I prefer async SQLAlchemy over the sync ORM.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m779926\n- Original timestamp: 2026-08-01 00:20:00+00:00",
+      "type": "preference",
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m779926",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:20:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    }
+  ],
+  "chatgpt": [
+    {
+      "title": "I decided to use Stripe for payments.",
+      "content": "I decided to use Stripe for payments.\n\n---\n[Supporting data]\n- Source: chatgpt\n- Role: user\n- Message refs: 90d8bd80\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": "decision",
+      "tags": [
+        "genai",
+        "chatgpt"
+      ],
+      "confidence": 0.6,
+      "source": "chatgpt",
+      "source_ref": "90d8bd80",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "Use webhooks for async confirmation.",
+      "content": "Use webhooks for async confirmation.\n\n---\n[Supporting data]\n- Source: chatgpt\n- Role: user\n- Message refs: 335909e6\n- Original timestamp: 2026-08-01 00:15:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "chatgpt"
+      ],
+      "confidence": 0.6,
+      "source": "chatgpt",
+      "source_ref": "335909e6",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:15:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "My goal: cut payment latency under 800ms.",
+      "content": "My goal: cut payment latency under 800ms.\n\n---\n[Supporting data]\n- Source: chatgpt\n- Role: user\n- Message refs: b272bf9d\n- Original timestamp: 2026-08-01 00:30:00+00:00",
+      "type": "goal",
+      "tags": [
+        "genai",
+        "chatgpt"
+      ],
+      "confidence": 0.6,
+      "source": "chatgpt",
+      "source_ref": "b272bf9d",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:30:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    },
+    {
+      "title": "I like coffee with oat milk.",
+      "content": "I like coffee with oat milk.\n\n---\n[Supporting data]\n- Source: chatgpt\n- Role: user\n- Message refs: 80fa0e6b\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": "preference",
+      "tags": [
+        "genai",
+        "chatgpt"
+      ],
+      "confidence": 0.6,
+      "source": "chatgpt",
+      "source_ref": "80fa0e6b",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 12:00:00+00:00"
+    }
+  ]
+}
