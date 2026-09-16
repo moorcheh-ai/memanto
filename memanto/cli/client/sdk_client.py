@@ -1098,6 +1098,84 @@ class SdkClient:
             "count": result.get("total_found", 0),
         }
 
+    def recall_multi(
+        self,
+        agent_ids: list[str],
+        query: str,
+        limit: int | None = None,
+        type: list[str] | None = None,
+        tags: list[str] | None = None,
+        min_similarity: float | None = None,
+        min_confidence: float | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        status: str = "all",
+    ) -> dict[str, Any]:
+        """
+        Search several agents in one query.
+
+        Unlike ``recall`` this is not tied to a single session, so it does not
+        validate the active agent; the caller names the agents it wants. Every
+        returned memory carries the ``agent_id`` it came from, and ``limit``
+        applies to the merged ranking rather than to each agent.
+
+        Args:
+            agent_ids: Agents to search. Blanks and duplicates are dropped.
+            query: Natural-language search query.
+            limit: Max results across all agents (defaults to config).
+            type: Filter by types (e.g. ``["fact", "decision"]``).
+            tags: Filter by tags.
+            min_similarity: Minimum similarity threshold.
+            min_confidence: Minimum confidence threshold.
+            created_after: Only memories created after this datetime.
+            created_before: Only memories created before this datetime.
+            status: Lifecycle filter — ``all`` (default), ``active`` or
+                ``expired``. The default returns both so callers can label them.
+
+        Returns:
+            Dict with ``agent_ids``, ``query``, ``memories`` (list) and
+            ``count``.
+        """
+        distinct_agents = list(dict.fromkeys(a.strip() for a in agent_ids if a.strip()))
+        if not distinct_agents:
+            raise ValueError("recall_multi requires at least one agent id")
+
+        recall_cfg = ConfigManager().get_recall_config()
+        if limit is None:
+            limit = recall_cfg["limit"]
+        if min_similarity is None:
+            min_similarity = recall_cfg.get("min_similarity")
+
+        self._validate_query(query, limit)
+
+        logger.debug(
+            "Multi-agent recall: agents=%s query='%s' limit=%d",
+            ",".join(distinct_agents),
+            query,
+            limit,
+        )
+        result = self._get_read_service().search_memories_multi(
+            agent_ids=distinct_agents,
+            query=query,
+            type=type,
+            tags=tags,
+            min_confidence=min_confidence,
+            min_similarity_score=min_similarity,
+            created_after=created_after.isoformat() if created_after else None,
+            created_before=created_before.isoformat() if created_before else None,
+            status=status,
+            limit=limit,
+        )
+
+        memories = result.get("results", [])
+
+        return {
+            "agent_ids": distinct_agents,
+            "query": query,
+            "memories": memories,
+            "count": len(memories),
+        }
+
     def recall_as_of(
         self,
         agent_id: str,
