@@ -16,6 +16,7 @@ interface Recorded {
 function startFakeApi(
   agentId = "test-agent",
   opts: {
+    requiredApiKey?: string;
     expireFirstSession?: boolean;
     expireFirstUpload?: boolean;
     rejectAllSessions?: boolean;
@@ -48,6 +49,19 @@ function startFakeApi(
         };
 
         if (url === "/health") return reply(200, { status: "ok" });
+        const agentUrl = `/api/v2/agents/${encodedAgentId}`;
+        const isManagementRequest =
+          url === "/api/v2/status" ||
+          url === "/api/v2/agents" ||
+          (url === agentUrl && ["GET", "DELETE"].includes(req.method ?? "")) ||
+          url === `${agentUrl}/activate`;
+        if (
+          opts.requiredApiKey &&
+          isManagementRequest &&
+          req.headers["x-api-key"] !== opts.requiredApiKey
+        ) {
+          return reply(401, { detail: "invalid API key" });
+        }
         if (url === "/api/v2/status" && req.method === "GET")
           return reply(200, {
             session_id: "existing-session",
@@ -196,6 +210,35 @@ describe("Memanto", () => {
 
     const res = await m.recall({ query: "coffee" });
     expect(res).toMatchObject({ count: 0 });
+  });
+
+  it("authenticates remote management requests with apiKey", async () => {
+    const apiKey = "mch_remote_test_key";
+    const api = await startFakeApi("test-agent", { requiredApiKey: apiKey });
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url, apiKey });
+    cleanupFns.push(() => m.close());
+
+    await m.remember({ content: "Remote servers require management auth" });
+    await m.status();
+
+    const managementRequests = api.recorded.filter((r) =>
+      [
+        "/api/v2/agents/test-agent",
+        "/api/v2/agents",
+        "/api/v2/agents/test-agent/activate",
+        "/api/v2/status",
+      ].includes(r.url),
+    );
+    expect(managementRequests).toHaveLength(4);
+    expect(
+      managementRequests.every((r) => r.headers["x-api-key"] === apiKey),
+    ).toBe(true);
+
+    const remember = api.recorded.find((r) => r.url.endsWith("/remember"));
+    expect(remember?.headers["x-session-token"]).toBe("fake-token");
+    expect(remember?.headers["x-api-key"]).toBeUndefined();
   });
 
   it("reactivates once and retries when the cached session expires", async () => {
