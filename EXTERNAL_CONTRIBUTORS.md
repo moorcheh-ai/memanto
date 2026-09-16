@@ -98,3 +98,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @tangjiadev
 - @iliasabk
 - @dhomoney
+- @malwar77
