@@ -96,3 +96,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @filtede98
 - @bamiebot-maker
 - @tangjiadev
+- @iliasabk
