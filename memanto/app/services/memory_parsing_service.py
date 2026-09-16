@@ -82,8 +82,13 @@ class MemoryParsingService:
                     # standing preference about how work is reported. A desire
                     # about the work itself ("I prefer the new approach") keeps
                     # its existing, weaker preference score so a hard
-                    # requirement in the same sentence still outranks it. A
-                    # following "to <verb>" is left to the goal ruleset.
+                    # requirement in the same sentence still outranks it.
+                    #
+                    # A following "to <verb>" is left to the goal ruleset, and
+                    # both branches carry that guard. Without it on the
+                    # sentence-opening branch, "Prefer to ship the CLI by
+                    # Friday" scored 5 here instead of tying with the goal
+                    # ruleset at 4, which flipped a goal into a preference.
                     r"(?:"
                     r"\b(?:i|we)\s*(?:['’]d|would)?\s*"
                     r"(?:want|need|prefer|like|expect)\b(?!\s+to\b)"
@@ -91,7 +96,7 @@ class MemoryParsingService:
                     r"explanations?|errors?|outputs?|code|comments?|feedback|"
                     r"summar(?:y|ies)|docs?|documentation|format(?:ting)?|"
                     r"styles?|wording|logs?|results?)\b)"
-                    r"|^\s*(?:please\s+)?prefer\b"
+                    r"|^\s*(?:please\s+)?prefer\b(?!\s+to\b)"
                     r")",
                     5,
                 ),

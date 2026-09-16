@@ -219,6 +219,8 @@ def test_desire_framing_beats_topical_error_terms():
         "I would like the logs to show the raw payload.",
         "I'd prefer errors surfaced inline rather than at the end.",
         "Prefer answers that explain what went wrong before the solution.",
+        "Prefer tables over prose in status updates.",
+        "Please prefer concise summaries over long ones.",
     ]
 
     for content in cases:
@@ -242,7 +244,13 @@ def test_presentation_imperative_beats_topical_error_terms():
 
 
 def test_desire_framing_does_not_steal_goals():
-    """A desire followed by "to <verb>" still belongs to the goal ruleset."""
+    """A desire followed by "to <verb>" still belongs to the goal ruleset.
+
+    The sentence-opening branch needs the same guard as the "I want" branch.
+    Without it, "Prefer to ship the CLI by Friday" scored 5 as a preference
+    instead of tying with the goal ruleset at 4, and ``goal`` outranks
+    ``preference`` in ``TYPE_PRIORITY``, so the goal won on ``main``.
+    """
 
     parser = MemoryParsingService()
 
@@ -250,6 +258,9 @@ def test_desire_framing_does_not_steal_goals():
         "I want to achieve 99.9 percent uptime by Q4",
         "I would like to reduce build time this quarter",
         "We want to improve conversion by next sprint",
+        "Prefer to ship the CLI by Friday",
+        "Prefer to finish the migration this quarter",
+        "Please prefer to launch the beta next sprint",
     ]
 
     for content in cases:
