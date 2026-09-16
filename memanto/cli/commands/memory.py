@@ -741,7 +741,9 @@ def recall(
         )
 
     client = get_client()
-    agent_id = active_agent_id
+    # Only the single-agent paths below read ``agent_id``, and the session
+    # check above runs on exactly those paths.
+    agent_id = cast(str, active_agent_id)
 
     # CLI-side validation for timestamps to fail fast with a clear error
     def _validate_and_parse_timestamp(ts: str, flag_name: str) -> str:
