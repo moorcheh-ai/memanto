@@ -28,6 +28,7 @@ from memanto.app.models import (
     BoundedTags,
     ConflictResolveRequest,
     ExtractMemoriesRequest,
+    MultiRecallResponse,
     RecallResponse,
     RememberRequest,
     RememberResponse,
@@ -35,7 +36,11 @@ from memanto.app.models import (
     UploadFileResponse,
 )
 from memanto.app.models.session import Session
-from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.routes.auth_deps import (
+    get_current_session,
+    get_session_service,
+    require_management_access,
+)
 from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
@@ -66,6 +71,12 @@ from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
 router = APIRouter()
+
+# Recall endpoints here are session-scoped, and a session belongs to exactly one
+# agent (see ``router.include_router(memory.router, prefix="/agents")`` in
+# sessions.py). Searching several agents in one query therefore cannot live
+# under that prefix, so it is mounted separately at ``/api/v2/recall/multi``.
+multi_router = APIRouter()
 
 _config_manager = ConfigManager()
 _SAFE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -161,6 +172,34 @@ class RecallRequest(BaseModel):
     def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
         """Reject recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
+
+
+class MultiRecallRequest(RecallRequest):
+    """Request body for recalling across several agents at once.
+
+    Same filters as :class:`RecallRequest`; the only addition is the set of
+    agents to search. Results from every agent are merged into one ranking and
+    each memory reports the agent it came from.
+    """
+
+    agent_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description=(
+            "Agents to search, at most 20. Blank entries are dropped and "
+            "duplicates collapse to a single search."
+        ),
+    )
+
+    @field_validator("agent_ids")
+    @classmethod
+    def agent_ids_must_be_usable(cls, value: list[str]) -> list[str]:
+        """Drop blank entries, collapse duplicates, reject an empty result."""
+        cleaned = list(dict.fromkeys(agent.strip() for agent in value if agent.strip()))
+        if not cleaned:
+            raise ValueError("agent_ids must contain at least one agent id")
+        return cleaned
 
 
 def _parse_recall_temporal_bound(v: object, *, end_of_day: bool) -> datetime:
@@ -983,6 +1022,76 @@ async def recall(
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
+            "query": request.query,
+            "memories": memories,
+            "count": len(memories),
+        }
+
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@multi_router.post("/recall/multi", response_model=MultiRecallResponse)
+async def recall_multi(
+    request: MultiRecallRequest = Body(...),
+    management_key: str = Depends(require_management_access),
+):
+    """Recall memories from several agents in one query.
+
+    Auth: every other recall endpoint is scoped to one session, and a session
+    belongs to a single agent. This endpoint cannot be session-scoped, so it
+    requires the management credential instead — a loopback caller, or the
+    server key as ``Authorization: Bearer`` / ``X-Api-Key``. That is the same
+    trust level as agent create/delete, and it means an agent's own session
+    token can never be used to read a sibling agent's memories.
+
+    ``limit`` applies to the merged ranking rather than to each agent, and every
+    memory in the response carries the ``agent_id`` it came from.
+    """
+    CostGuard.validate_query_length(request.query)
+
+    recall_cfg = _config_manager.get_recall_config()
+    raw_min_similarity = (
+        request.min_similarity
+        if request.min_similarity is not None
+        else recall_cfg.get("min_similarity")
+    )
+    try:
+        limit = resolve_recall_limit(request.limit)
+        min_similarity = (
+            None if raw_min_similarity is None else float(raw_min_similarity)
+        )
+    except (TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid recall configuration: {e}"
+        )
+
+    try:
+        # The management credential, not the caller's own, is what the service
+        # reads with: every requested agent must be reachable with it.
+        read_service = MemoryReadService(get_moorcheh_client(api_key=management_key))
+
+        result = await asyncio.to_thread(
+            read_service.search_memories_multi,
+            agent_ids=request.agent_ids,
+            query=request.query,
+            type=request.type,
+            tags=request.tags,
+            min_similarity_score=min_similarity,
+            created_after=request.created_after.isoformat()
+            if request.created_after
+            else None,
+            created_before=request.created_before.isoformat()
+            if request.created_before
+            else None,
+            status=request.status,
+            limit=limit,
+        )
+
+        memories = result.get("results", [])
+
+        return {
+            "agent_ids": request.agent_ids,
             "query": request.query,
             "memories": memories,
             "count": len(memories),
