@@ -673,7 +673,13 @@ def recall(
 
     # ``--agents`` searches several agents at once, so it neither needs nor
     # uses the active session; every other mode stays scoped to the active agent.
-    agent_ids = [agent.strip() for agent in (agents or "").split(",") if agent.strip()]
+    # Deduplicated the same way the clients do it, so the agent count in the
+    # header matches the searches actually run.
+    agent_ids = list(
+        dict.fromkeys(
+            agent.strip() for agent in (agents or "").split(",") if agent.strip()
+        )
+    )
     if agents is not None and not agent_ids:
         _error(
             "No agents given.",
@@ -848,12 +854,13 @@ def recall(
             return
 
         # Display temporal mode information
+        agent_noun = "agent" if len(agent_ids) == 1 else "agents"
         mode_labels = {
             "as_of": f"Point-in-time (as of {as_of})",
             "changed_since": f"Differential (since {changed_since})",
             "recent": "Recent (newest first)",
             "standard": "Standard search",
-            "multi": f"Multi-agent ({len(agent_ids)} agents)",
+            "multi": f"Multi-agent ({len(agent_ids)} {agent_noun})",
         }
         mode_label = mode_labels.get(temporal_mode, "Standard search")
 

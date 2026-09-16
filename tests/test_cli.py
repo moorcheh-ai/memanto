@@ -163,6 +163,27 @@ def _deleted_ids(mock_write) -> list[str]:
     return [call.args[0] for call in mock_write.delete_memory.call_args_list]
 
 
+def _multi_recall_result(agent_id: str = "agent-a") -> dict:
+    """One merged hit, in the shape the recall panel reads."""
+    return {
+        "memories": [
+            {
+                "id": "mem_1",
+                "type": "fact",
+                "agent_id": agent_id,
+                "score": 0.9,
+                "confidence": 0.9,
+                "title": "A fact",
+                "content": "body",
+                "created_at": "2026-07-20T00:00:00Z",
+                "status": "active",
+                "tags": [],
+            }
+        ],
+        "count": 1,
+    }
+
+
 class TestMEMANTOCLI:
     """Integration tests for MEMANTO CLI commands"""
 
@@ -893,6 +914,47 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         call_kwargs = mock_all_clients.recall_changed_since.call_args.kwargs
         assert call_kwargs["tags"] == ["release", "backend"]
+
+    def test_recall_agents_searches_each_agent_once(self, mock_all_clients):
+        """A repeated --agents id must not inflate the reported agent count."""
+        mock_all_clients.recall_multi.return_value = _multi_recall_result()
+
+        result = runner.invoke(
+            app,
+            ["recall", "some query", "--agents", "agent-a,agent-a,agent-b"],
+        )
+
+        assert result.exit_code == 0
+        assert mock_all_clients.recall_multi.call_args.kwargs["agent_ids"] == [
+            "agent-a",
+            "agent-b",
+        ]
+        assert "Multi-agent (2 agents)" in result.stdout
+
+    def test_recall_agents_labels_a_single_agent_in_the_singular(
+        self, mock_all_clients
+    ):
+        """One distinct id, however many times it is typed, reads as one agent."""
+        mock_all_clients.recall_multi.return_value = _multi_recall_result()
+
+        result = runner.invoke(
+            app,
+            ["recall", "some query", "--agents", "agent-a, agent-a"],
+        )
+
+        assert result.exit_code == 0
+        assert mock_all_clients.recall_multi.call_args.kwargs["agent_ids"] == [
+            "agent-a"
+        ]
+        assert "Multi-agent (1 agent)" in result.stdout
+
+    def test_recall_agents_still_rejects_blank_ids(self, mock_all_clients):
+        """Trimming stays: a list of only separators is still a blank list."""
+        result = runner.invoke(app, ["recall", "some query", "--agents", " , "])
+
+        assert result.exit_code != 0
+        assert "No agents given" in result.stdout
+        mock_all_clients.recall_multi.assert_not_called()
 
     def test_recall_recent_rejects_query(self, mock_all_clients):
         """`--recent` is chronological; passing a query alongside is an error."""
