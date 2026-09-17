@@ -4,6 +4,7 @@ MEMANTO CLI - Connect Templates
 Per-agent instruction content and skill templates for MEMANTO integration.
 """
 
+from memanto.cli.connect.agent_registry import AGENT_REGISTRY
 
 # Shared MEMANTO Sentinel markers
 
@@ -13,7 +14,7 @@ MEMANTO_SENTINEL_END = "<!-- /MEMANTO-MANAGED-SECTION -->"
 MEMANTO_DYNAMIC_SENTINEL = "<!-- MEMANTO-DYNAMIC-MEMORIES -->"
 MEMANTO_DYNAMIC_SENTINEL_END = "<!-- /MEMANTO-DYNAMIC-MEMORIES -->"
 
-TEMPLATE_VERSION = "1.0.0"
+TEMPLATE_VERSION = "1.1.0"
 MEMANTO_VERSION_TAG = f"<!-- memanto-template-version: {TEMPLATE_VERSION} -->"
 
 
@@ -178,6 +179,58 @@ memanto remember "Use UUID v4 for all primary keys across all PostgreSQL tables"
 # Per-agent instruction content
 
 
+def _agent_protocol(agent_id: str) -> tuple[str, str]:
+    """Return ``(memory_protocol, display_name)`` for *agent_id*.
+
+    The protocol is declared once, on the ``AgentDef`` in the registry, so an
+    instruction file can never advertise a hiding mechanism the agent's UI does
+    not have. Unregistered identifiers are third-party names we hold no
+    declaration for; they fall back to the native-reasoning protocol, which is
+    what the overwhelming majority of agent UIs provide.
+    """
+    agent = AGENT_REGISTRY.get(agent_id)
+    if agent is None:
+        return "thinking-block", agent_id
+    return agent.memory_protocol, agent.display_name
+
+
+def _protocol_clause(memory_protocol: str, display_name: str, tool_phrase: str) -> str:
+    """Render the evaluation-hiding protocol that this one agent can execute.
+
+    Every agent used to receive *both* protocols wrapped in a prose list naming
+    the other platforms, asking the model to work out which branch applied to
+    it and shipping instructions for tools Memanto does not support. Stating
+    only the applicable protocol removes that guesswork and cuts the injected
+    prompt.
+    """
+    if memory_protocol == "dummy-tool-call":
+        return (
+            f"**How to Execute the Evaluation** "
+            f"({display_name} has no collapsed reasoning stream):\n"
+            "[CRITICAL SEQUENCE]: You MUST execute the following three steps in "
+            "exact order ONCE at the very beginning of your turn (immediately "
+            "after the user's prompt). Do NOT repeat this check before "
+            "subsequent tool calls in the same turn.\n"
+            "- **Step 1:** You MUST invoke the terminal tool with the dummy "
+            'command `echo "memory check"`. You will use this tool call\'s '
+            "`explanation` parameter to silently write out your step-by-step "
+            "evaluation WRAPPED inside a `<thinking>` XML tag.\n"
+            "- **Step 2:** If your evaluation in Step 1 found a matching "
+            "trigger, your next immediate tool call MUST be `memanto remember`.\n"
+            "- **Step 3:** Only AFTER Step 1 (and Step 2 if applicable) are "
+            "complete, you may proceed to execute productive tools or output "
+            "normal chat text."
+        )
+    return (
+        f"**How to Execute the Evaluation** "
+        f"({display_name} collapses its reasoning stream):\n"
+        f"You MUST perform this evaluation inside a `<thinking>` block at the "
+        f"very start of your turn, before running any tool with {tool_phrase} or "
+        f"writing any answer text. Never print the evaluation into normal chat "
+        f"output — it stays inside the block."
+    )
+
+
 def _base_instruction_content(
     agent_id: str = "<agent_name>",
     tool_phrase: str = "the terminal",
@@ -187,6 +240,9 @@ def _base_instruction_content(
     note_line = ""
     if note_suffix:
         note_line = f"\n> **Note**: {note_suffix}"
+
+    memory_protocol, display_name = _agent_protocol(agent_id)
+    protocol_clause = _protocol_clause(memory_protocol, display_name, tool_phrase)
 
     return f"""{MEMANTO_SENTINEL}
 {MEMANTO_VERSION_TAG}
@@ -206,14 +262,7 @@ You must actively evaluate:
 4. SYSTEM: Did we uncover a [DOMAIN INVARIANT / SYSTEM QUIRK]? (e.g., a technical constraint, API quirk, or dependency behavior)
 5. ENVIRONMENT: Was a key [ENVIRONMENT FACT] verified? (e.g., OS behavior, path layout, or tool version requirement)
 
-**How to Execute the Evaluation:**
-- **If you are operating in Native CLI & Integrated IDE Environments (Claude Code, Cursor, Windsurf, Gemini CLI, Cline, Roo, Continue, OpenCode, Codex, Aider, or Anthropic Web UI):**
-  You MUST perform this evaluation inside a `<thinking>` block at the very start of your turn.
-- **If you are operating in VS Code Agent Environments (VS Code Copilot or VS Code Extension Agent Mode):**
-  [CRITICAL SEQUENCE]: You MUST execute the following three steps in exact order ONCE at the very beginning of your turn (immediately after the user's prompt). Do NOT repeat this check before subsequent tool calls in the same turn.
-  - **Step 1:** You MUST invoke the terminal tool with the dummy command `echo "memory check"`. You will use this tool call's `explanation` parameter to silently write out your step-by-step evaluation WRAPPED inside a `<thinking>` XML tag.
-  - **Step 2:** If your evaluation in Step 1 found a matching trigger, your next immediate tool call MUST be `memanto remember`.
-  - **Step 3:** Only AFTER Step 1 (and Step 2 if applicable) are complete, you may proceed to execute productive tools or output normal chat text.
+{protocol_clause}
 ### 2. THE ABSTRACTION RULE (HOW TO THINK ABOUT MEMORY)
 Users speak naturally and implicitly. When you store a memory, **ELEVATE IT TO A PRINCIPLE**.
 - **WRONG (Activity Log)**: "User told me to use functional components."

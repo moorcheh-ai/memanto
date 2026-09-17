@@ -40,6 +40,19 @@ class AgentDef:
     name: str  # CLI identifier, e.g. "claude-code"
     display_name: str  # Human name, e.g. "Claude Code"
 
+    # How this agent's UI can hide the per-turn memory evaluation that the
+    # injected instructions ask for. Required, with no default: the whole point
+    # is that adding a platform forces an explicit decision instead of silently
+    # inheriting a protocol its UI cannot hide.
+    #
+    # "thinking-block"  — the agent has a native reasoning stream the UI
+    #                     collapses, so the evaluation is written into a
+    #                     <thinking> block at the start of the turn.
+    # "dummy-tool-call" — the agent has no collapsed reasoning stream, so the
+    #                     evaluation rides inside the argument of a throwaway
+    #                     `echo "memory check"` terminal call.
+    memory_protocol: str
+
     # Instruction file (the main file where agent reads instructions)
     instruction_local_file: str | None = None  # e.g. "CLAUDE.md"
     instruction_global_file: str | None = None  # e.g. "~/.claude/CLAUDE.md"
@@ -124,6 +137,7 @@ class AgentDef:
 CLAUDE_CODE = AgentDef(
     name="claude-code",
     display_name="Claude Code",
+    memory_protocol="thinking-block",
     instruction_local_file="CLAUDE.md",
     instruction_global_file="~/.claude/CLAUDE.md",
     instruction_format="markdown",
@@ -144,6 +158,7 @@ CLAUDE_CODE = AgentDef(
 CODEX = AgentDef(
     name="codex",
     display_name="Codex CLI",
+    memory_protocol="thinking-block",
     instruction_local_file="AGENTS.md",
     instruction_global_file="~/.codex/AGENTS.md",
     instruction_format="markdown",
@@ -162,6 +177,7 @@ CODEX = AgentDef(
 PI = AgentDef(
     name="pi",
     display_name="Pi (coding agent)",
+    memory_protocol="thinking-block",
     instruction_local_file="AGENTS.md",
     instruction_global_file="~/.pi/agent/AGENTS.md",
     instruction_format="markdown",
@@ -177,6 +193,7 @@ PI = AgentDef(
 CURSOR = AgentDef(
     name="cursor",
     display_name="Cursor",
+    memory_protocol="thinking-block",
     instruction_local_file=".cursor/rules/memanto.mdc",
     instruction_global_file="~/.cursor/rules/memanto.mdc",
     instruction_format="mdc",
@@ -195,6 +212,7 @@ CURSOR = AgentDef(
 WINDSURF = AgentDef(
     name="windsurf",
     display_name="Windsurf",
+    memory_protocol="thinking-block",
     instruction_local_file=".windsurfrules",
     instruction_global_file="~/.codeium/windsurf/.windsurfrules",
     instruction_format="append",
@@ -207,6 +225,7 @@ WINDSURF = AgentDef(
 ANTIGRAVITY = AgentDef(
     name="antigravity",
     display_name="Antigravity (Google)",
+    memory_protocol="thinking-block",
     instruction_local_file=None,  # Antigravity uses skills only
     instruction_global_file=None,
     skill_local_dir=".agent/skills",
@@ -218,6 +237,7 @@ ANTIGRAVITY = AgentDef(
 GEMINI_CLI = AgentDef(
     name="gemini-cli",
     display_name="Gemini CLI",
+    memory_protocol="thinking-block",
     instruction_local_file="GEMINI.md",
     instruction_global_file="~/.gemini/GEMINI.md",
     instruction_format="markdown",
@@ -230,6 +250,7 @@ GEMINI_CLI = AgentDef(
 CLINE = AgentDef(
     name="cline",
     display_name="Cline",
+    memory_protocol="thinking-block",
     instruction_local_file=".clinerules/memanto.md",
     instruction_global_file="~/.clinerules/memanto.md",
     instruction_format="markdown",
@@ -242,6 +263,7 @@ CLINE = AgentDef(
 CONTINUE = AgentDef(
     name="continue",
     display_name="Continue",
+    memory_protocol="thinking-block",
     instruction_local_file=".continue/rules/memanto.md",
     instruction_global_file="~/.continue/rules/memanto.md",
     instruction_format="markdown",
@@ -255,6 +277,7 @@ CONTINUE = AgentDef(
 OPENCODE = AgentDef(
     name="opencode",
     display_name="OpenCode",
+    memory_protocol="thinking-block",
     instruction_local_file="AGENTS.md",
     instruction_global_file="~/.config/opencode/AGENTS.md",
     instruction_format="markdown",
@@ -266,6 +289,7 @@ OPENCODE = AgentDef(
 GOOSE = AgentDef(
     name="goose",
     display_name="Goose",
+    memory_protocol="thinking-block",
     instruction_local_file=None,
     instruction_global_file=None,
     skill_local_dir=".goose/skills",
@@ -277,6 +301,7 @@ GOOSE = AgentDef(
 ROO = AgentDef(
     name="roo",
     display_name="Roo Code",
+    memory_protocol="thinking-block",
     instruction_local_file=".roo/rules/memanto.md",
     instruction_global_file="~/.roo/rules/memanto.md",
     instruction_format="markdown",
@@ -290,6 +315,7 @@ ROO = AgentDef(
 GITHUB_COPILOT = AgentDef(
     name="github-copilot",
     display_name="GitHub Copilot",
+    memory_protocol="dummy-tool-call",
     instruction_local_file=".github/copilot-instructions.md",
     instruction_global_file=_get_vscode_prompts_dir(),
     instruction_format="markdown",
@@ -301,6 +327,7 @@ GITHUB_COPILOT = AgentDef(
 AUGMENT = AgentDef(
     name="augment",
     display_name="Augment Code",
+    memory_protocol="thinking-block",
     instruction_local_file=".augment/rules/memanto.md",
     instruction_global_file="~/.augment/rules/memanto.md",
     instruction_format="markdown",
