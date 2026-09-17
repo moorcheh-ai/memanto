@@ -2,6 +2,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from threading import Event
 
@@ -33,6 +34,19 @@ def _request_with_token(token: str) -> Request:
     )
 
 
+def _signal_before_exclusive_lock(monkeypatch, service, lock_attempted: Event):
+    """Signal at the real OS-lock boundary for a competing operation."""
+    original_lock = service._exclusive_file_lock
+
+    @contextmanager
+    def signal_before_lock(lock_file):
+        lock_attempted.set()
+        with original_lock(lock_file):
+            yield
+
+    monkeypatch.setattr(service, "_exclusive_file_lock", signal_before_lock)
+
+
 @pytest.mark.parametrize("full_agent_delete", [False, True])
 def test_cross_instance_deletion_remains_authoritative_over_renewal(
     tmp_path, monkeypatch, full_agent_delete
@@ -48,7 +62,7 @@ def test_cross_instance_deletion_remains_authoritative_over_renewal(
 
     save_reached = Event()
     allow_save = Event()
-    delete_started = Event()
+    delete_lock_attempted = Event()
     original_save = renewal_worker._save_session
 
     def pause_before_real_save(session):
@@ -58,6 +72,7 @@ def test_cross_instance_deletion_remains_authoritative_over_renewal(
         original_save(session)
 
     monkeypatch.setattr(renewal_worker, "_save_session", pause_before_real_save)
+    _signal_before_exclusive_lock(monkeypatch, deletion_worker, delete_lock_attempted)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         pending_renewal = pool.submit(renewal_worker.check_and_auto_renew, "victim")
@@ -79,7 +94,6 @@ def test_cross_instance_deletion_remains_authoritative_over_renewal(
             )
 
             def route_delete():
-                delete_started.set()
                 return asyncio.run(
                     sessions.delete_agent(
                         "victim", delete_backup_too=False, moorcheh_api_key="dummy"
@@ -92,13 +106,12 @@ def test_cross_instance_deletion_remains_authoritative_over_renewal(
         else:
 
             def session_delete():
-                delete_started.set()
                 return deletion_worker.delete_session("victim")
 
             pending_delete = pool.submit(session_delete)
 
         # Deletion cannot unlink state while renewal owns the shared OS lock.
-        assert delete_started.wait(timeout=2)
+        assert delete_lock_attempted.wait(timeout=2)
         assert not pending_delete.done()
         allow_save.set()
         renewed = pending_renewal.result(timeout=2)
@@ -142,6 +155,90 @@ def test_auto_renew_still_works_without_revocation(tmp_path, monkeypatch):
     service.validate_session(renewed.session_token)
 
 
+def test_cross_instance_deletion_remains_authoritative_over_session_creation(
+    tmp_path, monkeypatch
+):
+    """Explicit creation cannot persist a replacement after deletion begins."""
+    sessions_dir = tmp_path / "sessions"
+    creation_worker = SessionService(sessions_dir=sessions_dir)
+    deletion_worker = SessionService(sessions_dir=sessions_dir)
+    original = creation_worker.create_session("victim", duration_hours=1)
+    save_reached = Event()
+    allow_save = Event()
+    delete_lock_attempted = Event()
+    original_save = creation_worker._save_session
+
+    def pause_before_real_save(session):
+        if session.session_id != original.session_id:
+            save_reached.set()
+            assert allow_save.wait(timeout=2)
+        original_save(session)
+
+    monkeypatch.setattr(creation_worker, "_save_session", pause_before_real_save)
+    _signal_before_exclusive_lock(monkeypatch, deletion_worker, delete_lock_attempted)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending_create = pool.submit(creation_worker.create_session, "victim")
+        assert save_reached.wait(timeout=2)
+        pending_delete = pool.submit(deletion_worker.delete_session, "victim")
+        assert delete_lock_attempted.wait(timeout=2)
+        assert not pending_delete.done()
+        allow_save.set()
+        replacement = pending_create.result(timeout=2)
+        assert pending_delete.result(timeout=2) is True
+
+    assert not (sessions_dir / "victim.json").exists()
+    monkeypatch.setattr(auth_deps, "get_session_service", lambda: deletion_worker)
+    with pytest.raises(HTTPException, match="SessionNotFound|InvalidSessionToken"):
+        auth_deps.get_current_session(
+            _request_with_token(replacement.session_token),
+            Response(),
+            x_session_token=replacement.session_token,
+        )
+
+
+def test_active_marker_clear_does_not_remove_another_workers_marker(
+    tmp_path, monkeypatch
+):
+    """A conditional clear cannot remove a marker replaced by another worker."""
+    sessions_dir = tmp_path / "sessions"
+    clearing_worker = SessionService(sessions_dir=sessions_dir)
+    setting_worker = SessionService(sessions_dir=sessions_dir)
+    clearing_worker.create_session("agent-a", duration_hours=1)
+    setting_worker.create_session("agent-b", duration_hours=1)
+    clearing_worker._set_active_session("agent-a")
+    marker_read = Event()
+    allow_clear = Event()
+    setting_lock_attempted = Event()
+    original_read = clearing_worker._read_active_marker_agent_id
+
+    def pause_after_read():
+        agent_id = original_read()
+        if agent_id == "agent-a":
+            marker_read.set()
+            assert allow_clear.wait(timeout=2)
+        return agent_id
+
+    monkeypatch.setattr(
+        clearing_worker, "_read_active_marker_agent_id", pause_after_read
+    )
+    _signal_before_exclusive_lock(monkeypatch, setting_worker, setting_lock_attempted)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending_delete = pool.submit(clearing_worker.delete_session, "agent-a")
+        assert marker_read.wait(timeout=2)
+        pending_set = pool.submit(setting_worker._set_active_session, "agent-b")
+        assert setting_lock_attempted.wait(timeout=2)
+        assert not pending_set.done()
+        allow_clear.set()
+        assert pending_delete.result(timeout=2) is True
+        pending_set.result(timeout=2)
+
+    active = setting_worker.get_active_session()
+    assert active is not None
+    assert active.agent_id == "agent-b"
+
+
 def test_cross_instance_end_session_remains_authoritative_over_renewal(
     tmp_path, monkeypatch
 ):
@@ -155,7 +252,7 @@ def test_cross_instance_end_session_remains_authoritative_over_renewal(
 
     save_reached = Event()
     allow_save = Event()
-    ending_started = Event()
+    ending_lock_attempted = Event()
     original_save = renewal_worker._save_session
 
     def pause_before_real_save(session):
@@ -165,14 +262,13 @@ def test_cross_instance_end_session_remains_authoritative_over_renewal(
         original_save(session)
 
     monkeypatch.setattr(renewal_worker, "_save_session", pause_before_real_save)
+    _signal_before_exclusive_lock(monkeypatch, ending_worker, ending_lock_attempted)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         pending_renewal = pool.submit(renewal_worker.check_and_auto_renew, "victim")
         assert save_reached.wait(timeout=2)
-        pending_end = pool.submit(
-            lambda: (ending_started.set(), ending_worker.end_session("victim"))[1]
-        )
-        assert ending_started.wait(timeout=2)
+        pending_end = pool.submit(ending_worker.end_session, "victim")
+        assert ending_lock_attempted.wait(timeout=2)
         assert not pending_end.done()
         allow_save.set()
         renewed = pending_renewal.result(timeout=2)
@@ -202,7 +298,7 @@ def test_cross_instance_deletion_remains_authoritative_over_auto_recreate(
 
     save_reached = Event()
     allow_save = Event()
-    delete_started = Event()
+    delete_lock_attempted = Event()
     original_save = recreate_worker._save_session
 
     def pause_before_real_save(session):
@@ -212,16 +308,15 @@ def test_cross_instance_deletion_remains_authoritative_over_auto_recreate(
         original_save(session)
 
     monkeypatch.setattr(recreate_worker, "_save_session", pause_before_real_save)
+    _signal_before_exclusive_lock(monkeypatch, deletion_worker, delete_lock_attempted)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         pending_recreate = pool.submit(
             recreate_worker.check_and_auto_recreate, original.session_token
         )
         assert save_reached.wait(timeout=2)
-        pending_delete = pool.submit(
-            lambda: (delete_started.set(), deletion_worker.delete_session("victim"))[1]
-        )
-        assert delete_started.wait(timeout=2)
+        pending_delete = pool.submit(deletion_worker.delete_session, "victim")
+        assert delete_lock_attempted.wait(timeout=2)
         assert not pending_delete.done()
         allow_save.set()
         recreated = pending_recreate.result(timeout=2)
