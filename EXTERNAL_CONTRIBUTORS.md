@@ -99,3 +99,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @iliasabk
 - @dhomoney
 - @malwar77
+- @itselfaman
