@@ -1,0 +1,96 @@
+{
+  "mode": "LIVE_MEMANTO_ON_PREM",
+  "backend": "on-prem",
+  "configured_onprem_embedding": {
+    "model": "all-minilm-haystack",
+    "base_model": "all-minilm",
+    "dimensions": 384,
+    "num_ctx": 512,
+    "num_batch": 512
+  },
+  "versions": {
+    "haystack-ai": "3.1.1",
+    "haystack-experimental": "0.19.0.post1",
+    "memanto": "0.0.1.dev1+g0eb338674"
+  },
+  "source_messages": 15,
+  "mapped_memories": 15,
+  "per_type": {
+    "observation": 15
+  },
+  "source_bytes": 5994,
+  "input_okf_bytes": 13626,
+  "savings_report": "Unavailable: shipped migrate okf has no --report option; sizes and wall-clock durations here are independently measured, not token/cost savings.",
+  "export_validation": {
+    "source_messages": 15,
+    "reconstructed_messages": 15,
+    "exact_structured_parity": true,
+    "golden_checks": {
+      "currency": {
+        "source": "EUR",
+        "export": "EUR",
+        "expected": "EUR"
+      },
+      "response_window": {
+        "source": "48 hours",
+        "export": "48 hours",
+        "expected": "48 hours"
+      },
+      "channel": {
+        "source": "email",
+        "export": "email",
+        "expected": "email"
+      },
+      "approver": {
+        "source": "Maya",
+        "export": "Maya",
+        "expected": "Maya"
+      }
+    },
+    "recall_method": "deterministic latest-setting agent over complete source/export history; not a hosted semantic recall query"
+  },
+  "agent_id": "haystack-procurement-demo-20260911",
+  "destination_recall": {
+    "mode": "LIVE_MEMANTO_ON_PREM_RECALL",
+    "method": "semantic retrieve up to 20 memories, then deterministic latest-setting answer over source positions",
+    "checks": {
+      "currency": {
+        "query": "What is the latest procurement currency setting?",
+        "expected": "EUR",
+        "actual": "EUR",
+        "returned_memories": 15,
+        "passed": true
+      },
+      "response_window": {
+        "query": "What is the latest procurement response window setting?",
+        "expected": "48 hours",
+        "actual": "48 hours",
+        "returned_memories": 15,
+        "passed": true
+      },
+      "channel": {
+        "query": "What is the latest procurement channel setting?",
+        "expected": "email",
+        "actual": "email",
+        "returned_memories": 15,
+        "passed": true
+      },
+      "approver": {
+        "query": "What is the latest procurement approver setting?",
+        "expected": "Maya",
+        "actual": "Maya",
+        "returned_memories": 15,
+        "passed": true
+      }
+    }
+  },
+  "presentation_mode": true,
+  "timing_note": "CLI wall-clock durations exclude explicitly labeled presentation pauses",
+  "wall_clock_seconds": {
+    "migrate-okf-dry-run": 0.503,
+    "agent-create": 0.55,
+    "migrate-okf": 0.674,
+    "memory-export": 0.542
+  },
+  "source_sha256": "92a6800c33d1d3e50235d527e5a05e8fd4a4e271bddc2520dfe55f9351b25df3"
+}
