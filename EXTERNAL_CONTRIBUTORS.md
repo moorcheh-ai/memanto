@@ -102,3 +102,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @itselfaman
 - @czuba92-pixel
 - @mittai17
+- @RodrigoNaguel
