@@ -100,6 +100,21 @@ class SessionService:
                 self._agent_locks[agent_id] = lock
             return lock
 
+    @contextmanager
+    def _cross_process_lifecycle_lock(self, agent_id: str) -> Iterator[None]:
+        """Serialize persisted lifecycle changes for one agent across workers.
+
+        ``threading.RLock`` protects callers within one process only. Session
+        files and their signing key are shared by server workers, so renewal
+        and revocation must also hold an OS-backed lock over their complete
+        read/decide/write transaction.
+        """
+        validate_safe_id(agent_id, "agent_id")
+        self._harden_session_storage()
+        lock_file = self.sessions_dir / f".{agent_id}.lifecycle.lock"
+        with self._exclusive_file_lock(lock_file):
+            yield
+
     @staticmethod
     def _set_private_permissions(path: Path, mode: int) -> None:
         """Best-effort owner-only permissions for persisted session state."""
@@ -503,7 +518,8 @@ class SessionService:
             SessionNotFoundError: If session doesn't exist
         """
         with self._lock_for_agent(agent_id):
-            return self._end_session(agent_id)
+            with self._cross_process_lifecycle_lock(agent_id):
+                return self._end_session(agent_id)
 
     def _end_session(self, agent_id: str) -> SessionSummary:
         """Terminate a session while excluding concurrent token rotation."""
@@ -518,10 +534,12 @@ class SessionService:
         session.status = SessionStatus.TERMINATED
         self._save_session(session)
 
-        # Clear active session if this was active
-        active_session = self.get_active_session()
-        if active_session and active_session.agent_id == agent_id:
-            self._clear_active_session()
+        # Clear this agent's active marker without resolving it through
+        # get_active_session(), which may otherwise try auto-recreation while
+        # this lifecycle transaction already holds the OS lock.
+        with self._active_marker_lock:
+            if self._read_active_marker_agent_id() == agent_id:
+                self._clear_active_session()
 
         # TODO: Get actual memory count from backend
         memories_created = 0
@@ -583,22 +601,23 @@ class SessionService:
         # Validation and renewal must be one operation. Without the per-agent
         # lifecycle lock, parallel requests can all observe the same
         # near-expiry session, mint competing tokens, and immediately
-        # invalidate every replacement except the last file write. The same
-        # lock also makes logout authoritative over an in-flight renewal.
+        # invalidate every replacement except the last file write. Deactivation
+        # and deletion take the same lock before revoking persisted state.
         with self._lock_for_agent(agent_id):
-            session = self.get_session(agent_id)
-            if not session or not session.is_active():
-                return None
+            with self._cross_process_lifecycle_lock(agent_id):
+                session = self.get_session(agent_id)
+                if not session or not session.is_active():
+                    return None
 
-            remaining = session.time_remaining()
-            threshold = timedelta(minutes=settings.SESSION_EXTEND_THRESHOLD_MINUTES)
+                remaining = session.time_remaining()
+                threshold = timedelta(minutes=settings.SESSION_EXTEND_THRESHOLD_MINUTES)
 
-            if remaining <= threshold:
-                # Renew with a fresh session
-                return self.renew_session(
-                    agent_id=agent_id,
-                    pattern=session.pattern,
-                )
+                if remaining <= threshold:
+                    # Renew with a fresh session while deletion is excluded.
+                    return self.renew_session(
+                        agent_id=agent_id,
+                        pattern=session.pattern,
+                    )
 
         return None
 
@@ -642,22 +661,23 @@ class SessionService:
             return None
 
         with agent_lock:
-            session = self.get_session(token.agent_id)
-            if not session or session.session_id != token.session_id:
-                # Unknown agent, or the persisted record was replaced by a
-                # newer session — never supersede it from a stale token.
-                return None
+            with self._cross_process_lifecycle_lock(token.agent_id):
+                session = self.get_session(token.agent_id)
+                if not session or session.session_id != token.session_id:
+                    # Unknown agent, or the persisted record was replaced by a
+                    # newer session — never supersede it from a stale token.
+                    return None
 
-            if session.status == SessionStatus.TERMINATED or session.is_active():
-                # Logout is authoritative; live sessions are handled by the
-                # regular validation/auto-renewal flow instead.
-                return None
+                if session.status == SessionStatus.TERMINATED or session.is_active():
+                    # Logout is authoritative; live sessions are handled by the
+                    # regular validation/auto-renewal flow instead.
+                    return None
 
-            return self.create_session(
-                agent_id=token.agent_id,
-                pattern=session.pattern,
-                duration_hours=settings.SESSION_DEFAULT_DURATION_HOURS,
-            )
+                return self.create_session(
+                    agent_id=token.agent_id,
+                    pattern=session.pattern,
+                    duration_hours=settings.SESSION_DEFAULT_DURATION_HOURS,
+                )
 
     def _save_session(self, session: Session) -> None:
         """Save session to file.
@@ -910,32 +930,35 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        with self._lock_for_agent(agent_id), self._active_marker_lock:
-            active_link = self.sessions_dir / "active"
-            active_agent_id: str | None = None
+        with self._lock_for_agent(agent_id):
+            with self._cross_process_lifecycle_lock(agent_id):
+                with self._active_marker_lock:
+                    active_link = self.sessions_dir / "active"
+                    active_agent_id: str | None = None
 
-            try:
-                if active_link.is_symlink():
-                    active_agent_id = active_link.readlink().stem
-                else:
-                    with open(active_link) as f:
-                        active_agent_id = f.read().strip()
-            except OSError as exc:
-                # Best-effort: a missing or unreadable active marker must not
-                # block deleting this agent's persisted session state. Leaving
-                # active_agent_id as None simply skips the marker cleanup below.
-                logger.debug(
-                    "Could not read active session marker '%s': %s", active_link, exc
-                )
+                    try:
+                        if active_link.is_symlink():
+                            active_agent_id = active_link.readlink().stem
+                        else:
+                            with open(active_link) as f:
+                                active_agent_id = f.read().strip()
+                    except OSError as exc:
+                        # Best-effort: a missing or unreadable active marker must not
+                        # block deleting this agent's persisted session state.
+                        logger.debug(
+                            "Could not read active session marker '%s': %s",
+                            active_link,
+                            exc,
+                        )
 
-            session_file = self.sessions_dir / f"{agent_id}.json"
-            deleted = session_file.exists()
-            session_file.unlink(missing_ok=True)
+                    session_file = self.sessions_dir / f"{agent_id}.json"
+                    deleted = session_file.exists()
+                    session_file.unlink(missing_ok=True)
 
-            if active_agent_id == agent_id:
-                self._clear_active_session()
+                    if active_agent_id == agent_id:
+                        self._clear_active_session()
 
-            return deleted
+                    return deleted
 
     def list_sessions(self) -> list[Session]:
         """
