@@ -100,3 +100,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @dhomoney
 - @malwar77
 - @itselfaman
+- @czuba92-pixel
