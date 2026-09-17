@@ -234,20 +234,24 @@ async def activate_agent(
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
     try:
-        session = get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-            agent_exists=lambda: agent_service.agent_exists(agent_id),
-        )
-        set_session_cookie(response, session.session_token, request)
+        session_service = get_session_service()
+        with session_service.agent_lifecycle_transaction(agent_id):
+            if not agent_service.agent_exists(agent_id):
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+            session = session_service._create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
 
-        # Update agent stats
-        agent_service.update_agent_stats(
-            agent_id=agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+            # Keep the metadata read-modify-write in the same transaction as
+            # session creation so deletion cannot unlink it between read/save.
+            agent_service.update_agent_stats(
+                agent_id=agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
+        set_session_cookie(response, session.session_token, request)
 
         return session
 

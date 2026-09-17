@@ -561,18 +561,21 @@ class DirectClient:
             raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
         logger.debug("Activating agent '%s' for %d hours", agent_id, duration_hours)
-        session = self._get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-            agent_exists=lambda: self._get_agent_service().agent_exists(agent_id),
-        )
-
-        self._get_agent_service().update_agent_stats(
-            agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+        session_service = self._get_session_service()
+        agent_service = self._get_agent_service()
+        with session_service.agent_lifecycle_transaction(agent_id):
+            if not agent_service.agent_exists(agent_id):
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+            session = session_service._create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
+            agent_service.update_agent_stats(
+                agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
 
         self.session_token = session.session_token
         self.agent_id = agent_id

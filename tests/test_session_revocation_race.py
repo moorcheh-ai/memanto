@@ -17,6 +17,8 @@ from memanto.app.routes import auth_deps, sessions
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
 from memanto.app.utils.errors import AgentNotFoundError, InvalidSessionTokenError
+from memanto.cli.client.direct_client import DirectClient
+from memanto.cli.client.sdk_client import SdkClient
 
 
 def _request_with_token(token: str) -> Request:
@@ -461,3 +463,100 @@ def test_full_agent_delete_blocks_a_prechecked_session_creation(tmp_path, monkey
 
     assert agents.get_agent("victim") is None
     assert creation_worker.get_session("victim") is None
+
+
+def _assert_activation_stats_cannot_resurrect_agent(
+    tmp_path, monkeypatch, activate, *, route_activates=False
+):
+    """Verify deletion remains authoritative over a paused stats write."""
+    sessions_dir = tmp_path / "sessions"
+    activation_worker = SessionService(sessions_dir=sessions_dir)
+    deletion_worker = SessionService(sessions_dir=sessions_dir)
+    agents = AgentService(agents_dir=tmp_path / "agents")
+    agents._save_agent(
+        AgentInfo(
+            agent_id="victim",
+            namespace="memanto_agent_victim",
+            pattern=AgentPattern.SUPPORT,
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    stats_save_ready = Event()
+    allow_stats_save = Event()
+    delete_lock_attempted = Event()
+    original_save = agents._save_agent
+
+    def pause_before_stats_save(agent):
+        stats_save_ready.set()
+        assert allow_stats_save.wait(timeout=2)
+        original_save(agent)
+
+    monkeypatch.setattr(agents, "_save_agent", pause_before_stats_save)
+    monkeypatch.setattr(sessions, "agent_service", agents)
+    if route_activates:
+        calls = 0
+
+        def session_service_for_route():
+            nonlocal calls
+            calls += 1
+            return activation_worker if calls == 1 else deletion_worker
+
+        monkeypatch.setattr(sessions, "get_session_service", session_service_for_route)
+    else:
+        monkeypatch.setattr(sessions, "get_session_service", lambda: deletion_worker)
+    _signal_before_exclusive_lock(monkeypatch, deletion_worker, delete_lock_attempted)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending_activation = pool.submit(activate, activation_worker, agents)
+        assert stats_save_ready.wait(timeout=2)
+
+        pending_delete = pool.submit(
+            lambda: asyncio.run(
+                sessions.delete_agent(
+                    "victim", delete_backup_too=False, moorcheh_api_key="dummy"
+                )
+            )
+        )
+        assert delete_lock_attempted.wait(timeout=2)
+        assert not pending_delete.done()
+
+        allow_stats_save.set()
+        pending_activation.result(timeout=2)
+        pending_delete.result(timeout=2)
+
+    assert agents.get_agent("victim") is None
+
+
+def test_api_activation_stats_write_cannot_recreate_deleted_agent(
+    tmp_path, monkeypatch
+):
+    """API activation keeps stats update inside the lifecycle transaction."""
+
+    def activate(session_service, _agents):
+        return asyncio.run(
+            sessions.activate_agent(
+                "victim",
+                _request_with_token("unused"),
+                Response(),
+                moorcheh_api_key="dummy",
+            )
+        )
+
+    _assert_activation_stats_cannot_resurrect_agent(
+        tmp_path, monkeypatch, activate, route_activates=True
+    )
+
+
+@pytest.mark.parametrize("client_class", [DirectClient, SdkClient])
+def test_client_activation_stats_write_cannot_recreate_deleted_agent(
+    tmp_path, monkeypatch, client_class
+):
+    """Local clients use the same lifecycle scope as API activation."""
+
+    def activate(session_service, agents):
+        client = client_class(api_key="dummy")
+        monkeypatch.setattr(client, "_get_session_service", lambda: session_service)
+        monkeypatch.setattr(client, "_get_agent_service", lambda: agents)
+        return client.activate_agent("victim")
+
+    _assert_activation_stats_cannot_resurrect_agent(tmp_path, monkeypatch, activate)
