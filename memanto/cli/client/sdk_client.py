@@ -385,15 +385,12 @@ class SdkClient:
         Raises:
             AgentNotFoundError: If agent does not exist.
         """
-        agent = self._get_agent_service().get_agent(agent_id)
-        if not agent:
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
-
         logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
         session_service = self._get_session_service()
         agent_service = self._get_agent_service()
         with session_service.agent_lifecycle_transaction(agent_id):
-            if not agent_service.agent_exists(agent_id):
+            agent = agent_service.get_agent(agent_id)
+            if not agent:
                 raise AgentNotFoundError(f"Agent '{agent_id}' not found")
             session = session_service._create_session(
                 agent_id=agent_id,

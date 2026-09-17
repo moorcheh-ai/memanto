@@ -223,20 +223,14 @@ async def activate_agent(
 
     Returns session token for use in memory operations.
     """
-    # Check if agent exists
-    agent = agent_service.get_agent(agent_id)
-    if not agent:
-        raise map_error_to_http_exception(
-            AgentNotFoundError(f"Agent '{agent_id}' not found")
-        )
-
     # Session duration is controlled by server defaults.
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
     try:
         session_service = get_session_service()
         with session_service.agent_lifecycle_transaction(agent_id):
-            if not agent_service.agent_exists(agent_id):
+            agent = agent_service.get_agent(agent_id)
+            if not agent:
                 raise AgentNotFoundError(f"Agent '{agent_id}' not found")
             session = session_service._create_session(
                 agent_id=agent_id,

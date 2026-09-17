@@ -560,3 +560,118 @@ def test_client_activation_stats_write_cannot_recreate_deleted_agent(
         return client.activate_agent("victim")
 
     _assert_activation_stats_cannot_resurrect_agent(tmp_path, monkeypatch, activate)
+
+
+def _assert_activation_uses_recreated_metadata_after_same_id_recreation(
+    tmp_path, monkeypatch, activate, *, route_activates=False
+):
+    """Verify activation uses metadata loaded after same-ID recreation."""
+    sessions_dir = tmp_path / "sessions"
+    activation_worker = SessionService(sessions_dir=sessions_dir)
+    deletion_worker = SessionService(sessions_dir=sessions_dir)
+    agents = AgentService(agents_dir=tmp_path / "agents")
+    agents._save_agent(
+        AgentInfo(
+            agent_id="victim",
+            namespace="memanto_agent_victim",
+            pattern=AgentPattern.SUPPORT,
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    before_lifecycle_transaction = Event()
+    allow_activation = Event()
+    original_transaction = activation_worker.agent_lifecycle_transaction
+
+    @contextmanager
+    def pause_before_lifecycle_transaction(agent_id):
+        before_lifecycle_transaction.set()
+        assert allow_activation.wait(timeout=2)
+        with original_transaction(agent_id):
+            yield
+
+    monkeypatch.setattr(
+        activation_worker,
+        "agent_lifecycle_transaction",
+        pause_before_lifecycle_transaction,
+    )
+    monkeypatch.setattr(sessions, "agent_service", agents)
+    if route_activates:
+        calls = 0
+
+        def session_service_for_route():
+            nonlocal calls
+            calls += 1
+            return activation_worker if calls == 1 else deletion_worker
+
+        monkeypatch.setattr(sessions, "get_session_service", session_service_for_route)
+    else:
+        monkeypatch.setattr(sessions, "get_session_service", lambda: deletion_worker)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending_activation = pool.submit(activate, activation_worker, agents)
+        assert before_lifecycle_transaction.wait(timeout=2)
+
+        pending_delete = pool.submit(
+            lambda: asyncio.run(
+                sessions.delete_agent(
+                    "victim", delete_backup_too=False, moorcheh_api_key="dummy"
+                )
+            )
+        )
+        pending_delete.result(timeout=2)
+        assert agents.get_agent("victim") is None
+
+        # Recreate local metadata with a distinct pattern; creating a backend
+        # namespace is deliberately out of scope for this local regression.
+        agents._save_agent(
+            AgentInfo(
+                agent_id="victim",
+                namespace="memanto_agent_victim",
+                pattern=AgentPattern.PROJECT,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        allow_activation.set()
+        pending_activation.result(timeout=2)
+
+    persisted = activation_worker.get_session("victim")
+    assert persisted is not None
+    assert persisted.pattern == AgentPattern.PROJECT
+    assert agents.get_agent("victim").pattern == AgentPattern.PROJECT
+
+
+def test_api_activation_uses_recreated_metadata_after_same_id_recreation(
+    tmp_path, monkeypatch
+):
+    """API activation reloads metadata inside the lifecycle transaction."""
+
+    def activate(_session_service, _agents):
+        return asyncio.run(
+            sessions.activate_agent(
+                "victim",
+                _request_with_token("unused"),
+                Response(),
+                moorcheh_api_key="dummy",
+            )
+        )
+
+    _assert_activation_uses_recreated_metadata_after_same_id_recreation(
+        tmp_path, monkeypatch, activate, route_activates=True
+    )
+
+
+@pytest.mark.parametrize("client_class", [DirectClient, SdkClient])
+def test_client_activation_uses_recreated_metadata_after_same_id_recreation(
+    tmp_path, monkeypatch, client_class
+):
+    """Local clients reload metadata inside the lifecycle transaction."""
+
+    def activate(session_service, agents):
+        client = client_class(api_key="dummy")
+        monkeypatch.setattr(client, "_get_session_service", lambda: session_service)
+        monkeypatch.setattr(client, "_get_agent_service", lambda: agents)
+        return client.activate_agent("victim")
+
+    _assert_activation_uses_recreated_metadata_after_same_id_recreation(
+        tmp_path, monkeypatch, activate
+    )
