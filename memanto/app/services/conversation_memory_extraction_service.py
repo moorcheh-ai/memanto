@@ -14,6 +14,42 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.utils.json_extraction import iter_json_arrays
 
+PRIVATE_KEY_PATTERN = re.compile(
+    r"-----BEGIN [A-Z0-9_\- ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9_\- ]*PRIVATE KEY-----"
+)
+API_KEY_PATTERNS = [
+    re.compile(r"\b(?:sk-(?:proj-|ant-|live-)?[A-Za-z0-9_\-]{20,})\b"),
+    re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{36,}|github_pat_[A-Za-z0-9_]{22,})\b"),
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"\bxox[baprs]-[0-9A-Za-z\-]{10,}\b"),
+    re.compile(r"\bya29\.[0-9A-Za-z_\-]+\b"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
+]
+BEARER_PATTERN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9_\-\.~+/]+={0,2}(?!\S)")
+URL_CREDENTIAL_PATTERN = re.compile(r"(?i)([a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)")
+KV_CREDENTIAL_QUOTED = re.compile(
+    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)(['"])(?:(?!\2).){4,}\2"""
+)
+KV_CREDENTIAL_UNQUOTED = re.compile(
+    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)[^\s,;'"}\]]{4,}"""
+)
+
+
+def redact_sensitive_data(text: str) -> str:
+    """Sanitize secrets, API keys, passwords, and tokens before persistence."""
+    if not text:
+        return text
+
+    text = PRIVATE_KEY_PATTERN.sub("[REDACTED_PRIVATE_KEY]", text)
+    text = BEARER_PATTERN.sub("Bearer [REDACTED_TOKEN]", text)
+    for pat in API_KEY_PATTERNS:
+        text = pat.sub("[REDACTED_API_KEY]", text)
+    text = URL_CREDENTIAL_PATTERN.sub(r"\g<1>[REDACTED_PASSWORD]\g<2>", text)
+    text = KV_CREDENTIAL_QUOTED.sub(r"\1\2[REDACTED_CREDENTIAL]\2", text)
+    text = KV_CREDENTIAL_UNQUOTED.sub(r"\1[REDACTED_CREDENTIAL]", text)
+
+    return text
+
 
 class ConversationMemoryExtractionService:
     """Extract typed memory candidates from conversation turns."""
@@ -148,6 +184,7 @@ class ConversationMemoryExtractionService:
             content = str(item.get("content", "")).strip()
             if not content:
                 continue
+            content = redact_sensitive_data(content)
             if len(content) > self.MAX_MEMORY_CONTENT_CHARS:
                 content = content[: self.MAX_MEMORY_CONTENT_CHARS - 3].rstrip() + "..."
 
@@ -159,8 +196,8 @@ class ConversationMemoryExtractionService:
             else:
                 memory_type = None
 
-            title = str(item.get("title") or content[:80]).strip()
-            title = title[:100]
+            raw_title = str(item.get("title") or content[:80]).strip()
+            title = redact_sensitive_data(raw_title)[:100]
 
             try:
                 confidence = float(item.get("confidence", 0.8))
