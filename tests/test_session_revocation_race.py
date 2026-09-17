@@ -4,6 +4,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from threading import Event
 
 import pytest
@@ -15,7 +16,7 @@ from memanto.app.models.session import AgentInfo, AgentPattern
 from memanto.app.routes import auth_deps, sessions
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
-from memanto.app.utils.errors import InvalidSessionTokenError
+from memanto.app.utils.errors import AgentNotFoundError, InvalidSessionTokenError
 
 
 def _request_with_token(token: str) -> Request:
@@ -391,3 +392,72 @@ def test_session_can_be_created_again_after_deletion(tmp_path):
     reactivated = service.create_session("victim", duration_hours=1)
     assert reactivated.session_id != original.session_id
     service.validate_session(reactivated.session_token)
+
+
+def test_full_agent_delete_blocks_a_prechecked_session_creation(tmp_path, monkeypatch):
+    """Creation rechecks metadata after waiting for full deletion to finish."""
+    sessions_dir = tmp_path / "sessions"
+    creation_worker = SessionService(sessions_dir=sessions_dir)
+    deletion_worker = SessionService(sessions_dir=sessions_dir)
+    creation_worker.create_session("victim", duration_hours=1)
+    agents = AgentService(agents_dir=tmp_path / "agents")
+    agents._save_agent(
+        AgentInfo(
+            agent_id="victim",
+            namespace="memanto_agent_victim",
+            pattern=AgentPattern.SUPPORT,
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    activation_checked = Event()
+    allow_creation = Event()
+    creation_lock_attempted = Event()
+    metadata_delete_ready = Event()
+    allow_metadata_delete = Event()
+    agent_file = agents._get_agent_file("victim")
+    original_unlink = Path.unlink
+
+    def pause_before_metadata_unlink(path, *args, **kwargs):
+        if path == agent_file:
+            metadata_delete_ready.set()
+            assert allow_metadata_delete.wait(timeout=2)
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", pause_before_metadata_unlink)
+    monkeypatch.setattr(sessions, "agent_service", agents)
+    monkeypatch.setattr(sessions, "get_session_service", lambda: deletion_worker)
+    _signal_before_exclusive_lock(monkeypatch, creation_worker, creation_lock_attempted)
+
+    def create_after_activation_check():
+        agent = agents.get_agent("victim")
+        assert agent is not None
+        activation_checked.set()
+        assert allow_creation.wait(timeout=2)
+        return creation_worker.create_session(
+            "victim",
+            pattern=agent.pattern,
+            agent_exists=lambda: agents.agent_exists("victim"),
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending_create = pool.submit(create_after_activation_check)
+        assert activation_checked.wait(timeout=2)
+        pending_delete = pool.submit(
+            lambda: asyncio.run(
+                sessions.delete_agent(
+                    "victim", delete_backup_too=False, moorcheh_api_key="dummy"
+                )
+            )
+        )
+        assert metadata_delete_ready.wait(timeout=2)
+        allow_creation.set()
+        assert creation_lock_attempted.wait(timeout=2)
+        assert not pending_create.done()
+        allow_metadata_delete.set()
+        pending_delete.result(timeout=2)
+
+        with pytest.raises(AgentNotFoundError):
+            pending_create.result(timeout=2)
+
+    assert agents.get_agent("victim") is None
+    assert creation_worker.get_session("victim") is None

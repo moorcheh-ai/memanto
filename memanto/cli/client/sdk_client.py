@@ -355,8 +355,11 @@ class SdkClient:
             Confirmation dict with ``status`` and ``agent_id``.
         """
         logger.debug("Deleting agent '%s'", agent_id)
-        self._get_agent_service().delete_agent(agent_id)
-        self._get_session_service().delete_session(agent_id)
+        session_service = self._get_session_service()
+        agent_service = self._get_agent_service()
+        with session_service.agent_lifecycle_transaction(agent_id):
+            session_service._delete_session_locked(agent_id)
+            agent_service.delete_agent(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
             self.agent_id = None
@@ -391,6 +394,7 @@ class SdkClient:
             agent_id=agent_id,
             pattern=agent.pattern,
             duration_hours=duration_hours,
+            agent_exists=lambda: self._get_agent_service().agent_exists(agent_id),
         )
 
         self._get_agent_service().update_agent_stats(

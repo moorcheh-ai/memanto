@@ -13,7 +13,7 @@ import secrets
 import tempfile
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -32,6 +32,7 @@ from memanto.app.models.session import (
     SessionToken,
 )
 from memanto.app.utils.errors import (
+    AgentNotFoundError,
     InvalidSessionTokenError,
     SessionExpiredError,
     SessionNotFoundError,
@@ -114,6 +115,13 @@ class SessionService:
         lock_file = self.sessions_dir / f".{agent_id}.lifecycle.lock"
         with self._exclusive_file_lock(lock_file):
             yield
+
+    @contextmanager
+    def agent_lifecycle_transaction(self, agent_id: str) -> Iterator[None]:
+        """Hold the per-agent lifecycle lock for a compound operation."""
+        with self._lock_for_agent(agent_id):
+            with self._cross_process_lifecycle_lock(agent_id):
+                yield
 
     @contextmanager
     def _active_marker_transaction(self) -> Iterator[None]:
@@ -309,6 +317,7 @@ class SessionService:
         agent_id: str,
         pattern: AgentPattern | None = None,
         duration_hours: int | None = None,
+        agent_exists: Callable[[], bool] | None = None,
     ) -> Session:
         """
         Create a new session for an agent
@@ -317,13 +326,16 @@ class SessionService:
             agent_id: Agent identifier
             pattern: Agent pattern (support, project, tool)
             duration_hours: Session duration in hours
+            agent_exists: Optional metadata check performed while holding the
+                lifecycle transaction.
 
         Returns:
             Session object with JWT token
         """
-        with self._lock_for_agent(agent_id):
-            with self._cross_process_lifecycle_lock(agent_id):
-                return self._create_session(agent_id, pattern, duration_hours)
+        with self.agent_lifecycle_transaction(agent_id):
+            if agent_exists is not None and not agent_exists():
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+            return self._create_session(agent_id, pattern, duration_hours)
 
     def _create_session(
         self,
@@ -947,19 +959,22 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        with self._lock_for_agent(agent_id):
-            with self._cross_process_lifecycle_lock(agent_id):
-                with self._active_marker_transaction():
-                    active_agent_id = self._read_active_marker_agent_id()
+        with self.agent_lifecycle_transaction(agent_id):
+            return self._delete_session_locked(agent_id)
 
-                    session_file = self.sessions_dir / f"{agent_id}.json"
-                    deleted = session_file.exists()
-                    session_file.unlink(missing_ok=True)
+    def _delete_session_locked(self, agent_id: str) -> bool:
+        """Delete one session while the caller holds its lifecycle transaction."""
+        with self._active_marker_transaction():
+            active_agent_id = self._read_active_marker_agent_id()
 
-                    if active_agent_id == agent_id:
-                        self._clear_active_marker_unlocked()
+            session_file = self.sessions_dir / f"{agent_id}.json"
+            deleted = session_file.exists()
+            session_file.unlink(missing_ok=True)
 
-                    return deleted
+            if active_agent_id == agent_id:
+                self._clear_active_marker_unlocked()
+
+            return deleted
 
     def list_sessions(self) -> list[Session]:
         """
