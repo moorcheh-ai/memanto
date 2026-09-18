@@ -60,6 +60,7 @@ _DEFAULT_TITLE_CHARS = 80
 _MAX_TITLE_CHARS = 100  # MemoryRecord.title max_length
 _MAX_CONTENT_CHARS = 10000  # MemoryRecord.content max_length
 _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
+_FOOTER_HEADER = "\n\n---\n[Supporting data]\n"
 
 
 def _title_from(content: str) -> str:
@@ -193,11 +194,18 @@ def _format_supporting_data(items: list[tuple[str, Any]]) -> str:
     body = "\n".join(lines)
     if len(body) > _MAX_FOOTER_CHARS:
         body = body[: _MAX_FOOTER_CHARS - 4] + "\n..."
-    return "\n\n---\n[Supporting data]\n" + body
+    return _FOOTER_HEADER + body
 
 
 def _attach_footer(content: str, footer: str) -> str:
-    """Append the supporting-data footer, trimming content if it overflows."""
+    """Append the supporting-data footer, trimming content if it overflows.
+
+    Re-imported content still carries the footer a previous pass appended, and
+    ``footer`` already rebuilds every value in it from the source record. Drop
+    the stale one first so export -> import -> export converges instead of
+    stacking one footer per round trip.
+    """
+    content = content.rsplit(_FOOTER_HEADER, 1)[0]
     if not footer:
         return content
     budget = _MAX_CONTENT_CHARS - len(footer)

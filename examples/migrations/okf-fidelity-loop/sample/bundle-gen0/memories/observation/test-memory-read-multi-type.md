@@ -1,0 +1,22 @@
+---
+type: observation
+title: test memory read multi type
+description: 'test_memory_read_multi_type covers: regression coverage for union semantics
+  in multi-type recall.'
+tags:
+- tests
+generated:
+  by: process:repo-scan
+  at: '2026-09-01T21:26:01.589951+00:00'
+resource: tests/test_memory_read_multi_type.py
+x_memanto:
+  id: 0c520a1f-27e3-4f88-936f-652657969e27
+  confidence: 0.8
+  provenance: validated
+  source: repo-scan
+  status: active
+  updated_at: '2026-09-01T21:26:01.589951+00:00'
+  type: observation
+---
+
+test_memory_read_multi_type covers: regression coverage for union semantics in multi-type recall.

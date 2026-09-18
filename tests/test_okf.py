@@ -17,7 +17,7 @@ from time import perf_counter
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-from memanto.app.services.okf_export_service import OkfExportService
+from memanto.app.services.okf_export_service import ENTRY_DELIMITER, OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
 
@@ -147,6 +147,35 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     assert by_title["Chose Redis"]["type"] == "decision"
 
 
+def test_repeated_round_trips_converge(tmp_path):
+    """Carrying memory out and back repeatedly must reach a fixed point.
+
+    Each pass rebuilds the ``[Supporting data]`` footer from the source record,
+    so re-importing a bundle that already carries one must replace it rather
+    than append a second copy.
+    """
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    memories_by_type = {
+        "fact": [_mem("m1", "Postgres is the DB", "The project uses PostgreSQL 16.")]
+    }
+
+    contents = []
+    for generation in range(3):
+        result = svc.write_okf_bundle(
+            "agent1",
+            memories_by_type,
+            output_dir=tmp_path / f"gen{generation}",
+            split="file",
+        )
+        rows = map_okf(load_okf_bundle(result["output_path"]))
+        contents.append(rows[0]["content"])
+        memories_by_type = {"fact": rows}
+
+    assert [c.count("[Supporting data]") for c in contents] == [1, 1, 1]
+    assert "PostgreSQL 16" in contents[-1]
+    assert contents[1] == contents[2]
+
+
 def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
     """Malformed foreign extensions must not break an otherwise valid import."""
     (tmp_path / "memory.md").write_text(
@@ -237,6 +266,30 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_loader_keeps_a_memory_that_mentions_the_entry_delimiter(tmp_path):
+    """The delimiter only ends a document when it stands alone before frontmatter.
+
+    A memory that quotes the sentinel inline must stay one memory, or every
+    import splits it into a headless fragment and the bundle grows.
+    """
+    memories_by_type = {
+        "artifact": [
+            _mem(
+                "a1",
+                "Stacked layout",
+                f"Documents are separated by the {ENTRY_DELIMITER} sentinel.",
+            )
+        ]
+    }
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle("agent1", memories_by_type, split="file")
+
+    export = load_okf_bundle(result["output_path"])
+
+    assert len(export["memories"]) == 1
+    assert ENTRY_DELIMITER in export["memories"][0]["body"]
 
 
 def test_reexport_replaces_stale_bundle_entries(tmp_path):
