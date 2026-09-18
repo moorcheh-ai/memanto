@@ -63,6 +63,7 @@ _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
 
 def _title_from(content: str) -> str:
+    """Derive a short title from the first line of content, truncated to 80 chars."""
     text = content.strip().replace("\n", " ")
     if len(text) <= _DEFAULT_TITLE_CHARS:
         return text
@@ -70,6 +71,7 @@ def _title_from(content: str) -> str:
 
 
 def _coerce_type(raw: str | None) -> str | None:
+    """Validate and normalize a raw type string against Memanto's allowed types."""
     if not raw:
         return None
     t = raw.strip().lower()
@@ -97,6 +99,7 @@ def _normalize_mem0_categories(raw: Any) -> list[str]:
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
+    """Extract a ``key=value`` tag from a scope dict for tagging."""
     if not scope:
         return None
     for k, v in scope.items():
@@ -141,6 +144,7 @@ def _parse_dt(value: Any) -> datetime | None:
 
 
 def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | None:
+    """Return the first successfully parsed datetime from *record* for the given keys."""
     for key in keys:
         dt = _parse_dt(record.get(key))
         if dt is not None:
@@ -209,6 +213,7 @@ def _attach_footer(content: str, footer: str) -> str:
 
 
 def _now_utc() -> datetime:
+    """Return the current UTC datetime."""
     return datetime.now(timezone.utc)
 
 
@@ -305,9 +310,10 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         created_at = _pick_first_dt(passage, ("created_at", "createdAt"))
 
+        passage_source = passage.get("source")
         footer = _format_supporting_data(
             [
-                ("Source", f"letta:{passage.get('id')}" if passage.get("id") else None),
+                ("Source", passage_source or (f"letta:{passage.get('id')}" if passage.get("id") else None)),
                 ("Letta agent_id", agent_id),
                 ("Letta agent_name", agent_name),
                 ("Letta tags", source_tags),
@@ -572,11 +578,268 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 # memories, so one incident collapses into a single grouped payload rather
 # than mapping row-for-row. That needs the user's capture settings, which
 # this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
+
+# --------------------------------------------------------------------------
+# ChatGPT (OpenAI data export)
+# --------------------------------------------------------------------------
+
+
+def _walk_chatgpt_mapping(
+    mapping: dict[str, Any],
+    current_id: str | None,
+    *,
+    max_depth: int = 10000,
+) -> list[dict[str, Any]]:
+    """Walk ChatGPT's tree-structured ``mapping`` dict from ``current_node``
+    backwards through ``parent`` links to collect all messages.
+
+    ChatGPT exports conversations as a tree. Each node has a ``message``
+    field, a ``parent`` pointer, and ``children``. We walk from the leaf
+    (``current_node``) to the root, collecting all messages in chronological
+    order for rich context preservation.
+    """
+    messages: list[dict[str, Any]] = []
+    visited: set[str] = set()
+    node_id = current_id
+
+    for _ in range(max_depth):
+        if not node_id or node_id in visited:
+            break
+        visited.add(node_id)
+
+        node = mapping.get(node_id)
+        if not node:
+            break
+
+        msg = node.get("message")
+        if msg:
+            author = msg.get("author") or {}
+            role = author.get("role") or ""
+            content_obj = msg.get("content") or {}
+            parts = content_obj.get("parts") or []
+            text = " ".join(
+                p for p in parts if isinstance(p, str) and p.strip()
+            ).strip()
+
+            if text and role in ("user", "human"):
+                messages.append({
+                    "text": text,
+                    "role": "user",
+                    "create_time": msg.get("create_time"),
+                    "message_id": msg.get("id"),
+                })
+            elif text and role == "assistant":
+                messages.append({
+                    "text": text,
+                    "role": "assistant",
+                    "create_time": msg.get("create_time"),
+                    "message_id": msg.get("id"),
+                })
+            elif text and role == "system":
+                messages.append({
+                    "text": text,
+                    "role": "system",
+                    "create_time": msg.get("create_time"),
+                    "message_id": msg.get("id"),
+                })
+            elif text and role == "assistant":
+                messages.append({
+                    "text": text,
+                    "role": "assistant",
+                    "create_time": msg.get("create_time"),
+                    "message_id": msg.get("id"),
+                })
+
+        node_id = node.get("parent")
+
+    messages.reverse()
+    return messages
+
+
+def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a ChatGPT data export to Memanto memory payloads.
+
+    ChatGPT's export is a JSON array of conversation objects. Each has a
+    ``mapping`` dict (tree of messages), a ``current_node`` leaf, and
+    ``title``. We walk the tree, extract user messages, and emit one memory
+    per conversation with the full user message history as content.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    conversations = export.get("conversations") or export.get("memories") or []
+    if isinstance(conversations, list):
+        items = conversations
+    elif isinstance(conversations, dict):
+        items = conversations.get("conversations", [])
+    else:
+        items = []
+
+    for convo in items:
+        title = (convo.get("title") or "").strip()
+        mapping = convo.get("mapping") or {}
+        current_node = convo.get("current_node")
+
+        if not mapping or not current_node:
+            # Fallback: try flat messages array
+            messages = []
+            for msg in convo.get("messages") or convo.get("chat_messages") or []:
+                role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
+                content_obj = msg.get("content")
+                if isinstance(content_obj, dict):
+                    parts = content_obj.get("parts") or []
+                    text = " ".join(p for p in parts if isinstance(p, str)).strip()
+                elif isinstance(content_obj, str):
+                    text = content_obj.strip()
+                else:
+                    text = (msg.get("text") or "").strip()
+                if text and role in ("user", "human"):
+                    messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
+                elif text and role == "assistant":
+                    messages.append({"text": text, "role": "assistant", "create_time": msg.get("create_time")})
+                elif text and role == "system":
+                    messages.append({"text": text, "role": "system", "create_time": msg.get("create_time")})
+        else:
+            messages = _walk_chatgpt_mapping(mapping, current_node)
+
+        if not messages:
+            continue
+
+        # Build content: include both user and assistant messages for rich context
+        content_parts: list[str] = []
+        for i, msg in enumerate(messages, 1):
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
+        content = "\n\n".join(content_parts)
+
+        if not content.strip():
+            continue
+
+        created_at = _pick_first_dt(convo, ("create_time", "created_at", "update_time"))
+        convo_title = title or _title_from(content)
+
+        footer = _format_supporting_data([
+            ("Source", "chatgpt:conversation"),
+            ("ChatGPT title", title),
+            ("Message count", len(messages)),
+            ("Source created_at", created_at.isoformat() if created_at else None),
+        ])
+
+        rows.append({
+            "title": convo_title,
+            "content": _attach_footer(content, footer),
+            "type": None,  # auto-classify — conversations contain mixed types
+            "tags": ["chatgpt", "ai-conversation"],
+            "confidence": 0.8,
+            "source": "chatgpt",
+            "source_ref": convo.get("conversation_id") or convo.get("id"),
+            "provenance": "imported",
+            "created_at": created_at,
+            "updated_at": migrated_at,
+        })
+
+    return rows
+
+
+# --------------------------------------------------------------------------
+# Claude (Anthropic data export)
+# --------------------------------------------------------------------------
+
+
+def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a Claude data export to Memanto memory payloads.
+
+    Claude's export is a JSON array of conversation objects. Each has
+    ``chat_messages[]`` with ``sender`` ("human"|"assistant") and ``text``,
+    plus metadata like ``uuid``, ``name``, ``created_at``.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    conversations = export.get("conversations") or export.get("memories") or []
+    if isinstance(conversations, list):
+        items = conversations
+    elif isinstance(conversations, dict):
+        items = conversations.get("conversations", [])
+    else:
+        items = []
+
+    for convo in items:
+        title = (convo.get("name") or convo.get("title") or "").strip()
+        chat_messages = convo.get("chat_messages") or convo.get("messages") or []
+
+        human_messages = []
+        for msg in chat_messages:
+            sender = (msg.get("sender") or msg.get("role") or "").strip()
+            content_obj = msg.get("content")
+            if isinstance(content_obj, dict):
+                parts = content_obj.get("parts") or []
+                text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            elif isinstance(content_obj, str):
+                text = content_obj.strip()
+            else:
+                text = (msg.get("text") or "").strip()
+            if text and sender in ("human", "user"):
+                human_messages.append({
+                    "text": text,
+                    "role": "user",
+                    "created_at": msg.get("created_at"),
+                    "message_id": msg.get("uuid") or msg.get("id"),
+                })
+            elif text and sender == "assistant":
+                human_messages.append({
+                    "text": text,
+                    "role": "assistant",
+                    "created_at": msg.get("created_at"),
+                    "message_id": msg.get("uuid") or msg.get("id"),
+                })
+
+        if not human_messages:
+            continue
+
+        content_parts: list[str] = []
+        for i, msg in enumerate(human_messages, 1):
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
+        content = "\n\n".join(content_parts)
+
+        if not content.strip():
+            continue
+
+        created_at = _pick_first_dt(convo, ("created_at", "create_time", "updated_at"))
+        convo_title = title or _title_from(content)
+
+        footer = _format_supporting_data([
+            ("Source", "claude:conversation"),
+            ("Claude title", title),
+            ("Claude UUID", convo.get("uuid")),
+            ("Message count", len(human_messages)),
+            ("Source created_at", created_at.isoformat() if created_at else None),
+        ])
+
+        rows.append({
+            "title": convo_title,
+            "content": _attach_footer(content, footer),
+            "type": None,
+            "tags": ["claude", "ai-conversation"],
+            "confidence": 0.8,
+            "source": "claude",
+            "source_ref": convo.get("uuid") or convo.get("id"),
+            "provenance": "imported",
+            "created_at": created_at,
+            "updated_at": migrated_at,
+        })
+
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "chatgpt": map_chatgpt,
+    "claude": map_claude,
 }
 
 
