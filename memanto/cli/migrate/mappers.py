@@ -63,6 +63,7 @@ _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
 
 def _title_from(content: str) -> str:
+    """Derive a short memory title from the first line of content."""
     text = content.strip().replace("\n", " ")
     if len(text) <= _DEFAULT_TITLE_CHARS:
         return text
@@ -70,6 +71,7 @@ def _title_from(content: str) -> str:
 
 
 def _coerce_type(raw: str | None) -> str | None:
+    """Normalize a raw type string to a valid Memanto type, else None."""
     if not raw:
         return None
     t = raw.strip().lower()
@@ -77,6 +79,7 @@ def _coerce_type(raw: str | None) -> str | None:
 
 
 def _coerce_provenance(raw: Any) -> str:
+    """Normalize a provenance value to a valid one, defaulting to 'imported'."""
     if not isinstance(raw, str):
         return "imported"
     provenance = raw.strip().lower()
@@ -97,6 +100,7 @@ def _normalize_mem0_categories(raw: Any) -> list[str]:
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
+    """Render the first non-empty scope field as a ``key=value`` tag."""
     if not scope:
         return None
     for k, v in scope.items():
@@ -141,6 +145,7 @@ def _parse_dt(value: Any) -> datetime | None:
 
 
 def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | None:
+    """Return the first parseable timestamp among the given record keys."""
     for key in keys:
         dt = _parse_dt(record.get(key))
         if dt is not None:
@@ -209,6 +214,7 @@ def _attach_footer(content: str, footer: str) -> str:
 
 
 def _now_utc() -> datetime:
+    """Return the current UTC time (migration timestamp)."""
     return datetime.now(timezone.utc)
 
 
@@ -469,6 +475,62 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------
+# ChatGPT (official account export)
+# --------------------------------------------------------------------------
+
+
+def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a ChatGPT account export to Memanto memory payloads.
+
+    Each user-authored message in the active branch of a conversation becomes
+    one memory. ``type`` stays ``None`` so the parsing service auto-classifies
+    (a user message can be a preference, a commitment, or a fact depending on
+    its content). The conversation title is kept as a tag, and the source
+    reference points back to the exact ``conversation:node`` in the export so
+    the original is always findable.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for mem in export.get("memories", []) or []:
+        content = (mem.get("content") or "").strip()
+        if not content:
+            continue
+
+        tags = [str(t) for t in (mem.get("tags") or []) if t]
+        raw_created = mem.get("created_at")
+        # _parse_dt handles int/float epoch values itself (line ~123) and
+        # deliberately returns None for 0 and bool. Do NOT fall back to
+        # fromtimestamp here: it would resurrect 1970 for a 0/None/bool
+        # value that the parser intentionally rejected.
+        created_at = _parse_dt(raw_created)
+
+        footer = _format_supporting_data(
+            [
+                ("Source", f"chatgpt:{mem.get('id')}" if mem.get("id") else None),
+                ("Conversation", next((t for t in tags if t.startswith("conversation:")), None)),
+                ("Source created_at", created_at.isoformat() if created_at else None),
+            ]
+        )
+
+        rows.append(
+            {
+                "title": _title_from(content),
+                "content": _attach_footer(content, footer),
+                "type": None,
+                "tags": tags,
+                "confidence": 0.7,
+                "source": "chatgpt",
+                "source_ref": str(mem.get("id")) if mem.get("id") else None,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+    return rows
+
+
+# --------------------------------------------------------------------------
 # OKF (Open Knowledge Format)
 # --------------------------------------------------------------------------
 
@@ -576,6 +638,7 @@ MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
+    "chatgpt": map_chatgpt,
     "okf": map_okf,
 }
 
