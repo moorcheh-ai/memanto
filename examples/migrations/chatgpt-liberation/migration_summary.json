@@ -1,0 +1,38 @@
+{
+  "source": "sample-data",
+  "source_conversations": 38,
+  "source_explicit_memories": 5,
+  "source_total": 43,
+  "mapped_count": 43,
+  "skipped": 0,
+  "type_counts": {
+    "preference": 6,
+    "fact": 11,
+    "goal": 5,
+    "observation": 3,
+    "decision": 3,
+    "instruction": 4,
+    "commitment": 3,
+    "learning": 2,
+    "error": 1,
+    "relationship": 2,
+    "artifact": 1,
+    "event": 1,
+    "context": 1
+  },
+  "types_covered": 13,
+  "okf_bundle": "C:\\Users\\Harsh\\memanto\\examples\\migrations\\chatgpt-liberation\\sample-data\\okf-bundle",
+  "metrics": {
+    "mapped_memories": 43,
+    "total_stored_tokens": 1634,
+    "window_days": 28,
+    "chatgpt_tokens_28d": 403200,
+    "memanto_tokens_28d": 60480,
+    "saved_tokens_28d": 342720,
+    "saved_pct": 85.0,
+    "chatgpt_p95_ms": 1800,
+    "memanto_p95_ms": 260,
+    "latency_saved_pct": 85.6,
+    "ownership": "OKF markdown: git-versioned, human-readable, portable \u2014 vs opaque ChatGPT store"
+  }
+}
