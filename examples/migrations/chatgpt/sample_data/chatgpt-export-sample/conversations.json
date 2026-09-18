@@ -1,0 +1,1136 @@
+[
+  {
+    "id": "conv-001",
+    "conversation_id": "conv-001",
+    "title": "Debugging an I2C driver",
+    "create_time": 1762247520.0,
+    "update_time": 1762247520.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-001a"
+        ]
+      },
+      "node-m-001a": {
+        "id": "node-m-001a",
+        "message": {
+          "id": "m-001a",
+          "author": {
+            "role": "system",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1762247520.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {
+            "is_user_system_message": true,
+            "user_context_message_data": {
+              "about_user_message": "I'm a firmware engineer. I work mostly in C and Rust on embedded sensor platforms. Keep examples small and hardware-realistic.",
+              "about_model_message": "Be concise. Prefer code over prose. Flag unsafe memory patterns."
+            }
+          },
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-001b"
+        ]
+      },
+      "node-m-001b": {
+        "id": "node-m-001b",
+        "message": {
+          "id": "m-001b",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1762247550.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My I2C driver hangs on the second read. I'm a firmware engineer at Meridian Robotics, mostly C on STM32."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-001a",
+        "children": [
+          "node-m-001c"
+        ]
+      },
+      "node-m-001c": {
+        "id": "node-m-001c",
+        "message": {
+          "id": "m-001c",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1762247565.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User is a firmware engineer at Meridian Robotics working on STM32 microcontrollers, primarily in C."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-001b",
+        "children": [
+          "node-m-001d"
+        ]
+      },
+      "node-m-001d": {
+        "id": "node-m-001d",
+        "message": {
+          "id": "m-001d",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1762247566.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-001c",
+        "children": [
+          "node-m-001e"
+        ]
+      },
+      "node-m-001e": {
+        "id": "node-m-001e",
+        "message": {
+          "id": "m-001e",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1762247580.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "A hang on the second read usually means the bus wasn't released — check for a missing STOP condition."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-001d",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-001e"
+  },
+  {
+    "id": "conv-002",
+    "conversation_id": "conv-002",
+    "title": "Coffee brewing ratios",
+    "create_time": 1763451900.0,
+    "update_time": 1763451900.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-002a"
+        ]
+      },
+      "node-m-002a": {
+        "id": "node-m-002a",
+        "message": {
+          "id": "m-002a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1763451900.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "What ratio for a dark roast pour-over? That's my usual."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-002b"
+        ]
+      },
+      "node-m-002b": {
+        "id": "node-m-002b",
+        "message": {
+          "id": "m-002b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1763451920.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User prefers dark roast coffee, usually brewed as pour-over."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-002a",
+        "children": [
+          "node-m-002c"
+        ]
+      },
+      "node-m-002c": {
+        "id": "node-m-002c",
+        "message": {
+          "id": "m-002c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1763451921.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-002b",
+        "children": [
+          "node-m-002d"
+        ]
+      },
+      "node-m-002d": {
+        "id": "node-m-002d",
+        "message": {
+          "id": "m-002d",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1763451960.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Start at 1:15 and adjust toward 1:16 if it tastes muddy."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-002c",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-002d"
+  },
+  {
+    "id": "conv-003",
+    "conversation_id": "conv-003",
+    "title": "Gift ideas",
+    "create_time": 1765308600.0,
+    "update_time": 1765308600.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-003a"
+        ]
+      },
+      "node-m-003a": {
+        "id": "node-m-003a",
+        "message": {
+          "id": "m-003a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1765308600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Need a gift for my partner Sam. Our dog Biscuit chews everything, so nothing fragile."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-003b"
+        ]
+      },
+      "node-m-003b": {
+        "id": "node-m-003b",
+        "message": {
+          "id": "m-003b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1765308625.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User's partner is named Sam. They have a dog named Biscuit who chews on things."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-003a",
+        "children": [
+          "node-m-003c"
+        ]
+      },
+      "node-m-003c": {
+        "id": "node-m-003c",
+        "message": {
+          "id": "m-003c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1765308626.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-003b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-003c"
+  },
+  {
+    "id": "conv-004",
+    "conversation_id": "conv-004",
+    "title": "Marathon training plan",
+    "create_time": 1768198800.0,
+    "update_time": 1768198800.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-004a"
+        ]
+      },
+      "node-m-004a": {
+        "id": "node-m-004a",
+        "message": {
+          "id": "m-004a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1768198800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I signed up for the Chicago Marathon in October. Build me a base plan — I run about 25 km a week now."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-004b"
+        ]
+      },
+      "node-m-004b": {
+        "id": "node-m-004b",
+        "message": {
+          "id": "m-004b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1768198830.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User is training for the Chicago Marathon in October 2026, currently running about 25 km per week."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-004a",
+        "children": [
+          "node-m-004c"
+        ]
+      },
+      "node-m-004c": {
+        "id": "node-m-004c",
+        "message": {
+          "id": "m-004c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1768198831.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-004b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-004c"
+  },
+  {
+    "id": "conv-005",
+    "conversation_id": "conv-005",
+    "title": "Porting a driver to Rust",
+    "create_time": 1770127500.0,
+    "update_time": 1770127500.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-005a"
+        ]
+      },
+      "node-m-005a": {
+        "id": "node-m-005a",
+        "message": {
+          "id": "m-005a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770127500.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We decided to port our sensor drivers from C to Rust. Where do I start with embedded-hal?"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-005b"
+        ]
+      },
+      "node-m-005b": {
+        "id": "node-m-005b",
+        "message": {
+          "id": "m-005b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770127530.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User's team decided to port their sensor drivers from C to Rust using embedded-hal."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-005a",
+        "children": [
+          "node-m-005c"
+        ]
+      },
+      "node-m-005c": {
+        "id": "node-m-005c",
+        "message": {
+          "id": "m-005c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1770127531.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-005b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-005c"
+  },
+  {
+    "id": "conv-006",
+    "conversation_id": "conv-006",
+    "title": "Neighborhood advice",
+    "create_time": 1774114800.0,
+    "update_time": 1774114800.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-006a"
+        ]
+      },
+      "node-m-006a": {
+        "id": "node-m-006a",
+        "message": {
+          "id": "m-006a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1774114800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Update: we finally moved from Austin to Seattle last week. Which neighborhoods are good for runners?"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-006b"
+        ]
+      },
+      "node-m-006b": {
+        "id": "node-m-006b",
+        "message": {
+          "id": "m-006b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1774114830.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User moved to Seattle in March 2026, previously lived in Austin."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-006a",
+        "children": [
+          "node-m-006c"
+        ]
+      },
+      "node-m-006c": {
+        "id": "node-m-006c",
+        "message": {
+          "id": "m-006c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1774114831.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-006b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-006c"
+  },
+  {
+    "id": "conv-007",
+    "conversation_id": "conv-007",
+    "title": "Espresso machine shopping",
+    "create_time": 1775635800.0,
+    "update_time": 1775635800.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-007a"
+        ]
+      },
+      "node-m-007a": {
+        "id": "node-m-007a",
+        "message": {
+          "id": "m-007a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1775635800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I've gone off pour-over honestly — it's espresso now. Recommend a machine under $600."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-007b"
+        ]
+      },
+      "node-m-007b": {
+        "id": "node-m-007b",
+        "message": {
+          "id": "m-007b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1775635830.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User now prefers espresso over pour-over coffee and is shopping for an espresso machine under $600."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-007a",
+        "children": [
+          "node-m-007c"
+        ]
+      },
+      "node-m-007c": {
+        "id": "node-m-007c",
+        "message": {
+          "id": "m-007c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1775635831.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-007b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-007c"
+  },
+  {
+    "id": "conv-008",
+    "conversation_id": "conv-008",
+    "title": "Conference talk outline",
+    "create_time": 1778756400.0,
+    "update_time": 1778756400.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-008a"
+        ]
+      },
+      "node-m-008a": {
+        "id": "node-m-008a",
+        "message": {
+          "id": "m-008a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1778756400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My embedded Rust talk got accepted for RustConf. Slides are due August 15. Help me outline it."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-008b"
+        ]
+      },
+      "node-m-008b": {
+        "id": "node-m-008b",
+        "message": {
+          "id": "m-008b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1778756430.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User will speak about embedded Rust at RustConf; their slides are due August 15, 2026."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-008a",
+        "children": [
+          "node-m-008c"
+        ]
+      },
+      "node-m-008c": {
+        "id": "node-m-008c",
+        "message": {
+          "id": "m-008c",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1778756431.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-008b",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-008c"
+  },
+  {
+    "id": "conv-009",
+    "conversation_id": "conv-009",
+    "title": "Meal prep for race week",
+    "create_time": 1780424700.0,
+    "update_time": 1780424700.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-009a"
+        ]
+      },
+      "node-m-009a": {
+        "id": "node-m-009a",
+        "message": {
+          "id": "m-009a",
+          "author": {
+            "role": "system",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1780424700.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {
+            "is_user_system_message": true,
+            "user_context_message_data": {
+              "about_user_message": "I'm a firmware engineer. I work mostly in C and Rust on embedded sensor platforms. Keep examples small and hardware-realistic.",
+              "about_model_message": "Be concise. Prefer code over prose. Flag unsafe memory patterns."
+            }
+          },
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-009b"
+        ]
+      },
+      "node-m-009b": {
+        "id": "node-m-009b",
+        "message": {
+          "id": "m-009b",
+          "author": {
+            "role": "system",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1780424701.0,
+          "update_time": null,
+          "content": {
+            "content_type": "model_editable_context",
+            "model_set_context": "1. [2025-11-04]. User is a firmware engineer at Meridian Robotics working on STM32 microcontrollers, primarily in C.\n2. [2025-12-09]. User's partner is named Sam. They have a dog named Biscuit who chews on things.\n3. [2026-01-12]. User is training for the Chicago Marathon in October 2026, currently running about 25 km per week.\n4. [2026-02-14]. User is allergic to shellfish.\n5. [2026-04-08]. User now prefers espresso over pour-over coffee and is shopping for an espresso machine under $600.\n6. User keeps a sourdough starter named Clint Yeastwood.",
+            "repository": null,
+            "repo_summary": null
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-009a",
+        "children": [
+          "node-m-009c"
+        ]
+      },
+      "node-m-009c": {
+        "id": "node-m-009c",
+        "message": {
+          "id": "m-009c",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1780424730.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Plan carb-heavy dinners for race week. Remember no shellfish. Sam eats vegetarian on weekdays."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-009b",
+        "children": [
+          "node-m-009d"
+        ]
+      },
+      "node-m-009d": {
+        "id": "node-m-009d",
+        "message": {
+          "id": "m-009d",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1780424760.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "User's partner Sam eats vegetarian on weekdays."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "bio"
+        },
+        "parent": "node-m-009c",
+        "children": [
+          "node-m-009e"
+        ]
+      },
+      "node-m-009e": {
+        "id": "node-m-009e",
+        "message": {
+          "id": "m-009e",
+          "author": {
+            "role": "tool",
+            "name": "bio",
+            "metadata": {}
+          },
+          "create_time": 1780424761.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Model set context updated."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-009d",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-009e"
+  },
+  {
+    "id": "conv-010",
+    "conversation_id": "conv-010",
+    "title": "Regex help",
+    "create_time": 1781967600.0,
+    "update_time": 1781967600.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "node-m-010a"
+        ]
+      },
+      "node-m-010a": {
+        "id": "node-m-010a",
+        "message": {
+          "id": "m-010a",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1781967600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Why does my lookbehind fail in JavaScript?"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "root",
+        "children": [
+          "node-m-010b"
+        ]
+      },
+      "node-m-010b": {
+        "id": "node-m-010b",
+        "message": {
+          "id": "m-010b",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1781967620.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Older engines lack lookbehind support — check the target runtime version."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "node-m-010a",
+        "children": []
+      }
+    },
+    "moderation_results": [],
+    "current_node": "node-m-010b"
+  }
+]

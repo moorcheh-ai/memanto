@@ -1,0 +1,65 @@
+{
+  "description": "Golden Q&A set for round-trip recall validation. Ask each question of the source assistant (ChatGPT, before migration) and of Memanto (after `memanto migrate okf`). An answer passes when it contains every keyword group (each inner list is OR-matched, case-insensitive).",
+  "questions": [
+    {
+      "id": "qa-01",
+      "question": "Where do I work and what do I work on?",
+      "expected_keywords": [["Meridian"], ["firmware", "STM32"]],
+      "memory_ref": "chatgpt:conv-001:m-001c"
+    },
+    {
+      "id": "qa-02",
+      "question": "How do I take my coffee these days?",
+      "expected_keywords": [["espresso"]],
+      "memory_ref": "chatgpt:conv-009:m-009b"
+    },
+    {
+      "id": "qa-03",
+      "question": "What is my partner's name?",
+      "expected_keywords": [["Sam"]],
+      "memory_ref": "chatgpt:conv-003:m-003b"
+    },
+    {
+      "id": "qa-04",
+      "question": "What's my dog called?",
+      "expected_keywords": [["Biscuit"]],
+      "memory_ref": "chatgpt:conv-003:m-003b"
+    },
+    {
+      "id": "qa-05",
+      "question": "What race am I training for?",
+      "expected_keywords": [["Chicago"], ["marathon"]],
+      "memory_ref": "chatgpt:conv-004:m-004b"
+    },
+    {
+      "id": "qa-06",
+      "question": "What language are we porting our sensor drivers to?",
+      "expected_keywords": [["Rust"]],
+      "memory_ref": "chatgpt:conv-005:m-005b"
+    },
+    {
+      "id": "qa-07",
+      "question": "Which city do I live in now?",
+      "expected_keywords": [["Seattle"]],
+      "memory_ref": "chatgpt:conv-006:m-006b"
+    },
+    {
+      "id": "qa-08",
+      "question": "When are my RustConf slides due?",
+      "expected_keywords": [["August 15", "Aug 15", "2026-08-15"]],
+      "memory_ref": "chatgpt:conv-008:m-008b"
+    },
+    {
+      "id": "qa-09",
+      "question": "Do I have any food allergies?",
+      "expected_keywords": [["shellfish"]],
+      "memory_ref": "chatgpt:conv-009:m-009b"
+    },
+    {
+      "id": "qa-10",
+      "question": "What did I name my sourdough starter?",
+      "expected_keywords": [["Clint Yeastwood", "Yeastwood"]],
+      "memory_ref": "chatgpt:conv-009:m-009b"
+    }
+  ]
+}
