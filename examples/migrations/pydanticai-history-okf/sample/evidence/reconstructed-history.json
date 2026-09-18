@@ -1,0 +1,532 @@
+[
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "For this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:00Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-01",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:00Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Recorded project memory: For this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-01",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:01Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 64,
+      "output_audio_tokens": 0,
+      "output_tokens": 17
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OKF importer uses OKF v0.1.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:02Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-02",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:02Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Recorded project memory: The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OKF importer uses OKF v0.1.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-02",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:03Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 82,
+      "output_audio_tokens": 0,
+      "output_tokens": 38
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "Look up the submission deadline and prize for the memory portability bounty.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:04Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-03",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:04Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "args": {
+          "issue": 1609
+        },
+        "id": null,
+        "part_kind": "tool-call",
+        "provider_details": null,
+        "provider_name": null,
+        "tool_call_id": "lookup-bounty-1609",
+        "tool_kind": null,
+        "tool_name": "lookup_bounty"
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-03",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:05Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 95,
+      "output_audio_tokens": 0,
+      "output_tokens": 42
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": {
+          "deadline": "2026-08-31T23:59:00Z",
+          "issue": 1609,
+          "prize_usd": 200,
+          "selection": "top submission by the success matrix"
+        },
+        "metadata": null,
+        "outcome": "success",
+        "part_kind": "tool-return",
+        "timestamp": "2026-08-11T12:00:06Z",
+        "tool_call_id": "lookup-bounty-1609",
+        "tool_kind": null,
+        "tool_name": "lookup_bounty"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-03",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:06Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "The deadline is August 31, 2026 at 11:59 PM UTC, and the top submission earns USD 200.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-03",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:07Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 112,
+      "output_audio_tokens": 0,
+      "output_tokens": 61
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "Correction: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:08Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-04",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:08Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Recorded project memory: Correction: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-04",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:09Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 121,
+      "output_audio_tokens": 0,
+      "output_tokens": 73
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:10Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-05",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:10Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Recorded project memory: I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-05",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:11Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 142,
+      "output_audio_tokens": 0,
+      "output_tokens": 97
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "Record a validation milestone for the adapter test suite.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:12Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-06",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:12Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "args": {
+          "name": "migration-adapter",
+          "status": "required"
+        },
+        "id": null,
+        "part_kind": "tool-call",
+        "provider_details": null,
+        "provider_name": null,
+        "tool_call_id": "record-validation-1",
+        "tool_kind": null,
+        "tool_name": "record_validation"
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-06",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:13Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 152,
+      "output_audio_tokens": 0,
+      "output_tokens": 104
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": {
+          "name": "migration-adapter",
+          "scope": "public demo data",
+          "status": "required"
+        },
+        "metadata": null,
+        "outcome": "success",
+        "part_kind": "tool-return",
+        "timestamp": "2026-08-11T12:00:14Z",
+        "tool_call_id": "record-validation-1",
+        "tool_kind": null,
+        "tool_name": "record_validation"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-06",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:14Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Recorded validation milestone migration-adapter: adapter, reconstruction, privacy, and parity tests required.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-06",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:15Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 162,
+      "output_audio_tokens": 0,
+      "output_tokens": 116
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:16Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-07",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:16Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Recorded project memory: Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-07",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:17Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 175,
+      "output_audio_tokens": 0,
+      "output_tokens": 132
+    }
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "instructions": "Maintain accurate migration-project context. Preserve corrections and never invent validation evidence.",
+    "kind": "request",
+    "metadata": null,
+    "parts": [
+      {
+        "content": "Summarize the current migration plan, deadline, and correction.",
+        "part_kind": "user-prompt",
+        "timestamp": "2026-08-11T12:00:18Z"
+      }
+    ],
+    "run_id": "memanto-pydanticai-run-08",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:18Z"
+  },
+  {
+    "conversation_id": "memanto-bounty-1609-pydanticai",
+    "finish_reason": null,
+    "kind": "response",
+    "metadata": null,
+    "model_name": "pydanticai-migration-evidence-model",
+    "parts": [
+      {
+        "content": "Use PydanticAI 2.27.1 ModelMessage JSON, migrate it into examples/migrations/pydanticai-history-okf, preserve canonical sidecars, fail closed on secrets, validate recall parity, and use Memanto's shipped OKF v0.1 importer. The bounty deadline is August 31, 2026 at 11:59 PM UTC and the prize is USD 200.",
+        "id": null,
+        "part_kind": "text",
+        "provider_details": null,
+        "provider_name": null
+      }
+    ],
+    "provider_details": null,
+    "provider_name": null,
+    "provider_response_id": null,
+    "provider_url": null,
+    "run_id": "memanto-pydanticai-run-08",
+    "state": "complete",
+    "timestamp": "2026-08-11T12:00:19Z",
+    "usage": {
+      "cache_audio_read_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost": null,
+      "details": {},
+      "input_audio_tokens": 0,
+      "input_tokens": 184,
+      "output_audio_tokens": 0,
+      "output_tokens": 180
+    }
+  }
+]
