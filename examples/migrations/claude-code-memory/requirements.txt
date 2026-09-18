@@ -1,0 +1,8 @@
+# Claude Code memory adapter runtime: parse/extract core is stdlib-only;
+# PyYAML is required by the OKF bundle writer.
+PyYAML>=6.0
+
+# Validation: run pytest from the memanto repository root so the `memanto`
+# package (used by the OKF loader and recall tests) is importable. See the
+# "Round-trip validation" section of README.md.
+pytest>=8.2.0,<9
