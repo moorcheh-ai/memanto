@@ -1,0 +1,64 @@
+{
+  "source": {
+    "thread_id": "founder-os-agent",
+    "source": "langgraph-checkpoint-sqlite",
+    "database": "sample_output/source/langgraph_memory.sqlite",
+    "turns": 5,
+    "memories": 5
+  },
+  "okf_bundle": "sample_output/okf_bundle",
+  "mapped_memories": 5,
+  "validation": {
+    "questions": 5,
+    "source_score": 5,
+    "okf_score": 5,
+    "parity_score": 5,
+    "parity_percent": 100.0,
+    "results": [
+      {
+        "id": "Q001",
+        "question": "What response style does the user prefer?",
+        "source_pass": true,
+        "okf_pass": true,
+        "source_hit": "Concise executive summaries",
+        "okf_hit": "Concise executive summaries"
+      },
+      {
+        "id": "Q002",
+        "question": "How should customer-facing tools look?",
+        "source_pass": true,
+        "okf_pass": true,
+        "source_hit": "Customer-facing UI should be calm and light",
+        "okf_hit": "Customer-facing UI should be calm and light"
+      },
+      {
+        "id": "Q003",
+        "question": "When is the investor memo due?",
+        "source_pass": true,
+        "okf_pass": true,
+        "source_hit": "Investor memo due 2026-08-07",
+        "okf_hit": "Investor memo due 2026-08-07"
+      },
+      {
+        "id": "Q004",
+        "question": "Which retrieval backend was chosen?",
+        "source_pass": true,
+        "okf_pass": true,
+        "source_hit": "Use Moorcheh for retrieval",
+        "okf_hit": "Use Moorcheh for retrieval"
+      },
+      {
+        "id": "Q005",
+        "question": "What should onboarding emails avoid?",
+        "source_pass": true,
+        "okf_pass": true,
+        "source_hit": "Onboarding email tone",
+        "okf_hit": "Onboarding email tone"
+      }
+    ]
+  },
+  "memanto_migrate_okf_dry_run": {
+    "returncode": 0,
+    "log": "sample_output/memanto_migrate_okf_dry_run.txt"
+  }
+}

@@ -1,0 +1,67 @@
+# PR: Add LangGraph checkpoint to OKF migration showcase
+
+Bounty submission for #1609.
+
+## Summary
+
+This PR adds a reproducible migration example for exporting durable LangGraph
+checkpoint memory into a Memanto-compatible OKF bundle.
+
+It includes:
+
+- A deterministic LangGraph app that writes a real SQLite checkpoint using
+  `langgraph-checkpoint-sqlite`.
+- `langgraph_checkpoint_to_okf.py`, an adapter that reads checkpoints through
+  LangGraph's `SqliteSaver` serializer and writes OKF markdown.
+- A sample exported OKF bundle under `sample_output/okf_bundle`.
+- A deterministic golden Q&A parity check comparing the source checkpoint and
+  the OKF export.
+- A captured `memanto migrate okf --dry-run` log.
+
+## Migration Summary
+
+- Source: LangGraph SQLite checkpoint
+- Source thread: `founder-os-agent`
+- Source turns: 5
+- Mapped memories: 5
+- OKF memory files: 5
+- Type breakdown:
+  - preference: 2
+  - goal: 1
+  - decision: 1
+  - instruction: 1
+
+## Validation
+
+- Source checkpoint recall: 5/5
+- OKF recall: 5/5
+- Source-to-OKF parity: 100.0%
+
+## Reproduce
+
+```bash
+cd examples/migrations/langgraph-checkpoint-okf
+pip install -r requirements.txt
+pip install -e ../../..
+python run_showcase.py
+```
+
+## Demo Video
+
+Committed demo artifact:
+
+- `examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4`
+- Repository path: `examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4`
+- SHA-256: `9136a0586053887b6e7ef349a027549148648e74b04c6b494979bb2a4ec7a840`
+
+The video is generated from the current reproducible run by:
+
+```bash
+python build_demo_video.py
+```
+
+## Social Posts
+
+Public social links are intentionally not filled in this branch because they
+must be posted from an account controlled by the submitter. Drafts are included
+in `submission/SOCIAL_POSTS.md`.
