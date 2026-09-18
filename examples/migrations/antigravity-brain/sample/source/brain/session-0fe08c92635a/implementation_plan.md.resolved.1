@@ -1,0 +1,54 @@
+# Dawn Chorus - ASCII Tech Visual Overhaul
+
+## Goal Description
+Pivot the visual design to a "dark ASCII tech aesthetic". The goal is a raw, terminal-like interface that feels like a CLI tool or a retro-futuristic dashboard.
+- **Everything Monospace**: No system sans-serif fonts.
+- **Clean & Minimal**: Remove "card" backgrounds, use negative space and ASCII borders.
+- **Tech Aesthetic**: Green/Amber on Black.
+
+## User Review Required
+> [!IMPORTANT]
+> This is a significant departure from the previous "Ink-Forward" spec.
+> - **Font**: `monospace` everywhere.
+> - **Colors**: High contrast terminal style (Green/Amber on Black).
+> - **UI Elements**: Buttons will look like `[ CLICK ME ]` or `> CLICK ME`. Cards will use ASCII borders.
+
+## Proposed Changes
+
+### Styling & Design System
+#### [MODIFY] [src/index.css](file://[redacted-path])
+- **Typography**: Set `font-family: monospace` globally.
+- **Colors**: Update palette to be strictly high-contrast terminal colors.
+- **Reset**: Remove default web styling (no rounded corners, no shadows).
+
+### Components
+#### [MODIFY] [src/components/ui/Card.jsx](file://[redacted-path])
+- Remove background color.
+- Add ASCII border wrapping using `fieldset` or pseudo-elements, or just simple borders that look technical.
+
+#### [MODIFY] [src/components/ui/Button.jsx](file://[redacted-path])
+- Change style to text-based: `[ LABEL ]` or `> LABEL`.
+- Hover effects: Invert colors or add blinking cursor.
+
+#### [MODIFY] [src/components/ui/Layout.jsx](file://[redacted-path])
+- Redesign header to look like a terminal status bar.
+- Remove "web" footer, replace with command-line style prompt or status line.
+
+### Pages
+#### [MODIFY] [src/pages/Dashboard.jsx](file://[redacted-path])
+- Update grid to use ASCII separators instead of whitespace gaps if possible, or just clean spacing.
+- Ensure StatBlocks look like raw data outputs.
+
+#### [MODIFY] [src/pages/LandingPage.jsx](file://[redacted-path])
+- Replace "hero" with a large ASCII art logo (text-based).
+- Simplify faction selection to a list or text-based grid.
+
+## Verification Plan
+
+### Automated Tests
+- `npm run dev` is already running. I will rely on hot-reloading.
+- Browser tool to verify the new aesthetic.
+
+### Manual Verification
+- Check that NO sans-serif fonts remain.
+- Verify the "terminal" feel (high contrast, raw text).
