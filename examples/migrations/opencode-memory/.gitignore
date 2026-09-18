@@ -1,0 +1,5 @@
+# local run artifacts — never commit
+*.lock
+opencode_export.json
+okf-bundle/
+__pycache__/

@@ -1,0 +1,2 @@
+# only stdlib needed for export/convert/parity; pyyaml for memanto itself
+pyyaml>=6
