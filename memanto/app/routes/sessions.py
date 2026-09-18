@@ -179,11 +179,14 @@ async def delete_agent(
                 # and continue removing local metadata.
                 pass
 
-        # Revoke the persisted token before removing agent metadata. If local
-        # session cleanup fails, abort the deletion so an apparently deleted
-        # agent cannot keep authorizing requests with its old token.
-        get_session_service().delete_session(agent_id)
-        agent_service.delete_agent(agent_id)
+        # Hold the same lifecycle transaction used by session creation through
+        # both revocation and metadata removal. This prevents an activation
+        # that observed the agent before deletion from creating a token after
+        # the session cleanup step.
+        session_service = get_session_service()
+        with session_service.agent_lifecycle_transaction(agent_id):
+            session_service._delete_session_locked(agent_id)
+            agent_service.delete_agent(agent_id)
         return {
             "message": (
                 f"Agent '{agent_id}' successfully deleted"
@@ -220,30 +223,29 @@ async def activate_agent(
 
     Returns session token for use in memory operations.
     """
-    # Check if agent exists
-    agent = agent_service.get_agent(agent_id)
-    if not agent:
-        raise map_error_to_http_exception(
-            AgentNotFoundError(f"Agent '{agent_id}' not found")
-        )
-
     # Session duration is controlled by server defaults.
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
     try:
-        session = get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-        )
-        set_session_cookie(response, session.session_token, request)
+        session_service = get_session_service()
+        with session_service.agent_lifecycle_transaction(agent_id):
+            agent = agent_service.get_agent(agent_id)
+            if not agent:
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+            session = session_service._create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
 
-        # Update agent stats
-        agent_service.update_agent_stats(
-            agent_id=agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+            # Keep the metadata read-modify-write in the same transaction as
+            # session creation so deletion cannot unlink it between read/save.
+            agent_service.update_agent_stats(
+                agent_id=agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
+        set_session_cookie(response, session.session_token, request)
 
         return session
 
