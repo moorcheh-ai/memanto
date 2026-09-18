@@ -159,8 +159,9 @@ async def delete_agent(
     """
     Delete agent
 
-    Always deletes local agent metadata.
-    If `delete-backup-too=true`, also deletes the agent memory namespace in Moorcheh.
+    Deletes local agent metadata after any requested remote cleanup succeeds.
+    If `delete-backup-too=true`, the Moorcheh namespace is deleted first; if that
+    remote deletion fails, local metadata is preserved so the operation can be retried.
     """
     try:
         agent = agent_service.get_agent(agent_id)
@@ -170,14 +171,21 @@ async def delete_agent(
             )
 
         if delete_backup_too:
-            # Delete remote namespace only when explicitly requested.
+            # Fail closed: if the user requests deletion of the remote backup,
+            # never remove the local recovery metadata unless the remote delete
+            # actually succeeds. Otherwise a backend/auth outage can orphan
+            # sensitive memories while the API falsely reports full deletion.
             moorcheh_client = moorcheh_clients.get_moorcheh_client()
             try:
                 moorcheh_client.namespaces.delete(namespace_name=agent.namespace)
-            except Exception:
-                # If namespace is already gone/unreachable, keep best-effort behavior
-                # and continue removing local metadata.
-                pass
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Remote namespace deletion failed; local agent metadata "
+                        "was preserved so deletion can be retried safely."
+                    ),
+                ) from exc
 
         # Revoke the persisted token before removing agent metadata. If local
         # session cleanup fails, abort the deletion so an apparently deleted
