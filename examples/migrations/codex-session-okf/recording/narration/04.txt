@@ -1,0 +1,1 @@
+Before writing anything, the official Memanto dry run maps all four OKF nodes to context memories. Nothing is skipped, and the dry run performs no cloud write.

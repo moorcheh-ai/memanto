@@ -1,0 +1,1 @@
+The verified live run creates an isolated Moorcheh agent and imports the same bundle. Four memories are accepted in one batch, with zero failures.

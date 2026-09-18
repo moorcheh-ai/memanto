@@ -1,0 +1,4 @@
+{"timestamp":"2026-07-28T17:32:17.724Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"当前工作区是有哪些"}]}}
+{"timestamp":"2026-07-28T17:32:29.994Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"当前工作区包括：\n\n- `memanto`：Python 项目\n- `bounty-radar`：TypeScript/Node.js 项目"}]}}
+{"timestamp":"2026-07-28T17:47:50.585Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"今天是什么日期"}]}}
+{"timestamp":"2026-07-28T17:47:54.261Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"今天是 **2026 年 7 月 29 日，星期三**。"}]}}
