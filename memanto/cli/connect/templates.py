@@ -263,6 +263,11 @@ def get_instruction_content(agent_name: str) -> str:
             tool_phrase="the terminal",
             note_suffix="The `memanto-memory` skill in `.agents/skills/memanto/` contains detailed reference guidelines (best practices, confidence levels, tagging).",
         ),
+        "kimi-code": _base_instruction_content(
+            agent_id="kimi-code",
+            tool_phrase="the Bash tool",
+            note_suffix="The `memanto-memory` skill contains reference guidelines only (best practices, confidence levels, tagging). It is NOT executable — always use Bash for memanto commands.",
+        ),
         "pi": _base_instruction_content(
             agent_id="pi",
             tool_phrase="the terminal",

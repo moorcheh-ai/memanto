@@ -104,6 +104,19 @@ def _project_dir(payload: dict) -> str:
     return os.getcwd()
 
 
+def _host(argv: list[str], payload: dict) -> str:
+    """Identify the calling agent (e.g. `--host kimi-code` or stdin client_type)."""
+    for i, arg in enumerate(argv):
+        if arg == "--host" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--host="):
+            return arg.split("=", 1)[1]
+    client_type = payload.get("client_type")
+    if isinstance(client_type, str) and client_type:
+        return client_type
+    return "claude-code"
+
+
 def sync_memory(project_dir: str) -> str | None:
     """Refresh MEMORY.md. Returns a one-line summary, or None if unavailable."""
     try:
@@ -224,6 +237,7 @@ def _touch(marker: Path) -> None:
 def main() -> None:
     payload = _read_stdin()
     project_dir = _project_dir(payload)
+    host = _host(sys.argv[1:], payload)
 
     if not _claim("sessionstart:" + str(payload.get("session_id") or project_dir)):
         return
@@ -239,13 +253,15 @@ def main() -> None:
         # Ignore errors syncing memory in session start hook
         pass
 
-    try:
-        notice = install_statusline()
-        if notice:
-            lines.append(notice)
-    except Exception:
-        # Ignore errors installing statusline in session start hook
-        pass
+    # The status line is a Claude Code feature; other hosts have no use for it.
+    if host not in ("kimi-code", "kimi_code_cli"):
+        try:
+            notice = install_statusline()
+            if notice:
+                lines.append(notice)
+        except Exception:
+            # Ignore errors installing statusline in session start hook
+            pass
 
     if lines:
         _out("\n".join(lines))

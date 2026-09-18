@@ -167,6 +167,29 @@ def connect_codex(
     _run_connect_for_agent("codex", project_dir, is_global)
 
 
+@connect_app.command("kimi-code")
+def connect_kimi_code(
+    project_dir: str = typer.Option(
+        ".", "--project-dir", "-p", help="Target project directory"
+    ),
+    is_global: bool = typer.Option(
+        False, "--global", "-g", help="Install globally to ~/.kimi-code/"
+    ),
+):
+    """Connect MEMANTO to Kimi Code.
+
+    Adds MEMANTO instructions to AGENTS.md and deploys the skill. Hooks are
+    always installed to the user-level ~/.kimi-code/config.toml, even for
+    project installs — Kimi Code has no project-level hook configuration.
+
+    Examples:
+        memanto connect kimi-code
+        memanto connect kimi-code --project-dir ./my-project
+        memanto connect kimi-code --global
+    """
+    _run_connect_for_agent("kimi-code", project_dir, is_global)
+
+
 @connect_app.command("pi")
 def connect_pi(
     project_dir: str = typer.Option(
