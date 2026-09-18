@@ -1,0 +1,16 @@
+{
+  "backend": "sqlite3",
+  "path": "/Users/vikasy/projects/placement/moorcheh-ai-bounty/examples/migrations/okf-multisource-wiki/data/sqlite/agent_memory.db",
+  "table": "agent_memories",
+  "count": 8,
+  "ids": [
+    "sql-name",
+    "sql-lang-stale",
+    "sql-timezone",
+    "sql-ci",
+    "sql-oncall",
+    "sql-budget",
+    "sql-runbook",
+    "sql-commit"
+  ]
+}

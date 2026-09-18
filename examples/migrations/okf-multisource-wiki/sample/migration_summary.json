@@ -1,0 +1,88 @@
+{
+  "chroma_source_count": 14,
+  "sqlite_source_count": 8,
+  "active_count": 17,
+  "archived_count": 2,
+  "merge_events": [
+    {
+      "topic": "topic:identity-name",
+      "winner": "merged:a518544f06df0b21",
+      "merged_from": [
+        "chroma:chroma-name",
+        "sqlite:sql-name"
+      ],
+      "action": "dedupe_agreeing_facts"
+    },
+    {
+      "topic": "topic:language-preference",
+      "winner": "chroma:chroma-lang-correction",
+      "archived": [
+        "sqlite:sql-lang-stale"
+      ],
+      "action": "prefer_correction"
+    },
+    {
+      "topic": "topic:timezone",
+      "winner": "merged:aebc0518965421d6",
+      "merged_from": [
+        "chroma:chroma-timezone",
+        "sqlite:sql-timezone"
+      ],
+      "action": "dedupe_agreeing_facts"
+    },
+    {
+      "topic": "topic:oncall-buddy",
+      "winner": "merged:e3448df971a25f32",
+      "merged_from": [
+        "chroma:chroma-rel",
+        "sqlite:sql-oncall"
+      ],
+      "action": "dedupe_agreeing_facts"
+    }
+  ],
+  "per_type": {
+    "artifact": 1,
+    "commitment": 2,
+    "decision": 1,
+    "event": 1,
+    "fact": 3,
+    "goal": 1,
+    "instruction": 4,
+    "preference": 3,
+    "relationship": 1
+  },
+  "okf": {
+    "total_memories": 17,
+    "per_type_counts": {
+      "preference": 3,
+      "fact": 3,
+      "instruction": 4,
+      "commitment": 2,
+      "decision": 1,
+      "event": 1,
+      "artifact": 1,
+      "goal": 1,
+      "relationship": 1
+    },
+    "files": [
+      "memories/preference/primary-editor-is-cursor-with-vim-keybindings-enabled.md",
+      "memories/fact/user-s-name-is-priya-shah.md",
+      "memories/fact/primary-database-is-postgresql-16-on-port-5432.md",
+      "memories/instruction/never-deploy-on-fridays-without-an-explicit-go-ahead-from-priya.md",
+      "memories/commitment/every-pr-must-include-pytest-coverage-for-new-modules.md",
+      "memories/preference/correction-priya-now-prefers-python-fastapi-for-internal-services-typescr.md",
+      "memories/fact/priya-works-in-asia-kolkata-utc-5-30.md",
+      "memories/instruction/ci-must-stay-green-on-python-3-11-and-3-12-before-merge.md",
+      "memories/decision/decision-raise-pgbouncer-max-client-conn-to-400-permanently.md",
+      "memories/event/incident-inc-441-resolved-pgbouncer-pool-exhaustion-after-a-migration-spike.md",
+      "memories/artifact/runbook-path-for-pgbouncer-incidents-docs-runbooks-pgbouncer-pool-exhaustion-md.md",
+      "memories/goal/goal-cut-p95-api-latency-under-120ms-before-q4-review.md",
+      "memories/relationship/on-call-buddy-is-marcus-chen-slack-marcus.md",
+      "memories/instruction/monthly-llm-spend-budget-is-usd-200-alert-priya-at-80.md",
+      "memories/instruction/never-commit-env-files-use-doppler-for-secrets.md",
+      "memories/preference/response-style-concise-bullets-first-then-optional-detail-no-emojis-in-com.md",
+      "memories/commitment/priya-committed-to-review-the-okf-migration-pr-within-24-hours-of-opening.md"
+    ],
+    "bundle_dir": "/Users/vikasy/projects/placement/moorcheh-ai-bounty/examples/migrations/okf-multisource-wiki/out/okf-bundle"
+  }
+}
