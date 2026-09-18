@@ -31,7 +31,7 @@ from memanto.cli.migrate.langfuse_state import (
     record_updated,
     record_written,
 )
-from memanto.cli.migrate.mappers import MAPPERS, type_breakdown
+from memanto.cli.migrate.mappers import MAPPERS, _msg_text, type_breakdown
 
 BATCH_LIMIT = 100
 
@@ -255,6 +255,20 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "langfuse":
         # Observations, not memories — many collapse into one signature.
         return len(export.get("observations", []) or [])
+    if provider in ("claude", "chatgpt"):
+        # Count non-empty chat messages (the raw "source records" we distill).
+        count = 0
+        for convo in export.get("conversations", []) or []:
+            if provider == "claude":
+                for msg in convo.get("chat_messages", []) or []:
+                    if (msg.get("text") or "").strip():
+                        count += 1
+            else:  # chatgpt
+                for node in (convo.get("mapping") or {}).values():
+                    msg = node.get("message") or {}
+                    if _msg_text(msg.get("content")):
+                        count += 1
+        return count
     memories = export.get("memories", []) or []
     if provider == "supermemory":
         mapped_memory_ids: set[str] = set()
