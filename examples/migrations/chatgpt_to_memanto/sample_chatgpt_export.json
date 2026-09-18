@@ -1,0 +1,19 @@
+[
+  {
+    "title": "Developer Preferences and Tech Stack",
+    "mapping": {
+      "1": {
+        "message": {
+          "author": { "role": "user" },
+          "content": { "parts": ["I prefer Python and PyTorch for my AI projects."] }
+        }
+      },
+      "2": {
+        "message": {
+          "author": { "role": "assistant" },
+          "content": { "parts": ["Noted! I will use Python and PyTorch in code snippets."] }
+        }
+      }
+    }
+  }
+]
