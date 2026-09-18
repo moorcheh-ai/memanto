@@ -1,0 +1,1526 @@
+[
+  {
+    "title": "Postgres migration planning",
+    "create_time": 1770000000.0,
+    "update_time": 1770100800.0,
+    "mapping": {
+      "conv_000_n0": {
+        "id": "conv_000_n0",
+        "message": {
+          "id": "conv_000_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770000000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I prefer Postgres over MySQL for new projects. We decided to migrate the billing service from MySQL to Postgres 16 this quarter."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_000_n1"
+        ]
+      },
+      "conv_000_n1": {
+        "id": "conv_000_n1",
+        "message": {
+          "id": "conv_000_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770025200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Remember: never run migrations during peak hours. Always make a backup before ALTER TABLE."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_000_n0",
+        "children": [
+          "conv_000_n2"
+        ]
+      },
+      "conv_000_n2": {
+        "id": "conv_000_n2",
+        "message": {
+          "id": "conv_000_n2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770050400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Got it. I'll note Postgres 16 for the billing migration and the backup rule."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_000_n1",
+        "children": [
+          "conv_000_n3"
+        ]
+      },
+      "conv_000_n3": {
+        "id": "conv_000_n3",
+        "message": {
+          "id": "conv_000_n3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770075600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My colleague Anna from the data team will handle the data sync. My manager David approved the timeline."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_000_n2",
+        "children": [
+          "conv_000_n4"
+        ]
+      },
+      "conv_000_n4": {
+        "id": "conv_000_n4",
+        "message": {
+          "id": "conv_000_n4",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770100800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'll send you the migration checklist tomorrow."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_000_n3",
+        "children": []
+      }
+    },
+    "current_node": "conv_000_n4",
+    "conversation_id": "conv_000",
+    "id": "conv_000"
+  },
+  {
+    "title": "Frontend stack choices",
+    "create_time": 1770194400.0,
+    "update_time": 1770295200.0,
+    "mapping": {
+      "conv_001_n0": {
+        "id": "conv_001_n0",
+        "message": {
+          "id": "conv_001_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770194400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm building a new dashboard for our analytics product. I'd rather use React with TypeScript and Vite."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_001_n1"
+        ]
+      },
+      "conv_001_n1": {
+        "id": "conv_001_n1",
+        "message": {
+          "id": "conv_001_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770219600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Let's go with Tailwind for styling, not CSS modules. I prefer utility classes."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_001_n0",
+        "children": [
+          "conv_001_n2"
+        ]
+      },
+      "conv_001_n2": {
+        "id": "conv_001_n2",
+        "message": {
+          "id": "conv_001_n2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770244800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "React + TS + Vite with Tailwind — noted."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_001_n1",
+        "children": [
+          "conv_001_n3"
+        ]
+      },
+      "conv_001_n3": {
+        "id": "conv_001_n3",
+        "message": {
+          "id": "conv_001_n3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770270000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "From now on, always use the company design system components instead of custom CSS."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_001_n2",
+        "children": [
+          "conv_001_n4"
+        ]
+      },
+      "conv_001_n4": {
+        "id": "conv_001_n4",
+        "message": {
+          "id": "conv_001_n4",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770295200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My friend Minh said the new shadcn components are great, but we decided to stick with our design system."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_001_n3",
+        "children": []
+      }
+    },
+    "current_node": "conv_001_n4",
+    "conversation_id": "conv_001",
+    "id": "conv_001"
+  },
+  {
+    "title": "Learning Go",
+    "create_time": 1770388800.0,
+    "update_time": 1770489600.0,
+    "mapping": {
+      "conv_002_n0": {
+        "id": "conv_002_n0",
+        "message": {
+          "id": "conv_002_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770388800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm learning Go for backend services. My goal is to build a small CLI tool by next month."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_002_n1"
+        ]
+      },
+      "conv_002_n1": {
+        "id": "conv_002_n1",
+        "message": {
+          "id": "conv_002_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770414000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I found out that Go's context package is essential for timeouts — I didn't know that before."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_002_n0",
+        "children": [
+          "conv_002_n2"
+        ]
+      },
+      "conv_002_n2": {
+        "id": "conv_002_n2",
+        "message": {
+          "id": "conv_002_n2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770439200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Great progress! The context package is indeed key."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_002_n1",
+        "children": [
+          "conv_002_n3"
+        ]
+      },
+      "conv_002_n3": {
+        "id": "conv_002_n3",
+        "message": {
+          "id": "conv_002_n3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770464400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I prefer reading docs over video tutorials. I usually start with the official docs."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_002_n2",
+        "children": [
+          "conv_002_n4"
+        ]
+      },
+      "conv_002_n4": {
+        "id": "conv_002_n4",
+        "message": {
+          "id": "conv_002_n4",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770489600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'll share my first CLI tool repo with you when it's ready."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_002_n3",
+        "children": []
+      }
+    },
+    "current_node": "conv_002_n4",
+    "conversation_id": "conv_002",
+    "id": "conv_002"
+  },
+  {
+    "title": "Health and fitness",
+    "create_time": 1770583200.0,
+    "update_time": 1770684000.0,
+    "mapping": {
+      "conv_003_n0": {
+        "id": "conv_003_n0",
+        "message": {
+          "id": "conv_003_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770583200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm trying to run a 5K. I usually run on Tuesday and Thursday mornings before work."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_003_n1"
+        ]
+      },
+      "conv_003_n1": {
+        "id": "conv_003_n1",
+        "message": {
+          "id": "conv_003_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770608400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My doctor told me to cut down on coffee. I made a mistake last week drinking three cups a day."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_003_n0",
+        "children": [
+          "conv_003_n2"
+        ]
+      },
+      "conv_003_n2": {
+        "id": "conv_003_n2",
+        "message": {
+          "id": "conv_003_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770633600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I have a check-up appointment next Monday at 9am."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_003_n1",
+        "children": [
+          "conv_003_n3"
+        ]
+      },
+      "conv_003_n3": {
+        "id": "conv_003_n3",
+        "message": {
+          "id": "conv_003_n3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770658800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Noted — Tuesday/Thursday runs, coffee limit, Monday check-up."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_003_n2",
+        "children": [
+          "conv_003_n4"
+        ]
+      },
+      "conv_003_n4": {
+        "id": "conv_003_n4",
+        "message": {
+          "id": "conv_003_n4",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770684000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I love pho but I'm trying to eat less red meat these days."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_003_n3",
+        "children": []
+      }
+    },
+    "current_node": "conv_003_n4",
+    "conversation_id": "conv_003",
+    "id": "conv_003"
+  },
+  {
+    "title": "Family plans",
+    "create_time": 1770777600.0,
+    "update_time": 1770853200.0,
+    "mapping": {
+      "conv_004_n0": {
+        "id": "conv_004_n0",
+        "message": {
+          "id": "conv_004_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770777600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My wife and I are planning a trip to Da Nang in October. We prefer beach hotels over city hotels."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_004_n1"
+        ]
+      },
+      "conv_004_n1": {
+        "id": "conv_004_n1",
+        "message": {
+          "id": "conv_004_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770802800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My son starts school on September 5th. My parents will visit us that weekend."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_004_n0",
+        "children": [
+          "conv_004_n2"
+        ]
+      },
+      "conv_004_n2": {
+        "id": "conv_004_n2",
+        "message": {
+          "id": "conv_004_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770828000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We decided to rent a car instead of taking the train."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_004_n1",
+        "children": [
+          "conv_004_n3"
+        ]
+      },
+      "conv_004_n3": {
+        "id": "conv_004_n3",
+        "message": {
+          "id": "conv_004_n3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770853200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Da Nang trip, school start, parents visiting — saved."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_004_n2",
+        "children": []
+      }
+    },
+    "current_node": "conv_004_n3",
+    "conversation_id": "conv_004",
+    "id": "conv_004"
+  },
+  {
+    "title": "Side project: recipe bot",
+    "create_time": 1770946800.0,
+    "update_time": 1771047600.0,
+    "mapping": {
+      "conv_005_n0": {
+        "id": "conv_005_n0",
+        "message": {
+          "id": "conv_005_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770946800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm building a Telegram bot that suggests recipes from leftovers. I'm using Python and the Telegram Bot API."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_005_n1"
+        ]
+      },
+      "conv_005_n1": {
+        "id": "conv_005_n1",
+        "message": {
+          "id": "conv_005_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770972000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My goal is to launch it by the end of the month. I published the first version on GitHub yesterday."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_005_n0",
+        "children": [
+          "conv_005_n2"
+        ]
+      },
+      "conv_005_n2": {
+        "id": "conv_005_n2",
+        "message": {
+          "id": "conv_005_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1770997200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I learned that Telegram webhooks need a public HTTPS URL — turns out ngrok works fine for testing."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_005_n1",
+        "children": [
+          "conv_005_n3"
+        ]
+      },
+      "conv_005_n3": {
+        "id": "conv_005_n3",
+        "message": {
+          "id": "conv_005_n3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771022400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "The webhook requirement is a classic gotcha. Good find."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_005_n2",
+        "children": [
+          "conv_005_n4"
+        ]
+      },
+      "conv_005_n4": {
+        "id": "conv_005_n4",
+        "message": {
+          "id": "conv_005_n4",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771047600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Remember: keep the bot stateless, store state in Redis."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_005_n3",
+        "children": []
+      }
+    },
+    "current_node": "conv_005_n4",
+    "conversation_id": "conv_005",
+    "id": "conv_005"
+  },
+  {
+    "title": "Job interview prep",
+    "create_time": 1771141200.0,
+    "update_time": 1771216800.0,
+    "mapping": {
+      "conv_006_n0": {
+        "id": "conv_006_n0",
+        "message": {
+          "id": "conv_006_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771141200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I have a system design interview next Wednesday for an AI engineer role at a startup."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_006_n1"
+        ]
+      },
+      "conv_006_n1": {
+        "id": "conv_006_n1",
+        "message": {
+          "id": "conv_006_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771166400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm working on system design — I'm reading the DDIA book. I prefer hands-on mock interviews over reading alone."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_006_n0",
+        "children": [
+          "conv_006_n2"
+        ]
+      },
+      "conv_006_n2": {
+        "id": "conv_006_n2",
+        "message": {
+          "id": "conv_006_n2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771191600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Good plan. Want me to quiz you on rate limiting?"
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_006_n1",
+        "children": [
+          "conv_006_n3"
+        ]
+      },
+      "conv_006_n3": {
+        "id": "conv_006_n3",
+        "message": {
+          "id": "conv_006_n3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771216800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Yes please. I'll record the mock session to review later."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_006_n2",
+        "children": []
+      }
+    },
+    "current_node": "conv_006_n3",
+    "conversation_id": "conv_006",
+    "id": "conv_006"
+  },
+  {
+    "title": "Budget and finance",
+    "create_time": 1771310400.0,
+    "update_time": 1771360800.0,
+    "mapping": {
+      "conv_007_n0": {
+        "id": "conv_007_n0",
+        "message": {
+          "id": "conv_007_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771310400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm trying to save 20% of my income every month. I usually track expenses in a spreadsheet."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_007_n1"
+        ]
+      },
+      "conv_007_n1": {
+        "id": "conv_007_n1",
+        "message": {
+          "id": "conv_007_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771335600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We decided to switch to a digital bank for better interest rates. My wife handles the monthly budget."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_007_n0",
+        "children": [
+          "conv_007_n2"
+        ]
+      },
+      "conv_007_n2": {
+        "id": "conv_007_n2",
+        "message": {
+          "id": "conv_007_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771360800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I made a mistake with the credit card payment last month. Never pay credit card bills late again."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_007_n1",
+        "children": []
+      }
+    },
+    "current_node": "conv_007_n2",
+    "conversation_id": "conv_007",
+    "id": "conv_007"
+  },
+  {
+    "title": "Travel: Japan",
+    "create_time": 1771454400.0,
+    "update_time": 1771530000.0,
+    "mapping": {
+      "conv_008_n0": {
+        "id": "conv_008_n0",
+        "message": {
+          "id": "conv_008_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771454400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm planning a trip to Japan in December. I prefer traveling in the off-season to avoid crowds."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_008_n1"
+        ]
+      },
+      "conv_008_n1": {
+        "id": "conv_008_n1",
+        "message": {
+          "id": "conv_008_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771479600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My friend Lan lived in Tokyo for 3 years and recommended staying in Shinjuku."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_008_n0",
+        "children": [
+          "conv_008_n2"
+        ]
+      },
+      "conv_008_n2": {
+        "id": "conv_008_n2",
+        "message": {
+          "id": "conv_008_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771504800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We decided to get the JR Pass and skip the Disney parks."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_008_n1",
+        "children": [
+          "conv_008_n3"
+        ]
+      },
+      "conv_008_n3": {
+        "id": "conv_008_n3",
+        "message": {
+          "id": "conv_008_n3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771530000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Shinjuku base, JR Pass, no Disney — noted for the itinerary."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_008_n2",
+        "children": []
+      }
+    },
+    "current_node": "conv_008_n3",
+    "conversation_id": "conv_008",
+    "id": "conv_008"
+  },
+  {
+    "title": "Open source contributions",
+    "create_time": 1771623600.0,
+    "update_time": 1771699200.0,
+    "mapping": {
+      "conv_009_n0": {
+        "id": "conv_009_n0",
+        "message": {
+          "id": "conv_009_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771623600.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm contributing to an open-source AI agent project on GitHub. I'm working on a new memory adapter."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_009_n1"
+        ]
+      },
+      "conv_009_n1": {
+        "id": "conv_009_n1",
+        "message": {
+          "id": "conv_009_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771648800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "The repo maintainer asked me to always run lint before pushing. I'll follow that rule from now on."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_009_n0",
+        "children": [
+          "conv_009_n2"
+        ]
+      },
+      "conv_009_n2": {
+        "id": "conv_009_n2",
+        "message": {
+          "id": "conv_009_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771674000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I found a bug in the CLI yesterday — the error handling for missing API keys is broken."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_009_n1",
+        "children": [
+          "conv_009_n3"
+        ]
+      },
+      "conv_009_n3": {
+        "id": "conv_009_n3",
+        "message": {
+          "id": "conv_009_n3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771699200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Good catch. The maintainer should appreciate a fix with a test."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_009_n2",
+        "children": []
+      }
+    },
+    "current_node": "conv_009_n3",
+    "conversation_id": "conv_009",
+    "id": "conv_009"
+  },
+  {
+    "title": "Content creation",
+    "create_time": 1771792800.0,
+    "update_time": 1771868400.0,
+    "mapping": {
+      "conv_010_n0": {
+        "id": "conv_010_n0",
+        "message": {
+          "id": "conv_010_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771792800.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'm writing a blog about AI agents in Vietnamese and English. My goal is 2 posts per week."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_010_n1"
+        ]
+      },
+      "conv_010_n1": {
+        "id": "conv_010_n1",
+        "message": {
+          "id": "conv_010_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771818000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I created a Notion template to track drafts. I prefer writing long-form posts over short threads."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_010_n0",
+        "children": [
+          "conv_010_n2"
+        ]
+      },
+      "conv_010_n2": {
+        "id": "conv_010_n2",
+        "message": {
+          "id": "conv_010_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771843200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I'll send you the draft for review before publishing."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_010_n1",
+        "children": [
+          "conv_010_n3"
+        ]
+      },
+      "conv_010_n3": {
+        "id": "conv_010_n3",
+        "message": {
+          "id": "conv_010_n3",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771868400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Happy to review the draft when it's ready."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_010_n2",
+        "children": []
+      }
+    },
+    "current_node": "conv_010_n3",
+    "conversation_id": "conv_010",
+    "id": "conv_010"
+  },
+  {
+    "title": "House hunting",
+    "create_time": 1771962000.0,
+    "update_time": 1772012400.0,
+    "mapping": {
+      "conv_011_n0": {
+        "id": "conv_011_n0",
+        "message": {
+          "id": "conv_011_n0",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771962000.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My family and I are looking for a new apartment near District 2. We prefer quiet neighborhoods."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": [
+          "conv_011_n1"
+        ]
+      },
+      "conv_011_n1": {
+        "id": "conv_011_n1",
+        "message": {
+          "id": "conv_011_n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1771987200.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We have a viewing appointment this Saturday at 10am."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_011_n0",
+        "children": [
+          "conv_011_n2"
+        ]
+      },
+      "conv_011_n2": {
+        "id": "conv_011_n2",
+        "message": {
+          "id": "conv_011_n2",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1772012400.0,
+          "update_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I decided to cap the budget at 3 billion VND. We'll use a real estate agent we found through my sister."
+            ]
+          },
+          "status": "finished_successfully",
+          "end_turn": null,
+          "weight": 1.0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "conv_011_n1",
+        "children": []
+      }
+    },
+    "current_node": "conv_011_n2",
+    "conversation_id": "conv_011",
+    "id": "conv_011"
+  }
+]

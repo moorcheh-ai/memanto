@@ -1,0 +1,8 @@
+# Pinned to the exact versions used to generate and validate the committed
+# bundle (memanto 0.2.13, pytest 9.1.1). Transitive deps of memanto are pinned
+# to the exact tested releases: PyJWT 2.13.0 and python-multipart 0.0.32 are
+# CVE-safe and resolve the same dependency graph as the validated environment.
+memanto==0.2.13
+pytest==9.1.1
+PyJWT==2.13.0
+python-multipart==0.0.32

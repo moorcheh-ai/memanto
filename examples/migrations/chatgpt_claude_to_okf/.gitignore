@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# secrets — never commit API keys or credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# real-data output (quickstart target) — never commit personal exports
+okf_bundle_real/
