@@ -250,6 +250,24 @@ def get_current_session(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
 
+    # The session cookie is only ever issued to the local browser UI, so a
+    # cookie-authenticated request must arrive with a loopback Host header.
+    # SameSite=strict does not cover DNS rebinding: a rebound domain is
+    # same-site with itself, so the browser sends the cookie on requests to
+    # the attacker's own origin after it rebinds to 127.0.0.1. Header-based
+    # auth (X-Session-Token) is unaffected — a cross-site page cannot set
+    # custom headers without passing CORS, and the token value is never
+    # exposed to JavaScript (HttpOnly cookie).
+    if (
+        session_cookie
+        and not x_session_token
+        and not _is_loopback_host_header(request.headers.get("host"))
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Cookie-authenticated sessions require a loopback Host header.",
+        )
+
     session_service = get_session_service()
 
     try:
