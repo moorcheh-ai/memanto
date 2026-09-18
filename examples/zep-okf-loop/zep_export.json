@@ -1,0 +1,41 @@
+{
+  "exported_at": "2026-08-19T20:00:00Z",
+  "user_id": "user_42",
+  "facts": [
+    {
+      "uuid": "fact-1",
+      "fact": "Alex prefers broad-market beta over leveraged single-country products.",
+      "created_at": "2026-08-10T12:00:00Z",
+      "rating": 0.91
+    }
+  ],
+  "edges": [
+    {
+      "uuid": "edge-1",
+      "name": "WORKS_WITH",
+      "fact": "Alex works with an operator agent named Scout.",
+      "created_at": "2026-08-11T09:00:00Z",
+      "source_node_uuid": "n-alex",
+      "target_node_uuid": "n-scout"
+    }
+  ],
+  "nodes": [
+    {
+      "uuid": "n-alex",
+      "name": "Alex",
+      "summary": "Operator who wants portable agent memory.",
+      "labels": ["User"],
+      "created_at": "2026-08-01T00:00:00Z"
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "sess-1",
+      "summary": "Discussed leaving a proprietary memory store without losing facts.",
+      "created_at": "2026-08-19T18:00:00Z",
+      "messages": [
+        {"uuid": "m1", "role": "user", "content": "export my graph please"}
+      ]
+    }
+  ]
+}

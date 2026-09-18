@@ -255,6 +255,14 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "langfuse":
         # Observations, not memories — many collapse into one signature.
         return len(export.get("observations", []) or [])
+    if provider == "zep":
+        keys = ("facts", "relevant_facts", "user_facts", "edges", "nodes", "sessions")
+        return sum(
+            1
+            for key in keys
+            for item in (export.get(key) or [])
+            if isinstance(item, dict)
+        )
     memories = export.get("memories", []) or []
     if provider == "supermemory":
         mapped_memory_ids: set[str] = set()
