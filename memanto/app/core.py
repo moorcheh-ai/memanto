@@ -15,8 +15,15 @@ from memanto.app.constants import (
     StatusType,
 )
 
+TAG_PATTERN = r"^[A-Za-z0-9._-]+$"
 MemoryTag = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9._-]+$",
+    ),
 ]
 BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
 
