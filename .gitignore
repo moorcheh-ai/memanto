@@ -60,6 +60,7 @@ coverage.xml
 *.cover
 *.log
 .pytest_cache/
+examples/migrations/langgraph-checkpoints/local-runs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -82,6 +83,7 @@ cython_debug/
 *.db
 *.sqlite
 *.sqlite3
+!examples/migrations/langgraph-checkpoints/artifacts/demo-checkpoints.sqlite
 
 # Logs
 logs/

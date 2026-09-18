@@ -1,0 +1,25 @@
+---
+type: fact
+title: 'Profile: Home City'
+description: Imported from profile in a LangGraph checkpoint.
+resource: langgraph://mira-travel/root/1f18b364-d9ea-6d2d-800a-9a82c15024f7#profile/home_city
+tags:
+- langgraph
+- checkpoint
+- thread:mira-travel
+- channel:profile
+timestamp: '2026-07-29T10:14:37.193553+00:00'
+x_memanto:
+  type: fact
+  confidence: 1.0
+  source: tool
+  provenance: imported
+  langgraph:
+    thread_id: mira-travel
+    checkpoint_id: 1f18b364-d9ea-6d2d-800a-9a82c15024f7
+    checkpoint_ns: ''
+    channel: profile
+    key: home_city
+---
+
+Shanghai
