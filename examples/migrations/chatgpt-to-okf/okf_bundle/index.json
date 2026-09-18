@@ -1,0 +1,18 @@
+{
+  "version": "0.1",
+  "title": "ChatGPT Conversation Memory — OKF Migration Showcase",
+  "description": "Memories extracted from a ChatGPT assistant chat history, mapped into portable Open Knowledge Format markdown. Built for the Memanto \"Great Memory Migration\" bounty (Path B).",
+  "entry_count": 10,
+  "entries": [
+    "memories/remember-that-i-m-setting-up-my-own-dev-001.md",
+    "memories/you-work-as-a-backend-engineer-mostly-on-java-002.md",
+    "memories/you-said-you-want-to-build-a-personal-dashboard-003.md",
+    "memories/you-decided-to-use-postgresql-for-the-bounty-004.md",
+    "memories/you-re-going-to-ship-the-first-milestone-bounty-005.md",
+    "memories/you-mentioned-you-like-concise-answers-006.md",
+    "memories/i-notice-you-often-come-back-to-the-same-retry-007.md",
+    "memories/you-asked-for-a-docker-compose-snippet-to-run-008.md",
+    "memories/for-your-bounty-workflow-you-care-about-009.md",
+    "memories/you-re-currently-working-out-of-home-workspace-010.md"
+  ]
+}
