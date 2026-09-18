@@ -1,0 +1,4 @@
+# Source tool for this migration example.
+# Only generate_session.py needs it — okf_adapter.py and verify_artifacts.py are
+# Python standard library only, so the adapter runs anywhere the .db file does.
+openai-agents==0.19.4
