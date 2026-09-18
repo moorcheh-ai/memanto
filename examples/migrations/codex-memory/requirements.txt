@@ -1,0 +1,17 @@
+# codex-memory migration example — requirements
+#
+# The adapter (codex_to_okf.py) has ZERO third-party dependencies: it reads
+# Codex's SQLite stores and JSONL rollout logs using only the Python standard
+# library. Any Python >= 3.10 works; 3.11+ is recommended.
+#
+# The only external tool you need is the Memanto CLI itself, which is the
+# consumer of the OKF bundle this adapter produces:
+#
+#     pip install memanto
+#
+# That is the whole dependency list. There is nothing else to install, no
+# service to start, and no API key required for the OKF import path
+# (`memanto migrate okf` is a local file import).
+# Pinned to the version this adapter and sample bundle were validated against.
+# `memanto migrate okf` is a local file import: no service, no API key.
+memanto==0.2.21
