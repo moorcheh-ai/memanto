@@ -1,0 +1,57 @@
+---
+type: artifact
+title: AI Home & Screen Operator
+description: 'Source record only: preserve its evidence limitations. Importing this
+  record does not verify its claims.'
+tags:
+- voller-attention-tiles
+- source-record
+- record-84cde70d692d83e1
+generated:
+  by: process:voller-attention-tiles
+  at: '2026-09-13T20:45:21.019791+00:00'
+resource: urn:voller:attention-tile:84cde70d692d83e121be22e6f6b0648f2f338dd41a05f2d70ad3034fe52f0500
+x_memanto:
+  id: 0ed6ed51-94d1-416d-86ba-3ca21228c934
+  confidence: 0.8
+  provenance: imported
+  source: voller-attention-tiles
+  status: active
+  updated_at: '2026-09-13T20:45:25.500122+00:00'
+  type: artifact
+---
+
+Source record only: preserve its evidence limitations. Importing this record does not verify its claims.
+
+<!-- voller-record:v1 -->
+```json
+{
+  "data": {
+    "aliases": [],
+    "area": "AI companions",
+    "evidence": {
+      "label": "Development concept",
+      "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+    },
+    "id": "ai-home",
+    "image": null,
+    "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+    "snapshot_date": "2026-09-13",
+    "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#ai-home",
+    "summary": "An AI interface concept spanning approved home screens and displays, with user-controlled actions and continuity.",
+    "title": "AI Home & Screen Operator",
+    "visibility": "public_source"
+  },
+  "kind": "tile",
+  "ordinal": 5,
+  "sha256": "7d08dfc2fc319b06a968677931096b145548607a84cfd684ca7f5b2338c19f5f",
+  "snapshot_sha256": null
+}
+```
+<!-- /voller-record -->
+
+---
+[Supporting data]
+- OKF source: memories/artifact/84cde70d692d83e121be22e6f6b0648f2f338dd41a05f2d70ad3034fe52f0500.md
+- OKF resource: urn:voller:attention-tile:84cde70d692d83e121be22e6f6b0648f2f338dd41a05f2d70ad3034fe52f0500
+- OKF generated: by=process:voller-attention-tiles-adapter; at=2026-09-13T20:45:21.019791+00:00

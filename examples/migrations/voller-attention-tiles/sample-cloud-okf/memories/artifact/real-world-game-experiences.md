@@ -1,0 +1,57 @@
+---
+type: artifact
+title: Real-World Game Experiences
+description: 'Source record only: preserve its evidence limitations. Importing this
+  record does not verify its claims.'
+tags:
+- voller-attention-tiles
+- source-record
+- record-37a7f9ef6252a274
+generated:
+  by: process:voller-attention-tiles
+  at: '2026-09-13T20:45:21.019791+00:00'
+resource: urn:voller:attention-tile:37a7f9ef6252a274db4ead307ef9c90161f28f56c2d13243f0418d9de6ef2d53
+x_memanto:
+  id: a7b300c3-73f7-41a4-9142-fdf30aeeadfc
+  confidence: 0.8
+  provenance: imported
+  source: voller-attention-tiles
+  status: active
+  updated_at: '2026-09-13T20:45:25.500122+00:00'
+  type: artifact
+---
+
+Source record only: preserve its evidence limitations. Importing this record does not verify its claims.
+
+<!-- voller-record:v1 -->
+```json
+{
+  "data": {
+    "aliases": [],
+    "area": "play",
+    "evidence": {
+      "label": "Development concept",
+      "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+    },
+    "id": "game-physics",
+    "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/f05.webp",
+    "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+    "snapshot_date": "2026-09-13",
+    "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#game-physics",
+    "summary": "Original concepts for controlled boosts, bounce experiences, checkpoints and moving stages. Fictional game effects are inspiration, not proven physical capabilities.",
+    "title": "Real-World Game Experiences",
+    "visibility": "public_source"
+  },
+  "kind": "tile",
+  "ordinal": 45,
+  "sha256": "e045eacaafe6d0e45eb83c38e06842491c5eaffb98d9517026614914f10425fb",
+  "snapshot_sha256": null
+}
+```
+<!-- /voller-record -->
+
+---
+[Supporting data]
+- OKF source: memories/artifact/37a7f9ef6252a274db4ead307ef9c90161f28f56c2d13243f0418d9de6ef2d53.md
+- OKF resource: urn:voller:attention-tile:37a7f9ef6252a274db4ead307ef9c90161f28f56c2d13243f0418d9de6ef2d53
+- OKF generated: by=process:voller-attention-tiles-adapter; at=2026-09-13T20:45:21.019791+00:00

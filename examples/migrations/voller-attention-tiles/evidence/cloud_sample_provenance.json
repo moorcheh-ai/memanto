@@ -1,0 +1,290 @@
+{
+  "origin_run": "https://github.com/jaonnvoller-ai/memanto/actions/runs/34781697137",
+  "origin_artifact_id": 10325228345,
+  "source_archive_sha256": "d05a2bdf16b050e65757812ee544d857346675f79d20e37b14c5927451ac1372",
+  "selection": "All 67 native memory records and their indexes copied byte-for-byte; optional sessions and metrics omitted; root index removes only those two optional links.",
+  "original_source_sha256": "b17e0beea4e41398da496e3b78d4625ee4c149fd33a14c292247fa7d64d7e5cc",
+  "mapped_records": 67,
+  "files": [
+    {
+      "path": "memories/artifact/adaptive-training-controls.md",
+      "sha256": "0ae6ae8599e4dace5026714ed3a860e32422d038233310cea2e1ace26b709b89"
+    },
+    {
+      "path": "memories/artifact/ai-clam.md",
+      "sha256": "7212adab2aeba17b136806e86f6745b0430cc511c2946e7701a13e156bd342ae"
+    },
+    {
+      "path": "memories/artifact/ai-fairy-wings.md",
+      "sha256": "46370e65f49558fe0ad792dd692ed159c9571a74c2180bfcc15c04e6682d5baa"
+    },
+    {
+      "path": "memories/artifact/ai-fisherman.md",
+      "sha256": "fbdda6a7101c20e7b41cc84a0d9d543ef0560dcf2dd00f9cfd5e60ae3dfbe213"
+    },
+    {
+      "path": "memories/artifact/ai-gaming-venue.md",
+      "sha256": "38ce5d0470bce4714613b49d1445d093ea4effaad9f214c20eed2aa2f3a64678"
+    },
+    {
+      "path": "memories/artifact/ai-home-screen-operator.md",
+      "sha256": "3e1b649a0aa9e0989999f9b064dbbca235eedd62a0bfd7cd8f8770bb98524375"
+    },
+    {
+      "path": "memories/artifact/ai-octopus.md",
+      "sha256": "c8bdf17c4e30e2cdb0069445b8ab8c7511a190eb20f609f66e14a261c8fb881f"
+    },
+    {
+      "path": "memories/artifact/ai-self-cleaning-systems.md",
+      "sha256": "3d072774f778cd936f215a6bfa11f60a0c22941d4d014e8366329fe5ffe0d021"
+    },
+    {
+      "path": "memories/artifact/ai-shipwreck.md",
+      "sha256": "2f52f638818f2160d8806d9fd5fa72673388a35540354b95bdf86a075670ff18"
+    },
+    {
+      "path": "memories/artifact/ai-sidekicks-social-world.md",
+      "sha256": "8be18bd0de0ffbe3fc465f7dce82c8a64fab0275fe319fcea1a67cd2d039afe6"
+    },
+    {
+      "path": "memories/artifact/ai-skins.md",
+      "sha256": "a01785bd8f02217239ce04a547fa1189644dc850445bf39dcdcb0a7c5b3c2433"
+    },
+    {
+      "path": "memories/artifact/ai-wings-skytrain.md",
+      "sha256": "f11b05430fb7e26f259edd65b6494891f0f9cb584f52ed67f91477ad7028fbe4"
+    },
+    {
+      "path": "memories/artifact/aquaflight.md",
+      "sha256": "fd1cc5eaa051c631c568f331b4da526280aa82c25cbea295b32e64abbd288b59"
+    },
+    {
+      "path": "memories/artifact/attention-display-tile.md",
+      "sha256": "0794da1eccff06223f114cd5cc6b15f3787a6687a5dba90cfc399d9485b1d7ca"
+    },
+    {
+      "path": "memories/artifact/balance-training-footwear.md",
+      "sha256": "a8ce6c9d9a32e1a325f2ffc714a1323d49c6eb313dbee5f10ecc4ee8835af9d2"
+    },
+    {
+      "path": "memories/artifact/biolink.md",
+      "sha256": "1320b969038418967f1d93d921a70b78ed4ab269f69e3b00a4c8205f7c8f4b2f"
+    },
+    {
+      "path": "memories/artifact/buildwave-routecaster.md",
+      "sha256": "9625342712ed1d49e338bcdde53b8ecb1f7c2f92d99ebe38bdce411ca92df2c4"
+    },
+    {
+      "path": "memories/artifact/clockwork-universe.md",
+      "sha256": "7d19e4705e73c0fc0401b2134182a1031fb6279b8b82f01b7333b5c30c8a7e86"
+    },
+    {
+      "path": "memories/artifact/compact-underwater-breathing.md",
+      "sha256": "470f4ef26adec85354fd4636be646135b5017c12294550f0381a8f2e672eb537"
+    },
+    {
+      "path": "memories/artifact/copper-circuit-supercar.md",
+      "sha256": "74138211c9b108fe73e329edb05e373f03f7b91839ddc2e8b67d19ad066211ea"
+    },
+    {
+      "path": "memories/artifact/copper-circuit.md",
+      "sha256": "c4ed233684c8ddabf3da6b08f45225ba49fa016ecc21697b259ad6b84bdea8a6"
+    },
+    {
+      "path": "memories/artifact/couples-duet-river.md",
+      "sha256": "670cafc15e9099e588e04b3a93886e51984a027f30a43115e39f6bf529bb3623"
+    },
+    {
+      "path": "memories/artifact/cross-environment-craft.md",
+      "sha256": "b7625e5e9d9c791c02a6a0a94b989b85182430a642c38aeeaeefa211268dbf03"
+    },
+    {
+      "path": "memories/artifact/current-corridor-rides.md",
+      "sha256": "587ce612c59e2f0d757c2165cf8ee6c5cd49260868898f24900e06d853a53ce6"
+    },
+    {
+      "path": "memories/artifact/family-fishing-toy.md",
+      "sha256": "2935d99aeb37d1666bd348687e99bcebed2ad83b5a064e8c56d3cfbe0ba8b79d"
+    },
+    {
+      "path": "memories/artifact/festival-river.md",
+      "sha256": "484d627c89e87b559296e48799873d0e0cbcb5215a77d8223db785c3aba09321"
+    },
+    {
+      "path": "memories/artifact/field-formation-material-research.md",
+      "sha256": "7c7babb4dcb8923b32c70ad143ae14580f70f476da779ca6542453a56bbec6df"
+    },
+    {
+      "path": "memories/artifact/findmyfish.md",
+      "sha256": "2f29067ac27f602d6f47e16d720e9bcace9f15768a6218473b186f720be7d180"
+    },
+    {
+      "path": "memories/artifact/fish-shore-sky-loop.md",
+      "sha256": "2aca37390174f540adf1da0276c5d677965fe08a87d1d8c5e6ba60dd740effab"
+    },
+    {
+      "path": "memories/artifact/folding-drop-net-concept.md",
+      "sha256": "b5c460d2261a5a0e5fc6482c5d61bc2676a18232661490fdf607af55372fe6d4"
+    },
+    {
+      "path": "memories/artifact/habitat-passenger-companions.md",
+      "sha256": "d9db65573024e8c6ac8d27b1daebfe4c04e439e3578d1880c60176b74ec29856"
+    },
+    {
+      "path": "memories/artifact/index.md",
+      "sha256": "6dd2df464af357c3d1fc5f3faa85eb3e77a62bd43bebaa786a8a00f7027a3379"
+    },
+    {
+      "path": "memories/artifact/kitchen-poker.md",
+      "sha256": "e978c509710ff03f94eac1a4046d5572abe17063dfde042536e3c2c32ad49cd4"
+    },
+    {
+      "path": "memories/artifact/land-lazy-river.md",
+      "sha256": "b67a294fede7c23448d0502fa295c5fb50830a60f6037ad019a35b7d0daf5649"
+    },
+    {
+      "path": "memories/artifact/light-bubble-guide-tow.md",
+      "sha256": "d154708552f57f74f4fdd8c3cd7fbbccb1e3da0b1a62ba51545447782dae4a58"
+    },
+    {
+      "path": "memories/artifact/light-vibration-wearables.md",
+      "sha256": "bb75eb03d940bc756cf0db597d9999e3671ce23acf51e316d5fa2476b086caa2"
+    },
+    {
+      "path": "memories/artifact/lunar-bubbles-crater-gardens.md",
+      "sha256": "a809d4665e276c68262f12988689af5663fa3604a7e7493881f68f25df8a0405"
+    },
+    {
+      "path": "memories/artifact/lunar-theme-park.md",
+      "sha256": "d623e3b2bf3b6f6c0ba7338bbaed68ce14dcae82cb79a4bd78dbfdea6100a1cc"
+    },
+    {
+      "path": "memories/artifact/manta-group-craft.md",
+      "sha256": "d713851631cdbcc0529cb59e9544a0534f7984abd577e718106712ffeb6d876f"
+    },
+    {
+      "path": "memories/artifact/moving-pots-catch-carousel.md",
+      "sha256": "5a32bb033d309d8ed6d4926a55c478bc24ca7d22be362127700964a2c6c84e77"
+    },
+    {
+      "path": "memories/artifact/multiverse-circuit.md",
+      "sha256": "a17f92ca018e0ab3c151798b092dbfa0c2b5b397c21bd4aaf471e2a5675a4378"
+    },
+    {
+      "path": "memories/artifact/ocean-bubble-city.md",
+      "sha256": "993ec1e336583f2d27df9692c4f333acf9feb411930e21e3f2872244632aff7a"
+    },
+    {
+      "path": "memories/artifact/physical-building-placement.md",
+      "sha256": "82be82320c0661b2bea419ef3f8cfbed9af0d1263da4bebab36d5ca3f45222cd"
+    },
+    {
+      "path": "memories/artifact/physical-gaming-companion.md",
+      "sha256": "2608cded19e9dcea45f8300e1f2529b55355a8f94c119769164e515c06511d49"
+    },
+    {
+      "path": "memories/artifact/picture-board-card-system.md",
+      "sha256": "faabcec1b67121b515a438ddc28e688a6f4954ddee626c9c18880ab72e8a6074"
+    },
+    {
+      "path": "memories/artifact/picture-us.md",
+      "sha256": "d735db99d5131e92208bf002f970f3d69bc6b909bd7faf9c9ad9831585bdc0c0"
+    },
+    {
+      "path": "memories/artifact/play-aqua-flight-orbit-skins.md",
+      "sha256": "3e07c8447e10a1bc97d650191c554f65ceaae31f326e648b5c850992a0a66138"
+    },
+    {
+      "path": "memories/artifact/real-world-game-experiences.md",
+      "sha256": "3810c7357495f8590666715bf8a9cd90a2f4df8627dc57b9f5e2361ad4fe8b8d"
+    },
+    {
+      "path": "memories/artifact/reality-mesh.md",
+      "sha256": "4ab1394fcc4493c8b975efb1099897d98e979a3abda5710acf5bb284ae7f4919"
+    },
+    {
+      "path": "memories/artifact/ribbon-magic-carpet.md",
+      "sha256": "d5420b142976ea69ae14b4be11c8d9133e935d7c61600a8797bce00ec998ea9c"
+    },
+    {
+      "path": "memories/artifact/rocker-car.md",
+      "sha256": "9c9fa74edb0486dc9fa5765608709607bd8dc199a28268afdfcc84e4f98cfd2a"
+    },
+    {
+      "path": "memories/artifact/selectable-assisted-reels.md",
+      "sha256": "265a5dd497e242aef61de3e9cc2df23b148fb0c1951677b647550d165fd69719"
+    },
+    {
+      "path": "memories/artifact/self-propelled-fishing-weight.md",
+      "sha256": "480308c522b1454a9a042b63cd3a9b77bc8e4a7ad2ce2232226e3cae176d2563"
+    },
+    {
+      "path": "memories/artifact/sensory-river.md",
+      "sha256": "fc4525cffbe1f22734d8078c79b69f404b7a7fdad219378fae74dac39a0618da"
+    },
+    {
+      "path": "memories/artifact/shore-boat-attraction-range.md",
+      "sha256": "c8afa762f0c1eb88f209ad7dca3f2df1ca90448a01f958fd9c8863c8148772e1"
+    },
+    {
+      "path": "memories/artifact/signature-surf-rods.md",
+      "sha256": "764e560aa38a260de40bef3284cfb8394bbf9677f22c19ba3f0924d6f5f4d4c1"
+    },
+    {
+      "path": "memories/artifact/smart-pot-devices.md",
+      "sha256": "b53697413dbe9b486e7d6fcbf546f7d2207bc2f83e275976e0efad6468edb23b"
+    },
+    {
+      "path": "memories/artifact/super-punch.md",
+      "sha256": "777a84aad788db523b0dcfe175c0a0102a35706a3c84fe6fca6ee59dc9c8a2b2"
+    },
+    {
+      "path": "memories/artifact/super-super-suits.md",
+      "sha256": "79f00a71c4ef77ef24c9991ab3423b613969bc77a3792efc94330c606b711022"
+    },
+    {
+      "path": "memories/artifact/superstars.md",
+      "sha256": "0e24cb481adf8b1aa3f3c2f28c6c3f8fa72e5566caf1f414b685a6cf837581fa"
+    },
+    {
+      "path": "memories/artifact/tilt-drive.md",
+      "sha256": "94208bbb82396a6e53abeea555718f70ba2a6b8a90e7778b492b96b6583fa9d9"
+    },
+    {
+      "path": "memories/artifact/underwater-audio-communication.md",
+      "sha256": "bc1fbc4a089e2e0120f2fb0ce0ff80cfa13405c6fea97380bd6bcb044b9b75e6"
+    },
+    {
+      "path": "memories/artifact/virtual-to-physical-interaction.md",
+      "sha256": "4f09678d01b9c0302b7ef66f2401a106c8a4854fb9a4b75155ec9e0851b1da17"
+    },
+    {
+      "path": "memories/artifact/vocal-enhancement-room.md",
+      "sha256": "8d2d0da1b00da022f5a8c4b5ad27c39e34812197874eb74dd85644ccf9a0ab29"
+    },
+    {
+      "path": "memories/artifact/voice-activated-experience-modes.md",
+      "sha256": "69b6fd4501a548722d7a6e7896dabf76dc0a8a21aac3ee62e0d5a4d57e4a13a6"
+    },
+    {
+      "path": "memories/artifact/voller-grind-shoes.md",
+      "sha256": "01830469171a8ecca7ce59ee13a598c70e48a1d5222550ebb449d1bc4436573e"
+    },
+    {
+      "path": "memories/artifact/water-filled-fish-passages.md",
+      "sha256": "1f2b4f7bf6fbc22dc36204d3d460e057b712ab39199eb72a1085823e4a2a3086"
+    },
+    {
+      "path": "memories/context/attention-tiles-catalogue-metadata.md",
+      "sha256": "0521baa2aaa4df2fba74b5c73b4dcdd76efec9c6e8f319bd35ad90b77c75612a"
+    },
+    {
+      "path": "memories/context/index.md",
+      "sha256": "081131adf703e6005c3f687df892f31fb567cd9cbe7a1781444af761b8756a0b"
+    },
+    {
+      "path": "memories/index.md",
+      "sha256": "dede67ea8874c7e59d9c2d71de032b259914fc44b84ef523f82ba3fa7e756357"
+    }
+  ]
+}

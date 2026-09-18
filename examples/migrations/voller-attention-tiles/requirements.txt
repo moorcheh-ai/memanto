@@ -1,0 +1,7 @@
+memanto @ git+https://github.com/moorcheh-ai/memanto.git@aa3f6f1f4509dd09702679d96ce28cb0f4ac9fe3
+PyYAML>=6.0
+pytest>=8.2,<9
+pytest-asyncio
+pytest-mock
+pytest-timeout
+ruff>=0.14.6,<0.15

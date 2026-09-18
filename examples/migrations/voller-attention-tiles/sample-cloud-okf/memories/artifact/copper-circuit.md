@@ -1,0 +1,57 @@
+---
+type: artifact
+title: Copper Circuit
+description: 'Source record only: preserve its evidence limitations. Importing this
+  record does not verify its claims.'
+tags:
+- voller-attention-tiles
+- source-record
+- record-644da4e8a06a1db6
+generated:
+  by: process:voller-attention-tiles
+  at: '2026-09-13T20:45:21.019791+00:00'
+resource: urn:voller:attention-tile:644da4e8a06a1db6fb2e3c3c1106b46624255075069298b84458047e4f84f723
+x_memanto:
+  id: b0184dbb-730e-4143-9ee1-ec735c55ae63
+  confidence: 0.8
+  provenance: imported
+  source: voller-attention-tiles
+  status: active
+  updated_at: '2026-09-13T20:45:25.500122+00:00'
+  type: artifact
+---
+
+Source record only: preserve its evidence limitations. Importing this record does not verify its claims.
+
+<!-- voller-record:v1 -->
+```json
+{
+  "data": {
+    "aliases": [],
+    "area": "motion",
+    "evidence": {
+      "label": "Development concept",
+      "note": "Public source description and concept artwork. Engineering and clinical performance are not established by this tile."
+    },
+    "id": "copper-circuit",
+    "image": "https://voller-ai-skins.good-badge-3270.chatgpt.site/universe/g01.webp",
+    "original_retrieval_status": "Public description and any linked artwork; private original not resolved for this tile",
+    "snapshot_date": "2026-09-13",
+    "source_url": "https://voller-ai-skins.good-badge-3270.chatgpt.site/portfolio.html#copper-circuit",
+    "summary": "A guided transport concept for compatible carriers and controlled routes, with infrastructure and vehicle development still required.",
+    "title": "Copper Circuit",
+    "visibility": "public_source"
+  },
+  "kind": "tile",
+  "ordinal": 32,
+  "sha256": "8700076e5a1894541daaf0ddb7ad95a780632d3a99a6ced9e4bba74fc29c2acc",
+  "snapshot_sha256": null
+}
+```
+<!-- /voller-record -->
+
+---
+[Supporting data]
+- OKF source: memories/artifact/644da4e8a06a1db6fb2e3c3c1106b46624255075069298b84458047e4f84f723.md
+- OKF resource: urn:voller:attention-tile:644da4e8a06a1db6fb2e3c3c1106b46624255075069298b84458047e4f84f723
+- OKF generated: by=process:voller-attention-tiles-adapter; at=2026-09-13T20:45:21.019791+00:00
