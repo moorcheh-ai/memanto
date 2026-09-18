@@ -1,0 +1,78 @@
+{
+  "method": "Deterministic golden Q&A: every question defines semantic term groups; a corpus passes when it contains at least one accepted term from every group.",
+  "okf": {
+    "passed": 5,
+    "questions": [
+      {
+        "expected_answer": "It automates iterative plan optimization and review across Claude Code and Codex.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What does Auto Planmaxxer automate?"
+      },
+      {
+        "expected_answer": "Manual iterations take one to three hours, so the tool enables unattended overnight refinement.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "Why was the tool built?"
+      },
+      {
+        "expected_answer": "Use claude -p --resume for integration, keep execution synchronous, and use std::thread for parallel reviews.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What integration architecture was selected?"
+      },
+      {
+        "expected_answer": "Unattended automation, deterministic file operations, full audit logs, and separation of model work from deterministic operations.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What operating qualities does the user value?"
+      },
+      {
+        "expected_answer": "The user asked for the workflow ordering, a diagram, and the origin of kickoff and continuation prompts.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What did the user ask Claude Code to clarify?"
+      }
+    ],
+    "recall_percent": 100.0,
+    "total": 5
+  },
+  "parity_delta_points": 0.0,
+  "source": {
+    "passed": 5,
+    "questions": [
+      {
+        "expected_answer": "It automates iterative plan optimization and review across Claude Code and Codex.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What does Auto Planmaxxer automate?"
+      },
+      {
+        "expected_answer": "Manual iterations take one to three hours, so the tool enables unattended overnight refinement.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "Why was the tool built?"
+      },
+      {
+        "expected_answer": "Use claude -p --resume for integration, keep execution synchronous, and use std::thread for parallel reviews.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What integration architecture was selected?"
+      },
+      {
+        "expected_answer": "Unattended automation, deterministic file operations, full audit logs, and separation of model work from deterministic operations.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What operating qualities does the user value?"
+      },
+      {
+        "expected_answer": "The user asked for the workflow ordering, a diagram, and the origin of kickoff and continuation prompts.",
+        "missing_term_groups": [],
+        "passed": true,
+        "question": "What did the user ask Claude Code to clarify?"
+      }
+    ],
+    "recall_percent": 100.0,
+    "total": 5
+  }
+}
