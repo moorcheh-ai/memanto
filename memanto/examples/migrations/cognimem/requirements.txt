@@ -1,0 +1,8 @@
+# CogniMem → Memanto 迁移适配器依赖
+# 安装: pip install -r requirements.txt
+
+# 数据库连接（如从 PostgreSQL 直接导出）
+psycopg2-binary>=2.9
+
+# Memanto CLI（用于导入 OKF 捆绑包）
+# 安装: pip install memanto
