@@ -1,0 +1,9 @@
+[project]
+name = "memanto-mcp-memory-migration-showcase"
+version = "1.0.0"
+description = "Lossless MCP Memory Server JSONL to Memanto OKF migration showcase"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
