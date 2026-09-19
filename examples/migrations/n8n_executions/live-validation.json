@@ -1,0 +1,69 @@
+{
+  "activation": {
+    "mode": "create",
+    "passed": true
+  },
+  "agent": "n8n-operations-proof",
+  "export": {
+    "all_expected_facts_present": true,
+    "evidence_dir": "live-roundtrip-okf",
+    "expected_memory_count": 3,
+    "exported": 3,
+    "memory_count": 3,
+    "missing": [],
+    "valid": true
+  },
+  "import": {
+    "failed": 0,
+    "imported": 3,
+    "passed": true
+  },
+  "namespace": "memanto_agent_n8n-operations-proof",
+  "recall": {
+    "method": "memanto answer (RAG over live recall)",
+    "passed": 3,
+    "questions": 3,
+    "results": [
+      {
+        "answer_output": "Atlas Fleet scored 100/100 and was routed hot. All qualification criteria were met, and the next action was to offer a priority discovery call.",
+        "attempt": 1,
+        "id": "atlas-priority-route",
+        "matched_terms": [
+          "Atlas Fleet",
+          "100",
+          "priority discovery call"
+        ],
+        "passed": true,
+        "query": "How was the Atlas Fleet lead qualified and what should happen next?"
+      },
+      {
+        "answer_output": "Beacon Studio scored 65/100 and was routed warm. The recommended next action was to send a relevant case study and ask one qualifying question.",
+        "attempt": 1,
+        "id": "beacon-nurture-route",
+        "matched_terms": [
+          "Beacon Studio",
+          "65",
+          "case study"
+        ],
+        "passed": true,
+        "query": "How was the Beacon Studio lead qualified and what should happen next?"
+      },
+      {
+        "answer_output": "Cedar Hobby scored 25/100 and was routed cold. The next action was an educational nurture sequence with no sales notification.",
+        "attempt": 1,
+        "id": "cedar-education-route",
+        "matched_terms": [
+          "Cedar Hobby",
+          "25",
+          "educational nurture"
+        ],
+        "passed": true,
+        "query": "How was the Cedar Hobby lead qualified and what should happen next?"
+      }
+    ]
+  },
+  "source_bundle": "sample-okf",
+  "valid": true,
+  "validated_at": "2026-07-30T10:27:42.448164+00:00",
+  "version": 1
+}

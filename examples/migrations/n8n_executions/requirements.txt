@@ -1,0 +1,2 @@
+# Install the repository itself from this directory:
+-e ../../..

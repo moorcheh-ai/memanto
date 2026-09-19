@@ -1,0 +1,58 @@
+{
+  "name": "LeadOps — Intake, Scoring & Follow-up",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "55de939c-896a-4a7a-b535-a9e5d372df53",
+      "name": "Lead Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        0
+      ],
+      "webhookId": "1cf90f9d-87e1-4fe4-b99b-00929002984a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst clean = (value) => typeof value === 'string' ? value.trim().replace(/\\s+/g, ' ') : '';\nconst numberOrNull = (value) => {\n  if (value === '' || value === null || value === undefined) return null;\n  const parsed = Number(value);\n  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;\n};\nconst email = clean(input.email).toLowerCase();\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('A valid email is required.');\nconst urgencyRaw = clean(input.urgency).toLowerCase().replace(/[\\s-]+/g, '_');\nconst urgency = ({ asap: 'immediate', urgent: 'immediate', this_week: 'immediate', month: 'this_month', quarter: 'this_quarter' })[urgencyRaw] ?? urgencyRaw;\nconst lead = {\n  name: clean(input.name),\n  email,\n  company: clean(input.company),\n  companySize: numberOrNull(input.companySize ?? input.company_size),\n  budgetUsd: numberOrNull(input.budgetUsd ?? input.budget_usd ?? input.budget),\n  urgency,\n  useCase: clean(input.useCase ?? input.use_case),\n  notes: clean(input.notes),\n  source: clean(input.source).toLowerCase() || 'unknown',\n};\nlet score = 0;\nconst reasons = [];\nif (lead.budgetUsd === null) { score -= 10; reasons.push('budget missing'); }\nelse if (lead.budgetUsd >= 10000) { score += 30; reasons.push('budget ≥ $10k'); }\nelse if (lead.budgetUsd >= 5000) { score += 22; reasons.push('budget ≥ $5k'); }\nelse if (lead.budgetUsd >= 2000) { score += 12; reasons.push('budget ≥ $2k'); }\nelse { score += 4; reasons.push('budget provided'); }\nif (lead.companySize >= 50) { score += 15; reasons.push('company size ≥ 50'); }\nelse if (lead.companySize >= 10) { score += 10; reasons.push('company size ≥ 10'); }\nelse if (lead.companySize !== null) { score += 4; reasons.push('company size provided'); }\nconst urgencyPoints = { immediate: 20, this_month: 15, this_quarter: 8, researching: 2 };\nif (urgencyPoints[lead.urgency]) { score += urgencyPoints[lead.urgency]; reasons.push(`urgency: ${lead.urgency}`); }\nconst intentText = `${lead.useCase} ${lead.notes}`.toLowerCase();\nconst keywords = ['automation', 'automate', 'crm', 'lead', 'integration', 'workflow', 'manual', 'n8n', 'ai'];\nconst matches = keywords.filter((keyword) => intentText.includes(keyword));\nif (matches.length >= 3) { score += 20; reasons.push('strong automation intent'); }\nelse if (matches.length) { score += 10; reasons.push('automation intent'); }\nconst freeDomains = ['gmail.com', 'hotmail.com', 'icloud.com', 'outlook.com', 'proton.me', 'yahoo.com'];\nif (!freeDomains.includes(email.split('@')[1])) { score += 10; reasons.push('business email'); }\nif (lead.name && lead.company && lead.useCase) { score += 5; reasons.push('complete core profile'); }\nscore = Math.max(0, Math.min(100, score));\nconst route = score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold';\nconst slaMinutes = { hot: 15, warm: 240, cold: 1440 };\nconst processedAt = new Date();\nconst followUpAt = new Date(processedAt.valueOf() + slaMinutes[route] * 60000);\nlet hash = 0x811c9dc5;\nfor (const char of `${lead.email}|${lead.company.toLowerCase()}`) {\n  hash ^= char.charCodeAt(0);\n  hash = Math.imul(hash, 0x01000193);\n}\nconst idempotencyKey = (hash >>> 0).toString(16).padStart(8, '0');\nconst nextAction = {\n  hot: 'Offer a priority discovery call.',\n  warm: 'Send a relevant case study and ask one qualifying question.',\n  cold: 'Add to educational nurture; no sales notification.',\n}[route];\nreturn [{ json: { idempotencyKey, processedAt: processedAt.toISOString(), followUpAt: followUpAt.toISOString(), lead, qualification: { score, route, reasons, nextAction } } }];"
+      },
+      "id": "462fcf6c-0c42-4d6a-83be-1362dfc4f5cc",
+      "name": "Normalize, Score & Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Lead Intake": {
+      "main": [
+        [
+          {
+            "node": "Normalize, Score & Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f873738b-c8f8-4be2-913a-e243dcb52a40",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
