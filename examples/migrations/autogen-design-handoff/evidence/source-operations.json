@@ -1,0 +1,59 @@
+{
+  "captured_at": "2026-09-12T09:44:48.615633+00:00",
+  "add_calls": 8,
+  "query_calls": 6,
+  "update_context_calls": 1,
+  "context_messages": 1,
+  "query_semantics": "ListMemory returns all records; answers use metadata status=current.",
+  "checks": [
+    {
+      "question": "What is the approved production finish of the Harbor lamp?",
+      "answer": [
+        "warm white RAL 9001"
+      ],
+      "passed": true,
+      "records_returned": 8
+    },
+    {
+      "question": "What color temperature must the Harbor reading lamp use?",
+      "answer": [
+        "2700 K"
+      ],
+      "passed": true,
+      "records_returned": 8
+    },
+    {
+      "question": "What material is approved for the Harbor lamp shell?",
+      "answer": [
+        "recycled aluminum"
+      ],
+      "passed": true,
+      "records_returned": 8
+    },
+    {
+      "question": "How should a user dim the Harbor lamp?",
+      "answer": [
+        "rotary dimmer on the base"
+      ],
+      "passed": true,
+      "records_returned": 8
+    },
+    {
+      "question": "What packaging is approved for the Harbor lamp?",
+      "answer": [
+        "plastic-free molded pulp"
+      ],
+      "passed": true,
+      "records_returned": 8
+    },
+    {
+      "question": "What must the Harbor lamp team check before design handoff?",
+      "answer": [
+        "verify 3 mm cable clearance"
+      ],
+      "passed": true,
+      "records_returned": 8
+    }
+  ],
+  "after_clear_count": 0
+}

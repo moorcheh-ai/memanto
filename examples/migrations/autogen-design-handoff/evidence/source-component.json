@@ -1,0 +1,118 @@
+{
+  "provider": "autogen_core.memory.ListMemory",
+  "component_type": "memory",
+  "version": 1,
+  "component_version": 1,
+  "description": "Simple chronological list-based memory implementation.",
+  "label": "ListMemory",
+  "config": {
+    "name": "harbor-design-decisions",
+    "memory_contents": [
+      {
+        "content": "Harbor reading lamp: finish = graphite gray. Status: superseded.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "finish",
+          "value": "graphite gray",
+          "kind": "decision",
+          "status": "superseded",
+          "sequence": 0,
+          "synthetic": true
+        }
+      },
+      {
+        "content": "Harbor reading lamp: light = 2700 K. Status: current.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "light",
+          "value": "2700 K",
+          "kind": "constraint",
+          "status": "current",
+          "sequence": 1,
+          "synthetic": true
+        }
+      },
+      {
+        "content": "Harbor reading lamp: material = recycled aluminum. Status: current.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "material",
+          "value": "recycled aluminum",
+          "kind": "decision",
+          "status": "current",
+          "sequence": 2,
+          "synthetic": true
+        }
+      },
+      {
+        "content": "Harbor reading lamp: finish = warm white RAL 9001. Status: current.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "finish",
+          "value": "warm white RAL 9001",
+          "kind": "decision",
+          "status": "current",
+          "sequence": 3,
+          "synthetic": true
+        }
+      },
+      {
+        "content": "Harbor reading lamp: control = rotary dimmer on the base. Status: current.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "control",
+          "value": "rotary dimmer on the base",
+          "kind": "decision",
+          "status": "current",
+          "sequence": 4,
+          "synthetic": true
+        }
+      },
+      {
+        "content": "Harbor reading lamp: packaging = plastic-free molded pulp. Status: current.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "packaging",
+          "value": "plastic-free molded pulp",
+          "kind": "decision",
+          "status": "current",
+          "sequence": 5,
+          "synthetic": true
+        }
+      },
+      {
+        "content": "Harbor reading lamp: review = verify 3 mm cable clearance. Status: current.",
+        "mime_type": "text/plain",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "key": "review",
+          "value": "verify 3 mm cable clearance",
+          "kind": "procedure",
+          "status": "current",
+          "sequence": 6,
+          "synthetic": true
+        }
+      },
+      {
+        "content": {
+          "component": "base",
+          "diameter_mm": 160,
+          "revision": "B"
+        },
+        "mime_type": "application/json",
+        "metadata": {
+          "project": "Harbor reading lamp",
+          "kind": "constraint",
+          "sequence": 7,
+          "synthetic": true
+        }
+      }
+    ]
+  }
+}
