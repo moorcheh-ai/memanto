@@ -8,6 +8,7 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
@@ -17,6 +18,7 @@ from time import perf_counter
 import pytest
 import yaml  # type: ignore[import-untyped]
 
+import memanto.cli.migrate.okf_loader as okf_loader
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
@@ -374,6 +376,173 @@ def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
         imported = read.result(timeout=5)["memories"]
 
     assert [memory["body"] for memory in imported] == ["New snapshot."]
+
+
+def test_loader_rejects_symlinked_document_outside_bundle(tmp_path):
+    """An untrusted bundle must not import a local file through a .md symlink."""
+    outside = tmp_path / "synthetic-private.txt"
+    outside.write_text("SYNTHETIC_PRIVATE_VALUE", encoding="utf-8")
+    memories = tmp_path / "attacker-bundle" / "memories"
+    memories.mkdir(parents=True)
+    link = memories / "innocent-memory.md"
+    try:
+        link.symlink_to(outside)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="symbolic-link document"):
+        load_okf_bundle(memories.parent)
+
+
+def test_loader_rejects_symlinked_bundle_root(tmp_path):
+    """Selecting a symlink as the bundle root must fail before traversal."""
+    real_bundle = tmp_path / "real-bundle"
+    real_bundle.mkdir()
+    (real_bundle / "memory.md").write_text("Synthetic memory", encoding="utf-8")
+    bundle_link = tmp_path / "selected-bundle"
+    try:
+        bundle_link.symlink_to(real_bundle, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="bundle path must not be a symbolic link"):
+        load_okf_bundle(bundle_link)
+
+
+def test_loader_rejects_symlinked_single_document(tmp_path):
+    """The single-file import form must not follow a selected symlink."""
+    outside = tmp_path / "synthetic-private.md"
+    outside.write_text("Synthetic private value", encoding="utf-8")
+    link = tmp_path / "selected-memory.md"
+    try:
+        link.symlink_to(outside)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="bundle path must not be a symbolic link"):
+        load_okf_bundle(link)
+
+
+def test_loader_rejects_symlinked_memories_directory(tmp_path):
+    """A Memanto bundle must not redirect its import subtree elsewhere."""
+    outside = tmp_path / "outside-memories"
+    outside.mkdir()
+    (outside / "synthetic-private.md").write_text(
+        "Synthetic private value", encoding="utf-8"
+    )
+    bundle = tmp_path / "attacker-bundle"
+    bundle.mkdir()
+    try:
+        (bundle / "memories").symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(
+        ValueError, match="bundle directory must not be a symbolic link"
+    ):
+        load_okf_bundle(bundle)
+
+
+def test_loader_rejects_document_swapped_to_symlink_before_open(tmp_path, monkeypatch):
+    """A pathname swap after listing must not redirect the opened document."""
+    if not okf_loader._SECURE_DIR_FD:
+        pytest.skip("descriptor-relative no-follow opens are unavailable")
+
+    outside = tmp_path / "outside.txt"
+    outside.write_text("SYNTHETIC_RACE_VALUE", encoding="utf-8")
+    memories = tmp_path / "bundle" / "memories"
+    memories.mkdir(parents=True)
+    victim = memories / "memory.md"
+    victim.write_text("Ordinary content", encoding="utf-8")
+
+    real_open = os.open
+    swapped = False
+
+    def swap_then_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if path == "memory.md" and kwargs.get("dir_fd") is not None and not swapped:
+            victim.unlink()
+            victim.symlink_to(outside)
+            swapped = True
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", swap_then_open)
+
+    with pytest.raises(ValueError, match="symbolic-link path"):
+        load_okf_bundle(memories.parent)
+    assert swapped
+
+
+def test_loader_reads_pinned_root_when_selected_path_is_replaced(tmp_path, monkeypatch):
+    """Replacing the selected pathname must not redirect an opened root."""
+    if not okf_loader._SECURE_DIR_FD:
+        pytest.skip("descriptor-relative no-follow opens are unavailable")
+
+    bundle = tmp_path / "bundle"
+    memories = bundle / "memories"
+    memories.mkdir(parents=True)
+    (memories / "memory.md").write_text("Ordinary content", encoding="utf-8")
+
+    outside = tmp_path / "outside"
+    outside_memories = outside / "memories"
+    outside_memories.mkdir(parents=True)
+    (outside_memories / "memory.md").write_text(
+        "SYNTHETIC_OUTSIDE_VALUE", encoding="utf-8"
+    )
+    moved_bundle = tmp_path / "opened-bundle"
+
+    real_fstat = os.fstat
+    swapped = False
+
+    def replace_path_after_root_open(fd):
+        nonlocal swapped
+        result = real_fstat(fd)
+        if not swapped:
+            bundle.rename(moved_bundle)
+            bundle.symlink_to(outside, target_is_directory=True)
+            swapped = True
+        return result
+
+    monkeypatch.setattr(os, "fstat", replace_path_after_root_open)
+
+    export = load_okf_bundle(bundle)
+
+    assert swapped
+    assert export["memories"][0]["body"] == "Ordinary content"
+
+
+def test_loader_reports_unsupported_without_secure_directory_descriptors(
+    tmp_path, monkeypatch
+):
+    """Unsupported platforms fail explicitly instead of using path checks."""
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "memory.md").write_text("Ordinary content", encoding="utf-8")
+    monkeypatch.setattr(
+        "memanto.cli.migrate.okf_loader._SECURE_DIR_FD",
+        False,
+    )
+
+    with pytest.raises(RuntimeError, match="OKF import is unsupported"):
+        load_okf_bundle(bundle)
+
+
+def test_loader_preserves_nested_document_read_errors(tmp_path, monkeypatch):
+    """A nested file error must not be mislabeled as an unsafe parent directory."""
+    if not okf_loader._SECURE_DIR_FD:
+        pytest.skip("descriptor-relative no-follow opens are unavailable")
+
+    nested = tmp_path / "bundle" / "memories" / "nested"
+    nested.mkdir(parents=True)
+    (nested / "memory.md").write_text("Ordinary content", encoding="utf-8")
+
+    def fail_document_read(directory_fd, name, display_path):
+        raise PermissionError("synthetic nested read failure")
+
+    monkeypatch.setattr(okf_loader, "_read_document_at", fail_document_read)
+
+    with pytest.raises(PermissionError, match="synthetic nested read failure"):
+        load_okf_bundle(tmp_path / "bundle")
 
 
 def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
