@@ -107,6 +107,63 @@ class TestUnauthenticatedUIEndpoints:
             "UI management endpoints reject cross-site browser requests."
         )
 
+    def test_loopback_dns_rebinding_host_header_rejected(self):
+        """A loopback socket does not prove a local caller.
+
+        DNS rebinding points an attacker-controlled hostname at 127.0.0.1, so
+        the TCP peer is the loopback interface while the Host header names the
+        attacker's domain.  Such requests must be rejected even though they are
+        same-origin from the browser's perspective (no Origin, no 'cross-site'
+        fetch metadata).
+        """
+        app = _make_app()
+        client = _make_loopback_client(app)
+        for host in ("evil.example", "evil.example:8000", "attacker.io"):
+            resp = client.post("/api/ui/shutdown", headers={"Host": host})
+            assert resp.status_code == 403, (
+                f"expected 403 for Host {host!r}, got {resp.status_code}"
+            )
+
+    def test_loopback_dns_rebinding_daily_summary_rejected(self):
+        """The summary read is the high-value rebinding target: it returns
+        parseable memory content.  An attacker-domain Host header must be
+        refused even from a loopback peer."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.get(
+            "/api/ui/daily-summary?agent_id=codewise&date=2026-09-19",
+            headers={"Host": "evil.example"},
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_loopback_dns_rebinding_api_key_update_rejected(self):
+        """Replacing the stored API key through a rebinding request must fail."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.put(
+            "/api/ui/api-key",
+            json={"api_key": "attacker-controlled"},
+            headers={"Host": "evil.example"},
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_loopback_dns_rebinding_conflict_resolve_rejected(self):
+        """Writing away a conflict (memory mutation) via a rebinding request
+        must fail even from a loopback peer."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.post(
+            "/api/ui/conflicts/resolve",
+            json={
+                "agent_id": "codewise",
+                "date": "2026-09-19",
+                "conflict_index": 0,
+                "action": "remove_both",
+            },
+            headers={"Host": "evil.example"},
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
 
 class TestLoopbackDetection:
     """Unit tests for the _is_loopback helper used by _require_local.
@@ -166,7 +223,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "127.0.0.1:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -175,5 +232,5 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "localhost:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
