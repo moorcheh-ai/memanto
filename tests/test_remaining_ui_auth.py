@@ -157,5 +157,20 @@ class TestGlobInjectionGuard:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "127.0.0.1:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_local_rejects_rebinding_host_for_conflict_scans(self):
+        """An attacker-domain Host header on a loopback peer must be refused."""
+        from memanto.app.ui.routes.ui_router import _require_local
+        from fastapi import HTTPException
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"host": "evil.example"}
+        try:
+            asyncio.run(_require_local(mock_request))
+        except HTTPException as exc:
+            assert exc.status_code == 403
+        else:
+            raise AssertionError("_require_local must reject a rebinding Host header")
