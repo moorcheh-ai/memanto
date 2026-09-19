@@ -87,13 +87,35 @@ def split_api_key(api_key: str) -> tuple[str, str]:
     return public_key, secret_key
 
 
+# Official Langfuse Cloud regions. Self-hosted deployments must opt in via
+# LANGFUSE_HOST rather than passing an arbitrary host per-request, so a
+# caller-controlled value can never be steered at internal infrastructure.
+_ALLOWED_LANGFUSE_HOSTS = {
+    "https://cloud.langfuse.com",
+    "https://us.cloud.langfuse.com",
+    "https://eu.cloud.langfuse.com",
+}
+
+
 def normalize_host(host: str | None) -> str:
-    """Normalize a Langfuse base URL (cloud EU/US or self-hosted)."""
+    """Normalize a Langfuse base URL to an allowlisted cloud region.
+
+    Only the official Langfuse Cloud hosts are accepted. Anything else —
+    including private, loopback, or link-local targets — is rejected so the
+    ``host`` value can never be abused as a server-side request forgery
+    primitive against the machine running Memanto.
+    """
     text = (host or "").strip().rstrip("/")
     if not text:
         return DEFAULT_HOST
     if not text.startswith(("http://", "https://")):
         text = f"https://{text}"
+    if text not in _ALLOWED_LANGFUSE_HOSTS:
+        raise ValueError(
+            "Langfuse host must be one of the official cloud regions "
+            f"({', '.join(sorted(_ALLOWED_LANGFUSE_HOSTS))}). "
+            "Self-hosted Langfuse is not supported by migration."
+        )
     return text
 
 
