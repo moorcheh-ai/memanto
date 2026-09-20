@@ -111,63 +111,6 @@ def _legacy_sanitize_agent_id(raw: str) -> str:
     return sanitized
 
 
-def _read_profile_identity(profile: Path) -> str | None:
-    """Return the exact Hermes identity recorded for a profile, if trustworthy."""
-    metadata_path = profile / _PROFILE_IDENTITY_FILE_NAME
-    if not metadata_path.exists():
-        return None
-    try:
-        payload = json.loads(metadata_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    if not isinstance(payload, dict):
-        return None
-    identity = payload.get("agent_identity")
-    return identity if isinstance(identity, str) else None
-
-
-def _persist_profile_identity(profile: Path, identity: str) -> None:
-    """Bind a profile directory to one exact Hermes identity without overwriting."""
-    profile.mkdir(parents=True, exist_ok=True)
-    metadata_path = profile / _PROFILE_IDENTITY_FILE_NAME
-    recorded = _read_profile_identity(profile)
-    if recorded is not None:
-        if recorded != identity:
-            raise RuntimeError(
-                f"Hermes profile {profile.name!r} belongs to {recorded!r}, "
-                f"not {identity!r}"
-            )
-        return
-    if metadata_path.exists():
-        raise RuntimeError(
-            f"Hermes profile {profile.name!r} has invalid identity metadata; "
-            "refusing to reuse its memory namespace"
-        )
-
-    payload = json.dumps(
-        {"agent_identity": identity},
-        sort_keys=True,
-    ) + "\n"
-    try:
-        fd = os.open(
-            str(metadata_path),
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-            0o600,
-        )
-    except FileExistsError:
-        recorded = _read_profile_identity(profile)
-        if recorded != identity:
-            raise RuntimeError(
-                f"Hermes profile {profile.name!r} identity ownership changed "
-                "during initialization"
-            )
-        return
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        handle.write(payload)
-    if os.name != "nt":
-        os.chmod(metadata_path, 0o600)
-
-
 def _resolve_compatible_profile_mapping(
     hermes_home: str, identity: str, raw_agent_id: str
 ) -> tuple[str, Path]:
@@ -200,18 +143,6 @@ def _resolve_compatible_profile_mapping(
                 f"{identity!r}; refusing an ambiguous memory namespace"
             )
         if legacy_exists:
-            legacy_owner = _read_profile_identity(legacy_profile)
-            if legacy_owner is None:
-                raise RuntimeError(
-                    "Legacy Hermes profile "
-                    f"{legacy_identity!r} has no identity ownership metadata; "
-                    "refusing an ambiguous migration"
-                )
-            if legacy_owner != identity:
-                raise RuntimeError(
-                    f"Legacy Hermes profile {legacy_identity!r} belongs to "
-                    f"{legacy_owner!r}, not {identity!r}"
-                )
             logger.warning(
                 "Using legacy Hermes profile %s for %r to preserve its token "
                 "and Memanto memory namespace",
@@ -266,7 +197,6 @@ _RECALL_TAG_RE = re.compile(
 )
 _REFRESH_THROTTLE_SECONDS = 5.0
 _TOKEN_FILE_NAME = ".memanto_session_token"
-_PROFILE_IDENTITY_FILE_NAME = ".memanto_identity.json"
 
 _T = TypeVar("_T")
 
@@ -466,12 +396,8 @@ class _MemantoClient:
     def agent_id(self) -> str:
         return self._agent_id
 
-    def set_profile_path(
-        self, profile_path: str, identity: str | None = None
-    ) -> None:
+    def set_profile_path(self, profile_path: str) -> None:
         self._profile_path = Path(profile_path)
-        if identity is not None:
-            _persist_profile_identity(self._profile_path, identity)
         self._token_file = self._profile_path / _TOKEN_FILE_NAME
 
         # Load any existing persisted token on startup
@@ -832,7 +758,7 @@ class MemantoMemoryProvider(MemoryProvider):
                 session_duration_hours=self._config["session_duration_hours"],
             )
             if hasattr(self._client, "set_profile_path"):
-                self._client.set_profile_path(str(profile_dir), identity)
+                self._client.set_profile_path(str(profile_dir))
             self._active = True
         except Exception:
             logger.warning("Memanto initialization failed", exc_info=True)
