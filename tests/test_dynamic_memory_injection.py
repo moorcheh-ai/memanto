@@ -106,3 +106,32 @@ def test_dynamic_sync_write_scope_preserves_explicit_global_scope(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     _assert_dynamic_sync_write_scope(project, tmp_path / "notes.md", True)
+
+
+def test_dynamic_sync_rejects_symlinked_local_instruction(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    victim = tmp_path / "outside-instructions.md"
+    _instruction_file(victim)
+
+    local_instruction = project / ".github" / "copilot-instructions.md"
+    local_instruction.parent.mkdir(parents=True)
+    local_instruction.symlink_to(victim)
+
+    connections = {
+        "github-copilot": {
+            "projects": [str(project.resolve())],
+            "installed_global": False,
+        }
+    }
+    before = victim.read_text()
+
+    with patch(
+        "memanto.cli.config.manager.ConfigManager.load_connections",
+        return_value=connections,
+    ):
+        with pytest.raises(ValueError, match="outside project"):
+            inject_dynamic_memories(str(project), "- [INSTRUCTION] injected")
+
+    assert victim.read_text() == before
+    assert local_instruction.is_symlink()
