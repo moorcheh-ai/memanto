@@ -1,7 +1,12 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from memanto.cli.connect.updater import inject_dynamic_memories
+import pytest
+
+from memanto.cli.connect.updater import (
+    _assert_dynamic_sync_write_scope,
+    inject_dynamic_memories,
+)
 
 SENTINEL_START = "<!-- MEMANTO-DYNAMIC-MEMORIES -->"
 SENTINEL_END = "<!-- /MEMANTO-DYNAMIC-MEMORIES -->"
@@ -82,3 +87,22 @@ def test_sync_updates_all_local_connections(tmp_path):
 
     assert "Rule" in copilot_path.read_text()
     assert "Rule" in claude_path.read_text()
+
+
+def test_dynamic_sync_write_scope_accepts_project_target(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    _assert_dynamic_sync_write_scope(project, project / "notes.md", False)
+
+
+def test_dynamic_sync_write_scope_rejects_outside_target(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    with pytest.raises(ValueError, match="outside project"):
+        _assert_dynamic_sync_write_scope(project, tmp_path / "notes.md", False)
+
+
+def test_dynamic_sync_write_scope_preserves_explicit_global_scope(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    _assert_dynamic_sync_write_scope(project, tmp_path / "notes.md", True)

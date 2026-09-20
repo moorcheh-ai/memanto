@@ -173,6 +173,23 @@ def update_all_agents(
     return messages
 
 
+def _assert_dynamic_sync_write_scope(
+    project_path: Path, target: Path, is_global: bool
+) -> None:
+    """Keep project-local dynamic-memory rewrites inside the selected project."""
+    if is_global:
+        return
+
+    root = project_path.resolve()
+    try:
+        resolved = target.resolve(strict=False)
+        resolved.relative_to(root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(
+            f"Refusing dynamic memory sync outside project: {target}"
+        ) from exc
+
+
 def inject_dynamic_memories(
     project_dir: str,
     content: str,
@@ -289,6 +306,7 @@ def inject_dynamic_memories(
 
         for path in paths_to_check:
             if path and path.exists():
+                _assert_dynamic_sync_write_scope(project_path, path, is_global)
                 text = path.read_text(encoding="utf-8")
                 if MEMANTO_DYNAMIC_SENTINEL in text:
 
