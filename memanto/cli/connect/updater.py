@@ -175,19 +175,19 @@ def update_all_agents(
 
 def _assert_dynamic_sync_write_scope(
     project_path: Path, target: Path, is_global: bool
-) -> None:
-    """Keep project-local dynamic-memory rewrites inside the selected project."""
-    if is_global:
-        return
-
-    root = project_path.resolve()
+) -> Path:
+    """Return the resolved target after enforcing project-local write scope."""
     try:
+        root = project_path.resolve()
         resolved = target.resolve(strict=False)
-        resolved.relative_to(root)
+        if not is_global:
+            resolved.relative_to(root)
     except (OSError, RuntimeError, ValueError) as exc:
         raise ValueError(
             f"Refusing dynamic memory sync outside project: {target}"
         ) from exc
+
+    return resolved
 
 
 def inject_dynamic_memories(
@@ -306,8 +306,12 @@ def inject_dynamic_memories(
 
         for path in paths_to_check:
             if path and path.exists():
-                _assert_dynamic_sync_write_scope(project_path, path, is_global)
-                text = path.read_text(encoding="utf-8")
+                resolved_path = _assert_dynamic_sync_write_scope(
+                    project_path, path, is_global
+                )
+                # Use the already-validated canonical destination for I/O. Reopening
+                # the unresolved alias would let a symlink retarget after validation.
+                text = resolved_path.read_text(encoding="utf-8")
                 if MEMANTO_DYNAMIC_SENTINEL in text:
 
                     def replacer(match):
@@ -320,7 +324,7 @@ def inject_dynamic_memories(
 
                     new_text = pattern.sub(replacer, text)
                     if new_text != text:
-                        path.write_text(new_text, encoding="utf-8")
+                        resolved_path.write_text(new_text, encoding="utf-8")
                         results["updated"].append(
                             f"Injected memories into {path.name} ({agent.name}, "
                             f"{'global' if is_global else 'local'})"
