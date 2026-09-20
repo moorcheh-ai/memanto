@@ -970,8 +970,11 @@ class MemoryReadService:
         # before exact tag filters run.
         tags = self._normalize_tags(get_field("tags"))
 
-        # Extract provenance
-        provenance = get_field("provenance") or "explicit_statement"
+        # Do not manufacture authority for legacy/external documents that predate
+        # provenance metadata. "unknown" is intentionally outside
+        # VALID_PROVENANCE_TYPES: it is a read-only sentinel that trust-sensitive
+        # consumers such as dynamic instruction sync must reject.
+        provenance = get_field("provenance") or "unknown"
 
         # Parse title and content from Moorcheh document text format:
         raw_text = item.get("text", "")
