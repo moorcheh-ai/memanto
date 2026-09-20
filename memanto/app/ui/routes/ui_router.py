@@ -37,6 +37,7 @@ from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
     SESSION_COOKIE_NAME,
     _is_cross_site_browser_request,
+    _is_loopback_host_header,
     clear_session_cookie,
     set_session_cookie,
 )
@@ -138,6 +139,22 @@ async def _require_local(request: Request) -> None:
             detail=(
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
+            ),
+        )
+
+    # Do not treat a loopback reverse-proxy socket as proof that the original
+    # request was local. Public reverse proxies commonly connect to MEMANTO
+    # from 127.0.0.1; without validating Host as well, an originless remote
+    # client can inherit localhost-only UI authority (filesystem browse,
+    # config/API-key mutation, restart/shutdown). This mirrors the locality
+    # fence used by the API management endpoints in auth_deps.
+    host_header = request.headers.get("host")
+    if not _is_loopback_host_header(host_header):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints require a loopback Host header. "
+                f"Request host: {host_header}"
             ),
         )
 
