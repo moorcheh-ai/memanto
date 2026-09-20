@@ -38,7 +38,11 @@ class _LoopbackClient:
 
 
 def _make_loopback_client(app):
-    return TestClient(_LoopbackClient(app), raise_server_exceptions=False)
+    return TestClient(
+        _LoopbackClient(app),
+        base_url="http://localhost:8000",
+        raise_server_exceptions=False,
+    )
 
 
 class TestUnauthenticatedUIEndpoints:
@@ -80,6 +84,20 @@ class TestUnauthenticatedUIEndpoints:
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.put("/api/ui/api-key", json={"api_key": "stolen"})
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_loopback_proxy_with_public_host_rejected(self):
+        """A loopback reverse proxy must not turn a public request into localhost."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.get(
+            "/api/ui/config",
+            headers={"Host": "memanto.example.com"},
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+        assert resp.json()["detail"] == (
+            "UI management endpoints require a loopback Host header. "
+            "Request host: memanto.example.com"
+        )
 
     def test_loopback_cross_site_origin_rejected(self):
         """Local browser requests from another website must not reach UI endpoints."""
@@ -166,7 +184,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "localhost:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -175,5 +193,5 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "localhost:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
