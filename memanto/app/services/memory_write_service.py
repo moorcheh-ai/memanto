@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.constants import VALID_STATUS_TYPES
+from memanto.app.constants import VALID_PROVENANCE_TYPES, VALID_STATUS_TYPES
 from memanto.app.core import MemoryRecord, is_valid_expired_by, is_valid_source
 from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.services.memory_parsing_service import MemoryParsingService
@@ -398,6 +398,30 @@ class MemoryWriteService:
             if status_val not in VALID_STATUS_TYPES:
                 status_val = "active"
 
+            # A legacy/external record may have no valid provenance. The read
+            # service exposes missing provenance as the read-only "unknown"
+            # sentinel. Rebuilding a MemoryRecord requires a schema-valid value,
+            # so use a temporary value for serialization while remembering to
+            # restore the untrusted state before upload. Otherwise an unrelated
+            # edit would silently launder unknown provenance into
+            # "explicit_statement".
+            stored_provenance = metadata.get("provenance")
+            has_provenance_update = "provenance" in updates
+            stored_provenance_valid = (
+                isinstance(stored_provenance, str)
+                and stored_provenance in VALID_PROVENANCE_TYPES
+            )
+            preserve_untrusted_provenance = (
+                not has_provenance_update and not stored_provenance_valid
+            )
+            record_provenance = (
+                updates["provenance"]
+                if has_provenance_update
+                else stored_provenance
+                if stored_provenance_valid
+                else "explicit_statement"
+            )
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -413,9 +437,7 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=status_val,
                 tags=updates.get("tags", metadata.get("tags", [])),
-                provenance=updates.get(
-                    "provenance", metadata.get("provenance") or "explicit_statement"
-                ),
+                provenance=record_provenance,
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -466,6 +488,16 @@ class MemoryWriteService:
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
             document = cast(Document, updated_memory.to_moorcheh_document())
+
+            if preserve_untrusted_provenance:
+                untrusted_document = cast(dict[str, Any], document)
+                if stored_provenance in (None, "unknown"):
+                    # Missing provenance must stay missing on a legacy record.
+                    untrusted_document.pop("provenance", None)
+                else:
+                    # Preserve non-standard external provenance byte-for-byte.
+                    # It remains untrusted because it is outside the valid set.
+                    untrusted_document["provenance"] = stored_provenance
 
             # Preserve extra metadata fields from the existing record (e.g. original_id
             # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
