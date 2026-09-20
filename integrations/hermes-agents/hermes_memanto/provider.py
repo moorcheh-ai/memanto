@@ -98,6 +98,70 @@ def _sanitize_agent_id(raw: str) -> str:
     return f"{_SANITIZED_ID_PREFIX}{slug[:prefix_budget]}-{suffix}"
 
 
+def _legacy_sanitize_agent_id(raw: str) -> str:
+    """Return the identifier produced by the pre-hardening sanitizer."""
+    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
+    if len(sanitized) > _MAX_AGENT_ID_LENGTH:
+        suffix = hashlib.sha256(raw.encode()).hexdigest()[:8]
+        sanitized = (
+            sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1]
+            + "-"
+            + suffix
+        )
+    return sanitized
+
+
+def _resolve_compatible_profile_mapping(
+    hermes_home: str, identity: str, raw_agent_id: str
+) -> tuple[str, Path]:
+    """Choose a new mapping unless an existing legacy profile proves continuity.
+
+    Older releases normalized unsafe identities directly (for example,
+    alice@example.com -> alice_example_com). Reusing that existing profile also
+    preserves its persisted session token and the matching remote Memanto agent
+    namespace. New profiles use the collision-resistant mapping. If both
+    generations exist, fail closed instead of silently choosing one and
+    potentially joining two histories.
+    """
+    new_identity = _sanitize_agent_id(identity)
+    new_agent_id = _sanitize_agent_id(raw_agent_id)
+    legacy_identity = _legacy_sanitize_agent_id(identity)
+    legacy_agent_id = _legacy_sanitize_agent_id(raw_agent_id)
+
+    profiles_root = Path(hermes_home) / "profiles"
+    new_profile = profiles_root / new_identity
+    legacy_profile = profiles_root / legacy_identity
+    identity_mapping_changed = new_identity != legacy_identity
+    agent_mapping_changed = new_agent_id != legacy_agent_id
+
+    if identity_mapping_changed:
+        new_exists = new_profile.exists()
+        legacy_exists = legacy_profile.exists()
+        if new_exists and legacy_exists:
+            raise RuntimeError(
+                "Both legacy and collision-resistant Hermes profiles exist for "
+                f"{identity!r}; refusing an ambiguous memory namespace"
+            )
+        if legacy_exists:
+            logger.warning(
+                "Using legacy Hermes profile %s for %r to preserve its token "
+                "and Memanto memory namespace",
+                legacy_identity,
+                identity,
+            )
+            return legacy_agent_id, legacy_profile
+    elif agent_mapping_changed and new_profile.exists():
+        logger.warning(
+            "Using legacy Memanto agent id %s for existing Hermes profile %r "
+            "to preserve its memory namespace",
+            legacy_agent_id,
+            identity,
+        )
+        return legacy_agent_id, new_profile
+
+    return new_agent_id, new_profile
+
+
 # Memory taxonomy mirrored from memanto.app.constants.VALID_MEMORY_TYPES so the
 # tool schema matches what the backend validates. Kept as a literal list to
 # avoid importing memanto at module-import time.
@@ -663,12 +727,14 @@ class MemantoMemoryProvider(MemoryProvider):
         self._api_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
 
         # Resolve the agent id: env override > config, with {identity} template.
-        identity = kwargs.get("agent_identity", "default") or "default"
-        safe_identity = _sanitize_agent_id(str(identity))
+        identity = str(kwargs.get("agent_identity", "default") or "default")
         raw_id = (
             os.environ.get("MEMANTO_AGENT_ID", "").strip() or self._config["agent_id"]
         )
-        self._agent_id = _sanitize_agent_id(raw_id.replace("{identity}", identity))
+        concrete_raw_id = raw_id.replace("{identity}", identity)
+        self._agent_id, profile_dir = _resolve_compatible_profile_mapping(
+            self._hermes_home, identity, concrete_raw_id
+        )
 
         self._auto_recall = self._config["auto_recall"]
         self._auto_capture = self._config["auto_capture"]
@@ -691,7 +757,6 @@ class MemantoMemoryProvider(MemoryProvider):
                 auto_create=self._config["auto_create"],
                 session_duration_hours=self._config["session_duration_hours"],
             )
-            profile_dir = Path(self._hermes_home) / "profiles" / safe_identity
             if hasattr(self._client, "set_profile_path"):
                 self._client.set_profile_path(str(profile_dir))
             self._active = True
