@@ -233,6 +233,18 @@ def test_dynamic_formatter_fails_closed_when_provenance_is_missing():
     assert formatted == ""
 
 
+def test_dynamic_formatter_requires_exact_stored_provenance():
+    memories = [
+        {"type": "instruction", "content": "upper", "provenance": "VALIDATED"},
+        {"type": "instruction", "content": "padded", "provenance": " validated "},
+        {"type": "instruction", "content": "non-string", "provenance": ["validated"]},
+        {"type": "instruction", "content": "exact", "provenance": "validated"},
+    ]
+    formatted, trusted_count = _format_trusted_dynamic_memories(memories)
+    assert trusted_count == 1
+    assert formatted == "- [INSTRUCTION] exact"
+
+
 def _legacy_instruction_document():
     return {
         "id": "legacy-1",

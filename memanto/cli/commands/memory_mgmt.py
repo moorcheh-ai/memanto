@@ -224,8 +224,8 @@ def _format_trusted_dynamic_memories(
 
     formatted_bullets: list[str] = []
     for mem in memories:
-        provenance = str(mem.get("provenance") or "").strip().lower()
-        if provenance not in TRUSTED_DYNAMIC_PROVENANCE:
+        provenance = mem.get("provenance")
+        if not isinstance(provenance, str) or provenance not in TRUSTED_DYNAMIC_PROVENANCE:
             continue
 
         content = str(mem.get("content") or "").strip()
