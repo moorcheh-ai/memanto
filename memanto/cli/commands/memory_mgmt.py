@@ -3,6 +3,7 @@ MEMANTO CLI - Memory management commands (export, sync).
 """
 
 import time
+from typing import Any
 
 import typer
 from rich.panel import Panel
@@ -204,6 +205,39 @@ def _check_template_updates(project_dir: str):
             print(f"Failed to check instruction update status: {e}")
 
 
+# Dynamic sync writes into coding-agent instruction surfaces (CLAUDE.md,
+# AGENTS.md, Copilot instructions, skills, ...). Only provenance that represents
+# deliberate user/project authority may cross that boundary. Imported,
+# inferred, observed, or legacy/missing provenance remains available through
+# normal recall but must not silently become a durable instruction.
+TRUSTED_DYNAMIC_PROVENANCE = frozenset({"explicit_statement", "corrected", "validated"})
+
+
+def _format_trusted_dynamic_memories(
+    memories: list[dict[str, Any]],
+) -> tuple[str, int]:
+    """Format only memories trusted to enter agent instruction files.
+
+    The fail-closed provenance check is intentional: a memory with no explicit
+    provenance is not promoted into a higher-trust instruction surface.
+    """
+
+    formatted_bullets: list[str] = []
+    for mem in memories:
+        provenance = str(mem.get("provenance") or "").strip().lower()
+        if provenance not in TRUSTED_DYNAMIC_PROVENANCE:
+            continue
+
+        content = str(mem.get("content") or "").strip()
+        if not content:
+            continue
+
+        mem_type = str(mem.get("type") or "fact").upper()
+        formatted_bullets.append(f"- [{mem_type}] {content}")
+
+    return "\n".join(formatted_bullets), len(formatted_bullets)
+
+
 @memory_app.command("sync")
 def memory_sync(
     project_dir: str = typer.Option(
@@ -339,13 +373,11 @@ def memory_sync(
                 status="active",
             )
 
-            formatted_bullets = []
-            for mem in memories_result.get("memories", []):
-                mem_type = mem.get("type", "fact").upper()
-                content = mem.get("content", "").strip()
-                formatted_bullets.append(f"- [{mem_type}] {content}")
-
-            formatted_text = "\n".join(formatted_bullets)
+            recalled_memories = memories_result.get("memories", [])
+            recalled_total = len(recalled_memories)
+            formatted_text, trusted_total = _format_trusted_dynamic_memories(
+                recalled_memories
+            )
 
             injection_results = inject_dynamic_memories(
                 project_dir,
@@ -353,7 +385,6 @@ def memory_sync(
                 connection=connection,
                 scope=scope,
             )
-            recalled_total = len(memories_result.get("memories", []))
 
         except Exception as e:
             _error(f"Failed to sync dynamic memories: {e}")
@@ -364,9 +395,22 @@ def memory_sync(
         console.print(
             "\n[yellow]No active dynamic memories found. Cleared dynamic sections (if any).[/yellow]"
         )
+    elif trusted_total == 0:
+        console.print(
+            "\n[yellow]No trusted dynamic memories found. Cleared dynamic sections "
+            "(if any).[/yellow]"
+        )
     else:
         console.print(
-            f"\n[green]OK Recalled {recalled_total} dynamic memories![/green]"
+            f"\n[green]OK Synced {trusted_total} trusted dynamic memories![/green]"
+        )
+
+    skipped_untrusted = recalled_total - trusted_total
+    if skipped_untrusted:
+        console.print(
+            f"[yellow]Security: skipped {skipped_untrusted} recalled "
+            "memory/memories whose provenance is not trusted for instruction "
+            "injection.[/yellow]"
         )
 
     for msg in injection_results.get("updated", []):
