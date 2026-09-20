@@ -135,3 +135,48 @@ def test_dynamic_sync_rejects_symlinked_local_instruction(tmp_path):
 
     assert victim.read_text() == before
     assert local_instruction.is_symlink()
+
+
+def test_dynamic_sync_uses_validated_target_after_alias_retarget(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    safe_target = project / "safe-instructions.md"
+    victim = tmp_path / "outside-instructions.md"
+    _instruction_file(safe_target)
+    _instruction_file(victim)
+
+    local_instruction = project / ".github" / "copilot-instructions.md"
+    local_instruction.parent.mkdir(parents=True)
+    local_instruction.symlink_to(safe_target)
+
+    connections = {
+        "github-copilot": {
+            "projects": [str(project.resolve())],
+            "installed_global": False,
+        }
+    }
+    victim_before = victim.read_text()
+    original_guard = _assert_dynamic_sync_write_scope
+
+    def validate_then_retarget(project_path, target, is_global):
+        resolved = original_guard(project_path, target, is_global)
+        if target == local_instruction:
+            local_instruction.unlink()
+            local_instruction.symlink_to(victim)
+        return resolved
+
+    with (
+        patch(
+            "memanto.cli.config.manager.ConfigManager.load_connections",
+            return_value=connections,
+        ),
+        patch(
+            "memanto.cli.connect.updater._assert_dynamic_sync_write_scope",
+            side_effect=validate_then_retarget,
+        ),
+    ):
+        inject_dynamic_memories(str(project), "- [INSTRUCTION] injected")
+
+    assert "injected" in safe_target.read_text()
+    assert victim.read_text() == victim_before
+    assert local_instruction.resolve() == victim.resolve()
