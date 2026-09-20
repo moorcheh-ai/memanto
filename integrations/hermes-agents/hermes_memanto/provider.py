@@ -66,16 +66,36 @@ _CAPTURE_CONFIDENCE = 0.6
 _MIN_CAPTURE_LENGTH = 10
 _MAX_TITLE_LENGTH = 100
 _MAX_AGENT_ID_LENGTH = 64
+_SANITIZED_ID_PREFIX = "memh_"
+_SANITIZED_ID_HASH_HEX = 16
 _ACTIVATION_RETRY_COOLDOWN = 60.0
 
 
 def _sanitize_agent_id(raw: str) -> str:
-    """Sanitize charset and append a stable hash if over 64 chars."""
-    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
-    if len(sanitized) > _MAX_AGENT_ID_LENGTH:
-        suffix = hashlib.sha256(raw.encode()).hexdigest()[:8]
-        sanitized = sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1] + "-" + suffix
-    return sanitized
+    """Return a safe, collision-resistant agent/profile identifier.
+
+    Already-safe short identifiers remain unchanged for compatibility. Values
+    that need charset normalization, truncation, or that begin with the
+    reserved normalization prefix are moved into a separate hashed namespace.
+    This prevents unsafe-to-unsafe aliases and aliases with a literal safe
+    spelling of a normalized identifier.
+    """
+    if (
+        len(raw) <= _MAX_AGENT_ID_LENGTH
+        and re.fullmatch(r"[A-Za-z0-9_-]+", raw)
+        and not raw.startswith(_SANITIZED_ID_PREFIX)
+    ):
+        return raw
+
+    slug = re.sub(r"[^A-Za-z0-9_-]", "_", raw).strip("_-") or "identity"
+    suffix = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:_SANITIZED_ID_HASH_HEX]
+    prefix_budget = (
+        _MAX_AGENT_ID_LENGTH
+        - len(_SANITIZED_ID_PREFIX)
+        - len(suffix)
+        - 1
+    )
+    return f"{_SANITIZED_ID_PREFIX}{slug[:prefix_budget]}-{suffix}"
 
 
 # Memory taxonomy mirrored from memanto.app.constants.VALID_MEMORY_TYPES so the

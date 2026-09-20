@@ -17,6 +17,7 @@ from hermes_memanto.provider import (
     _detect_memory_type,
     _format_recall_block,
     _load_memanto_config,
+    _sanitize_agent_id,
     _save_memanto_config,
 )
 
@@ -134,6 +135,53 @@ def test_detect_memory_type():
     assert _detect_memory_type("User prefers dark mode") == "preference"
     assert _detect_memory_type("We decided to use Postgres") == "decision"
     assert _detect_memory_type("The API is rate limited") == "fact"
+
+
+def test_sanitize_agent_id_differentiates_unsafe_spellings():
+    at_name = _sanitize_agent_id("alice@example.com")
+    hash_name = _sanitize_agent_id("alice#example.com")
+
+    assert at_name != hash_name
+    assert len(at_name) <= 64
+    assert len(hash_name) <= 64
+    assert "@" not in at_name
+    assert "#" not in hash_name
+
+
+def test_sanitize_agent_id_does_not_alias_literal_normalized_output():
+    unsafe_name = _sanitize_agent_id("alice@example.com")
+
+    assert _sanitize_agent_id(unsafe_name) != unsafe_name
+
+
+def test_distinct_unsafe_profiles_do_not_share_agent_or_token_path(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+
+    email_profile = MemantoMemoryProvider()
+    hash_profile = MemantoMemoryProvider()
+    email_profile.initialize(
+        "s1",
+        hermes_home=str(tmp_path),
+        platform="cli",
+        agent_identity="alice@example.com",
+    )
+    hash_profile.initialize(
+        "s2",
+        hermes_home=str(tmp_path),
+        platform="cli",
+        agent_identity="alice#example.com",
+    )
+    if email_profile._warmup_thread:
+        email_profile._warmup_thread.join(timeout=1)
+    if hash_profile._warmup_thread:
+        hash_profile._warmup_thread.join(timeout=1)
+
+    assert email_profile._agent_id != hash_profile._agent_id
+    assert email_profile._client.profile_path != hash_profile._client.profile_path
 
 
 def test_load_and_save_config_round_trip(tmp_path):
