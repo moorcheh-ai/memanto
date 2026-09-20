@@ -852,15 +852,17 @@ class MemoryReadService:
         self, query: str, agent_id: str | None = None
     ) -> dict[str, Any]:
         """Generate AI answer from memories"""
+        # Tenant isolation: answer generation must be scoped to one agent's
+        # namespace. The previous "first available namespace" fallback let a
+        # caller without an ``agent_id`` read memories from whichever tenant
+        # happened to sort first in the account's namespace list. The guard
+        # stays outside the ``try`` so the refusal is reported as-is instead of
+        # being re-wrapped as a generic generation failure.
+        if not agent_id:
+            raise MemoryOperationError(
+                "Tenant isolation: an agent_id is required to scope an answer"
+            )
         try:
-            # Tenant isolation: answer generation must be scoped to one agent's
-            # namespace. The previous "first available namespace" fallback let a
-            # caller without an ``agent_id`` read memories from whichever tenant
-            # happened to sort first in the account's namespace list.
-            if not agent_id:
-                raise MemoryError(
-                    "Tenant isolation: an agent_id is required to scope an answer"
-                )
             namespace = agent_namespace(agent_id)
 
             # Generate answer. Omit ai_model when on-prem state has no LLM
@@ -890,7 +892,7 @@ class MemoryReadService:
         ``agent_id`` read every other tenant's memories. Fail closed instead.
         """
         if not agent_id:
-            raise MemoryError(
+            raise MemoryOperationError(
                 "Tenant isolation: an agent_id is required to scope a memory read"
             )
         # Search a specific agent's namespace
