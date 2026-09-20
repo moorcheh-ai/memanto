@@ -1,4 +1,6 @@
+import os
 import re
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -190,6 +192,51 @@ def _assert_dynamic_sync_write_scope(
     return resolved
 
 
+def _open_local_dynamic_sync_file(project_path: Path, target: Path) -> int:
+    """Open a project-local target through one no-follow directory chain."""
+    root = project_path.resolve()
+    try:
+        relative = target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Refusing dynamic memory sync outside project: {target}"
+        ) from exc
+
+    if not relative.parts:
+        raise ValueError(f"Refusing dynamic memory sync to project directory: {target}")
+
+    supports_dir_fd = getattr(os, "supports_dir_fd", ())
+    if (
+        not hasattr(os, "O_NOFOLLOW")
+        or not hasattr(os, "O_DIRECTORY")
+        or os.open not in supports_dir_fd
+    ):
+        raise ValueError(
+            "Secure local dynamic memory sync requires no-follow dir_fd support"
+        )
+
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    directory_fd = os.open(root, directory_flags)
+    try:
+        for part in relative.parts[:-1]:
+            next_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+
+        file_fd = os.open(
+            relative.parts[-1],
+            os.O_RDWR | os.O_NOFOLLOW,
+            dir_fd=directory_fd,
+        )
+    finally:
+        os.close(directory_fd)
+
+    if not stat.S_ISREG(os.fstat(file_fd).st_mode):
+        os.close(file_fd)
+        raise ValueError(f"Refusing dynamic memory sync to non-regular file: {target}")
+    return file_fd
+
+
 def inject_dynamic_memories(
     project_dir: str,
     content: str,
@@ -309,33 +356,57 @@ def inject_dynamic_memories(
                 resolved_path = _assert_dynamic_sync_write_scope(
                     project_path, path, is_global
                 )
-                # Use the already-validated canonical destination for I/O. Reopening
-                # the unresolved alias would let a symlink retarget after validation.
-                text = resolved_path.read_text(encoding="utf-8")
-                if MEMANTO_DYNAMIC_SENTINEL in text:
-
-                    def replacer(match):
-                        if content:
-                            safe_content = content.replace(
-                                MEMANTO_DYNAMIC_SENTINEL, ""
-                            ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
-                            return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
-                        return f"{match.group(1)}\n{match.group(2)}"
-
-                    new_text = pattern.sub(replacer, text)
-                    if new_text != text:
-                        resolved_path.write_text(new_text, encoding="utf-8")
-                        results["updated"].append(
-                            f"Injected memories into {path.name} ({agent.name}, "
-                            f"{'global' if is_global else 'local'})"
-                        )
-                    else:
-                        results["already_current"].append(
-                            f"{path.name} ({agent.name}) is already current"
-                        )
+                # Global scope intentionally keeps its existing path behavior. Local
+                # scope binds the entire directory walk and final file to descriptors,
+                # then reuses the same final descriptor for read/truncate/write.
+                local_handle = None
+                if is_global:
+                    text = resolved_path.read_text(encoding="utf-8")
                 else:
-                    results["no_eligible_target"].append(
-                        f"{path.name} ({agent.name}) has no dynamic section"
+                    file_fd = _open_local_dynamic_sync_file(
+                        project_path, resolved_path
                     )
+                    local_handle = os.fdopen(file_fd, "r+", encoding="utf-8")
+                    try:
+                        text = local_handle.read()
+                    except Exception:
+                        local_handle.close()
+                        raise
+
+                try:
+                    if MEMANTO_DYNAMIC_SENTINEL in text:
+
+                        def replacer(match):
+                            if content:
+                                safe_content = content.replace(
+                                    MEMANTO_DYNAMIC_SENTINEL, ""
+                                ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
+                                return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
+                            return f"{match.group(1)}\n{match.group(2)}"
+
+                        new_text = pattern.sub(replacer, text)
+                        if new_text != text:
+                            if is_global:
+                                resolved_path.write_text(new_text, encoding="utf-8")
+                            else:
+                                local_handle.seek(0)
+                                local_handle.write(new_text)
+                                local_handle.truncate()
+                                local_handle.flush()
+                            results["updated"].append(
+                                f"Injected memories into {path.name} ({agent.name}, "
+                                f"{'global' if is_global else 'local'})"
+                            )
+                        else:
+                            results["already_current"].append(
+                                f"{path.name} ({agent.name}) is already current"
+                            )
+                    else:
+                        results["no_eligible_target"].append(
+                            f"{path.name} ({agent.name}) has no dynamic section"
+                        )
+                finally:
+                    if local_handle is not None:
+                        local_handle.close()
 
     return results
