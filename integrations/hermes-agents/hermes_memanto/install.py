@@ -3,10 +3,8 @@
 Hermes discovers memory providers as *directories* under
 ``$HERMES_HOME/plugins/<name>/`` (default ``~/.hermes/plugins``), each holding
 an ``__init__.py`` that exposes ``register(ctx)`` plus a ``plugin.yaml``
-manifest. This script writes a self-contained ``memanto/`` plugin folder there
-by copying :mod:`hermes_memanto.provider` verbatim as the plugin's
-``__init__.py`` — so once installed it only needs the ``memanto`` SDK (declared
-in ``plugin.yaml``), not this package.
+manifest. This script installs the provider wrapper and its implementation
+modules as a self-contained ``memanto/`` plugin folder.
 
 Usage::
 
@@ -24,7 +22,11 @@ import sys
 from pathlib import Path
 
 _PKG_DIR = Path(__file__).resolve().parent
-_PROVIDER_SRC = _PKG_DIR / "provider.py"
+_PROVIDER_MODULES = {
+    "__init__.py": _PKG_DIR / "provider.py",
+    "_provider_core.py": _PKG_DIR / "_provider_core.py",
+    "_profile_identity.py": _PKG_DIR / "_profile_identity.py",
+}
 _PLUGIN_YAML = _PKG_DIR / "plugin.yaml"
 _PLUGIN_README = _PKG_DIR / "PLUGIN_README.md"
 
@@ -40,15 +42,21 @@ def _default_hermes_home() -> Path:
 
 def install(hermes_home: Path, *, force: bool = False) -> Path:
     """Write the ``memanto`` plugin into ``hermes_home/plugins`` and return its path."""
+    missing = [str(source) for source in _PROVIDER_MODULES.values() if not source.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            "Memanto provider installation is incomplete; missing: " + ", ".join(missing)
+        )
+
     target = hermes_home / "plugins" / _PLUGIN_NAME
     if target.exists() and not force:
         raise FileExistsError(
             f"{target} already exists. Re-run with --force to overwrite it."
         )
     target.mkdir(parents=True, exist_ok=True)
-    # The provider module doubles as the plugin's __init__.py (it exposes
-    # register(ctx) and a MemantoMemoryProvider subclass).
-    shutil.copyfile(_PROVIDER_SRC, target / "__init__.py")
+
+    for destination, source in _PROVIDER_MODULES.items():
+        shutil.copyfile(source, target / destination)
     shutil.copyfile(_PLUGIN_YAML, target / "plugin.yaml")
     if _PLUGIN_README.exists():
         shutil.copyfile(_PLUGIN_README, target / "README.md")
@@ -79,7 +87,7 @@ def main(argv=None) -> int:
     )
     try:
         target = install(hermes_home, force=args.force)
-    except FileExistsError as exc:
+    except (FileExistsError, FileNotFoundError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
