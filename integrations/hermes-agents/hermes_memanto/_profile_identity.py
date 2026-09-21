@@ -16,12 +16,14 @@ def _present(path: Path) -> bool:
     return path.exists() or path.is_symlink()
 
 
-def _error(profile: Path, detail: str) -> RuntimeError:
-    return RuntimeError(
-        f"Cannot select Hermes profile {profile.name!r}: {detail}. "
-        f"After checking the directory, set {_CLAIM_ENV}={profile.name!r} "
-        "for one startup to adopt an older profile without metadata."
-    )
+def _error(profile: Path, detail: str, *, claimable: bool = False) -> RuntimeError:
+    message = f"Cannot select Hermes profile {profile.name!r}: {detail}."
+    if claimable:
+        message += (
+            f" After checking the directory, set {_CLAIM_ENV}={profile.name!r} "
+            "for one startup to adopt an older profile without metadata."
+        )
+    return RuntimeError(message)
 
 
 def _ensure_directory(profile: Path) -> bool:
@@ -127,7 +129,11 @@ def _select(
     if value is None:
         claimed = os.environ.get(_CLAIM_ENV) == profile.name
         if not created and not claimed:
-            raise _error(profile, "the existing directory has no metadata")
+            raise _error(
+                profile,
+                "the existing directory has no metadata",
+                claimable=True,
+            )
         proposed = _record(profile, identity, raw_agent_id, default_namespace)
         if _write_once(profile, proposed):
             return default_namespace
