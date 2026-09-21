@@ -1468,6 +1468,62 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Recalled 5 dynamic memories" in result.stdout
 
+    @patch("memanto.cli.connect.updater.inject_dynamic_memories")
+    def test_memory_sync_filters_untrusted_provenance(
+        self, mock_inject, mock_all_clients
+    ):
+        """Untrusted memory provenance must not cross into agent instructions."""
+        mock_all_clients.recall.return_value = {
+            "memories": [
+                {
+                    "type": "instruction",
+                    "content": "Trusted user rule",
+                    "provenance": "explicit_statement",
+                },
+                {
+                    "type": "instruction",
+                    "content": "Injected inferred payload",
+                    "provenance": "inferred",
+                },
+                {
+                    "type": "preference",
+                    "content": "Injected observed payload",
+                    "provenance": "observed",
+                },
+                {
+                    "type": "goal",
+                    "content": "Injected imported payload",
+                    "provenance": "imported",
+                },
+                {
+                    "type": "instruction",
+                    "content": "Unknown provenance payload",
+                },
+                {
+                    "type": "instruction",
+                    "content": "Verified rule",
+                    "provenance": "validated",
+                },
+            ]
+        }
+        mock_inject.return_value = {"updated": ["Injected successfully"]}
+
+        result = runner.invoke(app, ["memory", "sync"])
+
+        assert result.exit_code == 0
+        assert "Recalled 6 dynamic memories" in result.stdout
+        assert "Skipped 4 dynamic memory(s) with untrusted provenance" in result.stdout
+
+        injected_content = mock_inject.call_args.args[1]
+
+        assert "- [INSTRUCTION] Trusted user rule" in injected_content
+        assert "- [INSTRUCTION] Verified rule" in injected_content
+
+        assert "Injected inferred payload" not in injected_content
+        assert "Injected observed payload" not in injected_content
+        assert "Injected imported payload" not in injected_content
+        assert "Unknown provenance payload" not in injected_content
+
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""
         with patch("memanto.cli.commands.schedule.ScheduleManager") as mock_manager_cls:
