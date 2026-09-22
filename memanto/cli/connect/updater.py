@@ -243,6 +243,19 @@ def inject_dynamic_memories(
     connection: str | None = None,
     scope: str | None = None,
 ) -> dict[str, list[str]]:
+    """Write ``content`` into the dynamic memory section of connected agents.
+
+    Targets the named ``connection``, or every connection that applies to
+    ``project_dir`` for the requested ``scope`` (``"local"``, ``"global"``,
+    or local connections first and global ones as a fallback when omitted).
+    Only the text between the Memanto dynamic sentinels in each agent's
+    instruction file and ``SKILL.md`` is replaced. Local writes must stay
+    inside the project and go through a no-follow descriptor chain.
+
+    Returns messages grouped under ``updated``, ``already_current`` and
+    ``no_eligible_target``. Raises ``ValueError`` for an invalid scope, when
+    no connection applies, or when a target falls outside the allowed scope.
+    """
     from memanto.cli.config.manager import ConfigManager
     from memanto.cli.connect.agent_registry import get_agent
     from memanto.cli.connect.templates import (
@@ -375,6 +388,7 @@ def inject_dynamic_memories(
                     if MEMANTO_DYNAMIC_SENTINEL in text:
 
                         def replacer(match):
+                            """Replace one sentinel block's body with ``content``, minus any sentinels."""
                             if content:
                                 safe_content = content.replace(
                                     MEMANTO_DYNAMIC_SENTINEL, ""

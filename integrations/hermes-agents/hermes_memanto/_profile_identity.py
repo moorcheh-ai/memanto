@@ -13,10 +13,16 @@ _SCHEMA = 1
 
 
 def _present(path: Path) -> bool:
+    """Return whether ``path`` exists, counting dangling symbolic links."""
     return path.exists() or path.is_symlink()
 
 
 def _error(profile: Path, detail: str, *, claimable: bool = False) -> RuntimeError:
+    """Build the error raised when ``profile`` cannot be selected.
+
+    When ``claimable`` is set, the message explains how to adopt a legacy
+    profile directory through the one-shot claim environment variable.
+    """
     message = f"Cannot select Hermes profile {profile.name!r}: {detail}."
     if claimable:
         message += (
@@ -27,6 +33,11 @@ def _error(profile: Path, detail: str, *, claimable: bool = False) -> RuntimeErr
 
 
 def _ensure_directory(profile: Path) -> bool:
+    """Create ``profile`` as a private directory unless it already exists.
+
+    Returns ``True`` only when this call created the directory. Symbolic
+    links, non-directories and paths that change during creation are refused.
+    """
     if profile.is_symlink():
         raise _error(profile, "the profile path is a symbolic link")
     if profile.exists():
@@ -44,6 +55,12 @@ def _ensure_directory(profile: Path) -> bool:
 
 
 def _read_metadata(profile: Path) -> dict[str, object] | None:
+    """Load the identity metadata stored in ``profile``.
+
+    Returns ``None`` when no metadata file exists. A metadata path that is a
+    symbolic link, not a regular file, larger than 4 KiB, not valid JSON or
+    not a JSON object raises an error instead of being trusted.
+    """
     path = profile / _METADATA_FILE
     if not _present(path):
         return None
@@ -67,6 +84,7 @@ def _record(
     raw_agent_id: str,
     agent_namespace: str,
 ) -> dict[str, object]:
+    """Build the metadata record binding ``profile`` to an identity and namespace."""
     return {
         "schema": _SCHEMA,
         "identity": identity,
@@ -77,6 +95,11 @@ def _record(
 
 
 def _write_once(profile: Path, value: dict[str, object]) -> bool:
+    """Create the metadata file for ``profile`` exclusively.
+
+    Returns ``False`` when another writer created the file first, so callers
+    re-read and validate it instead of overwriting it.
+    """
     path = profile / _METADATA_FILE
     payload = json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
     try:
@@ -101,6 +124,12 @@ def _validated_namespace(
     raw_agent_id: str,
     allowed_namespaces: set[str],
 ) -> str:
+    """Return the stored agent namespace after checking the metadata record.
+
+    The schema, identity, raw agent id and profile name must match the
+    current startup exactly, and the namespace must be one of
+    ``allowed_namespaces``; any mismatch raises an error.
+    """
     expected = {
         "schema": _SCHEMA,
         "identity": identity,
@@ -125,6 +154,12 @@ def _select(
     allowed_namespaces: set[str],
     created: bool,
 ) -> str:
+    """Return the agent namespace bound to ``profile``, recording it if needed.
+
+    A profile without metadata is only adopted when this startup created it
+    or the operator explicitly claimed it; otherwise selection fails so an
+    unrelated identity cannot inherit an older directory.
+    """
     value = _read_metadata(profile)
     if value is None:
         claimed = os.environ.get(_CLAIM_ENV) == profile.name

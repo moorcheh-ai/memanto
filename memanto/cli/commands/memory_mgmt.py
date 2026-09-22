@@ -398,15 +398,19 @@ def memory_sync(
         console.print(
             "\n[yellow]No active dynamic memories found. Cleared dynamic sections (if any).[/yellow]"
         )
-    elif trusted_total == 0:
-        console.print(
-            "\n[yellow]No trusted dynamic memories found. Cleared dynamic sections "
-            "(if any).[/yellow]"
-        )
     else:
         console.print(
-            f"\n[green]OK Synced {trusted_total} trusted dynamic memories![/green]"
+            f"\n[green]OK Recalled {recalled_total} dynamic memories![/green]"
         )
+        if trusted_total == 0:
+            console.print(
+                "[yellow]No trusted dynamic memories found. Cleared dynamic "
+                "sections (if any).[/yellow]"
+            )
+        else:
+            console.print(
+                f"[green]Synced {trusted_total} trusted dynamic memories.[/green]"
+            )
 
     skipped_untrusted = recalled_total - trusted_total
     if skipped_untrusted:

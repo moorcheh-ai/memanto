@@ -24,7 +24,6 @@ from pathlib import Path
 _PKG_DIR = Path(__file__).resolve().parent
 _PROVIDER_MODULES = {
     "__init__.py": _PKG_DIR / "provider.py",
-    "_provider_core.py": _PKG_DIR / "_provider_core.py",
     "_profile_identity.py": _PKG_DIR / "_profile_identity.py",
 }
 _PLUGIN_YAML = _PKG_DIR / "plugin.yaml"
@@ -67,6 +66,7 @@ def install(hermes_home: Path, *, force: bool = False) -> Path:
 
 
 def main(argv=None) -> int:
+    """Run the ``hermes-memanto-install`` command and return its exit status."""
     parser = argparse.ArgumentParser(
         prog="hermes-memanto-install",
         description="Install the Memanto memory-agent plugin into Hermes.",
