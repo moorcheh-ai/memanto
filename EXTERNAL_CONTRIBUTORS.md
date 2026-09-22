@@ -106,3 +106,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @who-lee
 - @akashlamani835-web
 - @woahwhattheheck
+- @dlowzzxx
