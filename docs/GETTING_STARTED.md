@@ -529,3 +529,6 @@ Now that MEMANTO is running, you're ready to build memory-enabled AI agents!
 5. → [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md) - System design
 
 **Happy building!** 🚀
+
+*Latency metrics are based on internal benchmarks in US-East. They exclude network transit. For optimal performance, we recommend private cloud deployment.*
+

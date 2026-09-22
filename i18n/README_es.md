@@ -1,14 +1,14 @@
-Ôªø<p align="center">
+<p align="center">
   <a href="https://www.memanto.ai/">
     <img alt="Memanto" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-logo.svg" width="440">
   </a>
 </p>
 
-<h3 align="center">¬°La memoria que los agentes de IA adoran!</h3>
+<h3 align="center">°La memoria que los agentes de IA adoran!</h3>
 
 <p align="center">
-  Memanto es un <strong>Agente de Memoria</strong>, un agente compa√±ero que administra las memorias de tus otros agentes:<br>
-  qu√© conservar, qu√© entra en conflicto, qu√© caduca y qui√©n necesita saberlo.
+  Memanto es un <strong>Agente de Memoria</strong>, un agente compaÒero que administra las memorias de tus otros agentes:<br>
+  quÈ conservar, quÈ entra en conflicto, quÈ caduca y quiÈn necesita saberlo.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@ pip install memanto
 ```
 
 <!-- ============================================================
-     GIF DE DEMOSTRACI√ìN ‚Äî recurso pendiente de mayor impacto. assets/demo.gif
+     GIF DE DEMOSTRACI”N ó recurso pendiente de mayor impacto. assets/demo.gif
      Cinta VHS proporcionada por separado. Menos de 15 s y de 3 MB.
      ============================================================ -->
 <p align="center">
@@ -33,28 +33,28 @@ pip install memanto
 
 ---
 
-> **Todas las plataformas guardar√°n la memoria de tus agentes. Ninguna la administrar√°.** Gestionarla entre plataformas va contra sus intereses. Ese es el trabajo de un Agente de Memoria.
+> **Todas las plataformas guardar·n la memoria de tus agentes. Ninguna la administrar·.** Gestionarla entre plataformas va contra sus intereses. Ese es el trabajo de un Agente de Memoria.
 
-La persistencia ya est√° resuelta. Claude, Bedrock, Cursor y cualquier almac√©n vectorial guardar√°n lo que escriban tus agentes. Ninguno te avisar√° de que dos agentes creen ahora cosas opuestas sobre autenticaci√≥n, que una preferencia antigua ha superado una decisi√≥n reciente o que un agente va a repetir trabajo que otro ya termin√≥ y revirti√≥.
+La persistencia ya est· resuelta. Claude, Bedrock, Cursor y cualquier almacÈn vectorial guardar·n lo que escriban tus agentes. Ninguno te avisar· de que dos agentes creen ahora cosas opuestas sobre autenticaciÛn, que una preferencia antigua ha superado una decisiÛn reciente o que un agente va a repetir trabajo que otro ya terminÛ y revirtiÛ.
 
-El almacenamiento es un archivador. Memanto es el jefe de gabinete: decide qu√© entra, vigila el acceso, resuelve contradicciones, descarta lo obsoleto e informa a cada agente antes de que act√∫e.
+El almacenamiento es un archivador. Memanto es el jefe de gabinete: decide quÈ entra, vigila el acceso, resuelve contradicciones, descarta lo obsoleto e informa a cada agente antes de que act˙e.
 
 ---
 
 ## Es un agente, no una API
 
-Memanto no es una biblioteca a la que llamas. Es un segundo agente que trabaja junto a tu flota y hace seis cosas seg√∫n su propio criterio. Cada una es un comportamiento real respaldado por un comando; nada de esto es un elemento de una hoja de ruta.
+Memanto no es una biblioteca a la que llamas. Es un segundo agente que trabaja junto a tu flota y hace seis cosas seg˙n su propio criterio. Cada una es un comportamiento real respaldado por un comando; nada de esto es un elemento de una hoja de ruta.
 
-| | Lo que hace Memanto | Ejec√∫talo |
+| | Lo que hace Memanto | Ejec˙talo |
 |---|---|---|
-| **Observa y extrae** | Extrae conocimiento duradero de tr√°fico ef√≠mero ‚Äî decisiones, preferencias, hechos y fallos ‚Äî en vez de archivar transcripciones completas. | `memanto remember --from-conversation` |
-| **Consolida** | Fusiona memorias en un √∫nico patrimonio can√≥nico: los duplicados se colapsan, los fragmentos se unen y las observaciones repetidas refuerzan la confianza. | `memanto schedule enable` |
-| **Reconcilia** | El conocimiento nuevo que contradice al anterior lo sustituye, conservando qu√© se cre√≠a y cu√°ndo. | `memanto conflicts` |
-| **Olvida** | El deterioro, la caducidad y la eliminaci√≥n deliberada son pol√≠ticas que ejecuta; el olvido gestionado mantiene precisa la recuperaci√≥n. | `memanto forget` |
-| **Informa** | Antes de actuar, cada agente recibe la porci√≥n m√≠nima relevante del patrimonio; no necesita consultar nada. | `memanto agent bootstrap` |
+| **Observa y extrae** | Extrae conocimiento duradero de tr·fico efÌmero ó decisiones, preferencias, hechos y fallos ó en vez de archivar transcripciones completas. | `memanto remember --from-conversation` |
+| **Consolida** | Fusiona memorias en un ˙nico patrimonio canÛnico: los duplicados se colapsan, los fragmentos se unen y las observaciones repetidas refuerzan la confianza. | `memanto schedule enable` |
+| **Reconcilia** | El conocimiento nuevo que contradice al anterior lo sustituye, conservando quÈ se creÌa y cu·ndo. | `memanto conflicts` |
+| **Olvida** | El deterioro, la caducidad y la eliminaciÛn deliberada son polÌticas que ejecuta; el olvido gestionado mantiene precisa la recuperaciÛn. | `memanto forget` |
+| **Informa** | Antes de actuar, cada agente recibe la porciÛn mÌnima relevante del patrimonio; no necesita consultar nada. | `memanto agent bootstrap` |
 | **Mueve conocimiento** | Open Knowledge Format permite que una flota entre frameworks y proveedores comparta una memoria en lugar de cinco silos. | `memanto memory export --okf` |
 
-**Y lo hace mientras duermes.** `memanto schedule enable` ejecuta el ciclo diario: selecciona memorias, fusiona duplicados y se√±ala contradicciones para tu revisi√≥n.
+**Y lo hace mientras duermes.** `memanto schedule enable` ejecuta el ciclo diario: selecciona memorias, fusiona duplicados y seÒala contradicciones para tu revisiÛn.
 
 ---
 
@@ -63,74 +63,74 @@ Memanto no es una biblioteca a la que llamas. Es un segundo agente que trabaja j
 ```bash
 pip install memanto
 memanto                            # "On-Prem" (Docker, sin cuenta) o "Cloud" (clave gratuita)
-memanto connect claude-code        # tambi√©n: cursor, codex, windsurf, cline, goose, copilot‚Ä¶
+memanto connect claude-code        # tambiÈn: cursor, codex, windsurf, cline, goose, copilotÖ
 ```
 
-Tus agentes ahora comparten un patrimonio gestionado. Sin cambios de c√≥digo, sin wrapper, sin reescribir el ciclo de tus agentes.
+Tus agentes ahora comparten un patrimonio gestionado. Sin cambios de cÛdigo, sin wrapper, sin reescribir el ciclo de tus agentes.
 
 ```bash
 # backend-agent aprende algo el lunes
-memanto remember "Auth migrated to JWT ‚Äî session cookies deprecated" --type decision
+memanto remember "Auth migrated to JWT ó session cookies deprecated" --type decision
 
-# review-agent, que nunca vio esa sesi√≥n, lo sabe el viernes
+# review-agent, que nunca vio esa sesiÛn, lo sabe el viernes
 memanto recall "how does auth work"
 memanto answer  "why did we drop session cookies?"     # basado en evidencia, sin clave de API adicional
 
-# ¬øqu√© cre√≠a la flota el martes pasado? ¬øqu√© cambi√≥ desde el lanzamiento?
+# øquÈ creÌa la flota el martes pasado? øquÈ cambiÛ desde el lanzamiento?
 memanto recall "deployment policy" --as-of 2026-08-05
 memanto recall "deployment policy" --changed-since v2.1
 ```
 
-macOS, Linux, Windows. `memanto ui` abre un panel local sobre todo el patrimonio: expl√≥ralo, b√∫scalo y aud√≠talo.
+macOS, Linux, Windows. `memanto ui` abre un panel local sobre todo el patrimonio: explÛralo, b˙scalo y audÌtalo.
 
 ---
 
-## S√© due√±o de la memoria de tus agentes
+## SÈ dueÒo de la memoria de tus agentes
 
-Esta es la parte que importar√° dentro de dos a√±os, y la que todas las funciones de memoria nativas de las plataformas est√°n dise√±adas para impedir.
+Esta es la parte que importar· dentro de dos aÒos, y la que todas las funciones de memoria nativas de las plataformas est·n diseÒadas para impedir.
 
-**Tu patrimonio es un archivo.** `memanto memory export --okf` te da el [Open Knowledge Format](https://docs.memanto.ai/integrations/okf): Markdown plano, legible, comparable con diff, apto para commits y b√∫squedas con grep. No un volcado propietario: el formato de trabajo real.
+**Tu patrimonio es un archivo.** `memanto memory export --okf` te da el [Open Knowledge Format](https://docs.memanto.ai/integrations/okf): Markdown plano, legible, comparable con diff, apto para commits y b˙squedas con grep. No un volcado propietario: el formato de trabajo real.
 
 **Se mueve.** `memanto migrate` importa desde Mem0, Letta, Supermemory o cualquier paquete OKF, y el mismo comando funciona a la inversa. OKF es un formato abierto que cualquier framework o proveedor puede implementar, incluidos nuestros competidores.
 
-**Se ejecuta en tu m√°quina.** Docker local + Ollama, sin cuenta, sin clave de API, sin que nada salga de tu infraestructura. O nube gratuita, o tu propio alojamiento. `memanto config backend` cambia entre ellos y el patrimonio viaja contigo.
+**Se ejecuta en tu m·quina.** Docker local + Ollama, sin cuenta, sin clave de API, sin que nada salga de tu infraestructura. O nube gratuita, o tu propio alojamiento. `memanto config backend` cambia entre ellos y el patrimonio viaja contigo.
 
-**MIT.** Sin un nivel open-core esperando para bloquear la mitad √∫til. Sin flags de funciones, sin l√≠mites de asientos, sin retirada de la alfombra.
+**MIT.** Sin un nivel open-core esperando para bloquear la mitad ˙til. Sin flags de funciones, sin lÌmites de asientos, sin retirada de la alfombra.
 
 No hay dependencia porque no hay nada que bloquear.
 
 ---
 
-## Seguridad y soberan√≠a
+## Seguridad y soberanÌa
 
 <!-- ============================================================
-     TODO ‚Äî Majid: completa esto con tu trabajo de endurecimiento. La estructura
-     es correcta; los detalles son tuyos. Los elementos marcados ‚ü®‚Ä¶‚ü© requieren datos.
-     Todo lo que no puedas fundamentar hoy, elim√≠nalo en vez de suavizarlo.
+     TODO ó Majid: completa esto con tu trabajo de endurecimiento. La estructura
+     es correcta; los detalles son tuyos. Los elementos marcados ?Ö? requieren datos.
+     Todo lo que no puedas fundamentar hoy, elimÌnalo en vez de suavizarlo.
      ============================================================ -->
 
-**Nada sale de tu m√°quina en modo on-prem.** Docker + Ollama, sin cuenta ni llamadas salientes. Todo el ciclo ‚Äî extracci√≥n, consolidaci√≥n, reconciliaci√≥n e informe ‚Äî se ejecuta localmente.
+**Nada sale de tu m·quina en modo on-prem.** Docker + Ollama, sin cuenta ni llamadas salientes. Todo el ciclo ó extracciÛn, consolidaciÛn, reconciliaciÛn e informe ó se ejecuta localmente.
 
-**Con √°mbito definido por defecto.** Cada agente obtiene su propio espacio de nombres; aprovisionas exactamente lo que cada uno debe saber y nada m√°s.
+**Con ·mbito definido por defecto.** Cada agente obtiene su propio espacio de nombres; aprovisionas exactamente lo que cada uno debe saber y nada m·s.
 
-**Cada creencia es rastreable.** Puntuaci√≥n de confianza, fuente, procedencia y marca de tiempo permiten volver al momento en que una creencia entr√≥ en la flota.
+**Cada creencia es rastreable.** PuntuaciÛn de confianza, fuente, procedencia y marca de tiempo permiten volver al momento en que una creencia entrÛ en la flota.
 
-**Olvidar es una decisi√≥n tuya, no un efecto secundario.** Una memoria est√° `active` o `expired`, nada m√°s. Solo expira por una pol√≠tica que escribiste y lleva la fecha y la regla. Las expiradas siguen apareciendo claramente etiquetadas; `memanto memory restore` recupera una. Eliminar es distinto y expl√≠cito.
+**Olvidar es una decisiÛn tuya, no un efecto secundario.** Una memoria est· `active` o `expired`, nada m·s. Solo expira por una polÌtica que escribiste y lleva la fecha y la regla. Las expiradas siguen apareciendo claramente etiquetadas; `memanto memory restore` recupera una. Eliminar es distinto y explÌcito.
 
 ---
 
-## Memoria que caduca en tus propios t√©rminos
+## Memoria que caduca en tus propios tÈrminos
 
-Cada memoria est√° **activa** hasta que una pol√≠tica la retira. La caducidad queda registrada, es auditable y reversible: el contenido sobrevive y la memoria sigue apareciendo marcada como `[EXPIRED]` con la raz√≥n.
+Cada memoria est· **activa** hasta que una polÌtica la retira. La caducidad queda registrada, es auditable y reversible: el contenido sobrevive y la memoria sigue apareciendo marcada como `[EXPIRED]` con la razÛn.
 
 ```bash
 memanto policy list-preset          # conservative / balanced / aggressive
 memanto policy apply-preset balanced  # la muestra completa y luego pregunta
-memanto policy apply --dry-run      # exactamente qu√© caducar√≠a, por regla
-memanto policy apply                # muestra la pol√≠tica y las coincidencias, luego confirma
+memanto policy apply --dry-run      # exactamente quÈ caducarÌa, por regla
+memanto policy apply                # muestra la polÌtica y las coincidencias, luego confirma
 ```
 
-Las pol√≠ticas viven en `~/.memanto/policies/<agent>.yaml` y combinan una tabla de retenci√≥n por tipo con reglas con nombre. Gana la primera regla que coincida, que tambi√©n puede *fijar* una memoria:
+Las polÌticas viven en `~/.memanto/policies/<agent>.yaml` y combinan una tabla de retenciÛn por tipo con reglas con nombre. Gana la primera regla que coincida, que tambiÈn puede *fijar* una memoria:
 
 ```yaml
 retention:
@@ -140,21 +140,21 @@ retention:
 rules:
   - name: pinned
     match: {tags: [pinned]}
-    expire_after: never      # una fijaci√≥n expl√≠cita prevalece sobre la tabla
+    expire_after: never      # una fijaciÛn explÌcita prevalece sobre la tabla
   - name: low-confidence-guesses
     match: {provenance: [inferred], confidence_below: 0.5}
     expire_after: 14d
-purge_expired_after: never   # eliminaci√≥n definitiva opcional, desactivada por defecto
+purge_expired_after: never   # eliminaciÛn definitiva opcional, desactivada por defecto
 ```
 
-La recuperaci√≥n muestra ambos estados; delimita con `--active` o `--expired`. `--as-of` sigue reconstruyendo lo que era verdad entonces, incluso memorias que hayan expirado desde entonces.
+La recuperaciÛn muestra ambos estados; delimita con `--active` o `--expired`. `--as-of` sigue reconstruyendo lo que era verdad entonces, incluso memorias que hayan expirado desde entonces.
 
 ```bash
 memanto memory expire mem-123       # retira una manualmente
 memanto memory restore mem-123      # y la recupera
 ```
 
-La tarea nocturna (`memanto schedule enable`) ejecuta el barrido. Un agente sin pol√≠tica no caduca nada.
+La tarea nocturna (`memanto schedule enable`) ejecuta el barrido. Un agente sin polÌtica no caduca nada.
 
 ---
 
@@ -162,33 +162,33 @@ La tarea nocturna (`memanto schedule enable`) ejecuta el barrido. Un agente sin 
 
 | | Almacenamiento de memoria | **Memanto** |
 |---|---|---|
-| Qu√© es | Una base de datos con un SDK: escribir, incrustar, recuperar | Un agente con criterio sobre la memoria de tu flota |
+| QuÈ es | Una base de datos con un SDK: escribir, incrustar, recuperar | Un agente con criterio sobre la memoria de tu flota |
 | Comportamiento principal | Persistir | Seleccionar, reconciliar, consolidar, olvidar, informar |
-| Qui√©n decide qu√© se conserva | T√∫, en el c√≥digo de la aplicaci√≥n | Memanto, seg√∫n una pol√≠tica que configuras una vez |
-| Cuando dos agentes discrepan | Gana silenciosamente la √∫ltima escritura | Ambos quedan versionados y se presentan para revisi√≥n |
-| Olvido | Un `DELETE` que debes recordar ejecutar | Una pol√≠tica de primera clase que se ejecuta seg√∫n programaci√≥n |
-| √Åmbito | Una aplicaci√≥n, un stack, las paredes de un proveedor | Una flota, entre stacks y proveedores |
-| Tus datos | Exportables en teor√≠a | El formato de trabajo *es* Markdown port√°til |
+| QuiÈn decide quÈ se conserva | T˙, en el cÛdigo de la aplicaciÛn | Memanto, seg˙n una polÌtica que configuras una vez |
+| Cuando dos agentes discrepan | Gana silenciosamente la ˙ltima escritura | Ambos quedan versionados y se presentan para revisiÛn |
+| Olvido | Un `DELETE` que debes recordar ejecutar | Una polÌtica de primera clase que se ejecuta seg˙n programaciÛn |
+| ¡mbito | Una aplicaciÛn, un stack, las paredes de un proveedor | Una flota, entre stacks y proveedores |
+| Tus datos | Exportables en teorÌa | El formato de trabajo *es* Markdown port·til |
 
-Los sustratos de almacenamiento est√°n *debajo* de Memanto: almacenes vectoriales, sistemas de archivos y memorias nativas de plataformas son backends que administra.
+Los sustratos de almacenamiento est·n *debajo* de Memanto: almacenes vectoriales, sistemas de archivos y memorias nativas de plataformas son backends que administra.
 
 ---
 
 <p align="center">
-  <strong>‚≠ê Marca el repositorio con una estrella si Memanto administra la memoria de tu flota</strong><br>
-  <sub>Es la se√±al que nos dice que sigamos construyendo esto en abierto, bajo MIT, sin reservarnos nada.</sub></p>
+  <strong>? Marca el repositorio con una estrella si Memanto administra la memoria de tu flota</strong><br>
+  <sub>Es la seÒal que nos dice que sigamos construyendo esto en abierto, bajo MIT, sin reservarnos nada.</sub></p>
 
 ---
 
 ## Experiencia de desarrollo
 
-**Un solo `pip install`.** Sin almac√©n vectorial, canalizaci√≥n de embeddings, reranker, migraci√≥n de esquema ni backend que cuidar. El motor de recuperaci√≥n viene incluido.
+**Un solo `pip install`.** Sin almacÈn vectorial, canalizaciÛn de embeddings, reranker, migraciÛn de esquema ni backend que cuidar. El motor de recuperaciÛn viene incluido.
 
-**Funciona con lo que ya ejecutas.** `memanto connect claude-code`; lo mismo para Cursor, Codex, Windsurf, Cline, Continue, Goose, Copilot y m√°s.
+**Funciona con lo que ya ejecutas.** `memanto connect claude-code`; lo mismo para Cursor, Codex, Windsurf, Cline, Continue, Goose, Copilot y m·s.
 
-**Se puede buscar en cuanto se escribe.** Sin extracci√≥n al escribir, grafo que reconstruir ni cola de indexaci√≥n. `remember` devuelve y todos los agentes ya pueden recuperarla.
+**Se puede buscar en cuanto se escribe.** Sin extracciÛn al escribir, grafo que reconstruir ni cola de indexaciÛn. `remember` devuelve y todos los agentes ya pueden recuperarla.
 
-**Tipado, no una sopa.** 13 categor√≠as: `instruction`, `fact`, `decision`, `goal`, `preference`, `relationship` y m√°s; la recuperaci√≥n se puede filtrar.
+**Tipado, no una sopa.** 13 categorÌas: `instruction`, `fact`, `decision`, `goal`, `preference`, `relationship` y m·s; la recuperaciÛn se puede filtrar.
 
 **Un panel, no un archivo de registro.** `memanto ui` para todo el patrimonio, `memanto daily-summary` para un resumen y `memanto status` para agentes, sesiones y estado.
 
@@ -199,22 +199,22 @@ Los sustratos de almacenamiento est√°n *debajo* de Memanto: almacenes vectoriale
 
 <br>
 
-| Funcionalidad | Comandos | Qu√© hace |
+| Funcionalidad | Comandos | QuÈ hace |
 |---|---|---|
-| Estado del sistema | `memanto status` | Entorno, configuraci√≥n, salud del servidor, sesi√≥n activa y agentes registrados. |
+| Estado del sistema | `memanto status` | Entorno, configuraciÛn, salud del servidor, sesiÛn activa y agentes registrados. |
 | API REST local + interfaz web | `memanto serve`, `memanto ui` | Ejecuta la API REST localmente y abre una interfaz de navegador. |
 | Ciclo de vida del agente | `memanto agent ...` | Crea, enumera o elimina agentes, activa sesiones y ejecuta `agent bootstrap`. |
 | Captura de memoria a escala | `memanto remember` | Memorias individuales, JSON por lotes o `--from-conversation`. |
-| Edici√≥n y eliminaci√≥n | `memanto edit`, `memanto forget` | Actualiza una memoria o elimina una incorrecta. |
+| EdiciÛn y eliminaciÛn | `memanto edit`, `memanto forget` | Actualiza una memoria o elimina una incorrecta. |
 | Ingesta de archivos | `memanto upload` | Incorpora .pdf, .docx, .xlsx, .json, .txt, .csv y .md al espacio de nombres de un agente. |
-| Recuperaci√≥n avanzada | `memanto recall` | B√∫squeda y consultas temporales (`--as-of`, `--changed-since`) con filtros. |
+| RecuperaciÛn avanzada | `memanto recall` | B˙squeda y consultas temporales (`--as-of`, `--changed-since`) con filtros. |
 | Respuestas fundamentadas | `memanto answer` | Genera respuestas a partir de memoria recuperada. |
-| Inteligencia diaria | `memanto daily-summary`, `memanto conflicts` | Res√∫menes, contradicciones y resoluci√≥n interactiva. |
-| Sesiones y automatizaci√≥n | `memanto session ...`, `memanto schedule ...` | Inspecciona sesiones y habilita ejecuciones diarias. |
-| Exportaci√≥n y sincronizaci√≥n | `memanto memory export`, `memanto memory sync` | Exporta Markdown y sincroniza `MEMORY.md`; `--okf` crea un paquete [OKF](https://docs.memanto.ai/integrations/okf). |
-| Importaci√≥n y migraci√≥n | `memanto migrate` | Importa desde Mem0, Letta, Supermemory o OKF. |
-| Configuraci√≥n | `memanto config show` | Estado de clave API, agente/sesi√≥n activa, servidor y horario. |
-| Integraci√≥n de la flota | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment. |
+| Inteligencia diaria | `memanto daily-summary`, `memanto conflicts` | Res˙menes, contradicciones y resoluciÛn interactiva. |
+| Sesiones y automatizaciÛn | `memanto session ...`, `memanto schedule ...` | Inspecciona sesiones y habilita ejecuciones diarias. |
+| ExportaciÛn y sincronizaciÛn | `memanto memory export`, `memanto memory sync` | Exporta Markdown y sincroniza `MEMORY.md`; `--okf` crea un paquete [OKF](https://docs.memanto.ai/integrations/okf). |
+| ImportaciÛn y migraciÛn | `memanto migrate` | Importa desde Mem0, Letta, Supermemory o OKF. |
+| ConfiguraciÛn | `memanto config show` | Estado de clave API, agente/sesiÛn activa, servidor y horario. |
+| IntegraciÛn de la flota | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment. |
 
 **Tipos de memoria:** `instruction`, `fact`, `decision`, `goal`, `commitment`, `preference`, `relationship`, `context`, `event`, `learning`, `observation`, `artifact`, `error`
 
@@ -223,20 +223,20 @@ memanto remember "User prefers concise answers" --type preference
 memanto recall "user communication style" --type preference
 ```
 
-Referencia completa: [Gu√≠a de usuario de la CLI](https://docs.memanto.ai/cli)
+Referencia completa: [GuÌa de usuario de la CLI](https://docs.memanto.ai/cli)
 
 </details>
 
 <details>
-<summary><strong>Opciones de instalaci√≥n: completamente local frente a nube gratuita</strong></summary>
+<summary><strong>Opciones de instalaciÛn: completamente local frente a nube gratuita</strong></summary>
 
 <br>
 
-**Completamente local. Sin cuenta, sin clave de API; nada sale de tu m√°quina:**
+**Completamente local. Sin cuenta, sin clave de API; nada sale de tu m·quina:**
 
 ```bash
 pip install memanto
-memanto           # elige "On-Prem"; gu√≠a la configuraci√≥n de Docker + Ollama
+memanto           # elige "On-Prem"; guÌa la configuraciÛn de Docker + Ollama
 ```
 
 Requiere Docker.
@@ -259,7 +259,7 @@ Cambia cuando quieras: `memanto config backend`
 
 <br>
 
-La recuperaci√≥n usa un motor sem√°ntico de teor√≠a de la informaci√≥n incluido, como contenedor Docker local o servicio de nube gratuito. La CLI `memanto` gestiona ambos; los sustratos de almacenamiento son intercambiables y Memanto es el agente que est√° por encima.
+La recuperaciÛn usa un motor sem·ntico de teorÌa de la informaciÛn incluido, como contenedor Docker local o servicio de nube gratuito. La CLI `memanto` gestiona ambos; los sustratos de almacenamiento son intercambiables y Memanto es el agente que est· por encima.
 
 <p align="center">
   <img alt="Arquitectura" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/Architecture-diagram.png" width="900">
@@ -278,7 +278,7 @@ La recuperaci√≥n usa un motor sem√°ntico de teor√≠a de la informaci√≥n incluido,
 
 <br>
 
-**TypeScript / Node.js**: [`@moorcheh-ai/memanto`](../sdks/typescript) inicia un servidor local de Memanto mediante `uvx` y expone un cliente ergon√≥mico (`remember` / `recall` / `answer`).
+**TypeScript / Node.js**: [`@moorcheh-ai/memanto`](../sdks/typescript) inicia un servidor local de Memanto mediante `uvx` y expone un cliente ergonÛmico (`remember` / `recall` / `answer`).
 
 **API REST**: inicia con `memanto serve`. Referencia en [docs.memanto.ai/api](https://docs.memanto.ai/api) y `http://localhost:8000/docs` mientras se ejecuta.
 
@@ -286,22 +286,22 @@ La recuperaci√≥n usa un motor sem√°ntico de teor√≠a de la informaci√≥n incluido,
 
 ---
 
-## V√©alo en acci√≥n
+## VÈalo en acciÛn
 
 | | |
 |---|---|
-| [**Recuperar es m√°s que buscar**](https://youtu.be/zoKP4b_rUhY) ‚Äî 6:20 | [**Configuraci√≥n y demostraci√≥n**](https://www.youtube.com/watch?v=vEtOaoweIG4) |
-| [**Recorrido por el panel local**](https://www.youtube.com/watch?v=5n976CmzohE) | [**Documentaci√≥n ‚Üí**](https://docs.memanto.ai) |
+| [**Recuperar es m·s que buscar**](https://youtu.be/zoKP4b_rUhY) ó 6:20 | [**ConfiguraciÛn y demostraciÛn**](https://www.youtube.com/watch?v=vEtOaoweIG4) |
+| [**Recorrido por el panel local**](https://www.youtube.com/watch?v=5n976CmzohE) | [**DocumentaciÛn ?**](https://docs.memanto.ai) |
 
 ---
 
-## Investigaci√≥n
+## InvestigaciÛn
 
 **[Memanto: Typed Semantic Memory with Information-Theoretic Retrieval for Long-Horizon Agents](https://arxiv.org/abs/2604.22085)**
 
-En benchmarks p√∫blicos de recuperaci√≥n informamos 89.8% en LongMemEval y 87.1% en LoCoMo. <!-- TODO: indica aqu√≠ el modelo lector, el modelo juez y el subconjunto; deber√≠as hacer legibles las condiciones. --> Los conjuntos de datos y el arn√©s est√°n abiertos en [huggingface.co/moorcheh](https://huggingface.co/moorcheh): ejec√∫talos t√∫ mismo.
+En benchmarks p˙blicos de recuperaciÛn informamos 89.8% en LongMemEval y 87.1% en LoCoMo. <!-- TODO: indica aquÌ el modelo lector, el modelo juez y el subconjunto; deberÌas hacer legibles las condiciones. --> Los conjuntos de datos y el arnÈs est·n abiertos en [huggingface.co/moorcheh](https://huggingface.co/moorcheh): ejec˙talos t˙ mismo.
 
-Una salvedad: las puntuaciones entre proyectos no son comparables. El modelo lector, el modelo juez, el prompt del juez y el presupuesto de recuperaci√≥n cambian los resultados varios puntos y las ejecuciones publicadas no comparten configuraci√≥n. Considera cualquier cifra, incluida la nuestra, como orientativa. Un Agente de Memoria deber√≠a medirse por la calidad del patrimonio con el tiempo: contradicciones, obsolescencia y precisi√≥n en el mes seis.
+Una salvedad: las puntuaciones entre proyectos no son comparables. El modelo lector, el modelo juez, el prompt del juez y el presupuesto de recuperaciÛn cambian los resultados varios puntos y las ejecuciones publicadas no comparten configuraciÛn. Considera cualquier cifra, incluida la nuestra, como orientativa. Un Agente de Memoria deberÌa medirse por la calidad del patrimonio con el tiempo: contradicciones, obsolescencia y precisiÛn en el mes seis.
 
 ```bibtex
 @misc{abtahi2026memantotypedsemanticmemory,
@@ -322,7 +322,7 @@ Una salvedad: las puntuaciones entre proyectos no son comparables. El modelo lec
 <p align="center">
   <a href="https://memanto.ai/discord"><img src="https://img.shields.io/badge/Join-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://www.reddit.com/r/Memanto/"><img src="https://img.shields.io/badge/Join-Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" alt="Reddit"></a>
-  <a href="https://docs.memanto.ai"><img src="https://img.shields.io/badge/Docs-memanto.ai-000000?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Documentaci√≥n"></a>
+  <a href="https://docs.memanto.ai"><img src="https://img.shields.io/badge/Docs-memanto.ai-000000?style=for-the-badge&logo=readthedocs&logoColor=white" alt="DocumentaciÛn"></a>
 </p>
 
 <p align="center">
@@ -331,11 +331,11 @@ Una salvedad: las puntuaciones entre proyectos no son comparables. El modelo lec
   <a href="https://deepwiki.com/moorcheh-ai/memanto"><img alt="DeepWiki" src="https://deepwiki.com/badge.svg"></a>
 </p>
 
-Preguntas: [support@moorcheh.ai](mailto:support@moorcheh.ai) ¬∑ [@moorcheh_ai](https://x.com/moorcheh_ai)
+Preguntas: [support@moorcheh.ai](mailto:support@moorcheh.ai) ∑ [@moorcheh_ai](https://x.com/moorcheh_ai)
 
 ---
 
 <p align="center">
   <strong>Licencia MIT</strong><br>
-  <sub><a href="../README.md">English</a> ¬∑ <a href="README_es.md">Espa√±ol</a> ¬∑ <a href="README_zh-CN.md">ÁÆÄ‰Ωì‰∏≠Êñá</a> ¬∑ <a href="README_ja.md">Êó•Êú¨Ë™û</a></sub>
+  <sub><a href="../README.md">English</a> ∑ <a href="README_es.md">EspaÒol</a> ∑ <a href="README_zh-CN.md">????</a> ∑ <a href="README_ja.md">???</a></sub>
 </p>

@@ -225,3 +225,6 @@ project. See [LICENSE](../../LICENSE).
 - [Moorcheh](https://moorcheh.ai) — the no-indexing semantic DB underneath
 - [Model Context Protocol spec](https://modelcontextprotocol.io)
 - [Anthropic MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+
+*Latency metrics are based on internal benchmarks in US-East. They exclude network transit. For optimal performance, we recommend private cloud deployment.*
+
