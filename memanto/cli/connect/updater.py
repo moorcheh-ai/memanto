@@ -363,9 +363,7 @@ def inject_dynamic_memories(
                 if is_global:
                     text = resolved_path.read_text(encoding="utf-8")
                 else:
-                    file_fd = _open_local_dynamic_sync_file(
-                        project_path, resolved_path
-                    )
+                    file_fd = _open_local_dynamic_sync_file(project_path, resolved_path)
                     local_handle = os.fdopen(file_fd, "r+", encoding="utf-8")
                     try:
                         text = local_handle.read()
@@ -389,6 +387,7 @@ def inject_dynamic_memories(
                             if is_global:
                                 resolved_path.write_text(new_text, encoding="utf-8")
                             else:
+                                assert local_handle is not None
                                 local_handle.seek(0)
                                 local_handle.write(new_text)
                                 local_handle.truncate()

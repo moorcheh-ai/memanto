@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.constants import VALID_PROVENANCE_TYPES, VALID_STATUS_TYPES
+from memanto.app.constants import (
+    VALID_PROVENANCE_TYPES,
+    VALID_STATUS_TYPES,
+    ProvenanceType,
+)
 from memanto.app.core import MemoryRecord, is_valid_expired_by, is_valid_source
 from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.services.memory_parsing_service import MemoryParsingService
@@ -423,6 +427,8 @@ class MemoryWriteService:
             )
 
             # Build updated memory record
+            from typing import cast
+
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
                 type=updates.get("type", metadata.get("type", "fact")),
@@ -437,7 +443,7 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=status_val,
                 tags=updates.get("tags", metadata.get("tags", [])),
-                provenance=record_provenance,
+                provenance=cast(ProvenanceType, record_provenance),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)

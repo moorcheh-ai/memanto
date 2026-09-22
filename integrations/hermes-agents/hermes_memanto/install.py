@@ -42,10 +42,13 @@ def _default_hermes_home() -> Path:
 
 def install(hermes_home: Path, *, force: bool = False) -> Path:
     """Write the ``memanto`` plugin into ``hermes_home/plugins`` and return its path."""
-    missing = [str(source) for source in _PROVIDER_MODULES.values() if not source.is_file()]
+    missing = [
+        str(source) for source in _PROVIDER_MODULES.values() if not source.is_file()
+    ]
     if missing:
         raise FileNotFoundError(
-            "Memanto provider installation is incomplete; missing: " + ", ".join(missing)
+            "Memanto provider installation is incomplete; missing: "
+            + ", ".join(missing)
         )
 
     target = hermes_home / "plugins" / _PLUGIN_NAME

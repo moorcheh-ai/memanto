@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 _METADATA_FILE = ".memanto_identity.json"
 _CLAIM_ENV = "MEMANTO_HERMES_PROFILE_CLAIM"

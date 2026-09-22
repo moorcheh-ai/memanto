@@ -14,11 +14,13 @@ from ._profile_identity import (
     resolve_compatible_profile_mapping as _resolve_identity_bound_profile,
 )
 
-
 # Preserve the module surface used by Hermes and by downstream integrations.
 for _name in dir(_core):
     if not _name.startswith("__"):
         globals()[_name] = getattr(_core, _name)
+
+MemantoMemoryProvider = _core.MemantoMemoryProvider
+register = _core.register
 
 
 def _resolve_compatible_profile_mapping(

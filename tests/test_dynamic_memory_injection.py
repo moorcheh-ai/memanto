@@ -292,4 +292,3 @@ def test_unrelated_edit_does_not_upgrade_missing_legacy_provenance():
     uploaded = client.documents.upload.call_args.kwargs["documents"][0]
     assert "provenance" not in uploaded
     assert uploaded["text"].endswith("Updated legacy instruction body.")
-

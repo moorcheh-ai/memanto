@@ -89,12 +89,7 @@ def _sanitize_agent_id(raw: str) -> str:
 
     slug = re.sub(r"[^A-Za-z0-9_-]", "_", raw).strip("_-") or "identity"
     suffix = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:_SANITIZED_ID_HASH_HEX]
-    prefix_budget = (
-        _MAX_AGENT_ID_LENGTH
-        - len(_SANITIZED_ID_PREFIX)
-        - len(suffix)
-        - 1
-    )
+    prefix_budget = _MAX_AGENT_ID_LENGTH - len(_SANITIZED_ID_PREFIX) - len(suffix) - 1
     return f"{_SANITIZED_ID_PREFIX}{slug[:prefix_budget]}-{suffix}"
 
 
@@ -103,11 +98,7 @@ def _legacy_sanitize_agent_id(raw: str) -> str:
     sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
     if len(sanitized) > _MAX_AGENT_ID_LENGTH:
         suffix = hashlib.sha256(raw.encode()).hexdigest()[:8]
-        sanitized = (
-            sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1]
-            + "-"
-            + suffix
-        )
+        sanitized = sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1] + "-" + suffix
     return sanitized
 
 
