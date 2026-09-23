@@ -110,3 +110,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @UniteAndCreateForLife
 - @Priyaanshuuu
 - @ayduanzf-hub
+- @hoaimyn05
