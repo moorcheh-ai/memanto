@@ -38,23 +38,32 @@ class NoAgentConfiguredError(ValueError):
 
 
 class MemantoLifecycle:
-    """Owns the long-lived SdkClient and per-agent session bookkeeping."""
+    """Owns isolated SdkClient instances and per-agent session bookkeeping."""
 
     def __init__(self, settings: MCPServerSettings) -> None:
         self._settings = settings
-        self._client = SdkClient(api_key=settings.api_key_value())
+        self._api_key = settings.api_key_value()
+        self._client_pool: dict[str, SdkClient] = {}
         self._activated_agents: set[str] = set()
         self._ensured_agents: set[str] = set()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     # ------------------------------------------------------------------ #
     # Public API used by tools
     # ------------------------------------------------------------------ #
 
+    def get_client(self, agent_id: str | None = None) -> SdkClient:
+        """Return an isolated SdkClient instance bound to the specified agent."""
+        resolved = agent_id or self._settings.default_agent_id or "default"
+        with self._lock:
+            if resolved not in self._client_pool:
+                self._client_pool[resolved] = SdkClient(api_key=self._api_key)
+            return self._client_pool[resolved]
+
     @property
     def client(self) -> SdkClient:
-        """The shared Memanto SDK client."""
-        return self._client
+        """The default Memanto SDK client (for backward compatibility / admin tools)."""
+        return self.get_client(self._settings.default_agent_id)
 
     @property
     def settings(self) -> MCPServerSettings:
@@ -83,15 +92,16 @@ class MemantoLifecycle:
         chain ``ensure_ready(resolve_agent_id(...))``).
         """
         with self._lock:
+            client = self.get_client(agent_id)
             if agent_id not in self._ensured_agents:
-                self._ensure_agent_exists_locked(agent_id)
+                self._ensure_agent_exists_locked(agent_id, client)
                 self._ensured_agents.add(agent_id)
 
             if (
                 agent_id not in self._activated_agents
-                or self._client.agent_id != agent_id
+                or client.agent_id != agent_id
             ):
-                self._activate_locked(agent_id)
+                self._activate_locked(agent_id, client)
                 self._activated_agents.add(agent_id)
 
         return agent_id
@@ -107,9 +117,9 @@ class MemantoLifecycle:
     # Internals
     # ------------------------------------------------------------------ #
 
-    def _ensure_agent_exists_locked(self, agent_id: str) -> None:
+    def _ensure_agent_exists_locked(self, agent_id: str, client: SdkClient) -> None:
         try:
-            self._client.get_agent(agent_id)
+            client.get_agent(agent_id)
             logger.debug("Agent '%s' exists.", agent_id)
             return
         except AgentNotFoundError:
@@ -128,7 +138,7 @@ class MemantoLifecycle:
             self._settings.agent_pattern,
         )
         try:
-            self._client.create_agent(
+            client.create_agent(
                 agent_id=agent_id,
                 pattern=self._settings.agent_pattern,
                 description="Auto-created by memanto-mcp",
@@ -137,9 +147,9 @@ class MemantoLifecycle:
             # Race: another caller created it between our get_agent and create.
             logger.debug("Agent '%s' was created concurrently.", agent_id)
 
-    def _activate_locked(self, agent_id: str) -> None:
+    def _activate_locked(self, agent_id: str, client: SdkClient) -> None:
         try:
-            self._client.activate_agent(
+            client.activate_agent(
                 agent_id=agent_id,
                 duration_hours=self._settings.session_duration_hours,
             )

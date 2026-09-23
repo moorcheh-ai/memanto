@@ -68,7 +68,7 @@ class AgentService:
 
         # Create namespace in Moorcheh - CRITICAL: Must succeed.
         # ``moorcheh_api_key`` is honored on cloud; ignored on on-prem.
-        client = get_moorcheh_client()
+        client = get_moorcheh_client(api_key=moorcheh_api_key)
 
         try:
             # Use Moorcheh SDK to create namespace with type="text"

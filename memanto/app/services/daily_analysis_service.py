@@ -49,6 +49,16 @@ class DailyAnalysisService:
         """
         Generate a daily natural language summary for an agent and date.
         """
+        if output_path:
+            summary_path = (self.summaries_dir / output_path).resolve() if not Path(output_path).is_absolute() else Path(output_path).resolve()
+            summaries_root = self.summaries_dir.resolve()
+            if not summary_path.is_relative_to(summaries_root):
+                raise ValueError(
+                    f"output_path must be within summaries directory ({summaries_root}), got: {output_path}"
+                )
+        else:
+            summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
+
         # Find all relevant session MD files
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
@@ -99,12 +109,7 @@ Format the output as a Markdown report:
         except Exception as e:
             raise MemoryError(f"AI summarization failed: {str(e)}")
 
-        if output_path:
-            summary_path = Path(output_path)
-            # Ensure parent directories exist
-            summary_path.parent.mkdir(parents=True, exist_ok=True)
-        else:
-            summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(summary_path, "w", encoding="utf-8") as f:
             f.write(summary_text)

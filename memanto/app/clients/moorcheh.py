@@ -98,11 +98,11 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
-def get_moorcheh_client() -> Any:
+def get_moorcheh_client(api_key: str | None = None) -> Any:
     """Dependency injection function (cloud or on-prem)."""
-    return moorcheh_client.get_client()
+    return moorcheh_client.get_client(api_key=api_key)
 
 
-def get_async_moorcheh_client() -> Any:
+def get_async_moorcheh_client(api_key: str | None = None) -> Any:
     """Dependency injection function for async client (cloud or on-prem)."""
-    return moorcheh_client.get_async_client()
+    return moorcheh_client.get_async_client(api_key=api_key)

@@ -779,6 +779,15 @@ class DailySummaryRequest(BaseModel):
         description="Optional custom output path for the summary MD file.",
     )
 
+    @field_validator("output_path")
+    @classmethod
+    def validate_output_path(cls, v: str | None) -> str | None:
+        if v is not None:
+            norm = Path(v)
+            if norm.is_absolute() or ".." in norm.parts:
+                raise ValueError("output_path must be a relative path without traversal components")
+        return v
+
 
 class ConflictDetectRequest(BaseModel):
     date: str | None = Field(
@@ -815,6 +824,8 @@ async def generate_daily_summary(
             "date": resolved_date,
             **result,
         }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise map_error_to_http_exception(e)
 

@@ -315,12 +315,13 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RememberResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
+            client = lifecycle.get_client(resolved)
             resolved_title = title or (
                 content[: _MAX_TITLE_LENGTH - 3] + "..."
                 if len(content) > _MAX_TITLE_LENGTH
                 else content
             )
-            result = lifecycle.client.remember(
+            result = client.remember(
                 agent_id=resolved,
                 memory_type=type,
                 title=resolved_title,
@@ -376,6 +377,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> BatchRememberResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
+            client = lifecycle.get_client(resolved)
             # Validate before round-trip so we fail fast with a clear error.
             for i, item in enumerate(memories):
                 if not isinstance(item, dict):
@@ -399,7 +401,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                     )
 
-            result = lifecycle.client.batch_remember(
+            result = client.batch_remember(
                 agent_id=resolved,
                 memories=memories,
             )
@@ -485,7 +487,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
-            result = lifecycle.client.recall(
+            client = lifecycle.get_client(resolved)
+            result = client.recall(
                 agent_id=resolved,
                 query=query,
                 limit=limit,
@@ -539,7 +542,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
-            result = lifecycle.client.recall_recent(
+            client = lifecycle.get_client(resolved)
+            result = client.recall_recent(
                 agent_id=resolved,
                 limit=limit,
                 type=list(type) if type else None,
@@ -594,7 +598,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
-            result = lifecycle.client.recall_as_of(
+            client = lifecycle.get_client(resolved)
+            result = client.recall_as_of(
                 agent_id=resolved,
                 as_of=as_of,
                 limit=limit,
@@ -650,7 +655,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
-            result = lifecycle.client.recall_changed_since(
+            client = lifecycle.get_client(resolved)
+            result = client.recall_changed_since(
                 agent_id=resolved,
                 since=since,
                 limit=limit,
@@ -725,7 +731,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> AnswerResult:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
-            result = lifecycle.client.answer(
+            client = lifecycle.get_client(resolved)
+            result = client.answer(
                 agent_id=resolved,
                 question=question,
                 limit=limit,
