@@ -339,8 +339,27 @@ def memory_sync(
                 status="active",
             )
 
+            memories = memories_result.get("memories", [])
+
+            # Only trusted provenance may cross the memory -> agent-instruction
+            # boundary. Inferred, observed, and imported memories remain
+            # queryable but must not be promoted into dynamic instructions.
+            trusted_provenance = {
+                "explicit_statement",
+                "corrected",
+                "validated",
+            }
+            dynamic_memories = [
+                mem
+                for mem in memories
+                if str(
+                    mem.get("provenance") or ""
+                ).strip().lower()
+                in trusted_provenance
+            ]
+
             formatted_bullets = []
-            for mem in memories_result.get("memories", []):
+            for mem in dynamic_memories:
                 mem_type = mem.get("type", "fact").upper()
                 content = mem.get("content", "").strip()
                 formatted_bullets.append(f"- [{mem_type}] {content}")
@@ -353,7 +372,14 @@ def memory_sync(
                 connection=connection,
                 scope=scope,
             )
-            recalled_total = len(memories_result.get("memories", []))
+            recalled_total = len(memories)
+            skipped_total = len(memories) - len(dynamic_memories)
+
+            if skipped_total:
+                console.print(
+                    f"[yellow]Skipped {skipped_total} dynamic memory(s) "
+                    "with untrusted provenance.[/yellow]"
+                )
 
         except Exception as e:
             _error(f"Failed to sync dynamic memories: {e}")
