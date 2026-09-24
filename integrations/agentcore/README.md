@@ -27,7 +27,9 @@ Default Memanto agent id:
 tenant-{tenant_id}-user-{user_id}-agent-{agent_name}
 ```
 
-Only `[A-Za-z0-9_-]` are allowed in Memanto agent ids; colons from other systems are normalized to underscores/hyphens.
+Only `[A-Za-z0-9_-]` are allowed in Memanto agent ids. The readable form above is used only when it maps back to exactly one `(tenant_id, user_id, agent_name)`: every part already fits that charset and the `-user-` / `-agent-` delimiters appear exactly once. Any other identity (emails, dotted or non-Latin usernames, parts that contain a delimiter, or ids longer than 64 characters) maps to a SHA-256 hex id of the three parts instead. Two different identities never share a namespace. Without a tenant, the tenant part is `default`, so an explicit `tenant_id="default"` is the same scope as no tenant.
+
+> **Upgrading from 0.1.0:** earlier versions rewrote unsupported characters to `_`. Different users could then resolve to the same agent id, for example `john.doe@acme.com` and `john_doe@acme.com`, or any two non-Latin names. Identities like these now get their own hashed agent id and start with empty memory. Their old agent is **not** adopted automatically, because it may hold memories from more than one person. Ids that were already unambiguous (e.g. `tenant-acme-user-u42-agent-support`, UUID user ids) are unchanged.
 
 ## Installation (preview)
 
@@ -105,11 +107,17 @@ If `user_id` is missing or blank, `resolve_agent_id()` raises `AgentResolutionEr
 ## Custom agent id resolution
 
 ```python
+import hashlib
+import json
+
 from memanto_agentcore import MemantoRuntimeAdapter, TurnContext
 
 
 def my_resolver(context: TurnContext) -> str:
-    return f"acme_{context.user_id}_{context.agent_name}"
+    # Must be injective: never join raw identity parts with a character they
+    # may contain ("a_b" + "c" and "a" + "b_c" would share one namespace).
+    identity = json.dumps([context.tenant_id, context.user_id, context.agent_name])
+    return "acme-" + hashlib.sha256(identity.encode()).hexdigest()[:48]
 
 
 adapter = MemantoRuntimeAdapter(client, agent_id_resolver=my_resolver)
