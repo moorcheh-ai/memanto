@@ -140,6 +140,36 @@ def test_dynamic_sync_rejects_symlinked_local_instruction(tmp_path):
     assert local_instruction.is_symlink()
 
 
+
+def test_dynamic_sync_rejects_parent_directory_symlink(tmp_path):
+    """A symlinked parent directory must not redirect local sync writes."""
+    home = tmp_path / "home"
+    project = home / "repo"
+    outside = home / "outside"
+    project.mkdir(parents=True)
+    outside.mkdir()
+    _instruction_file(outside / "copilot-instructions.md")
+    github = project / ".github"
+    github.symlink_to(outside)
+
+    connections = {
+        "github-copilot": {
+            "projects": [str(project.resolve())],
+            "installed_global": False,
+        }
+    }
+    victim = outside / "copilot-instructions.md"
+    before = victim.read_text()
+
+    with patch(
+        "memanto.cli.config.manager.ConfigManager.load_connections",
+        return_value=connections,
+    ):
+        with pytest.raises(ValueError, match="outside project"):
+            inject_dynamic_memories(str(project), "- [INSTRUCTION] injected")
+
+    assert victim.read_text() == before
+
 def test_dynamic_sync_uses_validated_target_after_alias_retarget(tmp_path):
     project = tmp_path / "project"
     project.mkdir()

@@ -6,6 +6,7 @@ from typing import Any
 
 from memanto.cli.connect.agent_registry import list_agents
 from memanto.cli.connect.engine import install_agent
+from memanto.cli.connect.path_scope import assert_project_local_path
 from memanto.cli.connect.templates import TEMPLATE_VERSION
 
 
@@ -179,17 +180,12 @@ def _assert_dynamic_sync_write_scope(
     project_path: Path, target: Path, is_global: bool
 ) -> Path:
     """Return the resolved target after enforcing project-local write scope."""
-    try:
-        root = project_path.resolve()
-        resolved = target.resolve(strict=False)
-        if not is_global:
-            resolved.relative_to(root)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise ValueError(
-            f"Refusing dynamic memory sync outside project: {target}"
-        ) from exc
-
-    return resolved
+    return assert_project_local_path(
+        project_path,
+        target,
+        is_global=is_global,
+        action="dynamic memory sync",
+    )
 
 
 def _open_local_dynamic_sync_file(project_path: Path, target: Path) -> int:
