@@ -676,9 +676,15 @@ class TestMEMANTOAPI:
 
     @pytest.mark.asyncio
     async def test_answer_accepts_ai_model_field(
-        self, client, auth_headers, mock_moorcheh
+        self, client, auth_headers, mock_moorcheh, monkeypatch
     ):
         """Test ai_model request field maps to answer.generate ai_model."""
+        # ai_model overrides require operator opt-in via ANSWER_ALLOWED_MODELS.
+        monkeypatch.setattr(
+            settings,
+            "ANSWER_ALLOWED_MODELS",
+            "anthropic.claude-sonnet-4-6",
+        )
         await client.post(
             "/api/v2/agents",
             headers=auth_headers,

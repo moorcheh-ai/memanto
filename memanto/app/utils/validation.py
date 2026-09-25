@@ -105,6 +105,37 @@ class CostGuard:
             )
         return namespaces
 
+    @staticmethod
+    def validate_ai_model(requested: str | None) -> str | None:
+        """Honor a caller-requested model only when the operator allowlists it.
+
+        The ``ai_model`` request parameter picks which backend LLM answers the
+        question (and which model the retrieved memory context is sent to). An
+        unrestricted override lets any session-token holder run arbitrary —
+        potentially premium or differently-governed — models on the owner's
+        account, so overrides default to off and are enabled only through the
+        ``ANSWER_ALLOWED_MODELS`` setting.
+        """
+        if requested is None:
+            return None
+        from memanto.app.config import settings
+
+        allowed = {
+            m.strip() for m in settings.ANSWER_ALLOWED_MODELS.split(",") if m.strip()
+        }
+        if requested not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "ai_model_not_allowed",
+                    "message": (
+                        "Requested ai_model is not permitted on this server. "
+                        "Set ANSWER_ALLOWED_MODELS to enable caller-selected models."
+                    ),
+                },
+            )
+        return requested
+
 
 # Enhanced Pydantic models with validation
 class ValidatedMemoryWriteRequest(BaseModel):
