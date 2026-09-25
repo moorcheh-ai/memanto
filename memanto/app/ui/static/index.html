@@ -3368,12 +3368,15 @@
         // ================================================================
         async function loadConflictBadge() {
             try {
-                const data = await api('GET', '/api/ui/conflicts');
+                const [data] = await Promise.all([
+                    api('GET', '/api/ui/conflicts').catch(() => ({ count: 0 })),
+                    fetchConflictScans().catch(() => {}),
+                    fetchRecentMemories().catch(() => {})
+                ]);
                 const badge = document.getElementById('conflictBadge');
-                await fetchConflictScans();
-                await fetchRecentMemories();
+                if (!badge) return;
                 const staleToday = staleMemCountForDay(todayKey());
-                if (data.count > 0) {
+                if (data && data.count > 0) {
                     badge.textContent = data.count;
                     badge.title = `${data.count} unresolved conflict(s) today`;
                     badge.style.display = 'inline-flex';
@@ -3392,7 +3395,13 @@
         // ================================================================
         async function loadAgents() {
             const box = document.getElementById('agentsContent');
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>';
+            if (S._cachedAgents && S._cachedAgents.length > 0) {
+                box.innerHTML = buildAgentsTable(S._cachedAgents);
+                // Subtle updating indicator could go here
+            } else {
+                box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>';
+            }
+            
             if (!isBackendConfigured()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No backend configured. Set one in the Config page to manage agents.</p>';
                 return;
@@ -3400,13 +3409,16 @@
             try {
                 const res = await api('GET', '/api/v2/agents');
                 const agents = res.agents || [];
+                S._cachedAgents = agents;
                 if (!agents.length) {
                     box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Create one via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
                     return;
                 }
                 box.innerHTML = buildAgentsTable(agents);
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error loading agents: ${escHtml(e.message)}</p>`;
+                if (!S._cachedAgents) {
+                    box.innerHTML = `<p style="color:var(--error);padding:20px">Error loading agents: ${escHtml(e.message)}</p>`;
+                }
             }
         }
 
@@ -4237,8 +4249,12 @@
         async function fetchRecentMemories() {
             if (!hasActiveSession()) return;
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
-                S.history = res.memories || [];
+                const now = Date.now();
+                if (!S._lastHistoryFetch || (now - S._lastHistoryFetch > 30000) || !S.history || S.history.length === 0) {
+                    const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
+                    S.history = res.memories || [];
+                    S._lastHistoryFetch = now;
+                }
             } catch { }
         }
 
@@ -4248,16 +4264,26 @@
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
+            
+            if (S.history && S.history.length > 0) {
+                renderHistory();
+            } else {
+                box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
+            }
+            
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
-                S.history = res.memories || [];
-                await fetchConflictScans();
+                await Promise.all([
+                    fetchRecentMemories(),
+                    fetchConflictScans()
+                ]);
+                
                 // Preserve any pre-set filter/summary state (e.g. dashboard
                 // navigated here with a specific day pre-selected).
                 renderHistory();
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
+                if (!S.history || S.history.length === 0) {
+                    box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
+                }
             }
         }
 
@@ -5649,15 +5675,41 @@
 
         async function loadConflicts() {
             const container = document.getElementById('conflictsContent');
-            container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
+            
+            const dateInput = document.getElementById('conflictsDateInput');
+            if (dateInput && !dateInput.value) dateInput.value = todayKey();
+            const date = conflictsDateValue();
+            
+            // Check if we have cached conflicts for this exact date
+            const cacheKey = `${S.agentId || 'none'}_${date}`;
+            
+            if (S._cachedConflicts && S._cachedConflicts.key === cacheKey) {
+                // Instantly render from cache
+                const conflicts = S._cachedConflicts.data.conflicts || [];
+                const scanDate = S._cachedConflicts.data.date || date;
+                const scan = (S.conflictScans || {})[scanDate];
+                const staleCount = staleMemCountForDay(scanDate);
+                const rawAgentId = S._cachedConflicts.data.agent_id || '';
+                const rawDate = S._cachedConflicts.data.date || date;
+                const bannerEl = buildConflictBannerEl(scanDate, scan, staleCount);
+                
+                if (!conflicts.length) {
+                    renderConflictsEmpty(container, bannerEl);
+                } else {
+                    renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
+                }
+            } else {
+                container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
+            }
 
             try {
-                const dateInput = document.getElementById('conflictsDateInput');
-                if (dateInput && !dateInput.value) dateInput.value = todayKey();
-                const date = conflictsDateValue();
                 const agentQ = S.agentId ? `&agent_id=${encodeURIComponent(S.agentId)}` : '';
                 const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}${agentQ}`);
                 const conflicts = data.conflicts || [];
+                
+                // Cache the response
+                S._cachedConflicts = { key: cacheKey, data: data };
+                
                 await fetchConflictScans();
                 await fetchRecentMemories();
 
@@ -5675,11 +5727,13 @@
 
                 renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
             } catch (e) {
-                container.replaceChildren();
-                const err = document.createElement('p');
-                err.style.cssText = 'color:var(--error);padding:20px';
-                err.textContent = `Failed to load conflicts: ${e.message}`;
-                container.appendChild(err);
+                if (!S._cachedConflicts || S._cachedConflicts.key !== cacheKey) {
+                    container.replaceChildren();
+                    const err = document.createElement('p');
+                    err.style.cssText = 'color:var(--error);padding:20px';
+                    err.textContent = `Failed to load conflicts: ${e.message}`;
+                    container.appendChild(err);
+                }
             }
         }
 
@@ -5728,113 +5782,129 @@
                 return;
             }
             const cards = document.getElementById('analyticsCards');
-            cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
+            
+            let mems = S.history || [];
+            if (mems.length > 0) {
+                renderAnalyticsCards(cards, mems);
+            } else {
+                cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
+            }
 
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
-                const mems = res.memories || [];
+                const now = Date.now();
+                if (!S._lastHistoryFetch || (now - S._lastHistoryFetch > 30000) || mems.length === 0) {
+                    const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
+                    mems = res.memories || [];
+                    S.history = mems;
+                    S._lastHistoryFetch = now;
+                    renderAnalyticsCards(cards, mems);
+                }
+            } catch (e) {
+                if (mems.length === 0) {
+                    cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
+                }
+            }
+        }
 
-                const typeCounts = {};
-                const confBuckets = { 'High (0.8-1.0)': 0, 'Medium (0.5-0.8)': 0, 'Low (0-0.5)': 0 };
-                const usageBuckets = {};
-                const sourceBuckets = {};
-                const tagCounts = {};
-                let totalConf = 0;
-                mems.forEach(m => {
-                    const t = m.type || 'unknown';
-                    typeCounts[t] = (typeCounts[t] || 0) + 1;
+        function renderAnalyticsCards(cards, mems) {
+            const typeCounts = {};
+            const confBuckets = { 'High (0.8-1.0)': 0, 'Medium (0.5-0.8)': 0, 'Low (0-0.5)': 0 };
+            const usageBuckets = {};
+            const sourceBuckets = {};
+            const tagCounts = {};
+            let totalConf = 0;
+            mems.forEach(m => {
+                const t = m.type || 'unknown';
+                typeCounts[t] = (typeCounts[t] || 0) + 1;
 
-                    const s = m.source || 'unknown';
-                    sourceBuckets[s] = (sourceBuckets[s] || 0) + 1;
+                const s = m.source || 'unknown';
+                sourceBuckets[s] = (sourceBuckets[s] || 0) + 1;
 
-                    if (m.tags && Array.isArray(m.tags)) {
-                        m.tags.forEach(tag => {
-                            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                        });
-                    } else if (m.tags && typeof m.tags === 'string') {
-                        m.tags.split(',').map(tag => tag.trim()).forEach(tag => {
-                            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                        });
-                    }
+                if (m.tags && Array.isArray(m.tags)) {
+                    m.tags.forEach(tag => {
+                        if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                    });
+                } else if (m.tags && typeof m.tags === 'string') {
+                    m.tags.split(',').map(tag => tag.trim()).forEach(tag => {
+                        if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                    });
+                }
 
-                    const c = parseFloat(m.confidence) || 0;
-                    totalConf += c;
-                    if (c >= 0.8) confBuckets['High (0.8-1.0)']++;
-                    else if (c >= 0.5) confBuckets['Medium (0.5-0.8)']++;
-                    else confBuckets['Low (0-0.5)']++;
+                const c = parseFloat(m.confidence) || 0;
+                totalConf += c;
+                if (c >= 0.8) confBuckets['High (0.8-1.0)']++;
+                else if (c >= 0.5) confBuckets['Medium (0.5-0.8)']++;
+                else confBuckets['Low (0-0.5)']++;
 
-                    if (m.created_at) {
-                        try {
-                            const dateObj = new Date(m.created_at);
-                            if (!isNaN(dateObj.getTime())) {
-                                const isoDate = dateObj.toISOString().split('T')[0];
-                                usageBuckets[isoDate] = (usageBuckets[isoDate] || 0) + 1;
-                            }
-                        } catch (e) { }
-                    }
-                });
-                const avgConf = mems.length ? (totalConf / mems.length) : 0;
+                if (m.created_at) {
+                    try {
+                        const dateObj = new Date(m.created_at);
+                        if (!isNaN(dateObj.getTime())) {
+                            const isoDate = dateObj.toISOString().split('T')[0];
+                            usageBuckets[isoDate] = (usageBuckets[isoDate] || 0) + 1;
+                        }
+                    } catch (e) { }
+                }
+            });
+            const avgConf = mems.length ? (totalConf / mems.length) : 0;
 
-                cards.innerHTML = `
+            cards.innerHTML = `
             <div class="card"><div class="card-label">Total Sampled</div><div class="card-value">${mems.length}</div><div class="card-sub">memories analyzed</div></div>
             <div class="card"><div class="card-label">Memory Types</div><div class="card-value">${Object.keys(typeCounts).length}</div><div class="card-sub">distinct types</div></div>
             <div class="card"><div class="card-label">Avg Confidence</div><div class="card-value ${confClass(avgConf)}">${avgConf.toFixed(2)}</div></div>
         `;
 
-                const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
-                const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
+            const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
+            const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
 
-                if (S.charts.usage) S.charts.usage.destroy();
-                if (S.charts.type) S.charts.type.destroy();
-                if (S.charts.conf) S.charts.conf.destroy();
-                if (S.charts.source) S.charts.source.destroy();
+            if (S.charts.usage) S.charts.usage.destroy();
+            if (S.charts.type) S.charts.type.destroy();
+            if (S.charts.conf) S.charts.conf.destroy();
+            if (S.charts.source) S.charts.source.destroy();
 
-                const sortedDates = Object.keys(usageBuckets).sort();
-                const usageData = sortedDates.map(d => usageBuckets[d]);
+            const sortedDates = Object.keys(usageBuckets).sort();
+            const usageData = sortedDates.map(d => usageBuckets[d]);
 
-                S.charts.usage = new Chart(document.getElementById('chartUsage'), {
-                    type: 'line',
-                    data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+            S.charts.usage = new Chart(document.getElementById('chartUsage'), {
+                type: 'line',
+                data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+            });
+
+            S.charts.type = new Chart(document.getElementById('chartType'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+            });
+
+            S.charts.source = new Chart(document.getElementById('chartSource'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+            });
+
+            S.charts.conf = new Chart(document.getElementById('chartConf'), {
+                type: 'bar',
+                data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
+            });
+
+            // Generate Word Cloud
+            const tagsContainer = document.getElementById('tagsCloud');
+            const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 30);
+            if (sortedTags.length === 0) {
+                tagsContainer.innerHTML = '<p style="color:var(--text-dim);padding:20px;text-align:center">No tags found</p>';
+            } else {
+                const maxCount = Math.max(...sortedTags.map(t => t[1]));
+                let cloudHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;padding:20px;">';
+                sortedTags.forEach(([tag, count]) => {
+                    const ratio = count / maxCount; // 0.0 to 1.0
+                    const size = Math.max(11, 11 + ratio * 18); // 11px to 29px
+                    const opacity = Math.max(0.4, ratio); // 0.4 to 1.0
+                    cloudHtml += `<span title="${count} memories" style="font-size:${size}px;color:rgba(6,182,212,${opacity});font-weight:600;font-family:var(--font-mono);border:1px solid rgba(6,182,212,${opacity*0.3});padding:4px 12px;border-radius:20px;background:rgba(6,182,212,${opacity*0.05});background-clip:padding-box;line-height:1;margin:4px">${escHtml(tag)} <small style="font-size:0.65em;opacity:0.7">(${count})</small></span>`;
                 });
-
-                S.charts.type = new Chart(document.getElementById('chartType'), {
-                    type: 'doughnut',
-                    data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
-                });
-
-                S.charts.source = new Chart(document.getElementById('chartSource'), {
-                    type: 'doughnut',
-                    data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
-                });
-
-                S.charts.conf = new Chart(document.getElementById('chartConf'), {
-                    type: 'bar',
-                    data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
-                });
-
-                // Generate Word Cloud
-                const tagsContainer = document.getElementById('tagsCloud');
-                const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 30);
-                if (sortedTags.length === 0) {
-                    tagsContainer.innerHTML = '<p style="color:var(--text-dim);padding:20px;text-align:center">No tags found</p>';
-                } else {
-                    const maxCount = Math.max(...sortedTags.map(t => t[1]));
-                    let cloudHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;padding:20px;">';
-                    sortedTags.forEach(([tag, count]) => {
-                        const ratio = count / maxCount; // 0.0 to 1.0
-                        const size = Math.max(11, 11 + ratio * 18); // 11px to 29px
-                        const opacity = Math.max(0.4, ratio); // 0.4 to 1.0
-                        cloudHtml += `<span title="${count} memories" style="font-size:${size}px;color:rgba(6,182,212,${opacity});font-weight:600;font-family:var(--font-mono);border:1px solid rgba(6,182,212,${opacity*0.3});padding:4px 12px;border-radius:20px;background:rgba(6,182,212,${opacity*0.05});background-clip:padding-box;line-height:1;margin:4px">${escHtml(tag)} <small style="font-size:0.65em;opacity:0.7">(${count})</small></span>`;
-                    });
-                    cloudHtml += '</div>';
-                    tagsContainer.innerHTML = cloudHtml;
-                }
-            } catch (e) {
-                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
+                cloudHtml += '</div>';
+                tagsContainer.innerHTML = cloudHtml;
             }
         }
         // ================================================================

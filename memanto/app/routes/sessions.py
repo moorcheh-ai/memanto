@@ -6,6 +6,7 @@ Replaces tenant_id with Moorcheh API key-based authentication.
 """
 
 import asyncio
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
@@ -53,6 +54,11 @@ def get_agent_service():
     return agent_service
 
 
+_namespace_counts_cache: dict[str, int] = {}
+_namespace_counts_cache_time = 0.0
+_NAMESPACE_CACHE_TTL = 30.0  # seconds
+
+
 async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
     """Map namespace_name -> live document count from Moorcheh.
 
@@ -61,6 +67,11 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
     document count, which is what the UI should display. Best-effort: returns an
     empty map if Moorcheh is unreachable so agent listing still succeeds.
     """
+    global _namespace_counts_cache, _namespace_counts_cache_time
+    now = time.monotonic()
+    if now - _namespace_counts_cache_time < _NAMESPACE_CACHE_TTL:
+        return _namespace_counts_cache
+
     try:
         client = moorcheh_clients.get_moorcheh_client()
         ns_resp = await asyncio.to_thread(client.namespaces.list)
@@ -80,9 +91,12 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
                 counts[namespace_name] = int(raw_count)
             except (TypeError, ValueError):
                 counts[namespace_name] = 0
+
+        _namespace_counts_cache = counts
+        _namespace_counts_cache_time = now
         return counts
     except Exception:
-        return {}
+        return _namespace_counts_cache
 
 
 # ============================================================================
@@ -91,7 +105,7 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
 
 
 @router.post("/agents", response_model=AgentInfo, status_code=201)
-async def create_agent(
+def create_agent(
     agent_create: AgentCreate, moorcheh_api_key: str = Depends(verify_moorcheh_api_key)
 ):
     """
@@ -165,7 +179,7 @@ async def get_agent(
 
 
 @router.delete("/agents/{agent_id}", status_code=200)
-async def delete_agent(
+def delete_agent(
     agent_id: str,
     delete_backup_too: bool = Query(
         False, alias="delete-backup-too", description="Delete Moorcheh namespace backup"
