@@ -113,3 +113,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @hoaimyn05
 - @HARSHAVARDHAN-RAJU5
 - @Ferradd
+- @icekinder
