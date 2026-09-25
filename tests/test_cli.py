@@ -189,6 +189,25 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "MEMANTO Status" in result.stdout
 
+    @patch("memanto.cli.commands.core.httpx.get")
+    def test_status_lists_registered_agents(self, mock_get, mock_all_clients):
+        """list_agents() returns {"agents": [...]} — status must unwrap it."""
+        mock_get.side_effect = ConnectionError("offline")
+        mock_all_clients.get_session_info.return_value = {"agent_id": "test-agent"}
+        mock_all_clients.list_agents.return_value = {
+            "agents": [
+                {"agent_id": "test-agent", "pattern": "tool", "session_count": 2},
+                {"agent_id": "other-agent", "pattern": "tool", "session_count": 1},
+            ],
+            "count": 2,
+            "warnings": [],
+        }
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0, result.stdout
+        assert "Could not fetch agent list" not in result.stdout
+        assert "Registered Agents" in result.stdout
+        assert "other-agent" in result.stdout
+
     # ========================================================================
     # AGENT COMMANDS
     # ========================================================================
