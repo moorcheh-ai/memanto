@@ -4068,26 +4068,13 @@
             const profile = document.getElementById('agentProfile');
             const session = document.getElementById('sessionInfo');
 
-            let healthStatus = '—', healthColor = 'var(--text-dim)';
             let agentCount = '—';
 
-            try {
-                const health = await api('GET', '/health');
-                healthStatus = health.status || 'unknown';
-                healthColor = healthStatus === 'healthy' ? 'var(--success)' : healthStatus === 'degraded' ? 'var(--warning)' : 'var(--error)';
-            } catch { healthStatus = 'offline'; healthColor = 'var(--error)'; }
-
-            try {
-                const agents = await api('GET', '/api/v2/agents');
-                const list = agents.agents || agents || [];
-                agentCount = Array.isArray(list) ? list.length : '?';
-                if (Array.isArray(list)) checkAchievements(list);
-            } catch { }
-
+            // Placeholder structure immediately
             cards.innerHTML = `
         <div class="card"><div class="card-label">Active Agent</div><div class="card-value" style="font-size:18px;color:var(--accent)">${S.agentId || '—'}</div><div class="card-sub">${S.config?.has_active_session ? 'Session active' : 'No session'}</div></div>
-        <div class="card" style="cursor:pointer" onclick="goToPage('agents')" title="View all agents"><div class="card-label">Agents</div><div class="card-value">${agentCount}</div><div class="card-sub">registered — click to manage</div></div>
-        <div class="card"><div class="card-label">System Health</div><div class="card-value" style="color:${healthColor};font-size:18px">${healthStatus}</div><div class="card-sub">Moorcheh connection</div></div>
+        <div class="card" style="cursor:pointer" onclick="goToPage('agents')" title="View all agents"><div class="card-label">Agents</div><div class="card-value" id="dashAgentCount">…</div><div class="card-sub">registered — click to manage</div></div>
+        <div class="card"><div class="card-label">System Health</div><div class="card-value" id="dashHealthStatus" style="font-size:18px">…</div><div class="card-sub">Moorcheh connection</div></div>
         ${isOnPrem()
             ? `<div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:14px"><span style="color:var(--success)">On-Prem</span></div><div class="card-sub">${escHtml(S.config?.on_prem?.url || 'http://localhost:8080')}</div></div>`
             : `<div class="card"><div class="card-label">API Key</div><div class="card-value" style="font-size:14px">${S.config?.api_key_configured ? '<span style="color:var(--success)">✓ Configured</span>' : '<span style="color:var(--error)">✗ Missing</span>'}</div><div class="card-sub">${S.config?.api_key_preview || ''}</div></div>`}
@@ -4097,12 +4084,35 @@
             <div class="card-sub">checking…</div>
         </div>
     `;
-            // Async probe — show whether today's summary already exists
+
+            // Async probe
             if (S.agentId) refreshTodaySummaryCard();
 
+            // Fire off health independently
+            api('GET', '/health').then(health => {
+                const healthStatus = health.status || 'unknown';
+                const healthColor = healthStatus === 'healthy' ? 'var(--success)' : healthStatus === 'degraded' ? 'var(--warning)' : 'var(--error)';
+                const el = document.getElementById('dashHealthStatus');
+                if (el) { el.textContent = healthStatus; el.style.color = healthColor; }
+            }).catch(() => {
+                const el = document.getElementById('dashHealthStatus');
+                if (el) { el.textContent = 'offline'; el.style.color = 'var(--error)'; }
+            });
+
+            // Fire off agent count independently
+            api('GET', '/api/v2/agents?include_counts=false').then(agents => {
+                const list = agents.agents || agents || [];
+                const el = document.getElementById('dashAgentCount');
+                if (el) el.textContent = Array.isArray(list) ? list.length : '?';
+                if (Array.isArray(list)) checkAchievements(list);
+            }).catch(() => {
+                const el = document.getElementById('dashAgentCount');
+                if (el) el.textContent = '?';
+            });
+
             if (S.agentId) {
-                try {
-                    const agent = await api('GET', `/api/v2/agents/${S.agentId}`);
+                profile.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                api('GET', `/api/v2/agents/${S.agentId}?include_counts=false`).then(agent => {
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
                 <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${escHtml(agent.agent_id)}</strong></td></tr>
@@ -4112,14 +4122,16 @@
                 <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
-                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
+                }).catch(e => {
+                    profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`;
+                });
             } else {
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
 
             if (hasActiveSession()) {
-                try {
-                    const sess = await api('GET', '/api/v2/status');
+                session.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                api('GET', '/api/v2/status').then(sess => {
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
@@ -4131,7 +4143,9 @@
                 <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
-                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
+                }).catch(e => {
+                    session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`;
+                });
             } else {
                 session.innerHTML = '<p style="color:var(--text-dim)">No active session</p>';
             }
