@@ -14,8 +14,8 @@ What it gives Hermes:
 
 This module is the single source of truth for the provider. The installer
 (``hermes-memanto-install``) copies it verbatim into
-``$HERMES_HOME/plugins/memanto/__init__.py`` so Hermes discovers it as a
-directory plugin. The ``agent`` / ``tools`` imports below resolve against the
+``$HERMES_HOME/plugins/memanto/__init__.py``, next to ``_profile_identity.py``,
+so Hermes discovers it as a directory plugin. The ``agent`` / ``tools`` imports below resolve against the
 host Hermes at runtime; when imported standalone (e.g. unit tests, packaging)
 they fall back to minimal stand-ins so the module still imports.
 
@@ -37,6 +37,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
 
+from ._profile_identity import (
+    resolve_compatible_profile_mapping as _resolve_identity_bound_profile,
+)
+
 try:  # resolved against the host Hermes at runtime
     from agent.memory_provider import MemoryProvider
 except Exception:  # pragma: no cover - running outside a Hermes runtime
@@ -50,6 +54,7 @@ try:  # resolved against the host Hermes at runtime
 except Exception:  # pragma: no cover - running outside a Hermes runtime
 
     def tool_error(message: str) -> str:  # type: ignore[misc]
+        """Return a JSON error payload in the shape Hermes tools expect."""
         return json.dumps({"error": message})
 
 
@@ -66,16 +71,59 @@ _CAPTURE_CONFIDENCE = 0.6
 _MIN_CAPTURE_LENGTH = 10
 _MAX_TITLE_LENGTH = 100
 _MAX_AGENT_ID_LENGTH = 64
+_SANITIZED_ID_PREFIX = "memh_"
+_SANITIZED_ID_HASH_HEX = 16
 _ACTIVATION_RETRY_COOLDOWN = 60.0
 
 
 def _sanitize_agent_id(raw: str) -> str:
-    """Sanitize charset and append a stable hash if over 64 chars."""
+    """Return a safe, collision-resistant agent/profile identifier.
+
+    Already-safe short identifiers remain unchanged for compatibility. Values
+    that need charset normalization, truncation, or that begin with the
+    reserved normalization prefix are moved into a separate hashed namespace.
+    This prevents unsafe-to-unsafe aliases and aliases with a literal safe
+    spelling of a normalized identifier.
+    """
+    if (
+        len(raw) <= _MAX_AGENT_ID_LENGTH
+        and re.fullmatch(r"[A-Za-z0-9_-]+", raw)
+        and not raw.startswith(_SANITIZED_ID_PREFIX)
+    ):
+        return raw
+
+    slug = re.sub(r"[^A-Za-z0-9_-]", "_", raw).strip("_-") or "identity"
+    suffix = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:_SANITIZED_ID_HASH_HEX]
+    prefix_budget = _MAX_AGENT_ID_LENGTH - len(_SANITIZED_ID_PREFIX) - len(suffix) - 1
+    return f"{_SANITIZED_ID_PREFIX}{slug[:prefix_budget]}-{suffix}"
+
+
+def _legacy_sanitize_agent_id(raw: str) -> str:
+    """Return the identifier produced by the pre-hardening sanitizer."""
     sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
     if len(sanitized) > _MAX_AGENT_ID_LENGTH:
         suffix = hashlib.sha256(raw.encode()).hexdigest()[:8]
         sanitized = sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1] + "-" + suffix
     return sanitized
+
+
+def _resolve_compatible_profile_mapping(
+    hermes_home: str,
+    identity: str,
+    raw_agent_id: str,
+) -> tuple[str, Path]:
+    """Resolve the profile directory and namespace for a Hermes identity.
+
+    Delegates to the identity-bound resolver using this module's current and
+    legacy agent-id sanitizers.
+    """
+    return _resolve_identity_bound_profile(
+        hermes_home,
+        identity,
+        raw_agent_id,
+        sanitize_agent_id=_sanitize_agent_id,
+        legacy_sanitize_agent_id=_legacy_sanitize_agent_id,
+    )
 
 
 # Memory taxonomy mirrored from memanto.app.constants.VALID_MEMORY_TYPES so the
@@ -128,6 +176,7 @@ def _resolve_hermes_home() -> str:
 
 
 def _default_config() -> dict:
+    """Return the provider settings used when ``memanto.json`` sets nothing."""
     return {
         "agent_id": _DEFAULT_AGENT_ID,
         "pattern": _DEFAULT_PATTERN,
@@ -142,6 +191,11 @@ def _default_config() -> dict:
 
 
 def _as_bool(value: Any, default: bool) -> bool:
+    """Interpret a config value as a boolean, falling back to ``default``.
+
+    Booleans pass through; common true/false strings such as ``"yes"`` and
+    ``"off"`` are recognized case-insensitively; anything else is ``default``.
+    """
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
@@ -154,6 +208,11 @@ def _as_bool(value: Any, default: bool) -> bool:
 
 
 def _detect_memory_type(text: str) -> str:
+    """Guess a Memanto memory type for ``text`` from simple keyword cues.
+
+    Returns ``"preference"``, ``"decision"``, ``"fact"`` or, when no cue
+    matches, ``"observation"``.
+    """
     lowered = text.lower()
     if re.search(r"prefer|like|love|hate|want", lowered):
         return "preference"
@@ -165,6 +224,12 @@ def _detect_memory_type(text: str) -> str:
 
 
 def _load_memanto_config(hermes_home: str) -> dict:
+    """Load ``memanto.json`` from ``hermes_home`` and normalize its values.
+
+    Missing or unreadable files yield the defaults. Patterns, booleans and
+    numeric limits are coerced and clamped; ``agent_id`` is kept as a raw
+    template so ``{identity}`` can be expanded during initialization.
+    """
     config = _default_config()
     config_path = Path(hermes_home) / "memanto.json"
     if config_path.exists():
@@ -213,6 +278,11 @@ def _load_memanto_config(hermes_home: str) -> dict:
 
 
 def _save_memanto_config(values: dict, hermes_home: str) -> None:
+    """Merge ``values`` into ``memanto.json`` under ``hermes_home``.
+
+    Existing keys not present in ``values`` are preserved; an unreadable file
+    is replaced.
+    """
     config_path = Path(hermes_home) / "memanto.json"
     existing: dict = {}
     if config_path.exists():
@@ -229,10 +299,12 @@ def _save_memanto_config(values: dict, hermes_home: str) -> None:
 
 
 def _clean_text_for_capture(text: str) -> str:
+    """Strip injected Memanto context blocks and surrounding whitespace."""
     return _CONTEXT_STRIP_RE.sub("", text or "").strip()
 
 
 def _is_trivial_message(text: str) -> bool:
+    """Return whether ``text`` is a short acknowledgement not worth capturing."""
     return bool(_TRIVIAL_RE.match((text or "").strip()))
 
 
@@ -294,6 +366,7 @@ class _MemantoClient:
         auto_create: bool = True,
         session_duration_hours: int | None = None,
     ):
+        """Create a client for ``agent_id`` without contacting the backend yet."""
         from memanto.cli.client.sdk_client import SdkClient
 
         self._agent_id = agent_id
@@ -310,9 +383,15 @@ class _MemantoClient:
 
     @property
     def agent_id(self) -> str:
+        """The Memanto agent id this client reads from and writes to."""
         return self._agent_id
 
     def set_profile_path(self, profile_path: str) -> None:
+        """Bind the client to a Hermes profile directory.
+
+        The session token is persisted inside that directory; a previously
+        saved token is loaded and marks the client ready without reactivating.
+        """
         self._profile_path = Path(profile_path)
         self._token_file = self._profile_path / _TOKEN_FILE_NAME
 
@@ -324,6 +403,10 @@ class _MemantoClient:
             self._ready = True
 
     def save_token(self, token: str) -> None:
+        """Persist ``token`` to the profile's token file with owner-only permissions.
+
+        Failures are logged at debug level and otherwise ignored.
+        """
         if self._token_file:
             try:
                 self._token_file.parent.mkdir(parents=True, exist_ok=True)
@@ -340,6 +423,7 @@ class _MemantoClient:
                 logger.debug("Failed to save token to file", exc_info=True)
 
     def load_token(self) -> str | None:
+        """Return the persisted session token, or ``None`` when none is readable."""
         if self._token_file and self._token_file.exists():
             try:
                 return self._token_file.read_text(encoding="utf-8").strip()
@@ -348,6 +432,11 @@ class _MemantoClient:
         return None
 
     def auto_refresh(self) -> bool:
+        """Force a new session activation after an authentication failure.
+
+        Refreshes are throttled; within the throttle window the current ready
+        state is returned unchanged. Returns whether the client is ready.
+        """
         try:
             with self._lock:
                 now = time.monotonic()
@@ -363,6 +452,7 @@ class _MemantoClient:
             return False
 
     def _is_refreshable_auth_error(self, error: Exception) -> bool:
+        """Return whether ``error`` is an auth failure that a new session may fix."""
         try:
             from memanto.app.utils.errors import (
                 AuthenticationError,
@@ -384,6 +474,11 @@ class _MemantoClient:
             return False
 
     def _call_with_auth_retry(self, operation: str, call: Callable[[], _T]) -> _T:
+        """Run ``call`` with an active session, retrying once after an auth refresh.
+
+        ``operation`` names the call in debug logs. Non-auth errors, and auth
+        errors that a refresh cannot fix, propagate to the caller.
+        """
         self.ensure_session()
         try:
             return call()
@@ -400,6 +495,12 @@ class _MemantoClient:
             return call()
 
     def ensure_session(self) -> None:
+        """Make sure the agent exists and has an active session.
+
+        Creates the agent when ``auto_create`` allows it, activates a session and
+        persists its token. After a failure, further attempts raise until the
+        retry cooldown has elapsed.
+        """
         if self._ready:
             return
         with self._lock:
@@ -453,6 +554,7 @@ class _MemantoClient:
         source: str = "hermes",
         provenance: str = "explicit_statement",
     ) -> dict:
+        """Store one memory for this agent and return the backend response."""
         return self._call_with_auth_retry(
             "remember",
             lambda: self._client.remember(
@@ -475,6 +577,7 @@ class _MemantoClient:
         type: list[str] | None = None,
         min_confidence: float | None = None,
     ) -> list[dict]:
+        """Search this agent's memories and return the matching memory records."""
         result = self._call_with_auth_retry(
             "recall",
             lambda: self._client.recall(
@@ -488,6 +591,7 @@ class _MemantoClient:
         return result.get("memories", [])
 
     def answer(self, question: str, *, limit: int | None = None) -> dict:
+        """Ask a question answered from this agent's memories and return the result."""
         return self._call_with_auth_retry(
             "answer",
             lambda: self._client.answer(
@@ -577,6 +681,7 @@ class MemantoMemoryProvider(MemoryProvider):
     """Memanto-backed memory provider for Hermes."""
 
     def __init__(self):
+        """Create an inactive provider; ``initialize`` configures it for a session."""
         self._config = _default_config()
         self._api_key = ""
         self._client: _MemantoClient | None = None
@@ -595,9 +700,11 @@ class MemantoMemoryProvider(MemoryProvider):
 
     @property
     def name(self) -> str:
+        """The provider name Hermes uses to select this plugin."""
         return "memanto"
 
     def is_available(self) -> bool:
+        """Return whether an API key is set and the ``memanto`` package imports."""
         if not os.environ.get("MOORCHEH_API_KEY", "").strip():
             return False
         try:
@@ -607,6 +714,7 @@ class MemantoMemoryProvider(MemoryProvider):
             return False
 
     def get_config_schema(self):
+        """Describe the settings Hermes prompts for during memory setup."""
         return [
             {
                 "key": "api_key",
@@ -626,6 +734,11 @@ class MemantoMemoryProvider(MemoryProvider):
         ]
 
     def save_config(self, values, hermes_home):
+        """Save non-secret provider settings to ``memanto.json``.
+
+        The API key is dropped so it is only read from the environment, and an
+        unknown pattern is replaced with the default.
+        """
         sanitized = dict(values or {})
         sanitized.pop("api_key", None)
         # Keep the {identity} template intact; only sanitize concrete ids.
@@ -638,17 +751,25 @@ class MemantoMemoryProvider(MemoryProvider):
         _save_memanto_config(sanitized, hermes_home)
 
     def initialize(self, session_id: str, **kwargs) -> None:
+        """Configure the provider for a Hermes session.
+
+        Loads settings, resolves the agent id and profile directory for the
+        current identity, disables writes for cron, flush and subagent contexts,
+        and starts a background session warmup when an API key is available.
+        """
         self._hermes_home = kwargs.get("hermes_home") or _resolve_hermes_home()
         self._config = _load_memanto_config(self._hermes_home)
         self._api_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
 
         # Resolve the agent id: env override > config, with {identity} template.
-        identity = kwargs.get("agent_identity", "default") or "default"
-        safe_identity = _sanitize_agent_id(str(identity))
+        identity = str(kwargs.get("agent_identity", "default") or "default")
         raw_id = (
             os.environ.get("MEMANTO_AGENT_ID", "").strip() or self._config["agent_id"]
         )
-        self._agent_id = _sanitize_agent_id(raw_id.replace("{identity}", identity))
+        concrete_raw_id = raw_id.replace("{identity}", identity)
+        self._agent_id, profile_dir = _resolve_compatible_profile_mapping(
+            self._hermes_home, identity, concrete_raw_id
+        )
 
         self._auto_recall = self._config["auto_recall"]
         self._auto_capture = self._config["auto_capture"]
@@ -671,7 +792,6 @@ class MemantoMemoryProvider(MemoryProvider):
                 auto_create=self._config["auto_create"],
                 session_duration_hours=self._config["session_duration_hours"],
             )
-            profile_dir = Path(self._hermes_home) / "profiles" / safe_identity
             if hasattr(self._client, "set_profile_path"):
                 self._client.set_profile_path(str(profile_dir))
             self._active = True
@@ -689,12 +809,14 @@ class MemantoMemoryProvider(MemoryProvider):
         self._warmup_thread.start()
 
     def _warmup(self) -> None:
+        """Activate the Memanto session in the background, logging any failure."""
         try:
             self._client.ensure_session()
         except Exception:
             logger.debug("Memanto warmup activation failed", exc_info=True)
 
     def system_prompt_block(self) -> str:
+        """Return the system prompt text describing the Memanto tools, if active."""
         if not self._active:
             return ""
         return (
@@ -706,6 +828,10 @@ class MemantoMemoryProvider(MemoryProvider):
         )
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
+        """Return a recall context block for ``query`` when auto-recall is enabled.
+
+        Errors are logged and produce an empty string so a turn is never blocked.
+        """
         if (
             not self._active
             or not self._auto_recall
@@ -727,6 +853,11 @@ class MemantoMemoryProvider(MemoryProvider):
     def sync_turn(
         self, user_content: str, assistant_content: str, *, session_id: str = ""
     ) -> None:
+        """Capture a completed user/assistant exchange as an event memory.
+
+        Short, trivial or write-disabled turns are skipped. The write runs on a
+        background thread after any previous capture has had a chance to finish.
+        """
         if (
             not self._active
             or not self._auto_capture
@@ -753,6 +884,7 @@ class MemantoMemoryProvider(MemoryProvider):
         content = f"User: {clean_user}\n\nAssistant: {clean_assistant}"
 
         def _run():
+            """Store the captured turn, logging any failure."""
             try:
                 client.remember(
                     memory_type="event",
@@ -780,6 +912,12 @@ class MemantoMemoryProvider(MemoryProvider):
         content: str,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        """Mirror a Hermes built-in memory addition into Memanto.
+
+        Only non-empty ``add`` actions are mirrored; ``user`` targets are stored
+        as preferences and other content is typed by keyword. The write runs on a
+        background thread.
+        """
         if (
             not self._active
             or not self._write_enabled
@@ -799,6 +937,7 @@ class MemantoMemoryProvider(MemoryProvider):
         mem_type = "preference" if target == "user" else _detect_memory_type(clean)
 
         def _run():
+            """Store the mirrored memory, logging any failure."""
             try:
                 client.remember(
                     memory_type=mem_type,
@@ -820,6 +959,7 @@ class MemantoMemoryProvider(MemoryProvider):
         self._write_thread.start()
 
     def shutdown(self) -> None:
+        """Wait briefly for background threads to finish and clear them."""
         for attr_name in ("_warmup_thread", "_sync_thread", "_write_thread"):
             thread = getattr(self, attr_name, None)
             if thread and thread.is_alive():
@@ -829,9 +969,11 @@ class MemantoMemoryProvider(MemoryProvider):
     # -- Tools ----------------------------------------------------------------
 
     def get_tool_schemas(self) -> list[dict[str, Any]]:
+        """Return the schemas of the remember, recall and answer tools."""
         return [REMEMBER_SCHEMA, RECALL_SCHEMA, ANSWER_SCHEMA]
 
     def _tool_remember(self, args: dict) -> str:
+        """Handle ``memanto_remember`` and return a JSON result or tool error."""
         content = str(args.get("content") or "").strip()
         if not content:
             return tool_error("content is required")
@@ -873,6 +1015,7 @@ class MemantoMemoryProvider(MemoryProvider):
             return tool_error(f"Failed to store memory: {exc}")
 
     def _tool_recall(self, args: dict) -> str:
+        """Handle ``memanto_recall`` and return matching memories as JSON."""
         query = str(args.get("query") or "").strip()
         if not query:
             return tool_error("query is required")
@@ -915,6 +1058,7 @@ class MemantoMemoryProvider(MemoryProvider):
             return tool_error(f"Recall failed: {exc}")
 
     def _tool_answer(self, args: dict) -> str:
+        """Handle ``memanto_answer`` and return the grounded answer as JSON."""
         question = str(args.get("question") or "").strip()
         if not question:
             return tool_error("question is required")
@@ -938,6 +1082,7 @@ class MemantoMemoryProvider(MemoryProvider):
             return tool_error(f"Answer failed: {exc}")
 
     def handle_tool_call(self, tool_name: str, args: dict[str, Any], **kwargs) -> str:
+        """Dispatch a Memanto tool call and return its JSON result."""
         if not self._active or not self._client:
             return tool_error("Memanto is not configured")
         if tool_name == "memanto_remember":
@@ -950,4 +1095,5 @@ class MemantoMemoryProvider(MemoryProvider):
 
 
 def register(ctx):
+    """Register the Memanto memory provider with the Hermes plugin context."""
     ctx.register_memory_provider(MemantoMemoryProvider())

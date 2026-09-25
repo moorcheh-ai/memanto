@@ -36,6 +36,7 @@ from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
 from memanto.app.services.activity_service import log_memory_activity
+from memanto.app.utils.atomic_write import atomic_copy_file
 from memanto.app.utils.client_identity import set_memanto_session
 from memanto.app.utils.errors import (
     AgentNotFoundError,
@@ -1706,7 +1707,7 @@ class SdkClient:
                 raise
             # Backend unreachable, but we have a previously good export —
             # serve that instead of wiping the project's MEMORY.md.
-            shutil.copy2(str(cache_path), str(target_path))
+            atomic_copy_file(cache_path, target_path)
             content = cache_path.read_text(encoding="utf-8")
             return {
                 "output_path": str(target_path.resolve()),
@@ -1716,7 +1717,7 @@ class SdkClient:
 
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
-            shutil.copy2(str(exported_path), str(target_path))
+            atomic_copy_file(exported_path, target_path)
 
         return {
             "output_path": str(target_path.resolve()),

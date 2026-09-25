@@ -13,6 +13,7 @@ from typing import Any
 
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, AgentDef
+from memanto.cli.connect.path_scope import assert_project_local_path
 from memanto.cli.connect.templates import (
     MEMANTO_DYNAMIC_SENTINEL,
     MEMANTO_DYNAMIC_SENTINEL_END,
@@ -186,6 +187,9 @@ def _install_instructions(
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path:
         return None
+    assert_project_local_path(
+        project_path, instr_path, is_global=is_global, action="local instruction write"
+    )
 
     content = get_instruction_content(agent.name)
 
@@ -318,6 +322,9 @@ def _remove_instructions(
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path or not instr_path.exists():
         return None
+    assert_project_local_path(
+        project_path, instr_path, is_global=is_global, action="local instruction write"
+    )
 
     # For dedicated files (cline, roo, continue, augment, cursor)
     if agent.instruction_is_dir or agent.instruction_format == "mdc":
@@ -379,8 +386,11 @@ def _install_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str:
     else:
         skill_dir = agent.resolve_skill_local(project_path)
 
-    skill_dir.mkdir(parents=True, exist_ok=True)
     skill_path = skill_dir / "SKILL.md"
+    assert_project_local_path(
+        project_path, skill_path, is_global=is_global, action="local skill write"
+    )
+    skill_dir.mkdir(parents=True, exist_ok=True)
 
     content = get_skill_content(agent.name)
 
@@ -398,6 +408,9 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
         skill_dir = agent.resolve_skill_local(project_path)
 
     skill_path = skill_dir / "SKILL.md"
+    assert_project_local_path(
+        project_path, skill_path, is_global=is_global, action="local skill write"
+    )
     if skill_path.exists():
         skill_path.unlink()
         # Clean up empty dirs
@@ -424,6 +437,9 @@ def _install_extension(
     ext_path = agent.resolve_extension_file(project_path, is_global)
     if not ext_path:
         return None
+    assert_project_local_path(
+        project_path, ext_path, is_global=is_global, action="local extension write"
+    )
 
     ext_path.parent.mkdir(parents=True, exist_ok=True)
     ext_path.write_text(get_extension_content(), encoding="utf-8")
@@ -441,6 +457,9 @@ def _remove_extension(
     ext_path = agent.resolve_extension_file(project_path, is_global)
     if not ext_path or not ext_path.exists():
         return None
+    assert_project_local_path(
+        project_path, ext_path, is_global=is_global, action="local extension write"
+    )
 
     ext_path.unlink()
     # Clean up empty parent dirs
@@ -523,8 +542,11 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
         else:
             return None
 
-    config_dir.mkdir(parents=True, exist_ok=True)
     settings_path = config_dir / agent.hook_config.settings_file
+    assert_project_local_path(
+        project_path, settings_path, is_global=is_global, action="local hooks write"
+    )
+    config_dir.mkdir(parents=True, exist_ok=True)
 
     if settings_path.exists():
         settings = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -596,6 +618,9 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
             return None
 
     settings_path = config_dir / agent.hook_config.settings_file
+    assert_project_local_path(
+        project_path, settings_path, is_global=is_global, action="local hooks write"
+    )
     if not settings_path.exists():
         return None
 
@@ -656,6 +681,9 @@ def _install_permissions(
             return None
         perm_path = config_dir / agent.permissions_file
 
+    assert_project_local_path(
+        project_path, perm_path, is_global=is_global, action="local permissions write"
+    )
     config_dir.mkdir(parents=True, exist_ok=True)
 
     if perm_path.exists():
@@ -701,6 +729,9 @@ def _remove_permissions(
             return None
         perm_path = config_dir / agent.permissions_file
 
+    assert_project_local_path(
+        project_path, perm_path, is_global=is_global, action="local permissions write"
+    )
     if not perm_path.exists():
         return None
 

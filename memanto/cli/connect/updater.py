@@ -1,9 +1,12 @@
+import os
 import re
+import stat
 from pathlib import Path
 from typing import Any
 
 from memanto.cli.connect.agent_registry import list_agents
 from memanto.cli.connect.engine import install_agent
+from memanto.cli.connect.path_scope import assert_project_local_path
 from memanto.cli.connect.templates import TEMPLATE_VERSION
 
 
@@ -173,12 +176,82 @@ def update_all_agents(
     return messages
 
 
+def _assert_dynamic_sync_write_scope(
+    project_path: Path, target: Path, is_global: bool
+) -> Path:
+    """Return the resolved target after enforcing project-local write scope."""
+    return assert_project_local_path(
+        project_path,
+        target,
+        is_global=is_global,
+        action="dynamic memory sync",
+    )
+
+
+def _open_local_dynamic_sync_file(project_path: Path, target: Path) -> int:
+    """Open a project-local target through one no-follow directory chain."""
+    root = project_path.resolve()
+    try:
+        relative = target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Refusing dynamic memory sync outside project: {target}"
+        ) from exc
+
+    if not relative.parts:
+        raise ValueError(f"Refusing dynamic memory sync to project directory: {target}")
+
+    supports_dir_fd = getattr(os, "supports_dir_fd", ())
+    if (
+        not hasattr(os, "O_NOFOLLOW")
+        or not hasattr(os, "O_DIRECTORY")
+        or os.open not in supports_dir_fd
+    ):
+        raise ValueError(
+            "Secure local dynamic memory sync requires no-follow dir_fd support"
+        )
+
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    directory_fd = os.open(root, directory_flags)
+    try:
+        for part in relative.parts[:-1]:
+            next_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+
+        file_fd = os.open(
+            relative.parts[-1],
+            os.O_RDWR | os.O_NOFOLLOW,
+            dir_fd=directory_fd,
+        )
+    finally:
+        os.close(directory_fd)
+
+    if not stat.S_ISREG(os.fstat(file_fd).st_mode):
+        os.close(file_fd)
+        raise ValueError(f"Refusing dynamic memory sync to non-regular file: {target}")
+    return file_fd
+
+
 def inject_dynamic_memories(
     project_dir: str,
     content: str,
     connection: str | None = None,
     scope: str | None = None,
 ) -> dict[str, list[str]]:
+    """Write ``content`` into the dynamic memory section of connected agents.
+
+    Targets the named ``connection``, or every connection that applies to
+    ``project_dir`` for the requested ``scope`` (``"local"``, ``"global"``,
+    or local connections first and global ones as a fallback when omitted).
+    Only the text between the Memanto dynamic sentinels in each agent's
+    instruction file and ``SKILL.md`` is replaced. Local writes must stay
+    inside the project and go through a no-follow descriptor chain.
+
+    Returns messages grouped under ``updated``, ``already_current`` and
+    ``no_eligible_target``. Raises ``ValueError`` for an invalid scope, when
+    no connection applies, or when a target falls outside the allowed scope.
+    """
     from memanto.cli.config.manager import ConfigManager
     from memanto.cli.connect.agent_registry import get_agent
     from memanto.cli.connect.templates import (
@@ -289,31 +362,60 @@ def inject_dynamic_memories(
 
         for path in paths_to_check:
             if path and path.exists():
-                text = path.read_text(encoding="utf-8")
-                if MEMANTO_DYNAMIC_SENTINEL in text:
-
-                    def replacer(match):
-                        if content:
-                            safe_content = content.replace(
-                                MEMANTO_DYNAMIC_SENTINEL, ""
-                            ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
-                            return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
-                        return f"{match.group(1)}\n{match.group(2)}"
-
-                    new_text = pattern.sub(replacer, text)
-                    if new_text != text:
-                        path.write_text(new_text, encoding="utf-8")
-                        results["updated"].append(
-                            f"Injected memories into {path.name} ({agent.name}, "
-                            f"{'global' if is_global else 'local'})"
-                        )
-                    else:
-                        results["already_current"].append(
-                            f"{path.name} ({agent.name}) is already current"
-                        )
+                resolved_path = _assert_dynamic_sync_write_scope(
+                    project_path, path, is_global
+                )
+                # Global scope intentionally keeps its existing path behavior. Local
+                # scope binds the entire directory walk and final file to descriptors,
+                # then reuses the same final descriptor for read/truncate/write.
+                local_handle = None
+                if is_global:
+                    text = resolved_path.read_text(encoding="utf-8")
                 else:
-                    results["no_eligible_target"].append(
-                        f"{path.name} ({agent.name}) has no dynamic section"
-                    )
+                    file_fd = _open_local_dynamic_sync_file(project_path, resolved_path)
+                    local_handle = os.fdopen(file_fd, "r+", encoding="utf-8")
+                    try:
+                        text = local_handle.read()
+                    except Exception:
+                        local_handle.close()
+                        raise
+
+                try:
+                    if MEMANTO_DYNAMIC_SENTINEL in text:
+
+                        def replacer(match):
+                            """Replace one sentinel block's body with ``content``, minus any sentinels."""
+                            if content:
+                                safe_content = content.replace(
+                                    MEMANTO_DYNAMIC_SENTINEL, ""
+                                ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
+                                return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
+                            return f"{match.group(1)}\n{match.group(2)}"
+
+                        new_text = pattern.sub(replacer, text)
+                        if new_text != text:
+                            if is_global:
+                                resolved_path.write_text(new_text, encoding="utf-8")
+                            else:
+                                assert local_handle is not None
+                                local_handle.seek(0)
+                                local_handle.write(new_text)
+                                local_handle.truncate()
+                                local_handle.flush()
+                            results["updated"].append(
+                                f"Injected memories into {path.name} ({agent.name}, "
+                                f"{'global' if is_global else 'local'})"
+                            )
+                        else:
+                            results["already_current"].append(
+                                f"{path.name} ({agent.name}) is already current"
+                            )
+                    else:
+                        results["no_eligible_target"].append(
+                            f"{path.name} ({agent.name}) has no dynamic section"
+                        )
+                finally:
+                    if local_handle is not None:
+                        local_handle.close()
 
     return results
