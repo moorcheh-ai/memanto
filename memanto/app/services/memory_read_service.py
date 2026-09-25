@@ -2,6 +2,7 @@
 Memory Read Service
 """
 
+import math
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -837,6 +838,11 @@ class MemoryReadService:
                 # that may not carry a confidence score.
                 filtered.append(result)
                 continue
+            if not math.isfinite(confidence):
+                # Non-finite values (NaN/inf) are malformed: fail open, same as
+                # unparseable confidence above, rather than silently dropping.
+                filtered.append(result)
+                continue
             if confidence >= min_confidence:
                 filtered.append(result)
         return filtered
@@ -871,16 +877,21 @@ class MemoryReadService:
         self, query: str, agent_id: str | None = None
     ) -> dict[str, Any]:
         """Generate AI answer from memories"""
+        # Tenant isolation: answer generation must be scoped to one agent's
+        # namespace. The previous "first available namespace" fallback let a
+        # caller without an ``agent_id`` read memories from whichever tenant
+        # happened to sort first in the account's namespace list. The guard
+        # stays outside the ``try`` so the refusal is reported as-is instead of
+        # being re-wrapped as a generic generation failure.
+        # ``strip()`` also rejects whitespace-only ids: they satisfy the truthy
+        # check but are invalid under the ``AgentCreate`` pattern and would
+        # build a namespace no tenant owns.
+        if not agent_id or not agent_id.strip():
+            raise MemoryOperationError(
+                "Tenant isolation: an agent_id is required to scope an answer"
+            )
         try:
-            # Determine namespace for answer generation
-            if agent_id:
-                namespace = agent_namespace(agent_id)
-            else:
-                # Use first available namespace
-                namespaces = self.namespace_service.list_namespaces()
-                if not namespaces:
-                    raise MemoryOperationError("No namespaces found")
-                namespace = namespaces[0]
+            namespace = agent_namespace(agent_id)
 
             # Generate answer. Omit ai_model when on-prem state has no LLM
             # configured so the on-prem server uses its own default; the
@@ -903,15 +914,21 @@ class MemoryReadService:
             raise MemoryOperationError(f"Failed to generate answer: {e}")
 
     def _get_search_namespaces(self, agent_id: str | None = None) -> list[str]:
-        """Get namespaces to search based on filters"""
-        from typing import cast
+        """Return the single tenant namespace for *agent_id*.
 
-        if agent_id:
-            # Search a specific agent's namespace
-            return [agent_namespace(agent_id)]
-        else:
-            # Search all namespaces
-            return cast(list[str], self.namespace_service.list_namespaces())
+        Tenant isolation: a memory read must be scoped to one agent's namespace.
+        Fanning out across every namespace on the server account (the previous
+        ``list_namespaces()`` fallback) let a caller with a missing or empty
+        ``agent_id`` read every other tenant's memories. Fail closed instead.
+        Whitespace-only ids are rejected too: they pass a plain truthy check but
+        are invalid under the ``AgentCreate`` pattern.
+        """
+        if not agent_id or not agent_id.strip():
+            raise MemoryOperationError(
+                "Tenant isolation: an agent_id is required to scope a memory read"
+            )
+        # Search a specific agent's namespace
+        return [agent_namespace(agent_id)]
 
     def _filter_search_results(
         self,
