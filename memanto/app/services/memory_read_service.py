@@ -858,7 +858,10 @@ class MemoryReadService:
         # happened to sort first in the account's namespace list. The guard
         # stays outside the ``try`` so the refusal is reported as-is instead of
         # being re-wrapped as a generic generation failure.
-        if not agent_id:
+        # ``strip()`` also rejects whitespace-only ids: they satisfy the truthy
+        # check but are invalid under the ``AgentCreate`` pattern and would
+        # build a namespace no tenant owns.
+        if not agent_id or not agent_id.strip():
             raise MemoryOperationError(
                 "Tenant isolation: an agent_id is required to scope an answer"
             )
@@ -890,8 +893,10 @@ class MemoryReadService:
         Fanning out across every namespace on the server account (the previous
         ``list_namespaces()`` fallback) let a caller with a missing or empty
         ``agent_id`` read every other tenant's memories. Fail closed instead.
+        Whitespace-only ids are rejected too: they pass a plain truthy check but
+        are invalid under the ``AgentCreate`` pattern.
         """
-        if not agent_id:
+        if not agent_id or not agent_id.strip():
             raise MemoryOperationError(
                 "Tenant isolation: an agent_id is required to scope a memory read"
             )

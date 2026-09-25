@@ -56,3 +56,22 @@ def test_generate_answer_refuses_first_namespace_fallback():
 
     with pytest.raises(MemoryOperationError, match="agent_id"):
         service.generate_answer(query="anything", agent_id=None)
+
+
+def test_whitespace_only_agent_id_is_rejected():
+    """Whitespace-only ids are invalid under the ``AgentCreate`` pattern.
+
+    They pass a plain truthy check yet still produce a namespace string, so the
+    service guards must reject them instead of treating them as a scoped read.
+    """
+    service = MemoryReadService(_client_with_namespaces(["memanto_agent_alice"]))
+
+    for agent_id in ("   ", "\t", " \n "):
+        with pytest.raises(MemoryOperationError, match="agent_id"):
+            service._get_search_namespaces(agent_id)
+
+        with pytest.raises(MemoryOperationError, match="agent_id"):
+            service.search_memories(query="anything", agent_id=agent_id, limit=10)
+
+        with pytest.raises(MemoryOperationError, match="agent_id"):
+            service.generate_answer(query="anything", agent_id=agent_id)
