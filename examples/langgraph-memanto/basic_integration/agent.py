@@ -1,10 +1,10 @@
 from typing import Annotated
 
 from langchain_core.messages import SystemMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from orcarouter_llm import build_orcarouter_llm
 from typing_extensions import TypedDict
 
 
@@ -16,16 +16,9 @@ def build_graph(tools: list[callable]):
     """
     Builds the LangGraph state graph for the agent.
     """
-    # Using a fast and capable model
-    import os
-
-    llm = ChatOpenAI(
-        model=os.environ.get("LLM_MODEL", "openai/gpt-4o-mini"),
-        temperature=0,
-        api_key=os.environ.get("OPENROUTER_API_KEY")
-        or os.environ.get("OPENAI_API_KEY"),
-        base_url=os.environ.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1"),
-    )
+    # Using a fast and capable model. Prefers OrcaRouter when
+    # ORCAROUTER_API_KEY is set, otherwise falls back to OpenRouter/OpenAI.
+    llm = build_orcarouter_llm(temperature=0)
     llm_with_tools = llm.bind_tools(tools)
 
     def chatbot(state: State):

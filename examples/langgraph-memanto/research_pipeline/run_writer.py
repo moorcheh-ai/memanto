@@ -13,8 +13,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from langgraph_memanto import create_memanto_tools
+from orcarouter_llm import build_orcarouter_llm
 
 from memanto.cli.client.sdk_client import SdkClient
 
@@ -32,19 +32,17 @@ TOPIC = os.getenv("RESEARCH_TOPIC", "AI agent framework market size and trends 2
 
 
 def main():
-    if not MOORCHEH_API_KEY or not OPENROUTER_API_KEY:
+    if not MOORCHEH_API_KEY or (
+        not OPENROUTER_API_KEY and not os.getenv("ORCAROUTER_API_KEY")
+    ):
         print("ERROR: Missing API keys.")
         print(
-            "Copy .env.example to .env and fill in MOORCHEH_API_KEY and OPENROUTER_API_KEY"
+            "Copy .env.example to .env and fill in MOORCHEH_API_KEY and "
+            "OPENROUTER_API_KEY (or ORCAROUTER_API_KEY)"
         )
         sys.exit(1)
 
-    llm = ChatOpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
-        model=os.environ.get("LLM_MODEL", "openai/gpt-4o-mini"),
-        temperature=0.7,
-    )
+    llm = build_orcarouter_llm(temperature=0.7)
 
     print(f"Writer Agent retrieving memories for: {TOPIC}")
     print("---")

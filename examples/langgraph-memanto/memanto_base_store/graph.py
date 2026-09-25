@@ -250,9 +250,10 @@ def _try_load_memories(text: str) -> ExtractedMemories | None:
 
 
 def _make_llm(temperature: float = 0.2, max_tokens: int | None = None) -> ChatOpenAI:
-    """Build a ChatOpenAI instance routed through OpenRouter.
+    """Build a ChatOpenAI instance routed through OpenRouter (or OrcaRouter).
 
-    Requires ``OPENROUTER_API_KEY``. Override the model via ``LANGGRAPH_LLM``.
+    Requires ``OPENROUTER_API_KEY`` (or ``ORCAROUTER_API_KEY``). Override the
+    model via ``LANGGRAPH_LLM``.
     Called twice inside build_support_graph: once at temperature=0.2 for the
     conversational responder, once at temperature=0.1 for the extractor.
     Two separate instances are used because chaining .bind(temperature=0) onto
@@ -263,8 +264,16 @@ def _make_llm(temperature: float = 0.2, max_tokens: int | None = None) -> ChatOp
     that consume tokens for an internal thinking phase before emitting visible
     output. Without an explicit cap, OpenRouter reserves the model's full
     context budget (65k+) and rejects the call when the API key's credit
-    limit can't cover that reservation.
+    limit can't cover that reservation. OrcaRouter's ``orcarouter/auto``
+    smart-routing model also lands on reasoning upstreams, so the same cap
+    applies there.
     """
+    from orcarouter_llm import build_orcarouter_llm
+
+    # When OrcaRouter is configured, use its smart-routing gateway.
+    if os.environ.get("ORCAROUTER_API_KEY"):
+        return build_orcarouter_llm(temperature=temperature, max_tokens=max_tokens)
+
     # Default: openai/gpt-oss-120b:free - fastest free model on OpenRouter
     # for KIND::CONTENT line extraction. Benchmarked at ~3s for 5 facts.
     # Free, no credits required. Subject to OpenRouter's shared free-tier

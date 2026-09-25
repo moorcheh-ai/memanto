@@ -176,7 +176,7 @@ These are documented up-front rather than papered over.
 ## Troubleshooting
 
 * **`MOORCHEH_API_KEY not set`**: copy `.env.example` to `.env` and fill it in.
-* **`OPENROUTER_API_KEY not set`**: the graph routes `langchain-openai` through OpenRouter. Set the env var or override the model via `LANGGRAPH_LLM` (e.g. `LANGGRAPH_LLM=openai/gpt-4o-mini`).
+* **`OPENROUTER_API_KEY not set`**: the graph routes `langchain-openai` through OpenRouter. Set the env var, or set `ORCAROUTER_API_KEY` to route through [OrcaRouter](https://www.orcarouter.ai) (smart-routing `orcarouter/auto`), or override the model via `LANGGRAPH_LLM` (e.g. `LANGGRAPH_LLM=openai/gpt-4o-mini`).
 * **`429 RateLimitError` from OpenRouter**: the default `openai/gpt-oss-120b:free` is the fastest free option (~3 s per extraction) but shares rate limits across all OpenRouter free-tier users. The graph's `RetryPolicy` retries up to 5× with 32 s back-off. If retries are exhausted, switch to another free model via `LANGGRAPH_LLM=openai/gpt-oss-20b:free` (slower but less contested) or a paid model like `openai/gpt-4o-mini`.
 * **`Namespace limit reached (Community plan)`**: the free tier allows 5 agents. List your agents with `client.list_agents()` and delete unused ones with `client.delete_agent(agent_id)`, or reuse an existing agent id.
 * **`Agent already exists`**: fine. `MemantoSetup.setup` catches `AgentAlreadyExistsError` and reuses the existing agent; no action needed.

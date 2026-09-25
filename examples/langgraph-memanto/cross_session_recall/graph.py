@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import BaseMessage
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from orcarouter_llm import build_orcarouter_llm, orcarouter_configured
 
 
 class State(TypedDict):
@@ -15,14 +15,9 @@ class State(TypedDict):
 
 
 def create_research_graph(model_name: str, tools: list):
-    import os
-
-    llm = ChatOpenAI(
-        model=model_name or os.environ.get("LLM_MODEL", "openai/gpt-4o-mini"),
-        api_key=os.environ.get("OPENROUTER_API_KEY")
-        or os.environ.get("OPENAI_API_KEY"),
-        base_url=os.environ.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1"),
-    )
+    # When OrcaRouter is configured, its smart-routing model is used
+    # regardless of the explicit OpenRouter model id passed by the caller.
+    llm = build_orcarouter_llm(model=None if orcarouter_configured() else model_name)
     llm_with_tools = llm.bind_tools(tools)
 
     def chatbot(state: State):

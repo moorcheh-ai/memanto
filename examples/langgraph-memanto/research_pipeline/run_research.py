@@ -21,15 +21,17 @@ load_dotenv()
 
 MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+ORCAROUTER_API_KEY = os.getenv("ORCAROUTER_API_KEY", "")
 AGENT_ID = os.getenv("MEMANTO_AGENT_ID", "langgraph-research-team")
 TOPIC = os.getenv("RESEARCH_TOPIC", "AI agent framework market size and trends 2024")
 
 
 def main():
-    if not MOORCHEH_API_KEY or not OPENROUTER_API_KEY:
+    if not MOORCHEH_API_KEY or (not OPENROUTER_API_KEY and not ORCAROUTER_API_KEY):
         print("ERROR: Missing API keys.")
         print(
-            "Copy .env.example to .env and fill in MOORCHEH_API_KEY and OPENROUTER_API_KEY"
+            "Copy .env.example to .env and fill in MOORCHEH_API_KEY and "
+            "OPENROUTER_API_KEY (or ORCAROUTER_API_KEY)"
         )
         sys.exit(1)
 
