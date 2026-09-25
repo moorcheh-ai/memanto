@@ -170,10 +170,18 @@ async def get_agent(
             AgentNotFoundError(f"Agent '{agent_id}' not found")
         )
 
-    if include_counts:
-        counts = await _namespace_item_counts(moorcheh_api_key)
-        if agent.namespace in counts:
-            agent.memory_count = counts[agent.namespace]
+    if include_counts and agent.namespace:
+        try:
+            client = moorcheh_clients.get_moorcheh_client()
+            ns_info = await asyncio.to_thread(client.namespaces.get, agent.namespace)
+            if isinstance(ns_info, dict):
+                raw_count = ns_info.get("item_count", 0)
+                try:
+                    agent.memory_count = int(raw_count)
+                except (TypeError, ValueError):
+                    pass
+        except Exception:
+            pass  # Best effort, just like list_agents
 
     return agent
 
