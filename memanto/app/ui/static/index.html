@@ -21,8 +21,8 @@
             --border-hover: #2a2a3a;
             --border-focus: #06b6d4;
             --text-primary: #f0f0f5;
-            --text-secondary: #8a8a9a;
-            --text-dim: #55556a;
+            --text-secondary: #b4b4c4;
+            --text-dim: #8e8ea3;
             --accent: #06b6d4;
             --accent-hover: #22d3ee;
             --accent-glow: rgba(6, 182, 212, 0.15);
@@ -411,6 +411,7 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
             font-family: var(--font-mono);
+            white-space: nowrap;
         }
 
         .badge-success {
@@ -2771,8 +2772,11 @@
             <section class="page" id="page-agents">
                 <div class="page-header">
                     <h2>Agents</h2>
-                    <p>View all registered agents and activate one to start a session</p>
+                    <p>Create, activate, or delete agents</p>
                     <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
+                </div>
+                <div style="margin-bottom:16px">
+                    <button class="btn btn-primary btn-sm" onclick="openCreateAgentModal()">+ New Agent</button>
                 </div>
                 <div id="agentsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>
@@ -3200,17 +3204,13 @@
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById('page-' + btn.dataset.page).classList.add('active');
-                if (btn.dataset.page === 'agents') loadAgents();
-                if (btn.dataset.page === 'explorer' && !S._explorerLoaded) { loadExplorer(); S._explorerLoaded = true; }
-                if (btn.dataset.page === 'analytics') loadAnalytics();
-                if (btn.dataset.page === 'config') loadConfig();
-                if (btn.dataset.page === 'dashboard') loadDashboard();
-                if (btn.dataset.page === 'conflicts') loadConflicts();
-                if (btn.dataset.page === 'policy') loadPolicyPage();
-                if (btn.dataset.page === 'connections') { loadConnections(); startMeshPolling(); }
+                // Re-fetch on every visit so a page never shows stale data
+                // after changes made elsewhere (CLI, another page, etc.).
+                const reload = PAGE_RELOADERS[btn.dataset.page];
+                if (reload) reload();
+                if (btn.dataset.page === 'history') S._historyLoaded = true;
+                if (btn.dataset.page === 'connections') startMeshPolling();
                 else stopMeshPolling();
-                if (btn.dataset.page === 'migrate') openMigrate();
-                if (btn.dataset.page === 'history' && !S._historyLoaded) { loadHistory(); S._historyLoaded = true; }
             });
         });
 
@@ -3220,10 +3220,8 @@
             if (btn) btn.click();
         }
 
-        // Per-page reload used by the Refresh button in each page header. The
-        // map mirrors the nav-item handler above, minus its once-only guards —
-        // an explicit Refresh should always re-fetch, even on pages that
-        // normally load lazily (Explorer, History).
+        // Per-page reload used by the nav-item handler above and by the
+        // Refresh button in each page header.
         const PAGE_RELOADERS = {
             dashboard: () => loadDashboard(),
             agents: () => loadAgents(),
@@ -3401,7 +3399,7 @@
                 const res = await api('GET', '/api/v2/agents');
                 const agents = res.agents || [];
                 if (!agents.length) {
-                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Create one via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
+                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Click <strong>+ New Agent</strong> or use the CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
                     return;
                 }
                 box.innerHTML = buildAgentsTable(agents);
@@ -3420,6 +3418,7 @@
                 const actions = isActive
                     ? `<button class="btn btn-sm btn-secondary" onclick="deactivateAgent('${a.agent_id}', this)">Deactivate</button>`
                     : `<button class="btn btn-sm btn-primary" onclick="activateAgent('${a.agent_id}', this)">Activate</button>`;
+                const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteAgent('${a.agent_id}', this)">Delete</button>`;
                 html += `<tr${isActive ? ' style="background:var(--accent-glow)"' : ''}>
                     <td style="color:var(--text-primary);font-weight:600">${escHtml(a.agent_id)}</td>
                     <td><span class="badge badge-accent">${escHtml(a.pattern || '—')}</span></td>
@@ -3428,7 +3427,7 @@
                     <td>${a.session_count ?? 0}</td>
                     <td style="white-space:nowrap">${fmtDate(a.created_at)}</td>
                     <td>${statusBadge}</td>
-                    <td style="text-align:right;white-space:nowrap">${actions}</td>
+                    <td style="text-align:right;white-space:nowrap">${actions} ${deleteBtn}</td>
                 </tr>`;
             });
             html += '</tbody></table></div>';
@@ -3448,7 +3447,6 @@
                     S.config.has_active_session = true;
                 }
                 // Invalidate cached views tied to the previous agent
-                S._explorerLoaded = false;
                 S.explorerAll = [];
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" activated`);
@@ -3470,7 +3468,6 @@
                     S.config.active_agent_id = null;
                     S.config.has_active_session = false;
                 }
-                S._explorerLoaded = false;
                 S.explorerAll = [];
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" deactivated`);
@@ -3479,6 +3476,107 @@
             } catch (e) {
                 toast('Deactivation failed: ' + e.message, 'error');
                 if (btn) { btn.disabled = false; btn.textContent = 'Deactivate'; }
+            }
+        }
+
+        function openCreateAgentModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'createAgentModal';
+            modal.innerHTML = `<div class="modal">
+                <div class="modal-header">
+                    <h3>New Agent</h3>
+                    <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label>Agent ID</label>
+                    <input id="newAgentId" type="text" placeholder="my-agent">
+                </div>
+                <div class="form-group">
+                    <label>Pattern</label>
+                    <select id="newAgentPattern">
+                        <option value="support">support</option>
+                        <option value="project">project</option>
+                        <option value="tool">tool</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description (optional)</label>
+                    <input id="newAgentDesc" type="text">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="createAgent(this)">Create</button>
+                </div>
+            </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) closeCreateAgentModal(); });
+            document.body.appendChild(modal);
+            document.getElementById('newAgentId').focus();
+        }
+
+        function closeCreateAgentModal() {
+            const m = document.getElementById('createAgentModal');
+            if (m) m.remove();
+        }
+
+        async function createAgent(btn) {
+            const agentId = document.getElementById('newAgentId').value.trim();
+            if (!/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+                toast('Agent ID may only contain letters, numbers, hyphens and underscores.', 'error');
+                return;
+            }
+            const body = { agent_id: agentId, pattern: document.getElementById('newAgentPattern').value };
+            const desc = document.getElementById('newAgentDesc').value.trim();
+            if (desc) body.description = desc;
+            btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating...';
+            try {
+                await api('POST', '/api/v2/agents', body);
+                closeCreateAgentModal();
+                toast(`Agent "${agentId}" created`);
+                loadAgents();
+            } catch (e) {
+                toast('Create failed: ' + e.message, 'error');
+                btn.disabled = false; btn.textContent = 'Create';
+            }
+        }
+
+        // Mirrors ``memanto agent delete``: confirm, then ask whether to keep
+        // the agent's memory namespace in Moorcheh (kept by default).
+        async function deleteAgent(agentId, btn) {
+            const ok = await confirmDialog({
+                title: 'Delete agent',
+                message: `Delete agent '${agentId}'? This cannot be undone.`,
+                confirmLabel: 'Delete',
+                danger: true,
+            });
+            if (!ok) return;
+            const dropMemories = await confirmDialog({
+                title: 'Agent memories',
+                message: `Also delete the memories stored for '${agentId}' in Moorcheh? Keep them to access later from your Moorcheh namespaces.`,
+                confirmLabel: 'Delete memories',
+                cancelLabel: 'Keep memories',
+                danger: true,
+            });
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Deleting...'; }
+            try {
+                await api('DELETE', `/api/v2/agents/${agentId}${dropMemories ? '?delete-backup-too=true' : ''}`);
+                // The server revokes the agent's session; drop it locally too.
+                if (agentId === S.agentId) {
+                    S.agentId = null;
+                    S.token = null;
+                    if (S.config) {
+                        S.config.active_agent_id = null;
+                        S.config.has_active_session = false;
+                    }
+                    S.explorerAll = [];
+                    updateSidebarStatus();
+                    loadConflictBadge();
+                }
+                toast(`Agent "${agentId}" deleted`);
+                loadAgents();
+            } catch (e) {
+                toast('Delete failed: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
             }
         }
 
@@ -3610,13 +3708,9 @@
         async function openHistoryForDay(key) {
             S.historyFilter = key;
             S.summaryOpen = true;
-            const wasLoaded = !!S._historyLoaded;
+            // The nav handler's loadHistory() preserves the
+            // filter/summaryOpen state set above when it renders.
             goToPage('history');
-            // If history is already loaded, re-render now so the summary
-            // tab appears immediately (the nav handler doesn't reload).
-            // Otherwise the in-flight loadHistory() will renderHistory()
-            // for us — it now preserves the filter/summaryOpen state.
-            if (wasLoaded) renderHistory();
         }
 
         // ================================================================
@@ -5592,7 +5686,6 @@
                 box.innerHTML = head + note + (rows
                     ? `<div class="table-wrap"><table><thead><tr><th>Title</th><th>Type</th><th>Rule</th></tr></thead><tbody>${rows}</tbody></table></div>`
                     : '<p style="font-size:13px;color:var(--text-dim)">Nothing matched.</p>');
-                if (!dryRun) { S._explorerLoaded = false; }
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);font-size:13px">Error: ${escHtml(e.message)}</p>`;
             }
@@ -5627,7 +5720,6 @@
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/policy/purge`, { dry_run: false });
                 box.innerHTML = `<p style="font-size:13px;color:var(--success)">Purged ${res.purged} memories.</p>`;
-                S._explorerLoaded = false;
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);font-size:13px">Error: ${escHtml(e.message)}</p>`;
             }
@@ -5781,25 +5873,25 @@
                 S.charts.usage = new Chart(document.getElementById('chartUsage'), {
                     type: 'line',
                     data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#b4b4c4', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#b4b4c4', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
                 });
 
                 S.charts.type = new Chart(document.getElementById('chartType'), {
                     type: 'doughnut',
                     data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#b4b4c4', padding: 16, font: { family: 'Inter' } } } } }
                 });
 
                 S.charts.source = new Chart(document.getElementById('chartSource'), {
                     type: 'doughnut',
                     data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#b4b4c4', padding: 16, font: { family: 'Inter' } } } } }
                 });
 
                 S.charts.conf = new Chart(document.getElementById('chartConf'), {
                     type: 'bar',
                     data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#b4b4c4', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#b4b4c4', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
                 });
 
                 // Generate Word Cloud
@@ -6519,7 +6611,6 @@
         // After a real import, refresh everything affected so the user
         // doesn't have to manually reload Explorer/Dashboard/History.
         async function postMigrateRefresh() {
-            S._explorerLoaded = false;
             S._historyLoaded = false;
             try { await loadConflictBadge(); } catch { }
             // If the user happens to already be on a refreshable page, refresh
