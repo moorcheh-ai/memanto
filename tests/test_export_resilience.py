@@ -36,7 +36,7 @@ def _build_client(client_cls, monkeypatch, tmp_path):
 
     client = client_cls(api_key="test-key")
     monkeypatch.setattr(
-        client, "_get_validated_session_for_agent", lambda agent_id: MagicMock(namespace="test-namespace")
+        client, "_get_validated_session_for_agent", lambda agent_id: None
     )
     return client
 
@@ -45,18 +45,11 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
     @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
     def test_raises_when_every_recall_fails(self, client_cls, monkeypatch, tmp_path):
         client = _build_client(client_cls, monkeypatch, tmp_path)
-        if client_cls is SdkClient:
-            mock_moorcheh = MagicMock()
-            mock_moorcheh.documents.fetch_text_data.side_effect = ConnectionError("backend down")
-            monkeypatch.setattr(client, "_get_moorcheh", lambda: mock_moorcheh)
-            expected_match = "complete memory set"
-        else:
-            monkeypatch.setattr(
-                client, "recall", MagicMock(side_effect=ConnectionError("backend down"))
-            )
-            expected_match = "unreachable"
+        monkeypatch.setattr(
+            client, "recall", MagicMock(side_effect=ConnectionError("backend down"))
+        )
 
-        with pytest.raises(ConnectionError, match=expected_match):
+        with pytest.raises(ConnectionError, match="unreachable"):
             client.export_memory_md(agent_id="test-agent")
 
     @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
@@ -66,27 +59,16 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
         """One failed type must not be represented as a genuinely empty type."""
         client = _build_client(client_cls, monkeypatch, tmp_path)
 
-        if client_cls is SdkClient:
-            def fake_fetch(*args, **kwargs):
-                if kwargs.get("next_token") == "token2":
-                    raise ConnectionError("flaky")
-                return {"items": [{"content": "ok", "type": MEMORY_TYPE_ORDER[0]}], "pagination": {"has_more": True, "next_token": "token2"}}
-            mock_moorcheh = MagicMock()
-            mock_moorcheh.documents.fetch_text_data.side_effect = fake_fetch
-            monkeypatch.setattr(client, "_get_moorcheh", lambda: mock_moorcheh)
-            expected_match = "complete memory set"
-        else:
-            def fake_recall(agent_id, query, limit, type):
-                if type == [MEMORY_TYPE_ORDER[0]]:
-                    raise ConnectionError("flaky")
-                return {"memories": [{"content": "ok"}]}
+        def fake_recall(agent_id, query, limit, type):
+            if type == [MEMORY_TYPE_ORDER[0]]:
+                raise ConnectionError("flaky")
+            return {"memories": [{"content": "ok"}]}
 
-            monkeypatch.setattr(client, "recall", MagicMock(side_effect=fake_recall))
-            expected_match = f"incomplete.*{MEMORY_TYPE_ORDER[0]}|{MEMORY_TYPE_ORDER[0]}.*incomplete"
+        monkeypatch.setattr(client, "recall", MagicMock(side_effect=fake_recall))
 
         with pytest.raises(
             ConnectionError,
-            match=expected_match,
+            match=f"incomplete.*{MEMORY_TYPE_ORDER[0]}|{MEMORY_TYPE_ORDER[0]}.*incomplete",
         ):
             client.export_memory_md(agent_id="test-agent")
 
@@ -103,22 +85,16 @@ class TestSyncFallsBackToCache:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         cache_file.write_text("### Some Memory\n\ngood content\n", encoding="utf-8")
 
-        if client_cls is SdkClient:
-            mock_moorcheh = MagicMock()
-            mock_moorcheh.documents.fetch_text_data.side_effect = ConnectionError("backend down")
-            monkeypatch.setattr(client, "_get_moorcheh", lambda: mock_moorcheh)
-        else:
-            monkeypatch.setattr(
-                client, "recall", MagicMock(side_effect=ConnectionError("backend down"))
-            )
+        monkeypatch.setattr(
+            client, "recall", MagicMock(side_effect=ConnectionError("backend down"))
+        )
 
         project_dir = tmp_path / "project"
         result = client.sync_memory_to_project(
             agent_id="test-agent", project_dir=str(project_dir)
         )
 
-        if client_cls is DirectClient:
-            client.recall.assert_called()
+        client.recall.assert_called()
         assert result["source"] == "stale-cache"
         assert result["total_memories"] == 1
         written = (project_dir / "MEMORY.md").read_text(encoding="utf-8")
@@ -133,19 +109,11 @@ class TestSyncFallsBackToCache:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         cache_file.write_text("### Old Memory\n\nstale content\n", encoding="utf-8")
 
-        if client_cls is SdkClient:
-            mock_moorcheh = MagicMock()
-            mock_moorcheh.documents.fetch_text_data.return_value = {"items": [{"content": "fresh content", "type": "instruction"}], "pagination": {"has_more": False}}
-            monkeypatch.setattr(client, "_get_moorcheh", lambda: mock_moorcheh)
-            mock_reader = MagicMock()
-            mock_reader._format_memory_item.side_effect = lambda x: {"content": x.get("content"), "type": x.get("type")}
-            monkeypatch.setattr(client, "_get_read_service", lambda: mock_reader)
-        else:
-            monkeypatch.setattr(
-                client,
-                "recall",
-                MagicMock(return_value={"memories": [{"content": "fresh content"}]}),
-            )
+        monkeypatch.setattr(
+            client,
+            "recall",
+            MagicMock(return_value={"memories": [{"content": "fresh content"}]}),
+        )
 
         project_dir = tmp_path / "project"
         result = client.sync_memory_to_project(
@@ -159,9 +127,9 @@ class TestSyncFallsBackToCache:
 
     def test_raises_when_no_cache_and_backend_down(self, monkeypatch, tmp_path):
         client = _build_client(SdkClient, monkeypatch, tmp_path)
-        mock_moorcheh = MagicMock()
-        mock_moorcheh.documents.fetch_text_data.side_effect = ConnectionError("backend down")
-        monkeypatch.setattr(client, "_get_moorcheh", lambda: mock_moorcheh)
+        monkeypatch.setattr(
+            client, "recall", MagicMock(side_effect=ConnectionError("backend down"))
+        )
 
         with pytest.raises(ConnectionError):
             client.sync_memory_to_project(
