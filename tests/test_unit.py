@@ -275,14 +275,14 @@ class TestSessionService:
         session_service.create_session(agent_id="test-agent", duration_hours=1)
         monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
 
-        original_renew = session_service.renew_session
+        original_create = session_service._create_session
         first_entered = threading.Event()
         second_entered = threading.Event()
         release_first = threading.Event()
         counter_lock = threading.Lock()
         call_count = 0
 
-        def controlled_renew(agent_id, pattern=None):
+        def controlled_create(agent_id, pattern, duration_hours):
             nonlocal call_count
             with counter_lock:
                 call_count += 1
@@ -292,9 +292,9 @@ class TestSessionService:
                 assert release_first.wait(timeout=2)
             elif call_number == 2:
                 second_entered.set()
-            return original_renew(agent_id=agent_id, pattern=pattern)
+            return original_create(agent_id, pattern, duration_hours)
 
-        monkeypatch.setattr(session_service, "renew_session", controlled_renew)
+        monkeypatch.setattr(session_service, "_create_session", controlled_create)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(session_service.check_and_auto_renew, "test-agent")
@@ -366,23 +366,23 @@ class TestSessionService:
         )
         monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
 
-        original_renew = session_service.renew_session
+        original_create = session_service._create_session
         renewal_entered = threading.Event()
         release_renewal = threading.Event()
         termination_saved = threading.Event()
         original_save = session_service._save_session
 
-        def controlled_renew(agent_id, pattern=None):
+        def controlled_create(agent_id, pattern, duration_hours):
             renewal_entered.set()
             assert release_renewal.wait(timeout=2)
-            return original_renew(agent_id=agent_id, pattern=pattern)
+            return original_create(agent_id, pattern, duration_hours)
 
         def observed_save(session):
             original_save(session)
             if session.status == SessionStatus.TERMINATED:
                 termination_saved.set()
 
-        monkeypatch.setattr(session_service, "renew_session", controlled_renew)
+        monkeypatch.setattr(session_service, "_create_session", controlled_create)
         monkeypatch.setattr(session_service, "_save_session", observed_save)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
