@@ -4223,7 +4223,7 @@
         async function fetchRecentMemories() {
             if (!hasActiveSession()) return;
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
                 S.history = res.memories || [];
             } catch { }
         }
@@ -4236,7 +4236,7 @@
             }
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
                 S.history = res.memories || [];
                 await fetchConflictScans();
                 // Preserve any pre-set filter/summary state (e.g. dashboard
@@ -5717,7 +5717,7 @@
             cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
 
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
                 const mems = res.memories || [];
 
                 const typeCounts = {};
@@ -6903,7 +6903,7 @@
                 return;
             }
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
                 const all = res.memories || [];
                 const filtered = all.filter(m => sourceMatchesConnection(m.source, conn));
                 if (!filtered.length) {
