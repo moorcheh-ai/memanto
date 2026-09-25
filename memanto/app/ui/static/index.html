@@ -3021,7 +3021,7 @@
             <section class="page" id="page-migrate">
                 <div class="page-header">
                     <h2>Migrate</h2>
-                    <p>Import memories from Mem0, Letta, or Supermemory into your active Memanto agent.</p>
+                    <p>Import memories from Mem0, Letta, Supermemory, Zep, Hindsight, an OKF bundle, or Langfuse into your active Memanto agent.</p>
                     <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('migrate', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="migrateContent"></div>
@@ -3490,25 +3490,13 @@
             const profile = document.getElementById('agentProfile');
             const session = document.getElementById('sessionInfo');
 
-            let healthStatus = '—', healthColor = 'var(--text-dim)';
             let agentCount = '—';
 
-            try {
-                const health = await api('GET', '/health');
-                healthStatus = health.status || 'unknown';
-                healthColor = healthStatus === 'healthy' ? 'var(--success)' : healthStatus === 'degraded' ? 'var(--warning)' : 'var(--error)';
-            } catch { healthStatus = 'offline'; healthColor = 'var(--error)'; }
-
-            try {
-                const agents = await api('GET', '/api/v2/agents');
-                const list = agents.agents || agents || [];
-                agentCount = Array.isArray(list) ? list.length : '?';
-            } catch { }
-
+            // Placeholder structure immediately
             cards.innerHTML = `
         <div class="card"><div class="card-label">Active Agent</div><div class="card-value" style="font-size:18px;color:var(--accent)">${S.agentId || '—'}</div><div class="card-sub">${S.config?.has_active_session ? 'Session active' : 'No session'}</div></div>
-        <div class="card" style="cursor:pointer" onclick="goToPage('agents')" title="View all agents"><div class="card-label">Agents</div><div class="card-value">${agentCount}</div><div class="card-sub">registered — click to manage</div></div>
-        <div class="card"><div class="card-label">System Health</div><div class="card-value" style="color:${healthColor};font-size:18px">${healthStatus}</div><div class="card-sub">Moorcheh connection</div></div>
+        <div class="card" style="cursor:pointer" onclick="goToPage('agents')" title="View all agents"><div class="card-label">Agents</div><div class="card-value" id="dashAgentCount">…</div><div class="card-sub">registered — click to manage</div></div>
+        <div class="card"><div class="card-label">System Health</div><div class="card-value" id="dashHealthStatus" style="font-size:18px">…</div><div class="card-sub">Moorcheh connection</div></div>
         ${isOnPrem()
             ? `<div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:14px"><span style="color:var(--success)">On-Prem</span></div><div class="card-sub">${escHtml(S.config?.on_prem?.url || 'http://localhost:8080')}</div></div>`
             : `<div class="card"><div class="card-label">API Key</div><div class="card-value" style="font-size:14px">${S.config?.api_key_configured ? '<span style="color:var(--success)">✓ Configured</span>' : '<span style="color:var(--error)">✗ Missing</span>'}</div><div class="card-sub">${S.config?.api_key_preview || ''}</div></div>`}
@@ -3518,12 +3506,34 @@
             <div class="card-sub">checking…</div>
         </div>
     `;
-            // Async probe — show whether today's summary already exists
+
+            // Async probe
             if (S.agentId) refreshTodaySummaryCard();
 
+            // Fire off health independently
+            api('GET', '/health').then(health => {
+                const healthStatus = health.status || 'unknown';
+                const healthColor = healthStatus === 'healthy' ? 'var(--success)' : healthStatus === 'degraded' ? 'var(--warning)' : 'var(--error)';
+                const el = document.getElementById('dashHealthStatus');
+                if (el) { el.textContent = healthStatus; el.style.color = healthColor; }
+            }).catch(() => {
+                const el = document.getElementById('dashHealthStatus');
+                if (el) { el.textContent = 'offline'; el.style.color = 'var(--error)'; }
+            });
+
+            // Fire off agent count independently
+            api('GET', '/api/v2/agents?include_counts=false').then(agents => {
+                const list = agents.agents || agents || [];
+                const el = document.getElementById('dashAgentCount');
+                if (el) el.textContent = Array.isArray(list) ? list.length : '?';
+            }).catch(() => {
+                const el = document.getElementById('dashAgentCount');
+                if (el) el.textContent = '?';
+            });
+
             if (S.agentId) {
-                try {
-                    const agent = await api('GET', `/api/v2/agents/${S.agentId}`);
+                profile.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                api('GET', `/api/v2/agents/${S.agentId}?include_counts=false`).then(agent => {
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
                 <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${escHtml(agent.agent_id)}</strong></td></tr>
@@ -3533,14 +3543,16 @@
                 <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
-                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
+                }).catch(e => {
+                    profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`;
+                });
             } else {
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
 
             if (hasActiveSession()) {
-                try {
-                    const sess = await api('GET', '/api/v2/status');
+                session.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                api('GET', '/api/v2/status').then(sess => {
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
@@ -3552,7 +3564,9 @@
                 <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
-                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
+                }).catch(e => {
+                    session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`;
+                });
             } else {
                 session.innerHTML = '<p style="color:var(--text-dim)">No active session</p>';
             }
@@ -5871,6 +5885,8 @@
             { id: 'mem0', label: 'Mem0', tagline: 'Distilled user facts and preferences', docs: 'https://app.mem0.ai' },
             { id: 'letta', label: 'Letta', tagline: 'Archival memory passages', docs: 'https://docs.letta.com' },
             { id: 'supermemory', label: 'Supermemory', tagline: 'Documents and chunks', docs: 'https://supermemory.ai/docs' },
+            { id: 'zep', label: 'Zep', tagline: 'Knowledge-graph facts per user', docs: 'https://help.getzep.com' },
+            { id: 'hindsight', label: 'Hindsight', tagline: 'Memory bank facts, experiences, observations', docs: 'https://docs.hindsight.vectorize.io/api-integration/' },
             { id: 'okf', label: 'Open Knowledge Format', tagline: 'Portable local memory bundles (.md)', docs: 'https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf' },
             { id: 'langfuse', label: 'Langfuse', tagline: 'Errors, failed evals, and cost/latency anomalies', docs: 'https://langfuse.com/docs/api-and-data-platform/features/public-api' },
         ];
@@ -5895,6 +5911,8 @@
             'mem0':        { src: 'https://github.com/mem0ai.png',           fallback: 'https://icons.duckduckgo.com/ip3/mem0.ai.ico' },
             'letta':       { src: 'https://github.com/letta-ai.png',         fallback: 'https://icons.duckduckgo.com/ip3/letta.com.ico' },
             'supermemory': { src: 'https://github.com/supermemoryai.png',    fallback: 'https://icons.duckduckgo.com/ip3/supermemory.ai.ico' },
+            'zep':         { src: 'https://github.com/getzep.png',           fallback: 'https://icons.duckduckgo.com/ip3/getzep.com.ico' },
+            'hindsight':   { src: 'https://github.com/vectorize-io.png',     fallback: 'https://icons.duckduckgo.com/ip3/vectorize.io.ico' },
             'okf':         { src: 'https://github.com/GoogleCloudPlatform.png', fallback: 'https://icons.duckduckgo.com/ip3/cloud.google.com.ico' },
             'langfuse':    { src: 'https://github.com/langfuse.png',           fallback: 'https://icons.duckduckgo.com/ip3/langfuse.com.ico' },
         };
@@ -5915,7 +5933,7 @@
 
         function migrateInitialState() {
             return {
-                provider: null, source: 'file', file: '', apiKey: '', preview: null,
+                provider: null, source: 'file', file: '', apiKey: '', hsHost: '', preview: null,
                 // Langfuse guarantees nothing about score meaning or what counts
                 // as slow/expensive, so every budget starts empty and the mode
                 // stays inert (and says so) until the user fills it in.
@@ -6137,6 +6155,10 @@
             }
         }
 
+        const MIG_KEY_PLACEHOLDERS = {
+            mem0: 'm0_...', letta: 'sk-let-...', supermemory: 'sm_...', zep: 'z_...', hindsight: 'hsk_...',
+        };
+
         function renderMigrateSource(st) {
             const p = MIG_PROVIDERS.find(x => x.id === st.provider);
             const isOkf = st.provider === 'okf';
@@ -6148,7 +6170,7 @@
                     </div>`
                 : `<div>
                         <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to a JSON export file</label>
-                        <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                        <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/${st.provider}_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
                     </div>`;
             const isLangfuse = st.provider === 'langfuse';
             // Langfuse authenticates with a key *pair*; they're joined as
@@ -6172,8 +6194,11 @@
                     </div>`
                 : `<div>
                     <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(p.label)} API key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">get one</a></label>
-                    <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <input id="migApiKey" type="password" placeholder="${MIG_KEY_PLACEHOLDERS[st.provider] || ''}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
                     <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Used once for this export — not saved to disk.</div>
+                    ${st.provider === 'hindsight' ? `<label style="display:block;font-size:12px;color:var(--text-dim);margin:14px 0 6px">Server URL</label>
+                    <input id="migHsHost" placeholder="https://api.hindsight.vectorize.io" value="${escHtml(st.hsHost || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Blank = Hindsight Cloud. Use your own URL if self-hosted (e.g. http://localhost:8888).</div>` : ''}
                 </div>`;
             const lfNote = isLangfuse
                 ? `<p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0">Groups observations into one memory per <strong>error signature</strong>, not one per occurrence. Safe to re-run — recurring signatures are updated in place, not duplicated.</p>`
@@ -6225,6 +6250,8 @@
             if (fileEl) S.migrate.file = fileEl.value.trim();
             const keyEl = document.getElementById('migApiKey');
             if (keyEl) S.migrate.apiKey = keyEl.value.trim();
+            const hsHostEl = document.getElementById('migHsHost');
+            if (hsHostEl) S.migrate.hsHost = hsHostEl.value.trim();
 
             const lf = S.migrate.lf;
             if (!lf) return;
@@ -6273,6 +6300,7 @@
             } else {
                 if (!st.apiKey) { toast(`Enter a ${st.provider} API key`, 'error'); return null; }
                 body.api_key = st.apiKey;
+                if (st.provider === 'hindsight' && st.hsHost) body.host = st.hsHost;
             }
 
             // Capture settings shape the mapping, so send them for file replays
@@ -6432,7 +6460,7 @@
                         <div class="mig-stat"><div class="label">Unchanged</div><div class="value">${plan.unchanged}</div><div class="sub">already synced</div></div>`
                 : `
                         <div class="mig-stat"><div class="label">Source records</div><div class="value">${preview.source_count.toLocaleString()}</div></div>
-                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty)</div></div>
+                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty or invalidated)</div></div>
                         <div class="mig-stat"><div class="label">Batches</div><div class="value">${preview.batch_count}</div><div class="sub">100 / req</div></div>`;
             return `
                 <div class="card">
@@ -6475,7 +6503,7 @@
                         <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>` : `
                         <div class="mig-stat"><div class="label">Imported</div><div class="value success">${(sum.imported || 0).toLocaleString()}</div><div class="sub">written to ${escHtml(res.agent_id)}</div></div>
                         <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>
-                        <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty content</div></div>
+                        <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty or invalidated</div></div>
                         <div class="mig-stat"><div class="label">Batches</div><div class="value">${sum.batches || 0}</div><div class="sub">100 / req</div></div>`;
 
             root.innerHTML = `

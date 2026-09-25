@@ -111,7 +111,13 @@ async def create_agent(
 
 
 @router.get("/agents", response_model=AgentList)
-async def list_agents(moorcheh_api_key: str = Depends(verify_moorcheh_api_key)):
+async def list_agents(
+    include_counts: bool = Query(
+        True,
+        description="Whether to fetch live memory counts from Moorcheh (slow for many namespaces)",
+    ),
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
+):
     """
     List all agents for this Moorcheh account
 
@@ -120,16 +126,23 @@ async def list_agents(moorcheh_api_key: str = Depends(verify_moorcheh_api_key)):
     namespace rather than the stale value in local metadata.
     """
     agent_list = agent_service.list_agents()
-    counts = await _namespace_item_counts(moorcheh_api_key)
-    for agent in agent_list.agents:
-        if agent.namespace in counts:
-            agent.memory_count = counts[agent.namespace]
+
+    if include_counts:
+        counts = await _namespace_item_counts(moorcheh_api_key)
+        for agent in agent_list.agents:
+            if agent.namespace in counts:
+                agent.memory_count = counts[agent.namespace]
+
     return agent_list
 
 
 @router.get("/agents/{agent_id}", response_model=AgentInfo)
 async def get_agent(
-    agent_id: str, moorcheh_api_key: str = Depends(verify_moorcheh_api_key)
+    agent_id: str,
+    include_counts: bool = Query(
+        True, description="Whether to fetch live memory counts from Moorcheh"
+    ),
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
 ):
     """
     Get agent information
@@ -142,9 +155,12 @@ async def get_agent(
         raise map_error_to_http_exception(
             AgentNotFoundError(f"Agent '{agent_id}' not found")
         )
-    counts = await _namespace_item_counts(moorcheh_api_key)
-    if agent.namespace in counts:
-        agent.memory_count = counts[agent.namespace]
+
+    if include_counts:
+        counts = await _namespace_item_counts(moorcheh_api_key)
+        if agent.namespace in counts:
+            agent.memory_count = counts[agent.namespace]
+
     return agent
 
 
