@@ -152,6 +152,9 @@ def _make_direct_client(tmp_path, monkeypatch):
         direct_client_module.Path, "home", classmethod(lambda cls: tmp_path)
     )
     client = DirectClient(api_key="test-key")
+    monkeypatch.setattr(
+        client, "_get_validated_session_for_agent", lambda agent_id: None
+    )
     mock_write = MagicMock()
     mock_write.delete_memory.return_value = True
     mock_write.store_memory.return_value = {"id": "manual_new"}
