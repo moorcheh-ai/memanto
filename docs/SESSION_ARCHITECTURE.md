@@ -289,6 +289,41 @@ Response:
 }
 ```
 
+#### Recall (multiple agents)
+```http
+POST /api/v2/recall/multi
+Authorization: Bearer {server_key}   # or X-Api-Key: {server_key}
+Content-Type: application/json
+
+Body:
+{
+  "agent_ids": ["agent-a", "agent-b"],
+  "query": "customer preferences",
+  "limit": 10,
+  "type": ["preference"]
+}
+
+Response:
+{
+  "agent_ids": ["agent-a", "agent-b"],
+  "query": "customer preferences",
+  "memories": [
+    { "id": "mem_abc123", "agent_id": "agent-a", "content": "...", "score": 0.91 }
+  ],
+  "count": 1
+}
+```
+
+A session belongs to one agent, so this is the one recall endpoint that is not
+session-scoped. It authorizes with the management credential instead — a
+loopback caller, or the server key as `Authorization: Bearer` / `X-Api-Key` —
+which is the same trust level as agent create/delete. A per-agent session token
+cannot be used here and cannot be used to read a sibling agent's memories.
+
+`limit` applies to the merged ranking rather than to each agent, and every
+memory reports the `agent_id` it came from. The same memory id may appear under
+two agents; those are distinct memories and both are returned.
+
 #### Answer (RAG)
 ```http
 POST /api/v2/agents/{agent_id}/answer
