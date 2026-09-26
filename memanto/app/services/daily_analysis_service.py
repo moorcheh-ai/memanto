@@ -22,6 +22,7 @@ from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryOperationError
+from memanto.app.utils.query_safety import neutralize_filter_syntax
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
@@ -161,9 +162,21 @@ class DailyAnalysisService:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
-        retrieval_query = _truncate_embedding_query(
-            full_text,
-            model=get_active_embedding_model(),
+        # full_text is memory content: the backend parses ``#key:value``
+        # tokens in the query field, so a poisoned memory must not steer the
+        # retrieval filter channel when its text becomes the query
+        # (FINDING-05). Sanitization must run on the FINAL truncated query:
+        # _truncate_embedding_query concatenates non-contiguous slices without
+        # separators, so it can reassemble a ``#key:value`` token from pieces
+        # that were harmless in the pre-truncation text. Sanitizing only the
+        # source would therefore be bypassable; the trailing sanitize call is
+        # the authoritative one (the source pass additionally keeps filter
+        # tokens out of the header prompt rendering).
+        retrieval_query = neutralize_filter_syntax(
+            _truncate_embedding_query(
+                neutralize_filter_syntax(full_text),
+                model=get_active_embedding_model(),
+            )
         )
 
         header_prompt = f"""
@@ -376,9 +389,14 @@ Format the output as a Markdown report:
         client: Any,
         full_text: str,
     ) -> dict[str, Any]:
-        query_digest = _truncate_embedding_query(
-            full_text,
-            model=get_active_embedding_model(),
+        # Same untrusted-content-to-query channel as the summary retrieval
+        # above (FINDING-05): the digest concatenates slices, so sanitize the
+        # final truncated query — tokens can re-form across slice boundaries.
+        query_digest = neutralize_filter_syntax(
+            _truncate_embedding_query(
+                neutralize_filter_syntax(full_text),
+                model=get_active_embedding_model(),
+            )
         )
 
         header_prompt = f"""Analyze the following session memories from {date} against historical knowledge for this agent.
