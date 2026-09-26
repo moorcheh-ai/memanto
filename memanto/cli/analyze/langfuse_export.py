@@ -87,14 +87,154 @@ def split_api_key(api_key: str) -> tuple[str, str]:
     return public_key, secret_key
 
 
+import ipaddress
+import socket
+
+# Official Langfuse Cloud regions (allowed as-is).
+_ALLOWED_LANGFUSE_HOSTS = {
+    "https://cloud.langfuse.com",
+    "https://us.cloud.langfuse.com",
+    "https://eu.cloud.langfuse.com",
+}
+
+
+def _resolve_public_ip(host: str) -> str | None:
+    """Resolve *host* and return a single public IP, or None if unsafe.
+
+    Used to pin the connection target so a DNS rebind between validation and
+    connect time cannot redirect the request at an internal address.
+    """
+    hostname = host.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0].strip()
+    if hostname in ("localhost", "0.0.0.0", "::1", "127.0.0.1"):
+        return None
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+        for info in infos:
+            addr = info[4][0].split("%", 1)[0]
+            ip = ipaddress.ip_address(addr)
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+            ):
+                continue  # skip internal addresses, but keep looking for a public one
+            return addr
+    except (socket.gaierror, ValueError):
+        return None
+    return None
+
+
 def normalize_host(host: str | None) -> str:
-    """Normalize a Langfuse base URL (cloud EU/US or self-hosted)."""
+    """Normalize a Langfuse base URL (cloud EU/US or self-hosted).
+
+    SECURITY (#1852): the Langfuse secret key is transmitted as HTTP Basic auth,
+    so a host value must never point at internal infrastructure or travel in
+    cleartext. Rules:
+      * empty -> official cloud default
+      * explicit http:// -> rejected (cleartext + Langfuse is HTTPS-only)
+      * official cloud regions -> allowed as-is
+      * any other host -> must resolve to a PUBLIC IP (DNS-rebind guard);
+        private/loopback/link-local/metadata hosts fall back to the default
+    """
     text = (host or "").strip().rstrip("/")
     if not text:
         return DEFAULT_HOST
-    if not text.startswith(("http://", "https://")):
+    if text.startswith("http://"):
+        # Reject cleartext custom hosts: the secret key must not go over HTTP.
+        return DEFAULT_HOST
+    if not text.startswith("https://"):
         text = f"https://{text}"
+    if text in _ALLOWED_LANGFUSE_HOSTS:
+        return text
+    ip = _resolve_public_ip(text)
+    if ip is None:
+        return DEFAULT_HOST
     return text
+
+
+import contextlib
+import socket as _socket_module
+
+
+@contextlib.contextmanager
+def _pinned_getaddrinfo(pin_host: str, pin_ip: str, pin_family: int):
+    """Temporarily shadow socket.getaddrinfo so *pin_host* always resolves to *pin_ip*.
+
+    This is the DNS-rebinding defense: we resolved and validated *pin_host* as a
+    public address once (see normalize_host/_pinned_transport), then force every
+    connect-time lookup of that name to return the same validated IP — even if the
+    real name server would now answer with an internal address. Restores the
+    original resolver on exit.
+    """
+    orig = _socket_module.getaddrinfo
+
+    def _pinned(*args: Any, **kwargs: Any) -> Any:
+        if args and args[0] == pin_host:
+            return [(pin_family, _socket_module.SOCK_STREAM, 6, "", (pin_ip, 0))]
+        return orig(*args, **kwargs)
+
+    _socket_module.getaddrinfo = _pinned  # type: ignore[misc]
+    try:
+        yield
+    finally:
+        _socket_module.getaddrinfo = orig  # type: ignore[misc]
+
+
+class _PinnedIPTransport(httpx.HTTPTransport):
+    """Transport that pins a hostname to a pre-validated public IP at connect time.
+
+    httpx/httpcore resolve DNS when the connection opens, not when the URL is
+    built. Without a pin, a hostile name server could return a public address at
+    validation time and an internal (metadata/loopback/RFC1918) address at connect
+    time, bypassing the SSRF guard. We shadow ``socket.getaddrinfo`` for the target
+    hostname during the connect so the TCP connection always lands on the IP we
+    already validated as public. The original hostname stays in the Host header and
+    TLS SNI (``base_url`` is unchanged).
+    """
+
+    def __init__(self, pin_host: str, pin_ip: str, pin_family: int, **kwargs: Any):
+        super().__init__(**kwargs)
+        self._pin_host = pin_host
+        self._pin_ip = pin_ip
+        self._pin_family = pin_family
+
+    def handle_request(self, request: Any) -> Any:  # type: ignore[override]
+        with _pinned_getaddrinfo(self._pin_host, self._pin_ip, self._pin_family):
+            return super().handle_request(request)
+
+
+def _pinned_transport(host: str) -> httpx.HTTPTransport:
+    """Build a connection-time IP-pinned transport for *host* (or a plain one).
+
+    The IP is resolved once here (after normalize_host already guaranteed it is
+    public) and forced at connect time. If the host cannot be resolved to a public
+    IP, a default transport is returned.
+    """
+    hostname = host.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0].strip()
+    if hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        return httpx.HTTPTransport()
+    try:
+        infos = _socket_module.getaddrinfo(hostname, None)
+    except (_socket_module.gaierror, ValueError):
+        return httpx.HTTPTransport()
+    for info in infos:
+        addr = info[4][0].split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            continue
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+        ):
+            continue
+        return _PinnedIPTransport(pin_host=hostname, pin_ip=addr, pin_family=info[0])
+    return httpx.HTTPTransport()
 
 
 def _client(api_key: str, host: str) -> httpx.Client:
@@ -104,6 +244,7 @@ def _client(api_key: str, host: str) -> httpx.Client:
         timeout=REQUEST_TIMEOUT_S,
         auth=httpx.BasicAuth(public_key, secret_key),
         headers={"Content-Type": "application/json"},
+        transport=_pinned_transport(host),
     )
 
 
