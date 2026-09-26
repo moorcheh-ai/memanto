@@ -37,6 +37,7 @@ from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
     SESSION_COOKIE_NAME,
     _is_cross_site_browser_request,
+    _is_loopback_host_header,
     clear_session_cookie,
     set_session_cookie,
 )
@@ -141,10 +142,26 @@ async def _require_local(request: Request) -> None:
             ),
         )
 
+    # Cross-site first: a hostile page must be shown the door no matter
+    # what its Host header claims.
     if _is_cross_site_browser_request(request):
         raise HTTPException(
             status_code=403,
             detail="UI management endpoints reject cross-site browser requests.",
+        )
+
+    # Loopback peer =/= local caller.  DNS rebinding flips an attacker
+    # hostname to 127.0.0.1, so the socket is ours while the Host header
+    # still says "evil.example".  The management routes already check this;
+    # admitting a rebinding page through the back door would make that work
+    # pointless.  (Trust, but keep verifying the credentials too.)
+    if not _is_loopback_host_header(request.headers.get("host")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints require a localhost Host header. "
+                f"Request host: {request.headers.get('host')}"
+            ),
         )
 
 
