@@ -2772,7 +2772,10 @@
                 <div class="page-header">
                     <h2>Agents</h2>
                     <p>View all registered agents and activate one to start a session</p>
-                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
+                    <div class="page-refresh" style="display:flex;gap:8px">
+                        <button class="btn btn-primary btn-sm" onclick="openCreateAgentModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg> New Agent</button>
+                        <button class="btn btn-secondary btn-sm" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
+                    </div>
                 </div>
                 <div id="agentsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>
@@ -3401,7 +3404,7 @@
                 const res = await api('GET', '/api/v2/agents');
                 const agents = res.agents || [];
                 if (!agents.length) {
-                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Create one via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
+                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Click <strong>New Agent</strong> above to create one.</p>`;
                     return;
                 }
                 box.innerHTML = buildAgentsTable(agents);
@@ -3433,6 +3436,86 @@
             });
             html += '</tbody></table></div>';
             return html;
+        }
+
+        // Create Agent modal — mirrors openConnectModal's structure/CSS classes
+        // so it matches the rest of the app instead of introducing new styles.
+        function openCreateAgentModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'createAgentModal';
+            modal.innerHTML = `<div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>New Agent</h3>
+                    <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label>Agent ID</label>
+                    <input id="newAgentId" type="text" placeholder="e.g. support-bot" pattern="[a-zA-Z0-9_-]+"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault(); submitCreateAgent()}">
+                    <div class="helper-text">Letters, numbers, hyphens, and underscores only.</div>
+                </div>
+                <div class="form-group">
+                    <label>Pattern</label>
+                    <select id="newAgentPattern">
+                        <option value="support">support</option>
+                        <option value="project">project</option>
+                        <option value="tool">tool</option>
+                    </select>
+                    <div class="helper-text">How this agent's memory should be organized — doesn't affect functionality.</div>
+                </div>
+                <div class="form-group">
+                    <label>Description <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+                    <input id="newAgentDescription" type="text" placeholder="What this agent is for">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
+                    <button class="btn btn-primary" id="createAgentBtn" onclick="submitCreateAgent()">Create</button>
+                </div>
+            </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) closeCreateAgentModal(); });
+            document.body.appendChild(modal);
+            setTimeout(() => document.getElementById('newAgentId')?.focus(), 50);
+        }
+
+        function closeCreateAgentModal() {
+            const m = document.getElementById('createAgentModal');
+            if (m) m.remove();
+        }
+
+        async function submitCreateAgent() {
+            const idInput = document.getElementById('newAgentId');
+            const agentId = (idInput.value || '').trim();
+            const pattern = document.getElementById('newAgentPattern').value;
+            const description = document.getElementById('newAgentDescription').value.trim();
+
+            if (!agentId) { toast('Agent ID is required', 'error'); idInput.focus(); return; }
+            if (!/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+                toast('Agent ID may only contain letters, numbers, hyphens, and underscores', 'error');
+                idInput.focus();
+                return;
+            }
+
+            const btn = document.getElementById('createAgentBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Creating...';
+            try {
+                await api('POST', '/api/v2/agents', {
+                    agent_id: agentId,
+                    pattern,
+                    description: description || null,
+                });
+                closeCreateAgentModal();
+                toast(`Agent "${agentId}" created`);
+                // Matches the CLI's behavior (memanto agent create activates
+                // automatically), so the new agent is immediately usable.
+                await activateAgent(agentId);
+                loadAgents();
+            } catch (e) {
+                toast('Failed to create agent: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Create';
+            }
         }
 
         async function activateAgent(agentId, btn) {
