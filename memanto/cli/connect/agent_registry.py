@@ -57,6 +57,10 @@ class AgentDef:
     config_local_dir: str | None = None  # e.g. ".claude/"
     config_global_dir: str | None = None  # e.g. "~/.claude/"
 
+    # Env var that relocates the agent's entire global config root
+    # (e.g. KIMI_CODE_HOME, which replaces ~/.kimi-code entirely)
+    global_root_env: str | None = None
+
     # Sentinel for idempotent instruction injection
     sentinel: str = "<!-- MEMANTO-MANAGED-SECTION -->"
     sentinel_end: str = "<!-- /MEMANTO-MANAGED-SECTION -->"
@@ -73,6 +77,37 @@ class AgentDef:
     extension_global_dir: str | None = None  # e.g. "~/.pi/agent/extensions"
     extension_local_dir: str | None = None  # e.g. ".pi/extensions"
 
+    def _global_root_override(self) -> Path | None:
+        """Relocated global root from `global_root_env`, if set and non-empty."""
+        if not self.global_root_env:
+            return None
+        override = os.environ.get(self.global_root_env, "").strip()
+        return Path(override).expanduser() if override else None
+
+    def _resolve_global(self, path: str | None) -> Path | None:
+        """Resolve a `~/...` global path, honoring `global_root_env` relocation."""
+        if not path:
+            return None
+        p = Path(path)
+        if p.is_absolute():
+            return p
+        override = self._global_root_override()
+        if override is None:
+            return Path.home() / path.removeprefix("~/")
+        # The env var replaces the agent's global config directory itself
+        # (KIMI_CODE_HOME stands in for ~/.kimi-code), so strip that prefix.
+        rel = path.removeprefix("~/")
+        prefix = (self.config_global_dir or "~").removeprefix("~/")
+        if rel == prefix:
+            rel = ""
+        elif rel.startswith(prefix + "/"):
+            rel = rel[len(prefix) + 1 :]
+        return override / rel if rel else override
+
+    def resolve_config_global_dir(self) -> Path | None:
+        """Resolve the agent's global config directory."""
+        return self._resolve_global(self.config_global_dir)
+
     def resolve_skill_local(self, project_dir: Path) -> Path:
         """Resolve local skill directory path."""
         if self.skill_local_dir:
@@ -81,8 +116,9 @@ class AgentDef:
 
     def resolve_skill_global(self) -> Path:
         """Resolve global skill directory path."""
-        if self.skill_global_dir:
-            return Path.home() / self.skill_global_dir.lstrip("~/") / "memanto"
+        skill_base = self._resolve_global(self.skill_global_dir)
+        if skill_base is not None:
+            return skill_base / "memanto"
         return Path.home() / ".agents" / "skills" / "memanto"
 
     def resolve_instruction_file(
@@ -90,28 +126,19 @@ class AgentDef:
     ) -> Path | None:
         """Resolve instruction file path."""
         if is_global:
-            if not self.instruction_global_file:
-                return None
-            p = Path(self.instruction_global_file)
-            if p.is_absolute():
-                return p
-            elif self.instruction_global_file.startswith("~/"):
-                return Path.home() / self.instruction_global_file[2:]
-            else:
-                return Path.home() / self.instruction_global_file
-        else:
-            if not self.instruction_local_file:
-                return None
-            return project_dir / self.instruction_local_file
+            return self._resolve_global(self.instruction_global_file)
+        if not self.instruction_local_file:
+            return None
+        return project_dir / self.instruction_local_file
 
     def resolve_extension_file(self, project_dir: Path, is_global: bool) -> Path | None:
         """Resolve code extension file path (for agents that support one)."""
         if not self.extension_file:
             return None
         if is_global:
-            if not self.extension_global_dir:
+            base = self._resolve_global(self.extension_global_dir)
+            if base is None:
                 return None
-            base = Path.home() / self.extension_global_dir.lstrip("~/")
         else:
             if not self.extension_local_dir:
                 return None
@@ -139,6 +166,25 @@ CLAUDE_CODE = AgentDef(
     ),
     permissions_file="settings.local.json",
     permissions_payload={"permissions": {"allow": ["Bash(memanto:*)"]}},
+)
+
+KIMI_CODE = AgentDef(
+    name="kimi-code",
+    display_name="Kimi Code",
+    instruction_local_file="AGENTS.md",
+    instruction_global_file="~/.kimi-code/AGENTS.md",
+    instruction_format="markdown",
+    skill_local_dir=".kimi-code/skills",
+    skill_global_dir="~/.kimi-code/skills",
+    config_local_dir=".kimi-code",
+    config_global_dir="~/.kimi-code",
+    global_root_env="KIMI_CODE_HOME",
+    supports_hooks=True,
+    hook_config=AgentHookConfig(
+        settings_file="config.toml",
+        hook_key="hooks",
+        asset_file="kimi-hooks.toml",
+    ),
 )
 
 CODEX = AgentDef(
@@ -318,6 +364,7 @@ AGENT_REGISTRY: dict[str, AgentDef] = {
     a.name: a
     for a in [
         CLAUDE_CODE,
+        KIMI_CODE,
         CODEX,
         PI,
         CURSOR,

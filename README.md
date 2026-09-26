@@ -216,7 +216,7 @@ Storage substrates sit *beneath* Memanto — vector stores, filesystems, and pla
 | Estate export & sync | `memanto memory export`, `memanto memory sync` | Export structured Markdown, sync `MEMORY.md` into projects. `--okf` for a portable [OKF](https://docs.memanto.ai/integrations/okf) bundle. |
 | Import & migration | `memanto migrate` | Import from Mem0, Letta, Supermemory, Zep, Hindsight, or an OKF bundle. |
 | Configuration | `memanto config show` | API key status, active agent/session, server settings, schedule time. |
-| Fleet integration | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment. |
+| Fleet integration | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment, Kimi Code. |
 
 **Memory types:** `instruction`, `fact`, `decision`, `goal`, `commitment`, `preference`, `relationship`, `context`, `event`, `learning`, `observation`, `artifact`, `error`
 
