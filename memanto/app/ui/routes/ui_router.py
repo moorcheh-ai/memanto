@@ -36,6 +36,7 @@ from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
     SESSION_COOKIE_NAME,
+    _has_forwarded_non_loopback,
     _is_cross_site_browser_request,
     clear_session_cookie,
     set_session_cookie,
@@ -132,7 +133,7 @@ async def _require_local(request: Request) -> None:
     the filesystem, or replace API credentials without authentication.
     """
     client_host = request.client.host if request.client else None
-    if not _is_loopback(client_host):
+    if not _is_loopback(client_host) or _has_forwarded_non_loopback(request):
         raise HTTPException(
             status_code=403,
             detail=(

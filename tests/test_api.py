@@ -586,6 +586,8 @@ class TestMEMANTOAPI:
         assert "mocked answer" in response.json()["answer"]
         call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
         assert "threshold" not in call_kwargs
+        assert "SECURITY NOTICE" in call_kwargs["header_prompt"]
+        assert "REMINDER" in call_kwargs["footer_prompt"]
 
     @pytest.mark.asyncio
     async def test_answer_omits_unset_active_ai_model(
