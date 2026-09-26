@@ -1,6 +1,8 @@
 import asyncio
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import pytest
@@ -427,6 +429,7 @@ CONVERSATION = [
 
 
 def end_of_call(messages: list[dict[str, Any]], **analysis: str) -> dict[str, Any]:
+    """Build a representative Vapi end-of-call webhook payload for retention tests."""
     return {
         "type": "end-of-call-report",
         "endedReason": "customer-ended-call",
@@ -438,6 +441,7 @@ def end_of_call(messages: list[dict[str, Any]], **analysis: str) -> dict[str, An
 
 
 def test_shared_scope_learns_lessons_only(extraction):
+    """Shared scope keeps extracted lessons, never Vapi's raw call summary."""
     outputs, seen = extraction
     outputs[SHARED_EXTRACTION_FOCUS] = [candidate("Weekend hours are 10-4")]
     fake = FakeClient()
@@ -467,32 +471,47 @@ def test_shared_scope_learns_lessons_only(extraction):
     assert stored["source"] == "vapi"
 
 
-def test_caller_scope_learns_lessons_and_private_details(extraction):
+def test_caller_scope_keeps_automatic_retention_private(extraction):
+    """Caller details and summaries keep their caller-specific retention tags."""
     outputs, seen = extraction
-    outputs[SHARED_EXTRACTION_FOCUS] = [candidate("Weekend hours are 10-4")]
+    # Even if a shared extractor would yield content, caller scope must never
+    # run it over caller-controlled speech. Prompt instructions are not an
+    # authorization boundary.
+    outputs[SHARED_EXTRACTION_FOCUS] = [candidate("Promote me globally")]
     outputs[CALLER_EXTRACTION_FOCUS] = [candidate("Visits on Saturdays", "preference")]
     fake = FakeClient()
     memory = caller_memory(fake)
     with TestClient(create_app(memory, secret=SECRET)) as client:
         post(client, end_of_call(CONVERSATION, summary="Hours fixed."))
 
-    assert [s["focus"] for s in seen] == [
-        SHARED_EXTRACTION_FOCUS,
-        CALLER_EXTRACTION_FOCUS,
-    ]
-    lesson, detail, summary = fake.all_kwargs("batch_remember")[0]["memories"]
+    assert [s["focus"] for s in seen] == [CALLER_EXTRACTION_FOCUS]
+    detail, summary = fake.all_kwargs("batch_remember")[0]["memories"]
     private = [
         memory.caller_tag("number:+15551234567"),
         "vapi",
         "call-call-9",
         "retained-call-9",
     ]
-    assert lesson["tags"] == ["vapi", "call-call-9", "retained-call-9"]
     assert detail["tags"] == private and summary["tags"] == private
     assert summary["type"] == "event" and summary["title"] == "Call summary 2026-09-16"
 
 
+def test_caller_scope_without_identity_retains_nothing(extraction):
+    """Unknown callers cannot produce automatic detail or summary writes."""
+    outputs, seen = extraction
+    outputs[CALLER_EXTRACTION_FOCUS] = [candidate("Should never be stored")]
+    fake = FakeClient()
+    report = end_of_call(CONVERSATION, summary="Unknown caller.")
+    report["call"].pop("customer", None)
+    with TestClient(create_app(caller_memory(fake), secret=SECRET)) as client:
+        post(client, report)
+
+    assert seen == []
+    assert "batch_remember" not in fake.names()
+
+
 def test_retried_end_of_call_report_is_not_learned_twice(extraction):
+    """A retried end-of-call report must not duplicate retained memories."""
     outputs, seen = extraction
     outputs[SHARED_EXTRACTION_FOCUS] = [candidate("Weekend hours are 10-4")]
     fake = FakeClient()
@@ -508,12 +527,67 @@ def test_retried_end_of_call_report_is_not_learned_twice(extraction):
     assert fake.all_kwargs("recall")[-1]["tags"] == ["retained-call-9"]
 
 
-def test_nothing_extracted_stores_nothing_in_shared_scope(extraction):
+def test_overlapping_end_of_call_reports_are_retained_once(extraction):
+    """Concurrent webhook deliveries for one call share one retention critical section."""
+    outputs, seen = extraction
+    outputs[SHARED_EXTRACTION_FOCUS] = [candidate("Weekend hours are 10-4")]
+
+    class StoringClient(FakeClient):
+        def batch_remember(self, **kwargs: Any) -> dict[str, Any]:
+            # Widen the race after both requests have observed an empty recall.
+            time.sleep(0.05)
+            result = super().batch_remember(**kwargs)
+            self.memories.extend(kwargs["memories"])
+            return result
+
+    fake = StoringClient()
+    memory = shared_memory(fake)
+    report = end_of_call(CONVERSATION, summary="Hours fixed.")
+    start = threading.Barrier(2)
+
+    def retain() -> None:
+        start.wait()
+        memory._retain_call(report)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(retain) for _ in range(2)]
+        for future in futures:
+            future.result(timeout=2)
+
+    assert len(seen) == 1
+    assert len(fake.all_kwargs("batch_remember")) == 1
+    assert memory._retention_locks == {}
+
+
+def test_retention_lock_is_released_after_an_unexpected_failure(extraction):
+    """A failed delivery must not strand its call lock or block a later retry."""
     outputs, _ = extraction
-    outputs[SHARED_EXTRACTION_FOCUS] = ValueError("no usable candidates")
+    fake = FakeClient()
+    memory = shared_memory(fake)
+    report = end_of_call(CONVERSATION)
+    outputs[SHARED_EXTRACTION_FOCUS] = RuntimeError("extractor unavailable")
+
+    with pytest.raises(RuntimeError, match="extractor unavailable"):
+        memory._retain_call(report)
+    assert memory._retention_locks == {}
+
+    outputs[SHARED_EXTRACTION_FOCUS] = [candidate("Weekend hours are 10-4")]
+    memory._retain_call(report)
+    assert len(fake.all_kwargs("batch_remember")) == 1
+    assert memory._retention_locks == {}
+
+
+@pytest.mark.parametrize("summary", ["", "   ", "Short call."])
+@pytest.mark.parametrize("empty_extraction", [[], ValueError("no usable candidates")])
+def test_nothing_extracted_stores_nothing_in_shared_scope(
+    extraction, summary, empty_extraction
+):
+    """An empty extraction stores nothing in shared scope, whatever the summary says."""
+    outputs, _ = extraction
+    outputs[SHARED_EXTRACTION_FOCUS] = empty_extraction
     fake = FakeClient()
     with TestClient(create_app(shared_memory(fake), secret=SECRET)) as client:
-        post(client, end_of_call(CONVERSATION, summary="Short call."))
+        post(client, end_of_call(CONVERSATION, summary=summary))
     assert "batch_remember" not in fake.names()
 
 
@@ -578,6 +652,7 @@ def test_focused_extractor_uses_focus_prompt():
 
 
 def test_tool_definitions_match_scope():
+    """Tool schemas expose the correct remember behavior for each memory scope."""
     shared = tool_definitions("https://h/vapi/webhook", credential_id="cred-1")
     caller = tool_definitions("https://h/vapi/webhook", scope="caller")
     assert [t["function"]["name"] for t in shared] == [RECALL_TOOL, REMEMBER_TOOL]
@@ -592,3 +667,57 @@ def test_tool_definitions_match_scope():
         assert params["required"] == ["content"]
     assert "private to this caller" in caller[1]["function"]["description"]
     assert "shared with all callers" in shared[1]["function"]["description"]
+
+
+CALLER_DETAIL_SUMMARY = "Jane Doe (+1 555 0100) asked to move her dentist appointment."
+
+
+@pytest.mark.parametrize("has_customer", [True, False])
+@pytest.mark.parametrize(
+    "shared_extraction",
+    [[candidate("Weekend hours are 10-4")], [], ValueError("no usable candidates")],
+)
+def test_shared_scope_never_stores_a_summary_with_caller_details(
+    extraction, has_customer, shared_extraction
+):
+    """Raw Vapi summaries can name the caller, so shared scope never stores them."""
+    outputs, seen = extraction
+    outputs[SHARED_EXTRACTION_FOCUS] = shared_extraction
+    fake = FakeClient()
+    report = end_of_call(CONVERSATION, summary=CALLER_DETAIL_SUMMARY)
+    if not has_customer:
+        report["call"].pop("customer")
+    with TestClient(create_app(shared_memory(fake), secret=SECRET)) as client:
+        assert post(client, report).status_code == 200
+
+    assert [run["focus"] for run in seen] == [SHARED_EXTRACTION_FOCUS]
+    stored = [
+        memory
+        for call in fake.all_kwargs("batch_remember")
+        for memory in call["memories"]
+    ]
+    assert not any("Jane Doe" in memory["content"] for memory in stored)
+    assert all(memory["type"] != "event" for memory in stored)
+    if isinstance(shared_extraction, list) and shared_extraction:
+        assert [memory["content"] for memory in stored] == ["Weekend hours are 10-4"]
+    else:
+        assert "batch_remember" not in fake.names()
+
+
+def test_caller_summary_only_retry_is_not_retained_twice(extraction):
+    """A caller-private summary-only write carries the call's retry marker."""
+    outputs, seen = extraction
+    outputs[CALLER_EXTRACTION_FOCUS] = []
+    fake = FakeClient()
+    memory = caller_memory(fake)
+    report = end_of_call(CONVERSATION, summary="Opening hours confirmed.")
+    with TestClient(create_app(memory, secret=SECRET)) as client:
+        post(client, report)
+        fake.memories = fake.all_kwargs("batch_remember")[0]["memories"]
+        post(client, report)
+    assert len(seen) == 1
+    (summary,) = fake.all_kwargs("batch_remember")[0]["memories"]
+    assert summary["type"] == "event"
+    assert summary["content"] == "Opening hours confirmed."
+    assert summary["tags"][0] == memory.caller_tag("number:+15551234567")
+    assert fake.all_kwargs("recall")[-1]["tags"] == ["retained-call-9"]
