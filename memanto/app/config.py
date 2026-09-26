@@ -172,6 +172,11 @@ class Settings(BaseSettings):
     ANSWER_TEMPERATURE: float = 0.7
     ANSWER_LIMIT: int = 15  # number of context memories to retrieve
     ANSWER_THRESHOLD: float = 0.01  # confidence threshold for memory relevance
+    # Comma-separated models a session caller may pick via `ai_model` on
+    # /answer and /remember/extract. Empty (default) rejects overrides so a
+    # session-token holder cannot force arbitrary/premium models on the
+    # operator's account or route memory context through an unapproved model.
+    ANSWER_ALLOWED_MODELS: str = ""
 
     # Summary & Conflict Detection Configuration
     SUMMARY_MODEL: str = "anthropic.claude-sonnet-4-6"

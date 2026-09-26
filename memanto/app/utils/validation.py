@@ -105,6 +105,38 @@ class CostGuard:
             )
         return namespaces
 
+    @staticmethod
+    def validate_ai_model(requested: str | None) -> str | None:
+        """Allow a caller-requested model only when the operator allowlists it.
+
+        Session-scoped routes accept an optional ``ai_model`` override. Without
+        a gate, any holder of a session token can force arbitrary backend
+        models on the operator's billing/account and send retrieved memories
+        through a model the operator never approved. Default deny; enable via
+        ``ANSWER_ALLOWED_MODELS``.
+        """
+        if requested is None:
+            return None
+        from memanto.app.config import settings
+
+        allowed = {
+            model.strip()
+            for model in settings.ANSWER_ALLOWED_MODELS.split(",")
+            if model.strip()
+        }
+        if requested not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "ai_model_not_allowed",
+                    "message": (
+                        "Requested ai_model is not permitted on this server. "
+                        "Set ANSWER_ALLOWED_MODELS to enable caller-selected models."
+                    ),
+                },
+            )
+        return requested
+
 
 # Enhanced Pydantic models with validation
 class ValidatedMemoryWriteRequest(BaseModel):

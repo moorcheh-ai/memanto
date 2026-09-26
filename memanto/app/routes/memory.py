@@ -684,7 +684,7 @@ async def extract_memories_from_conversation(
             namespace=session.namespace,
             messages=[message.model_dump(mode="json") for message in request.messages],
             max_memories=request.max_memories,
-            ai_model=request.ai_model,
+            ai_model=CostGuard.validate_ai_model(request.ai_model),
         )
 
         if request.dry_run:
@@ -1023,7 +1023,7 @@ async def answer(
         else settings.ANSWER_TEMPERATURE
     )
     resolved_ai_model = (
-        request.ai_model
+        CostGuard.validate_ai_model(request.ai_model)
         if request.ai_model is not None
         else get_active_llm_model(settings.ANSWER_MODEL)
     )
