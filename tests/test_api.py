@@ -2389,6 +2389,15 @@ class TestCWE200ApiKeyLeak:
 
     TEST_AGENT_ID = "test-agent"
 
+    @pytest.fixture(autouse=True)
+    async def _loopback_host_header(self, client):
+        """Simulate the local browser: real UI traffic always carries a
+        loopback Host header (``Host: 127.0.0.1:<port>``). The default
+        ASGITransport base_url ("http://test") sends ``Host: test``, which
+        must be rejected by the DNS-rebinding guard in ``_require_local``
+        and the cookie-host binding in ``get_current_session``."""
+        client.headers["host"] = "127.0.0.1:8000"
+
     @pytest.mark.asyncio
     async def test_config_endpoint_does_not_return_api_key(
         self, client, _mock_ui_config_manager

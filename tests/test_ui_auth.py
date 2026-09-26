@@ -3,6 +3,8 @@
 import asyncio
 from unittest.mock import MagicMock
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
@@ -166,7 +168,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "127.0.0.1:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -175,5 +177,111 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "127.0.0.1:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
+
+
+class TestDNSRebindingGuard:
+    """DNS-rebinding regression tests for _require_local.
+
+    A rebound domain keeps the TCP peer at 127.0.0.1 while the browser sends
+    ``Host: <attacker-domain>``. Same-origin after rebind means requests carry
+    ``Sec-Fetch-Site: same-origin`` and no Origin header on GETs, so neither
+    the client-IP check nor the cross-site check can see the attack — only a
+    Host-header allowlist can. Without it, a malicious page could drive the
+    whole ``/api/ui/*`` surface (config leak + session-cookie issuance,
+    filesystem browse, migrate file reads, api-key overwrite, connections
+    install file writes) and then ride the planted session cookie into the
+    session-authenticated ``/api/v2`` memory endpoints.
+    """
+
+    def test_ui_config_rejects_non_loopback_host(self):
+        """GET /api/ui/config with Host: attacker.com must return 403."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.get(
+            "/api/ui/config",
+            headers={
+                "Host": "attacker.com:8000",
+                "Sec-Fetch-Site": "same-origin",
+            },
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+        assert "memanto_session_token" not in resp.headers.get(
+            "set-cookie", ""
+        ), "rebound request must not receive the session cookie"
+
+    def test_browse_rejects_non_loopback_host(self):
+        """GET /api/ui/browse with Host: attacker.com must return 403."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.get(
+            "/api/ui/browse?path=/",
+            headers={
+                "Host": "attacker.com:8000",
+                "Sec-Fetch-Site": "same-origin",
+            },
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_missing_host_rejected(self):
+        """Requests without a Host header must not inherit loopback trust."""
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {}
+        with pytest.raises(HTTPException) as exc:
+            asyncio.run(_require_local(mock_request))
+        assert exc.value.status_code == 403
+
+    def test_loopback_host_accepted(self):
+        """Loopback peer + loopback Host header must still pass."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        # Endpoint needs no configured backend for the auth decision itself;
+        # any non-403 means the guard let the request through.
+        resp = client.get(
+            "/api/ui/config",
+            headers={
+                "Host": "127.0.0.1:8000",
+                "Sec-Fetch-Site": "same-origin",
+            },
+        )
+        assert resp.status_code != 403, f"expected pass, got {resp.status_code}"
+
+
+class TestCookieAuthHostBinding:
+    """get_current_session must reject cookie auth from non-loopback Hosts.
+
+    The session cookie (SameSite=strict, HttpOnly) is only issued to the
+    local UI. A rebound origin is same-site with itself, so the browser sends
+    the cookie — the Host header is the only signal that the request did not
+    come from the real local UI. Header auth (X-Session-Token) stays open for
+    remote API clients and is not covered by this check.
+    """
+
+    def _call(self, host):
+        from memanto.app.routes.auth_deps import get_current_session
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"host": host} if host else {}
+        return get_current_session(
+            request=mock_request,
+            response=MagicMock(),
+            x_session_token=None,
+            session_cookie="some.jwt.token",
+            authorization=None,
+            x_api_key=None,
+        )
+
+    def test_cookie_auth_rejects_non_loopback_host(self):
+        with pytest.raises(HTTPException) as exc:
+            self._call("attacker.com:8000")
+        assert exc.value.status_code == 403
+
+    def test_cookie_auth_rejects_missing_host(self):
+        with pytest.raises(HTTPException) as exc:
+            self._call(None)
+        assert exc.value.status_code == 403
