@@ -19,7 +19,10 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.services.okf_export_service import (
+    ENTRY_DELIMITER,
+    ESCAPED_ENTRY_DELIMITER,
+)
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
@@ -132,6 +135,11 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
             chunk = chunk.strip()
             if not chunk:
                 continue
+            # Restore the sentinel and ampersands escaped by the exporter, now
+            # that real entry boundaries have already been separated.
+            chunk = chunk.replace(ESCAPED_ENTRY_DELIMITER, ENTRY_DELIMITER).replace(
+                "&amp;", "&"
+            )
             entry = _parse_entry(chunk, file_path, rel_base)
             if entry is not None:
                 memories.append(entry)

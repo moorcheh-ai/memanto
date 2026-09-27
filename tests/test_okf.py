@@ -453,7 +453,7 @@ def test_entry_delimiter_cannot_forge_entries(tmp_path):
     Regression for a delimiter-collision memory-injection bug: the exporter
     echoed stored fields into the document while the loader splits a bundle on
     the literal ``ENTRY_DELIMITER``. Because the split runs on the *whole file*,
-    every echoed field is a vector ÔÇö not just ``content``, but also ``title``,
+    every echoed field is a vector — not just ``content``, but also ``title``,
     ``tags`` and ``resource`` (frontmatter). A memory carrying the marker
     therefore forged an extra entry whose frontmatter (``type``/``title``/
     ``x_memanto``) was attacker-controlled, re-importing as an arbitrary
@@ -491,3 +491,43 @@ def test_entry_delimiter_cannot_forge_entries(tmp_path):
 
             assert len(rows) == 1, (field, split, [r["title"] for r in rows])
             assert rows[0]["type"] == "fact"
+
+
+def test_index_link_text_cannot_break_out(tmp_path):
+    """A stored title must not forge an extra Markdown link/target in index.md.
+
+    Escaping only ``[``/``]`` is not enough: a title carrying a backslash can
+    turn the following ``]`` into a link-closing bracket, so backslashes are
+    escaped first.
+    """
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    title = r"x\](https://evil.example) [y"
+    svc.write_okf_bundle(
+        "agent1", {"fact": [{"title": title, "content": "c"}]}, split="file"
+    )
+    index_md = (
+        svc.exports_dir / "agent1_okf" / "memories" / "fact" / "index.md"
+    ).read_text(encoding="utf-8")
+    link = next(line for line in index_md.splitlines() if line.startswith("- "))
+    # The link target (after the final unescaped "](") must be the memory file,
+    # not the attacker URL smuggled inside the title text.
+    target = link.rstrip().rsplit("](", 1)[-1].rstrip(")")
+    assert target.endswith(".md")
+    assert not target.startswith("http")
+
+
+def test_okf_round_trip_preserves_escaped_fields(tmp_path):
+    """The sentinel/ampersand escape must be reversible: a stored value holding
+    the raw sentinel (or ``&amp;``) round-trips unchanged and never forges a
+    second entry."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    original = "keep <!-- okf-entry --> and &amp; and & intact"
+    result = svc.write_okf_bundle(
+        "agent1", {"fact": [{"title": "t", "content": original}]}, split="file"
+    )
+    rows = map_okf(load_okf_bundle(result["output_path"]))
+    assert len(rows) == 1
+    content = rows[0]["content"]
+    assert "<!-- okf-entry -->" in content
+    assert "&amp;" in content
+    assert " and & " in content

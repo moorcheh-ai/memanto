@@ -40,6 +40,11 @@ from memanto.app.utils.validation import validate_output_path, validate_safe_id
 # appear inside a document body (e.g. the migrate ``[Supporting data]`` footer).
 ENTRY_DELIMITER = "<!-- okf-entry -->"
 
+# HTML-escaped form of the sentinel used to neutralize it inside stored field
+# values. Ampersands are escaped first so the transform stays reversible: the
+# loader restores the sentinel and ampersands after splitting.
+ESCAPED_ENTRY_DELIMITER = ENTRY_DELIMITER.replace("<", "&lt;")
+
 # Default: collapse a type into a single stacked file once it exceeds this many
 # memories (see the ``auto`` split mode).
 DEFAULT_SPLIT_THRESHOLD = 50
@@ -59,7 +64,9 @@ def _index_link_text(value: Any) -> str:
     keeps them from forging extra links or targets in the generated ``index.md``.
     """
     text = " ".join(str(value or "").split())
-    return text.replace("[", "\\[").replace("]", "\\]")
+    # Escape backslashes first, so a title cannot smuggle a `\` that turns the
+    # following `]` into a link-closing bracket (Markdown-injection bypass).
+    return text.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
 
 
 class OkfExportService:
@@ -450,7 +457,12 @@ class OkfExportService:
             default_flow_style=False,
         ).strip()
         document = f"---\n{front}\n---\n\n{content}\n"
-        return document.replace(ENTRY_DELIMITER, ENTRY_DELIMITER.replace("<", "&lt;"))
+        # Escape ampersands first, then the entry sentinel, so a stored value
+        # that already contains the escaped marker stays distinguishable and the
+        # transform is reversible on import (loader restores both, in order).
+        return document.replace("&", "&amp;").replace(
+            ENTRY_DELIMITER, ESCAPED_ENTRY_DELIMITER
+        )
 
     def _first_line(self, content: str) -> str:
         """First non-empty line of content (heading marks stripped), for the
