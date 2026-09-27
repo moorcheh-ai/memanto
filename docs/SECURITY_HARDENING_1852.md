@@ -48,10 +48,10 @@ treat memory as data only.
 **Flaw:** Documented `--host 0.0.0.0` usage exposed the process’s Moorcheh
 identity with no inbound authentication.
 
-**Fix:** `require_safe_network_bind()` refuses non-loopback HTTP/SSE binds
-unless `MEMANTO_MCP_AUTH_TOKEN` is set. When the token is configured, inbound
-HTTP/SSE requests must present `Authorization: Bearer <token>` (or
-`X-Api-Key`).
+**Fix:** `require_safe_network_bind()` refuses **any** non-loopback HTTP/SSE
+bind (even with a token). Deploy behind a TLS-terminating reverse proxy on
+loopback. When `MEMANTO_MCP_AUTH_TOKEN` is set, inbound requests must present
+`Authorization: Bearer <token>` (or `X-Api-Key`).
 
 ### 5. UI browse path reconnaissance (Medium)
 
@@ -86,8 +86,8 @@ These are **verification** steps for reviewers, not attack scripts:
    sanitization filters markers (unit tests in
    `tests/test_security_hardening_1852.py`).
 
-4. **MCP bind:** `MEMANTO_MCP_HOST=0.0.0.0` without `MEMANTO_MCP_AUTH_TOKEN`
-   raises at `require_safe_network_bind()`.
+4. **MCP bind:** `MEMANTO_MCP_HOST=0.0.0.0` raises at
+   `require_safe_network_bind()` even when `MEMANTO_MCP_AUTH_TOKEN` is set.
 
 ## Tests
 

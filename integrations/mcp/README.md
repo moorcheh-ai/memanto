@@ -144,7 +144,7 @@ All config is via environment variables (load order: process env →
 | `MEMANTO_MCP_TRANSPORT` | no | `stdio` | `stdio`, `sse`, or `streamable-http`. |
 | `MEMANTO_MCP_HOST` | no | `127.0.0.1` | Bind host for sse/http transports. |
 | `MEMANTO_MCP_PORT` | no | `8765` | Bind port for sse/http transports. |
-| `MEMANTO_MCP_AUTH_TOKEN` | conditional | — | Required inbound shared secret when binding HTTP/SSE beyond loopback. |
+| `MEMANTO_MCP_AUTH_TOKEN` | recommended for HTTP/SSE | — | Inbound Bearer shared secret. Strongly recommended whenever the loopback listener is reached via a reverse proxy. |
 | `MEMANTO_MCP_LOG_LEVEL` | no | `INFO` | Log level (logs are always sent to stderr). |
 
 CLI flags (`memanto-mcp --transport sse --port 9000`) override env vars.
@@ -155,35 +155,30 @@ For remote clients or multi-process setups, run the server over a network
 transport:
 
 ```bash
-# Streamable HTTP — loopback only (safe default; HTTP is fine on localhost)
-memanto-mcp --transport streamable-http --host 127.0.0.1 --port 8765
-
-# Non-loopback binds REQUIRE an inbound shared secret AND a TLS-terminating
-# reverse proxy. Do not expose the MCP port directly over cleartext HTTP —
-# Bearer tokens would travel in plaintext.
+# Streamable HTTP — loopback only (required; the process never binds 0.0.0.0)
 export MEMANTO_MCP_AUTH_TOKEN=your-long-random-secret
 memanto-mcp --transport streamable-http --host 127.0.0.1 --port 8765
-# Then terminate TLS at the proxy (nginx/Caddy/Traefik) and forward to
+
+# Terminate TLS at a reverse proxy (nginx/Caddy/Traefik) and forward to
 # 127.0.0.1:8765. Clients must connect through the HTTPS frontend:
 #   https://your-host/mcp
 #
-# If you must bind the process itself beyond loopback, still put TLS in front:
-#   memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
-#   → only reachable via https://your-host/mcp through the proxy
+# Binding beyond loopback (e.g. --host 0.0.0.0) is refused at startup even
+# when MEMANTO_MCP_AUTH_TOKEN is set — cleartext Bearer tokens must not
+# cross the network.
 ```
 
 Point remote clients at `https://your-host/mcp` (or whatever path the proxy
-and transport advertise) — never a bare `http://` URL for non-loopback
-deployments. Binding beyond loopback without `MEMANTO_MCP_AUTH_TOKEN` is
-refused at startup. When the token is set, every inbound HTTP/SSE request
-must include:
+and transport advertise) — never a bare `http://` URL for remote access.
+When the token is set, every inbound HTTP/SSE request must include:
 
 ```http
 Authorization: Bearer your-long-random-secret
 ```
 
 (`X-Api-Key: your-long-random-secret` is also accepted.) A TLS-terminating
-reverse proxy is required for any non-loopback deployment.
+reverse proxy in front of the loopback listener is required for any remote
+deployment.
 
 ## How it works
 

@@ -13,9 +13,9 @@ from starlette.responses import JSONResponse, Response
 class BearerTokenMiddleware(BaseHTTPMiddleware):
     """Reject HTTP requests that do not present the expected Bearer token.
 
-    Used when ``MEMANTO_MCP_AUTH_TOKEN`` is configured so non-loopback (and
-    optionally loopback) MCP HTTP/SSE endpoints authenticate inbound clients,
-    not only refuse unsafe binds at startup.
+    Used when ``MEMANTO_MCP_AUTH_TOKEN`` is configured so HTTP/SSE endpoints
+    authenticate inbound clients (including traffic forwarded from a TLS
+    reverse proxy to the loopback listener).
     """
 
     def __init__(self, app, expected_token: str):

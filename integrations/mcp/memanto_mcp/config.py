@@ -95,13 +95,13 @@ class MCPServerSettings(BaseSettings):
         description="Register agent-management tools (create/list/get/delete).",
     )
 
-    # Shared secret required for inbound MCP clients when binding beyond loopback.
+    # Shared secret for inbound MCP HTTP/SSE clients (recommended behind a proxy).
     auth_token: SecretStr | None = Field(
         default=None,
         validation_alias="MEMANTO_MCP_AUTH_TOKEN",
         description=(
-            "Bearer token required for inbound MCP HTTP/SSE clients. "
-            "Mandatory when host is not loopback."
+            "Bearer token required for inbound MCP HTTP/SSE clients when set. "
+            "Recommended whenever a reverse proxy forwards to the loopback listener."
         ),
     )
 
@@ -167,22 +167,23 @@ class MCPServerSettings(BaseSettings):
         return value or None
 
     def require_safe_network_bind(self) -> None:
-        """Refuse non-loopback HTTP/SSE binds without an inbound auth token.
+        """Refuse HTTP/SSE binds beyond loopback.
 
-        The MCP process embeds ``MOORCHEH_API_KEY`` and exposes full memory
-        R/W. Binding ``0.0.0.0`` (or any non-loopback address) without an
-        inbound shared secret would let any network peer use that identity.
+        The MCP process embeds ``MOORCHEH_API_KEY`` and serves cleartext HTTP
+        via Uvicorn. Binding ``0.0.0.0`` (or any non-loopback address) would
+        expose Bearer tokens and memory tools over the network without TLS.
+        Always bind to ``127.0.0.1`` / ``::1`` and terminate TLS at a reverse
+        proxy in front. Set ``MEMANTO_MCP_AUTH_TOKEN`` so the proxy-facing
+        loopback listener still authenticates inbound clients.
         """
         if self.transport is TransportType.STDIO:
             return
         if _is_loopback_bind_host(self.host):
             return
-        if self.auth_token_value():
-            return
         raise RuntimeError(
-            f"Refusing to bind MCP {self.transport.value} transport to "
-            f"{self.host!r} without MEMANTO_MCP_AUTH_TOKEN. Set a shared "
-            "secret, or bind to 127.0.0.1 / ::1."
+            f"Refusing to bind MCP {self.transport.value} transport beyond "
+            f"loopback at {self.host!r}. Terminate TLS at a reverse proxy "
+            "and bind the MCP process to 127.0.0.1 / ::1."
         )
 
     # Convenience accessor — never logged.
