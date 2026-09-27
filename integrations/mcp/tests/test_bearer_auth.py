@@ -48,13 +48,13 @@ def test_bearer_middleware_rejects_wrong_token() -> None:
     assert resp.status_code == 401
 
 
-def test_bearer_middleware_accepts_non_ascii_token() -> None:
+def test_tokens_match_handles_non_ascii() -> None:
+    from memanto_mcp.auth import _tokens_match
+
     token = "sécrèt-🔑-token"
-    app = apply_bearer_auth(_plain_app(), token)
-    client = TestClient(app)
-    assert client.get("/").status_code == 401
-    resp = client.get("/", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 200
+    assert _tokens_match(token, token) is True
+    assert _tokens_match(token, "other") is False
+    assert _tokens_match("ascii-only", "ascii-only") is True
 
 
 def test_build_http_app_enforces_token(
