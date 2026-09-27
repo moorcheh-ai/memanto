@@ -41,9 +41,11 @@ from memanto.app.utils.validation import validate_output_path, validate_safe_id
 ENTRY_DELIMITER = "<!-- okf-entry -->"
 
 # HTML-escaped form of the sentinel used to neutralize it inside stored field
-# values. Ampersands are escaped first so the transform stays reversible: the
-# loader restores the sentinel and ampersands after splitting.
-ESCAPED_ENTRY_DELIMITER = ENTRY_DELIMITER.replace("<", "&lt;")
+# values. Both angle brackets are escaped for symmetry. Ampersands are escaped
+# first (see ``_render_okf_doc``) so the transform stays reversible: the loader
+# (``okf_loader.load_okf_bundle``) restores the sentinel and then the
+# ampersands, in that reverse order, after splitting the bundle.
+ESCAPED_ENTRY_DELIMITER = ENTRY_DELIMITER.replace("<", "&lt;").replace(">", "&gt;")
 
 # Marker written into every rendered document's ``x_memanto`` block. It lets the
 # loader tell a Memanto-exported document — which carries the reversible ``&`` /
@@ -469,7 +471,9 @@ class OkfExportService:
         document = f"---\n{front}\n---\n\n{content}\n"
         # Escape ampersands first, then the entry sentinel, so a stored value
         # that already contains the escaped marker stays distinguishable and the
-        # transform is reversible on import (loader restores both, in order).
+        # transform is reversible on import. ``okf_loader.load_okf_bundle``
+        # reverses these substitutions in the opposite order (sentinel, then
+        # ampersands) after splitting the bundle on the literal sentinel.
         return document.replace("&", "&amp;").replace(
             ENTRY_DELIMITER, ESCAPED_ENTRY_DELIMITER
         )

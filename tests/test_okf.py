@@ -584,3 +584,30 @@ def test_memanto_escape_marker_does_not_leak_into_metadata(tmp_path):
 
     assert "escaped" not in (entry.get("x_memanto") or {})
     assert "Body with & and &amp; intact." in entry["body"]
+
+
+def test_export_neutralizes_sentinel_in_bundle(tmp_path):
+    """The rendered bundle must never contain the literal entry sentinel inside
+    a stored value: it is written as the HTML-escaped form, and a value that
+    mixes the sentinel with ``&``/``&amp;`` still round-trips verbatim."""
+    from memanto.app.services.okf_export_service import (
+        ENTRY_DELIMITER,
+        ESCAPED_ENTRY_DELIMITER,
+    )
+
+    stored = f"head {ENTRY_DELIMITER} & &amp; tail"
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle(
+        "agent1", {"fact": [_mem("f1", "sentinel", stored)]}, split="file"
+    )
+    fact_md = svc.exports_dir / "agent1_okf" / "memories" / "fact" / "sentinel.md"
+    text = fact_md.read_text(encoding="utf-8")
+
+    # The raw sentinel is neutralized in the file; its escaped form is present.
+    assert ENTRY_DELIMITER not in text
+    assert ESCAPED_ENTRY_DELIMITER in text
+
+    # And it round-trips: no forged entry, original value preserved verbatim.
+    rows = map_okf(load_okf_bundle(result["output_path"]))
+    assert len(rows) == 1
+    assert stored in rows[0]["content"]
