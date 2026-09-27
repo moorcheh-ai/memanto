@@ -85,6 +85,45 @@ class TestLoopbackProxyHardening:
         assert exc.value.status_code == 401
         assert "Loopback auth exemption is disabled" in exc.value.detail
 
+    def test_trusted_proxy_still_requires_loopback_client(self, monkeypatch):
+        """A trusted local proxy must not grant loopback trust to remote clients."""
+        from memanto.app.config import settings
+        from memanto.app.routes import auth_deps
+
+        monkeypatch.setattr(settings, "MEMANTO_ALLOW_LOOPBACK_EXEMPTION", True)
+        monkeypatch.setattr(settings, "MEMANTO_TRUSTED_PROXY_IPS", "127.0.0.1")
+        monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "server-key")
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "cloud")
+
+        request = MagicMock()
+        request.client.host = "127.0.0.1"
+        request.headers = {
+            "host": "localhost:8000",
+            "x-forwarded-for": "203.0.113.50",
+        }
+
+        with pytest.raises(HTTPException) as exc:
+            auth_deps.require_management_access(request, None, None)
+        assert exc.value.status_code == 401
+
+    def test_trusted_proxy_allows_loopback_forwarded_client(self, monkeypatch):
+        from memanto.app.config import settings
+        from memanto.app.routes import auth_deps
+
+        monkeypatch.setattr(settings, "MEMANTO_ALLOW_LOOPBACK_EXEMPTION", True)
+        monkeypatch.setattr(settings, "MEMANTO_TRUSTED_PROXY_IPS", "127.0.0.1")
+        monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "server-key")
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "cloud")
+
+        request = MagicMock()
+        request.client.host = "127.0.0.1"
+        request.headers = {
+            "host": "localhost:8000",
+            "x-forwarded-for": "127.0.0.1",
+        }
+
+        assert auth_deps.require_management_access(request, None, None) == "server-key"
+
 
 class TestPromptInjectionSanitization:
     def test_strips_system_tags_and_ignore_instructions(self):

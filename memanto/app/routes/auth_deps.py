@@ -145,20 +145,25 @@ def _is_cross_site_browser_request(request: Request) -> bool:
 
 
 def _has_untrusted_forwarded_identity(request: Request) -> bool:
-    """True when proxy identity headers are present without a trusted proxy hop.
+    """True when proxy identity headers make loopback trust unsafe.
 
     Reverse proxies on the same host make every client look like ``127.0.0.1``.
-    If ``X-Forwarded-For`` / ``X-Real-IP`` / ``Forwarded`` are set and the
-    immediate peer is not in ``MEMANTO_TRUSTED_PROXY_IPS``, refuse the
-    loopback auth exemption so proxied remote clients cannot inherit trust.
+    Presence of ``X-Forwarded-For`` / ``X-Real-IP`` / ``Forwarded`` means the
+    TCP peer is not the real client.
+
+    Loopback exemption is refused when:
+    - forwarded headers are present and no trusted proxy list is configured; or
+    - the immediate peer is not in ``MEMANTO_TRUSTED_PROXY_IPS``; or
+    - the peer *is* trusted, but the forwarded client address is not loopback.
+
+    Trusting a local proxy never makes its *clients* local.
     """
-    forwarded_headers = (
-        "x-forwarded-for",
-        "x-real-ip",
-        "forwarded",
-        "x-forwarded-host",
-    )
-    if not any(request.headers.get(h) for h in forwarded_headers):
+    xff = request.headers.get("x-forwarded-for")
+    xri = request.headers.get("x-real-ip")
+    forwarded = request.headers.get("forwarded")
+    xf_host = request.headers.get("x-forwarded-host")
+
+    if not any((xff, xri, forwarded, xf_host)):
         return False
 
     from memanto.app.config import settings
@@ -179,6 +184,7 @@ def _has_untrusted_forwarded_identity(request: Request) -> bool:
     except ValueError:
         return True
 
+    peer_trusted = False
     for token in trusted_raw.split(","):
         token = token.strip()
         if not token:
@@ -186,12 +192,53 @@ def _has_untrusted_forwarded_identity(request: Request) -> bool:
         try:
             if "/" in token:
                 if peer_addr in ipaddress.ip_network(token, strict=False):
-                    return False
+                    peer_trusted = True
+                    break
             elif peer_addr == ipaddress.ip_address(token):
-                return False
+                peer_trusted = True
+                break
         except ValueError:
             continue
-    return True
+
+    if not peer_trusted:
+        return True
+
+    # Peer is a trusted proxy — still require the *client* address to be
+    # loopback before granting localhost management/UI privileges.
+    client_ip = _forwarded_client_ip(xff=xff, xri=xri, forwarded=forwarded)
+    if client_ip is None:
+        return True
+    return not _is_loopback_host(client_ip)
+
+
+def _forwarded_client_ip(
+    *,
+    xff: str | None,
+    xri: str | None,
+    forwarded: str | None,
+) -> str | None:
+    """Extract the original client IP from common proxy headers."""
+    if xff and isinstance(xff, str):
+        # X-Forwarded-For: client, proxy1, proxy2 — leftmost is original client.
+        first = xff.split(",", 1)[0].strip()
+        if first:
+            return first
+    if xri and isinstance(xri, str) and xri.strip():
+        return xri.strip()
+    if forwarded and isinstance(forwarded, str):
+        # RFC 7239: Forwarded: for=10.0.0.1;proto=http,...
+        for segment in forwarded.split(","):
+            for part in segment.split(";"):
+                part = part.strip()
+                if part.lower().startswith("for="):
+                    value = part[4:].strip().strip('"')
+                    # Strip IPv6 brackets / optional port: [2001:db8::1]:443
+                    if value.startswith("["):
+                        end = value.find("]")
+                        if end != -1:
+                            return value[1:end]
+                    return value.split(":", 1)[0] if value.count(":") == 1 else value
+    return None
 
 
 def require_management_access(

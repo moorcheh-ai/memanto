@@ -19,6 +19,7 @@ except ImportError as exc:  # pragma: no cover - install-time message
         "memanto-mcp requires the `mcp` package. Install with: pip install 'mcp[cli]>=1.2'"
     ) from exc
 
+from memanto_mcp.auth import apply_bearer_auth
 from memanto_mcp.config import MCPServerSettings, TransportType
 from memanto_mcp.lifecycle import MemantoLifecycle
 from memanto_mcp.tools import register_tools
@@ -101,6 +102,35 @@ def build_server(settings: MCPServerSettings | None = None) -> FastMCP:
     return mcp
 
 
+def build_http_app(mcp: FastMCP, settings: MCPServerSettings, *, mount_path: str | None = None):
+    """Build the Starlette app for SSE or streamable-HTTP with Bearer auth.
+
+    When ``MEMANTO_MCP_AUTH_TOKEN`` is set, every inbound request must present
+    ``Authorization: Bearer <token>`` (or ``X-Api-Key``).
+    """
+    if settings.transport is TransportType.SSE:
+        app = mcp.sse_app(mount_path)
+    elif settings.transport is TransportType.STREAMABLE_HTTP:
+        app = mcp.streamable_http_app()
+    else:
+        raise ValueError(f"Not an HTTP transport: {settings.transport}")
+    return apply_bearer_auth(app, settings.auth_token_value())
+
+
+async def _run_http_async(mcp: FastMCP, settings: MCPServerSettings) -> None:
+    import uvicorn
+
+    app = build_http_app(mcp, settings)
+    config = uvicorn.Config(
+        app,
+        host=settings.host,
+        port=settings.port,
+        log_level=settings.log_level.lower(),
+    )
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
 def run_server(settings: MCPServerSettings | None = None) -> None:
     """Build the server and serve over the configured transport."""
     mcp = build_server(settings)
@@ -115,10 +145,15 @@ def run_server(settings: MCPServerSettings | None = None) -> None:
         if transport is TransportType.STDIO:
             # FastMCP.run() defaults to stdio when called with no transport.
             mcp.run(transport="stdio")
-        elif transport is TransportType.SSE:
-            mcp.run(transport="sse")
-        elif transport is TransportType.STREAMABLE_HTTP:
-            mcp.run(transport="streamable-http")
+        elif transport in (TransportType.SSE, TransportType.STREAMABLE_HTTP):
+            import anyio
+
+            if settings.auth_token_value():
+                logger.info(
+                    "Inbound MCP Bearer auth enabled for %s transport",
+                    transport.value,
+                )
+            anyio.run(_run_http_async, mcp, settings)
         else:  # pragma: no cover - exhausted by enum
             raise ValueError(f"Unsupported transport: {transport}")
     finally:

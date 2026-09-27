@@ -165,8 +165,15 @@ memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
 
 Then point your client at `http://your-host:8765/mcp` (or whatever path the
 chosen transport advertises). Binding beyond loopback without
-`MEMANTO_MCP_AUTH_TOKEN` is refused at startup. Still prefer a reverse proxy
-with TLS in production.
+`MEMANTO_MCP_AUTH_TOKEN` is refused at startup. When the token is set, every
+inbound HTTP/SSE request must include:
+
+```http
+Authorization: Bearer your-long-random-secret
+```
+
+(`X-Api-Key: your-long-random-secret` is also accepted.) Prefer a reverse
+proxy with TLS in production.
 
 ## How it works
 

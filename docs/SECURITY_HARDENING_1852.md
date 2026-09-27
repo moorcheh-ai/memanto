@@ -27,7 +27,8 @@ appears loopback, so remote clients could inherit management/UI privileges
 
 **Fix:**
 - Reject loopback exemption when untrusted `X-Forwarded-*` / `Forwarded`
-  headers are present (unless peer is in `MEMANTO_TRUSTED_PROXY_IPS`).
+  headers are present (unless peer is in `MEMANTO_TRUSTED_PROXY_IPS` **and**
+  the forwarded client IP is itself loopback).
 - Add `MEMANTO_ALLOW_LOOPBACK_EXEMPTION` to disable the exemption entirely
   behind authenticated proxies.
 - Align UI `_require_local` with Host-header checks used by management auth.
@@ -48,7 +49,9 @@ treat memory as data only.
 identity with no inbound authentication.
 
 **Fix:** `require_safe_network_bind()` refuses non-loopback HTTP/SSE binds
-unless `MEMANTO_MCP_AUTH_TOKEN` is set.
+unless `MEMANTO_MCP_AUTH_TOKEN` is set. When the token is configured, inbound
+HTTP/SSE requests must present `Authorization: Bearer <token>` (or
+`X-Api-Key`).
 
 ### 5. UI browse path reconnaissance (Medium)
 
