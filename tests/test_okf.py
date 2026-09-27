@@ -531,3 +531,56 @@ def test_okf_round_trip_preserves_escaped_fields(tmp_path):
     assert "<!-- okf-entry -->" in content
     assert "&amp;" in content
     assert " and & " in content
+
+
+def test_export_marks_documents_for_selective_decode(tmp_path):
+    """Every exported memory document carries the escape marker so the loader
+    knows to reverse the escape; foreign files (without it) are left untouched."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    svc.write_okf_bundle(
+        "agent1", {"fact": [_mem("f1", "A fact", "Body.")]}, split="file"
+    )
+    fact_md = svc.exports_dir / "agent1_okf" / "memories" / "fact" / "a-fact.md"
+    frontmatter = yaml.safe_load(fact_md.read_text(encoding="utf-8").split("---", 2)[1])
+    assert frontmatter["x_memanto"]["escaped"] is True
+
+
+def test_foreign_okf_document_is_not_escape_decoded(tmp_path):
+    """A foreign/standalone OKF file must not be run through the exporter's
+    reversible decode: its literal ``&amp;`` and HTML-escaped sentinel are data,
+    not escape artifacts, and must survive import untouched.
+
+    Regression for a data-integrity issue: the loader decoded every document, so
+    importing third-party OKF content that contained ``&amp;`` silently changed
+    it to ``&``.
+    """
+    foreign = tmp_path / "note.md"
+    foreign.write_text(
+        "---\n"
+        "type: fact\n"
+        "title: Entities\n"
+        "---\n\n"
+        "Compare A &amp; B and the marker &lt;!-- okf-entry --&gt; verbatim.\n",
+        encoding="utf-8",
+    )
+
+    memory = load_okf_bundle(foreign)["memories"][0]
+
+    assert "A &amp; B" in memory["body"]
+    assert "&lt;!-- okf-entry --&gt;" in memory["body"]
+
+
+def test_memanto_escape_marker_does_not_leak_into_metadata(tmp_path):
+    """The loader-facing escape marker is stripped from imported ``x_memanto``
+    while the document's own escaped content still round-trips."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle(
+        "agent1",
+        {"fact": [_mem("f1", "A fact", "Body with & and &amp; intact.")]},
+        split="file",
+    )
+
+    entry = load_okf_bundle(result["output_path"])["memories"][0]
+
+    assert "escaped" not in (entry.get("x_memanto") or {})
+    assert "Body with & and &amp; intact." in entry["body"]

@@ -22,6 +22,7 @@ import yaml  # type: ignore[import-untyped]
 from memanto.app.services.okf_export_service import (
     ENTRY_DELIMITER,
     ESCAPED_ENTRY_DELIMITER,
+    ESCAPE_MARKER_KEY,
 )
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
@@ -108,6 +109,27 @@ def _bundle_lock_root(path: Path) -> Path:
     return path.parent
 
 
+def _uses_exporter_escaping(chunk: str) -> bool:
+    """Return ``True`` when ``chunk`` was written by Memanto's OKF exporter.
+
+    Only those documents carry the reversible ``&`` / sentinel escape transform,
+    so only they may be decoded on import. Foreign or standalone OKF files are
+    left exactly as written, preserving any literal ``&amp;`` or
+    ``&lt;!-- okf-entry --&gt;`` text they contain.
+    """
+    match = _FRONTMATTER_RE.match(chunk)
+    if not match:
+        return False
+    try:
+        frontmatter = yaml.safe_load(match.group(1)) or {}
+    except yaml.YAMLError:
+        return False
+    if not isinstance(frontmatter, dict):
+        return False
+    x_memanto = frontmatter.get("x_memanto")
+    return isinstance(x_memanto, dict) and x_memanto.get(ESCAPE_MARKER_KEY) is True
+
+
 def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
     """Load ``root`` while the caller holds its bundle reader lock."""
     if not root.exists():
@@ -135,11 +157,13 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
             chunk = chunk.strip()
             if not chunk:
                 continue
-            # Restore the sentinel and ampersands escaped by the exporter, now
-            # that real entry boundaries have already been separated.
-            chunk = chunk.replace(ESCAPED_ENTRY_DELIMITER, ENTRY_DELIMITER).replace(
-                "&amp;", "&"
-            )
+            # Reverse the exporter's escape only for documents it wrote. A
+            # foreign/standalone OKF file may legitimately contain ``&amp;`` or
+            # the HTML-escaped sentinel as data; decoding those would corrupt it.
+            if _uses_exporter_escaping(chunk):
+                chunk = chunk.replace(
+                    ESCAPED_ENTRY_DELIMITER, ENTRY_DELIMITER
+                ).replace("&amp;", "&")
             entry = _parse_entry(chunk, file_path, rel_base)
             if entry is not None:
                 memories.append(entry)
@@ -178,6 +202,10 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
     x_memanto = frontmatter.get("x_memanto")
     if not isinstance(x_memanto, dict):
         x_memanto = {}
+    else:
+        # Drop the loader-facing escape marker so it never leaks into the
+        # imported memory payload.
+        x_memanto = {k: v for k, v in x_memanto.items() if k != ESCAPE_MARKER_KEY}
 
     extra = {k: v for k, v in frontmatter.items() if k not in _KNOWN_FIELDS}
     links = [f"{text} -> {target}" for text, target in _extract_links(body)]

@@ -45,6 +45,13 @@ ENTRY_DELIMITER = "<!-- okf-entry -->"
 # loader restores the sentinel and ampersands after splitting.
 ESCAPED_ENTRY_DELIMITER = ENTRY_DELIMITER.replace("<", "&lt;")
 
+# Marker written into every rendered document's ``x_memanto`` block. It lets the
+# loader tell a Memanto-exported document — which carries the reversible ``&`` /
+# sentinel escape above — from a foreign or standalone OKF file, so only
+# exporter output is decoded on import and third-party content keeps its literal
+# ``&amp;`` / ``&lt;!-- okf-entry --&gt;`` text intact.
+ESCAPE_MARKER_KEY = "escaped"
+
 # Default: collapse a type into a single stacked file once it exceeds this many
 # memories (see the ``auto`` split mode).
 DEFAULT_SPLIT_THRESHOLD = 50
@@ -448,6 +455,9 @@ class OkfExportService:
             if val not in (None, ""):
                 x_memanto[key] = val
         x_memanto["type"] = mem_type
+        # Record that this document uses the reversible escape format so the
+        # loader only reverses it for documents we actually wrote.
+        x_memanto[ESCAPE_MARKER_KEY] = True
         frontmatter["x_memanto"] = x_memanto
 
         front = yaml.safe_dump(
