@@ -21,8 +21,8 @@ import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.okf_export_service import (
     ENTRY_DELIMITER,
-    ESCAPED_ENTRY_DELIMITER,
     ESCAPE_MARKER_KEY,
+    ESCAPED_ENTRY_DELIMITER,
 )
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
@@ -161,9 +161,9 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
             # foreign/standalone OKF file may legitimately contain ``&amp;`` or
             # the HTML-escaped sentinel as data; decoding those would corrupt it.
             if _uses_exporter_escaping(chunk):
-                chunk = chunk.replace(
-                    ESCAPED_ENTRY_DELIMITER, ENTRY_DELIMITER
-                ).replace("&amp;", "&")
+                chunk = chunk.replace(ESCAPED_ENTRY_DELIMITER, ENTRY_DELIMITER).replace(
+                    "&amp;", "&"
+                )
             entry = _parse_entry(chunk, file_path, rel_base)
             if entry is not None:
                 memories.append(entry)

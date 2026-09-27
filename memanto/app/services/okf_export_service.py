@@ -512,9 +512,7 @@ class OkfExportService:
         ]
         # Link text is a stored memory title: collapse it to one line and escape
         # Markdown brackets so it cannot forge additional links/targets.
-        lines += [
-            f"- [{_index_link_text(text)}]({rel})" for text, rel in links
-        ]
+        lines += [f"- [{_index_link_text(text)}]({rel})" for text, rel in links]
         lines.append("")
         (directory / "index.md").write_text("\n".join(lines), encoding="utf-8")
 
