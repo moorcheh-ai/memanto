@@ -48,6 +48,15 @@ def test_bearer_middleware_rejects_wrong_token() -> None:
     assert resp.status_code == 401
 
 
+def test_bearer_middleware_accepts_non_ascii_token() -> None:
+    token = "sécrèt-🔑-token"
+    app = apply_bearer_auth(_plain_app(), token)
+    client = TestClient(app)
+    assert client.get("/").status_code == 401
+    resp = client.get("/", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+
+
 def test_build_http_app_enforces_token(
     fake_api_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -58,8 +67,11 @@ def test_build_http_app_enforces_token(
     )
     mcp = build_server(settings)
     app = build_http_app(mcp, settings)
-    client = TestClient(app, raise_server_exceptions=False)
-    assert client.get("/mcp").status_code == 401
-    # With token — may be 4xx for wrong MCP method, but not 401.
-    authed = client.get("/mcp", headers={"Authorization": "Bearer shared-secret"})
-    assert authed.status_code != 401
+    with TestClient(app, raise_server_exceptions=False) as client:
+        assert client.get("/mcp").status_code == 401
+        # GET may be a 4xx for the MCP endpoint, but must not be a server error.
+        authed = client.get(
+            "/mcp", headers={"Authorization": "Bearer shared-secret"}
+        )
+        assert authed.status_code < 500
+        assert authed.status_code != 401

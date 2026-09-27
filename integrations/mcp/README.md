@@ -155,25 +155,35 @@ For remote clients or multi-process setups, run the server over a network
 transport:
 
 ```bash
-# Streamable HTTP — loopback only (safe default)
+# Streamable HTTP — loopback only (safe default; HTTP is fine on localhost)
 memanto-mcp --transport streamable-http --host 127.0.0.1 --port 8765
 
-# Non-loopback binds REQUIRE an inbound shared secret:
+# Non-loopback binds REQUIRE an inbound shared secret AND a TLS-terminating
+# reverse proxy. Do not expose the MCP port directly over cleartext HTTP —
+# Bearer tokens would travel in plaintext.
 export MEMANTO_MCP_AUTH_TOKEN=your-long-random-secret
-memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
+memanto-mcp --transport streamable-http --host 127.0.0.1 --port 8765
+# Then terminate TLS at the proxy (nginx/Caddy/Traefik) and forward to
+# 127.0.0.1:8765. Clients must connect through the HTTPS frontend:
+#   https://your-host/mcp
+#
+# If you must bind the process itself beyond loopback, still put TLS in front:
+#   memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
+#   → only reachable via https://your-host/mcp through the proxy
 ```
 
-Then point your client at `http://your-host:8765/mcp` (or whatever path the
-chosen transport advertises). Binding beyond loopback without
-`MEMANTO_MCP_AUTH_TOKEN` is refused at startup. When the token is set, every
-inbound HTTP/SSE request must include:
+Point remote clients at `https://your-host/mcp` (or whatever path the proxy
+and transport advertise) — never a bare `http://` URL for non-loopback
+deployments. Binding beyond loopback without `MEMANTO_MCP_AUTH_TOKEN` is
+refused at startup. When the token is set, every inbound HTTP/SSE request
+must include:
 
 ```http
 Authorization: Bearer your-long-random-secret
 ```
 
-(`X-Api-Key: your-long-random-secret` is also accepted.) Prefer a reverse
-proxy with TLS in production.
+(`X-Api-Key: your-long-random-secret` is also accepted.) A TLS-terminating
+reverse proxy is required for any non-loopback deployment.
 
 ## How it works
 

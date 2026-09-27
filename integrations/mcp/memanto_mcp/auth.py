@@ -24,13 +24,24 @@ class BearerTokenMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         presented = _extract_bearer(request)
-        if presented is None or not secrets.compare_digest(presented, self._expected):
+        if presented is None or not _tokens_match(presented, self._expected):
             return JSONResponse(
                 {"error": "Unauthorized", "message": "Valid Bearer token required"},
                 status_code=401,
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return await call_next(request)
+
+
+def _tokens_match(presented: str, expected: str) -> bool:
+    """Constant-time compare using UTF-8 bytes (safe for non-ASCII secrets)."""
+    try:
+        return secrets.compare_digest(
+            presented.encode("utf-8"),
+            expected.encode("utf-8"),
+        )
+    except (TypeError, UnicodeEncodeError):
+        return False
 
 
 def _extract_bearer(request: Request) -> str | None:
