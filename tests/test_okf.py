@@ -491,6 +491,12 @@ def test_entry_delimiter_cannot_forge_entries(tmp_path):
 
             assert len(rows) == 1, (field, split, [r["title"] for r in rows])
             assert rows[0]["type"] == "fact"
+            # A single surviving row is not enough: the delimiter-bearing value
+            # must round-trip verbatim in the field it came from, in every split
+            # mode, instead of being dropped or rewritten.
+            assert rows[0]["title"] == mem["title"], (field, split)
+            assert rows[0]["tags"] == mem.get("tags", []), (field, split)
+            assert rows[0]["source_ref"] == mem.get("source_ref"), (field, split)
 
 
 def test_index_link_text_cannot_break_out(tmp_path):
