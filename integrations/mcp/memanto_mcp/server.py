@@ -107,6 +107,9 @@ def run_server(settings: MCPServerSettings | None = None) -> None:
     settings = mcp._memanto_settings  # type: ignore[attr-defined]
     lifecycle: MemantoLifecycle = mcp._memanto_lifecycle  # type: ignore[attr-defined]
 
+    # Fail closed before opening a network socket without inbound auth.
+    settings.require_safe_network_bind()
+
     transport = settings.transport
     try:
         if transport is TransportType.STDIO:

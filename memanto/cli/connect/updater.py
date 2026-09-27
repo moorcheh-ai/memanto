@@ -294,9 +294,11 @@ def inject_dynamic_memories(
 
                     def replacer(match):
                         if content:
-                            safe_content = content.replace(
-                                MEMANTO_DYNAMIC_SENTINEL, ""
-                            ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
+                            from memanto.app.utils.memory_sanitization import (
+                                sanitize_for_instruction_file,
+                            )
+
+                            safe_content = sanitize_for_instruction_file(content)
                             return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
                         return f"{match.group(1)}\n{match.group(2)}"
 

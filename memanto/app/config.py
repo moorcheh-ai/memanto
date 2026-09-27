@@ -144,6 +144,13 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = False
+    # When True (default), loopback TCP peers may call management/UI endpoints
+    # without presenting the API key. Set False behind reverse proxies — proxied
+    # traffic often appears as 127.0.0.1 and would otherwise inherit full trust.
+    MEMANTO_ALLOW_LOOPBACK_EXEMPTION: bool = True
+    # Comma-separated CIDRs/hosts trusted to set X-Forwarded-For / X-Real-IP.
+    # Empty (default) means forwarded identity headers are ignored for auth.
+    MEMANTO_TRUSTED_PROXY_IPS: str = ""
 
     # CORS Configuration
     ALLOWED_ORIGINS: list[str] = ["*"]

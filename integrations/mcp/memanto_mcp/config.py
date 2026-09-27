@@ -55,6 +55,7 @@ class MCPServerSettings(BaseSettings):
         env_prefix="",
         extra="ignore",
         case_sensitive=False,
+        populate_by_name=True,
     )
 
     # ---- Memanto credentials & agent ----
@@ -92,6 +93,16 @@ class MCPServerSettings(BaseSettings):
         default=False,
         validation_alias="MEMANTO_EXPOSE_ADMIN",
         description="Register agent-management tools (create/list/get/delete).",
+    )
+
+    # Shared secret required for inbound MCP clients when binding beyond loopback.
+    auth_token: SecretStr | None = Field(
+        default=None,
+        validation_alias="MEMANTO_MCP_AUTH_TOKEN",
+        description=(
+            "Bearer token required for inbound MCP HTTP/SSE clients. "
+            "Mandatory when host is not loopback."
+        ),
     )
 
     # ---- Transport ----
@@ -149,6 +160,46 @@ class MCPServerSettings(BaseSettings):
             )
         return v
 
+    def auth_token_value(self) -> str | None:
+        if self.auth_token is None:
+            return None
+        value = self.auth_token.get_secret_value().strip()
+        return value or None
+
+    def require_safe_network_bind(self) -> None:
+        """Refuse non-loopback HTTP/SSE binds without an inbound auth token.
+
+        The MCP process embeds ``MOORCHEH_API_KEY`` and exposes full memory
+        R/W. Binding ``0.0.0.0`` (or any non-loopback address) without an
+        inbound shared secret would let any network peer use that identity.
+        """
+        if self.transport is TransportType.STDIO:
+            return
+        if _is_loopback_bind_host(self.host):
+            return
+        if self.auth_token_value():
+            return
+        raise RuntimeError(
+            f"Refusing to bind MCP {self.transport.value} transport to "
+            f"{self.host!r} without MEMANTO_MCP_AUTH_TOKEN. Set a shared "
+            "secret, or bind to 127.0.0.1 / ::1."
+        )
+
     # Convenience accessor — never logged.
     def api_key_value(self) -> str:
         return self.moorcheh_api_key.get_secret_value()
+
+
+def _is_loopback_bind_host(host: str) -> bool:
+    """Return True when *host* is a safe loopback bind address."""
+    if not host:
+        return False
+    lowered = host.strip().lower()
+    if lowered in {"127.0.0.1", "::1", "localhost"}:
+        return True
+    import ipaddress
+
+    try:
+        return ipaddress.ip_address(lowered).is_loopback
+    except ValueError:
+        return False

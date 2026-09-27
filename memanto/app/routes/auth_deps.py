@@ -144,6 +144,56 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     return fetch_site in {"cross-site", "same-site"}
 
 
+def _has_untrusted_forwarded_identity(request: Request) -> bool:
+    """True when proxy identity headers are present without a trusted proxy hop.
+
+    Reverse proxies on the same host make every client look like ``127.0.0.1``.
+    If ``X-Forwarded-For`` / ``X-Real-IP`` / ``Forwarded`` are set and the
+    immediate peer is not in ``MEMANTO_TRUSTED_PROXY_IPS``, refuse the
+    loopback auth exemption so proxied remote clients cannot inherit trust.
+    """
+    forwarded_headers = (
+        "x-forwarded-for",
+        "x-real-ip",
+        "forwarded",
+        "x-forwarded-host",
+    )
+    if not any(request.headers.get(h) for h in forwarded_headers):
+        return False
+
+    from memanto.app.config import settings
+
+    trusted_raw = (settings.MEMANTO_TRUSTED_PROXY_IPS or "").strip()
+    if not trusted_raw:
+        # No trusted proxies configured → any forwarded header voids loopback trust.
+        return True
+
+    import ipaddress
+
+    peer = request.client.host if request.client else None
+    if not peer:
+        return True
+
+    try:
+        peer_addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return True
+
+    for token in trusted_raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            if "/" in token:
+                if peer_addr in ipaddress.ip_network(token, strict=False):
+                    return False
+            elif peer_addr == ipaddress.ip_address(token):
+                return False
+        except ValueError:
+            continue
+    return True
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -165,7 +215,9 @@ def require_management_access(
        ``secrets.compare_digest`` against the configured cloud API key, or
        against ``MEMANTO_SECRET_KEY`` for on-prem; or
     2. The request originates from the loopback interface (local desktop
-       CLI / browser UX without forcing every local call to attach a key).
+       CLI / browser UX without forcing every local call to attach a key),
+       the exemption is enabled, and no untrusted proxy identity headers
+       are present.
 
     Returns the server-side Moorcheh credential string used by downstream
     service calls (same contract as ``get_moorcheh_api_key``).
@@ -190,11 +242,22 @@ def require_management_access(
     if presented and expected and secrets.compare_digest(presented, expected):
         return server_key
 
+    if not settings.MEMANTO_ALLOW_LOOPBACK_EXEMPTION:
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Unauthorized. Loopback auth exemption is disabled; present a "
+                "valid management credential (Authorization: Bearer <key> or "
+                "X-Api-Key)."
+            ),
+        )
+
     client_host = request.client.host if request.client else None
     if (
         _is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
+        and not _has_untrusted_forwarded_identity(request)
     ):
         return server_key
 

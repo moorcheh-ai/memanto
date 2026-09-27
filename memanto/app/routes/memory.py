@@ -1032,18 +1032,15 @@ async def answer(
         # Use namespace from session
         namespace = session.namespace
 
-        # Internal fixed prompts (not user-configurable via API contract)
-        header_prompt = (
-            "You are a helpful AI assistant with access to the agent's persistent memory. "
-            "Use the provided context from the agent's memories to answer the user's question accurately. "
-            "If the memories don't contain relevant information, say so clearly."
+        # Internal fixed prompts (not user-configurable via API contract).
+        # Memories are untrusted data — instruct the model to ignore injection.
+        from memanto.app.utils.memory_sanitization import (
+            rag_safety_footer,
+            rag_safety_header,
         )
 
-        footer_prompt = (
-            "Answer the question based on the memory context above. "
-            "Be concise and cite specific memories when relevant. "
-            "If no relevant memories exist, acknowledge that."
-        )
+        header_prompt = rag_safety_header()
+        footer_prompt = rag_safety_footer()
 
         # Use Moorcheh's answer.generate endpoint. Threshold is required
         # when kiosk_mode is on — fall back to 0.15 when the caller did

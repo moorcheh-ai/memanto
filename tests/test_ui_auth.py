@@ -34,6 +34,15 @@ class _LoopbackClient:
         if scope["type"] == "http":
             scope = dict(scope)
             scope["client"] = ("127.0.0.1", 50000)
+            # TestClient defaults Host to "testserver"; rewrite to loopback so
+            # Host-header checks match real local browser / CLI traffic.
+            headers = [
+                (k, v)
+                for k, v in scope.get("headers", [])
+                if k.lower() != b"host"
+            ]
+            headers.append((b"host", b"localhost"))
+            scope["headers"] = headers
         await self.app(scope, receive, send)
 
 
@@ -166,7 +175,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "localhost:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -175,5 +184,38 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "127.0.0.1:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_local_rejects_remote_host_header(self):
+        """A remote Host header must not inherit loopback UI trust."""
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"host": "attacker.example"}
+        try:
+            asyncio.run(_require_local(mock_request))
+            raise AssertionError("expected HTTPException")
+        except HTTPException as exc:
+            assert exc.status_code == 403
+
+    def test_require_local_rejects_untrusted_forwarded_for(self):
+        """Proxied requests with X-Forwarded-For must not inherit UI trust."""
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {
+            "host": "localhost:8000",
+            "x-forwarded-for": "203.0.113.50",
+        }
+        try:
+            asyncio.run(_require_local(mock_request))
+            raise AssertionError("expected HTTPException")
+        except HTTPException as exc:
+            assert exc.status_code == 403

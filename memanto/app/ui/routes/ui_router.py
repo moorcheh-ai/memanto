@@ -131,6 +131,21 @@ async def _require_local(request: Request) -> None:
     network addresses would let any reachable host kill the server, enumerate
     the filesystem, or replace API credentials without authentication.
     """
+    from memanto.app.config import settings
+    from memanto.app.routes.auth_deps import (
+        _has_untrusted_forwarded_identity,
+        _is_loopback_host_header,
+    )
+
+    if not settings.MEMANTO_ALLOW_LOOPBACK_EXEMPTION:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints require MEMANTO_ALLOW_LOOPBACK_EXEMPTION=true "
+                "for localhost access. Disable exemption only behind authenticated proxies."
+            ),
+        )
+
     client_host = request.client.host if request.client else None
     if not _is_loopback(client_host):
         raise HTTPException(
@@ -138,6 +153,21 @@ async def _require_local(request: Request) -> None:
             detail=(
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
+            ),
+        )
+
+    if not _is_loopback_host_header(request.headers.get("host")):
+        raise HTTPException(
+            status_code=403,
+            detail="UI management endpoints require a loopback Host header.",
+        )
+
+    if _has_untrusted_forwarded_identity(request):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints reject proxied requests unless the peer "
+                "is listed in MEMANTO_TRUSTED_PROXY_IPS."
             ),
         )
 
@@ -1018,24 +1048,45 @@ async def browse_path(
     """List subdirectories of a given path (server-side folder picker).
 
     Defaults to the user's home directory when ``path`` is missing or invalid.
-    Returns child directories only (alphabetical), plus a few quick-path
-    shortcuts and the parent path so the UI can build a breadcrumb / up-nav.
+    Listing is restricted to paths under ``$HOME`` (and the process CWD when
+    that CWD is itself under home) to prevent filesystem reconnaissance.
     """
-    home = Path.home()
+    home = Path.home().resolve()
+    cwd = Path.cwd().resolve()
+    allowed_roots = [home]
+    try:
+        if home in cwd.parents or cwd == home:
+            allowed_roots.append(cwd)
+    except OSError:
+        pass
+
+    def _is_allowed(candidate: Path) -> bool:
+        try:
+            resolved = candidate.resolve()
+        except (OSError, RuntimeError):
+            return False
+        for root in allowed_roots:
+            try:
+                resolved.relative_to(root)
+                return True
+            except ValueError:
+                continue
+        return False
+
     target = Path(path).expanduser() if path else home
     try:
         target = target.resolve()
     except (OSError, RuntimeError):
         target = home
 
-    if not target.exists() or not target.is_dir():
+    if not target.exists() or not target.is_dir() or not _is_allowed(target):
         target = home
 
     children: list[dict] = []
     try:
         for entry in sorted(target.iterdir(), key=lambda p: p.name.lower()):
             try:
-                if entry.is_dir():
+                if entry.is_dir() and _is_allowed(entry):
                     children.append(
                         {"name": entry.name, "path": str(entry), "is_dir": True}
                     )
@@ -1051,19 +1102,22 @@ async def browse_path(
         ("Home", home),
         ("Desktop", home / "Desktop"),
         ("Documents", home / "Documents"),
-        ("CWD", Path.cwd()),
+        ("CWD", cwd),
     ]:
-        if p.exists() and p.is_dir():
+        if p.exists() and p.is_dir() and _is_allowed(p):
             quick.append({"label": label, "path": str(p)})
 
     try:
-        parent = str(target.parent) if target.parent != target else None
+        parent = target.parent if target.parent != target else None
+        if parent is not None and not _is_allowed(parent):
+            parent = None
+        parent_str = str(parent) if parent is not None else None
     except OSError:
-        parent = None
+        parent_str = None
 
     return {
         "path": str(target),
-        "parent": parent,
+        "parent": parent_str,
         "exists": True,
         "is_dir": True,
         "children": children,

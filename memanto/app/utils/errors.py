@@ -199,13 +199,19 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
         )
 
     else:
-        # Generic server error
+        # Generic server error — never echo exception text to clients
+        # (paths, keys, and backend internals can leak that way).
+        import logging
+
+        logging.getLogger("memanto.errors").exception(
+            "Unhandled error mapped to HTTP 500: %s", error
+        )
         return HTTPException(
             status_code=500,
             detail={
                 "error": "InternalServerError",
                 "message": "An unexpected error occurred",
-                "details": {"original_error": str(error)},
+                "details": {},
             },
         )
 

@@ -8,11 +8,14 @@ on-prem client (``memanto.app.clients.onprem.OnPremClient``), based on
 Service code keeps calling ``get_moorcheh_client()`` and uses the same
 ``client.namespaces.* / client.documents.* / client.answer.*`` shape - both
 backends expose it.
+
+Security: storage clients are always bound to the *server* credential
+(``settings.MOORCHEH_API_KEY`` / on-prem URL). Per-request ``X-Api-Key``
+headers must never switch the tenant used for memory read/write.
 """
 
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import Header
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
 
 from memanto.app.clients.backend import Backend, parse_backend
@@ -50,7 +53,9 @@ class MoorchehClientSingleton:
     def get_client(self, api_key: str | None = None) -> Any:
         """Get or create the active Moorcheh client.
 
-        ``api_key`` is honored only on the cloud backend; ignored on on-prem.
+        ``api_key`` is honored only on the cloud backend, and only when it
+        matches the configured server key. Alternate keys are ignored so a
+        request cannot pivot the storage tenant.
         """
         backend = self._backend()
         if backend == Backend.ON_PREM:
@@ -69,15 +74,22 @@ class MoorchehClientSingleton:
                 self._client_config = client_config
             return self._client
 
-        # Cloud path
-        key_to_use = api_key or settings.MOORCHEH_API_KEY
-        if key_to_use == settings.MOORCHEH_API_KEY:
-            client_config = (backend, key_to_use)
-            if self._client is None or self._client_config != client_config:
-                self._client = MoorchehClient(api_key=key_to_use)
-                self._client_config = client_config
-            return self._client
-        return MoorchehClient(api_key=key_to_use)
+        # Cloud path — always bind to the process-configured server key.
+        key_to_use = settings.MOORCHEH_API_KEY
+        if api_key and api_key.strip() and api_key.strip() != key_to_use:
+            # Reject tenant switching via a foreign key. Callers that already
+            # verified the management credential pass the server key itself.
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Ignoring non-server Moorcheh API key for storage client "
+                "(tenant isolation)."
+            )
+        client_config = (backend, key_to_use)
+        if self._client is None or self._client_config != client_config:
+            self._client = MoorchehClient(api_key=key_to_use)
+            self._client_config = client_config
+        return self._client
 
     def get_async_client(self, api_key: str | None = None) -> Any:
         """Get or create the active async Moorcheh client."""
@@ -98,14 +110,19 @@ class MoorchehClientSingleton:
                 self._async_client_config = client_config
             return self._async_client
 
-        key_to_use = api_key or settings.MOORCHEH_API_KEY
-        if key_to_use == settings.MOORCHEH_API_KEY:
-            client_config = (backend, key_to_use)
-            if self._async_client is None or self._async_client_config != client_config:
-                self._async_client = AsyncMoorchehClient(api_key=key_to_use)
-                self._async_client_config = client_config
-            return self._async_client
-        return AsyncMoorchehClient(api_key=key_to_use)
+        key_to_use = settings.MOORCHEH_API_KEY
+        if api_key and api_key.strip() and api_key.strip() != key_to_use:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Ignoring non-server Moorcheh API key for async storage client "
+                "(tenant isolation)."
+            )
+        client_config = (backend, key_to_use)
+        if self._async_client is None or self._async_client_config != client_config:
+            self._async_client = AsyncMoorchehClient(api_key=key_to_use)
+            self._async_client_config = client_config
+        return self._async_client
 
     def reset_client(self):
         """Reset cached clients (call after backend switch or in tests)."""
@@ -119,21 +136,20 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
-def get_moorcheh_client(
-    api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
-) -> Any:
-    """Return the active client as a FastAPI dependency or plain Python call.
+def get_moorcheh_client(api_key: str | None = None) -> Any:
+    """Return the server-bound Moorcheh client.
 
-    Keeping ``None`` as the actual default matters for internal callers such
-    as the answer and upload routes, which invoke this function directly.
-    With ``Header(...)`` as the default value, those calls passed FastAPI's
-    ``Header`` metadata object to the cloud SDK as the API key.
+    Intentionally does **not** read ``X-Api-Key`` from the request. FastAPI
+    ``Depends(get_moorcheh_client)`` previously injected client headers and
+    allowed a valid session to operate against another Moorcheh account's
+    namespaces. Tenant identity is the process configuration only.
+
+    ``api_key`` is accepted for call-site compatibility (e.g. agent service)
+    but is ignored unless it matches the configured server key.
     """
     return moorcheh_client.get_client(api_key=api_key)
 
 
-def get_async_moorcheh_client(
-    api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
-) -> Any:
+def get_async_moorcheh_client(api_key: str | None = None) -> Any:
     """Async equivalent of :func:`get_moorcheh_client`."""
     return moorcheh_client.get_async_client(api_key=api_key)

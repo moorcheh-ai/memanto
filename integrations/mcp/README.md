@@ -144,6 +144,7 @@ All config is via environment variables (load order: process env →
 | `MEMANTO_MCP_TRANSPORT` | no | `stdio` | `stdio`, `sse`, or `streamable-http`. |
 | `MEMANTO_MCP_HOST` | no | `127.0.0.1` | Bind host for sse/http transports. |
 | `MEMANTO_MCP_PORT` | no | `8765` | Bind port for sse/http transports. |
+| `MEMANTO_MCP_AUTH_TOKEN` | conditional | — | Required inbound shared secret when binding HTTP/SSE beyond loopback. |
 | `MEMANTO_MCP_LOG_LEVEL` | no | `INFO` | Log level (logs are always sent to stderr). |
 
 CLI flags (`memanto-mcp --transport sse --port 9000`) override env vars.
@@ -154,18 +155,18 @@ For remote clients or multi-process setups, run the server over a network
 transport:
 
 ```bash
-# Streamable HTTP (recommended modern transport)
-memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
+# Streamable HTTP — loopback only (safe default)
+memanto-mcp --transport streamable-http --host 127.0.0.1 --port 8765
 
-# Server-Sent Events (older, still widely supported)
-memanto-mcp --transport sse --host 0.0.0.0 --port 8765
+# Non-loopback binds REQUIRE an inbound shared secret:
+export MEMANTO_MCP_AUTH_TOKEN=your-long-random-secret
+memanto-mcp --transport streamable-http --host 0.0.0.0 --port 8765
 ```
 
 Then point your client at `http://your-host:8765/mcp` (or whatever path the
-chosen transport advertises). Pair with a reverse proxy + auth for
-production deployments — the server itself authenticates upstream to
-Moorcheh using your API key but does **not** authenticate inbound MCP
-clients.
+chosen transport advertises). Binding beyond loopback without
+`MEMANTO_MCP_AUTH_TOKEN` is refused at startup. Still prefer a reverse proxy
+with TLS in production.
 
 ## How it works
 
