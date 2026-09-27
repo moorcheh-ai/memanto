@@ -52,6 +52,16 @@ def _as_float(value: Any, default: float) -> float:
         return default
 
 
+def _index_link_text(value: Any) -> str:
+    """Render a stored title as safe single-line Markdown link text.
+
+    Titles are attacker-influenced; collapsing whitespace and escaping brackets
+    keeps them from forging extra links or targets in the generated ``index.md``.
+    """
+    text = " ".join(str(value or "").split())
+    return text.replace("[", "\\[").replace("]", "\\]")
+
+
 class OkfExportService:
     """Formats and writes an OKF bundle for an agent."""
 
@@ -368,6 +378,14 @@ class OkfExportService:
     # Rendering helpers
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:
         """Render a single memory dict as one OKF markdown document."""
+        # Neutralize the entry sentinel everywhere it can appear in the
+        # rendered document. The loader splits a whole bundle on the literal
+        # ENTRY_DELIMITER, so ANY stored field echoed into the file (content,
+        # title, tags, resource, ...) could forge a second, attacker-controlled
+        # entry on re-import. The sentinel is only ever inserted by the stacked
+        # join in _write_memories_section, so escaping the finished document is
+        # both safe and complete. HTML-escape the marker so it still renders as
+        # `<!-- okf-entry -->` but no longer matches the literal sentinel.
         content = (mem.get("content") or "").strip()
         title = mem.get("title") or "Untitled"
 
@@ -431,7 +449,8 @@ class OkfExportService:
             allow_unicode=True,
             default_flow_style=False,
         ).strip()
-        return f"---\n{front}\n---\n\n{content}\n"
+        document = f"---\n{front}\n---\n\n{content}\n"
+        return document.replace(ENTRY_DELIMITER, ENTRY_DELIMITER.replace("<", "&lt;"))
 
     def _first_line(self, content: str) -> str:
         """First non-empty line of content (heading marks stripped), for the
@@ -465,7 +484,11 @@ class OkfExportService:
             f"# {heading}",
             "",
         ]
-        lines += [f"- [{text}]({rel})" for text, rel in links]
+        # Link text is a stored memory title: collapse it to one line and escape
+        # Markdown brackets so it cannot forge additional links/targets.
+        lines += [
+            f"- [{_index_link_text(text)}]({rel})" for text, rel in links
+        ]
         lines.append("")
         (directory / "index.md").write_text("\n".join(lines), encoding="utf-8")
 
