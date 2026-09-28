@@ -291,7 +291,7 @@ Format the output as a Markdown report:
             conflict_type = item.get("type") or "conflict"
             if conflict_type in ("compatible", "duplicate"):
                 continue
-            if conflict_type != "contradiction" and item.get("conflict") is not True:
+            if conflict_type not in ("contradiction", "conflict", "update") and item.get("conflict") is not True:
                 continue
 
             recommendation = item.get("recommendation") or "keep_new"
