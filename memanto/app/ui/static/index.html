@@ -3604,12 +3604,15 @@
         // ================================================================
         async function loadConflictBadge() {
             try {
-                const data = await api('GET', '/api/ui/conflicts');
+                const [data] = await Promise.all([
+                    api('GET', '/api/ui/conflicts').catch(() => ({ count: 0 })),
+                    fetchConflictScans().catch(() => {}),
+                    fetchRecentMemories().catch(() => {})
+                ]);
                 const badge = document.getElementById('conflictBadge');
-                await fetchConflictScans();
-                await fetchRecentMemories();
+                if (!badge) return;
                 const staleToday = staleMemCountForDay(todayKey());
-                if (data.count > 0) {
+                if (data && data.count > 0) {
                     badge.textContent = data.count;
                     badge.title = `${data.count} unresolved conflict(s) today`;
                     badge.style.display = 'inline-flex';
