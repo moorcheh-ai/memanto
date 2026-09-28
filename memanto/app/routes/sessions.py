@@ -56,7 +56,7 @@ def get_agent_service():
 
 _namespace_counts_cache: dict[str, int] = {}
 _namespace_counts_cache_time = 0.0
-_NAMESPACE_CACHE_TTL = 30.0  # seconds
+_NAMESPACE_CACHE_TTL = 300.0  # seconds
 
 
 async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:

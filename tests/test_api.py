@@ -147,6 +147,11 @@ class TestMEMANTOAPI:
 
     TEST_AGENT_ID = "test-api-agent"
 
+    @pytest.fixture(autouse=True)
+    def reset_cache(self):
+        from memanto.app.routes import sessions
+        sessions._namespace_counts_cache_time = 0.0
+
     @pytest.mark.asyncio
     async def test_create_agent(self, client, auth_headers):
         """Test creating a new agent"""
