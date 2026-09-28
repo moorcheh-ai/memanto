@@ -2771,7 +2771,7 @@
             <section class="page" id="page-agents">
                 <div class="page-header">
                     <h2>Agents</h2>
-                    <p>View all registered agents and activate one to start a session</p>
+                    <p>Create, activate, or delete agents</p>
                     <div class="page-refresh" style="display:flex;gap:8px">
                         <button class="btn btn-primary btn-sm" onclick="openCreateAgentModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg> New Agent</button>
                         <button class="btn btn-secondary btn-sm" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
@@ -3404,7 +3404,7 @@
                 const res = await api('GET', '/api/v2/agents');
                 const agents = res.agents || [];
                 if (!agents.length) {
-                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Click <strong>New Agent</strong> above to create one.</p>`;
+                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Click <strong>New Agent</strong> above to create one, or use the CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
                     return;
                 }
                 box.innerHTML = buildAgentsTable(agents);
@@ -3441,22 +3441,23 @@
         // Create Agent modal — mirrors openConnectModal's structure/CSS classes
         // so it matches the rest of the app instead of introducing new styles.
         function openCreateAgentModal() {
+            window._createAgentModalPrevFocus = document.activeElement;
             const modal = document.createElement('div');
             modal.className = 'modal-backdrop';
             modal.id = 'createAgentModal';
-            modal.innerHTML = `<div class="modal" onclick="event.stopPropagation()">
+            modal.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="createAgentModalHeading" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h3>New Agent</h3>
+                    <h3 id="createAgentModalHeading">New Agent</h3>
                     <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
                 </div>
                 <div class="form-group">
-                    <label>Agent ID</label>
+                    <label for="newAgentId">Agent ID</label>
                     <input id="newAgentId" type="text" placeholder="e.g. support-bot" pattern="[a-zA-Z0-9_-]+"
                         onkeydown="if(event.key==='Enter'){event.preventDefault(); submitCreateAgent()}">
                     <div class="helper-text">Letters, numbers, hyphens, and underscores only.</div>
                 </div>
                 <div class="form-group">
-                    <label>Pattern</label>
+                    <label for="newAgentPattern">Pattern</label>
                     <select id="newAgentPattern">
                         <option value="support">support</option>
                         <option value="project">project</option>
@@ -3465,8 +3466,9 @@
                     <div class="helper-text">How this agent's memory should be organized — doesn't affect functionality.</div>
                 </div>
                 <div class="form-group">
-                    <label>Description <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-                    <input id="newAgentDescription" type="text" placeholder="What this agent is for">
+                    <label for="newAgentDescription">Description <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+                    <input id="newAgentDescription" type="text" placeholder="What this agent is for"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault(); submitCreateAgent()}">
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
                     <button class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
@@ -3474,6 +3476,23 @@
                 </div>
             </div>`;
             modal.addEventListener('click', e => { if (e.target === modal) closeCreateAgentModal(); });
+            modal.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    closeCreateAgentModal();
+                } else if (e.key === 'Tab') {
+                    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                    if (!focusable.length) return;
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            });
             document.body.appendChild(modal);
             setTimeout(() => document.getElementById('newAgentId')?.focus(), 50);
         }
@@ -3481,9 +3500,16 @@
         function closeCreateAgentModal() {
             const m = document.getElementById('createAgentModal');
             if (m) m.remove();
+            if (window._createAgentModalPrevFocus) {
+                window._createAgentModalPrevFocus.focus();
+                window._createAgentModalPrevFocus = null;
+            }
         }
 
         async function submitCreateAgent() {
+            const btn = document.getElementById('createAgentBtn');
+            if (btn && btn.disabled) return;
+
             const idInput = document.getElementById('newAgentId');
             const agentId = (idInput.value || '').trim();
             const pattern = document.getElementById('newAgentPattern').value;
@@ -3496,7 +3522,6 @@
                 return;
             }
 
-            const btn = document.getElementById('createAgentBtn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> Creating...';
             try {
