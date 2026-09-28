@@ -117,3 +117,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @clcmulti
 - @vexmeavf
 - @sidshehria
+- @AIVensk
