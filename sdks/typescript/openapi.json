@@ -1836,6 +1836,124 @@
         }
       }
     },
+    "/api/v2/agents/{agent_id}/recall/all": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Recall All",
+        "description": "Recall ALL stored memories for the UI (bypasses MAX_K limit).\n\nReturns memories sorted by created_at descending (newest first).\nOptionally filter by memory type.\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "recall_all_api_v2_agents__agent_id__recall_all_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallRecentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporalRecallResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/agents/{agent_id}/memories/{memory_id}/expire": {
       "post": {
         "tags": [
@@ -2955,6 +3073,18 @@
         "operationId": "list_agents_api_v2_agents_get",
         "parameters": [
           {
+            "name": "include_counts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to fetch live memory counts from Moorcheh (slow for many namespaces)",
+              "default": true,
+              "title": "Include Counts"
+            },
+            "description": "Whether to fetch live memory counts from Moorcheh (slow for many namespaces)"
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -3028,6 +3158,18 @@
               "type": "string",
               "title": "Agent Id"
             }
+          },
+          {
+            "name": "include_counts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Whether to fetch live memory counts from Moorcheh",
+              "default": true,
+              "title": "Include Counts"
+            },
+            "description": "Whether to fetch live memory counts from Moorcheh"
           },
           {
             "name": "authorization",
@@ -6480,6 +6622,17 @@
           "count": {
             "type": "integer",
             "title": "Count"
+          },
+          "total_available": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Available"
           },
           "temporal_mode": {
             "type": "string",

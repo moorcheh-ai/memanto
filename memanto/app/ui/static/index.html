@@ -3804,6 +3804,11 @@
                 }
                 // Invalidate cached views tied to the previous agent
                 S.explorerAll = [];
+                S.history = [];
+                S._lastHistoryFetch = 0;
+                S._historyLoaded = false;
+                S.conflictScans = null;
+                S._cachedConflicts = null;
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" activated`);
                 loadAgents();
@@ -3825,6 +3830,11 @@
                     S.config.has_active_session = false;
                 }
                 S.explorerAll = [];
+                S.history = [];
+                S._lastHistoryFetch = 0;
+                S._historyLoaded = false;
+                S.conflictScans = null;
+                S._cachedConflicts = null;
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" deactivated`);
                 loadAgents();
@@ -3864,6 +3874,11 @@
                         S.config.has_active_session = false;
                     }
                     S.explorerAll = [];
+                    S.history = [];
+                    S._lastHistoryFetch = 0;
+                    S._historyLoaded = false;
+                    S.conflictScans = null;
+                    S._cachedConflicts = null;
                     updateSidebarStatus();
                     loadConflictBadge();
                 }
@@ -6286,6 +6301,10 @@
                 const agentQ = S.agentId ? `&agent_id=${encodeURIComponent(S.agentId)}` : '';
                 const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}${agentQ}`);
                 const conflicts = data.conflicts || [];
+
+                // Abort if the user changed the date or agent while we were fetching
+                const currentCacheKey = `${S.agentId || 'none'}_${conflictsDateValue()}`;
+                if (cacheKey !== currentCacheKey) return;
                 
                 // Cache the response
                 S._cachedConflicts = { key: cacheKey, data: data };

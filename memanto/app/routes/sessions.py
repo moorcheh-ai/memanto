@@ -7,6 +7,7 @@ Replaces tenant_id with Moorcheh API key-based authentication.
 
 import asyncio
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
@@ -54,8 +55,7 @@ def get_agent_service():
     return agent_service
 
 
-_namespace_counts_cache: dict[str, int] = {}
-_namespace_counts_cache_time = 0.0
+_namespace_counts_state: dict[str, Any] = {"data": dict[str, int](), "time": 0.0}
 _NAMESPACE_CACHE_TTL = 300.0  # seconds
 
 
@@ -67,10 +67,9 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
     document count, which is what the UI should display. Best-effort: returns an
     empty map if Moorcheh is unreachable so agent listing still succeeds.
     """
-    global _namespace_counts_cache, _namespace_counts_cache_time
     now = time.monotonic()
-    if now - _namespace_counts_cache_time < _NAMESPACE_CACHE_TTL:
-        return _namespace_counts_cache
+    if now - _namespace_counts_state["time"] < _NAMESPACE_CACHE_TTL:
+        return _namespace_counts_state["data"]  # type: ignore
 
     try:
         client = moorcheh_clients.get_moorcheh_client()
@@ -90,13 +89,13 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
             try:
                 counts[namespace_name] = int(raw_count)
             except (TypeError, ValueError):
-                counts[namespace_name] = 0
+                counts[namespace_name] = 0  # Fallback to 0 if count is invalid
 
-        _namespace_counts_cache = counts
-        _namespace_counts_cache_time = now
+        _namespace_counts_state["data"] = counts
+        _namespace_counts_state["time"] = now
         return counts
     except Exception:
-        return _namespace_counts_cache
+        return _namespace_counts_state["data"]  # type: ignore
 
 
 # ============================================================================
@@ -179,7 +178,7 @@ async def get_agent(
                 try:
                     agent.memory_count = int(raw_count)
                 except (TypeError, ValueError):
-                    pass
+                    pass  # Ignore invalid counts
         except Exception:
             pass  # Best effort, just like list_agents
 

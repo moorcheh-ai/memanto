@@ -581,10 +581,15 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
+            total_available = len(unique_memories)
             results = unique_memories if limit is None else unique_memories[:limit]
             log_memory_activity(op="recall", agent_id=agent_id, count=len(results))
 
-            return {"results": results, "total_found": len(results)}
+            return {
+                "results": results,
+                "total_found": len(results),
+                "total_available": total_available,
+            }
 
         except Exception as e:
             raise MemoryOperationError(f"Failed to retrieve recent memories: {e}")

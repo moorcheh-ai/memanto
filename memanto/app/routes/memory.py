@@ -1383,6 +1383,7 @@ async def recall_recent(
             "session_id": session.session_id,
             "memories": result["results"],
             "count": result["total_found"],
+            "total_available": result.get("total_available"),
             "temporal_mode": "recent",
         }
 
@@ -1419,7 +1420,8 @@ async def recall_all(
             type=request.type,
             tags=request.tags,
             status=request.status,
-            limit=None,  # Bypass MAX_K limit for UI full history
+            limit=request.limit
+            or 5000,  # Bound the UI response to prevent huge payloads
             created_after=request.created_after.isoformat()
             if request.created_after
             else None,
@@ -1433,6 +1435,7 @@ async def recall_all(
             "session_id": session.session_id,
             "memories": result["results"],
             "count": result["total_found"],
+            "total_available": result.get("total_available"),
             "temporal_mode": "recent",
         }
 
