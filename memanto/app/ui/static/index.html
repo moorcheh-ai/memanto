@@ -3823,67 +3823,6 @@
             }
         }
 
-        function openCreateAgentModal() {
-            const modal = document.createElement('div');
-            modal.className = 'modal-backdrop';
-            modal.id = 'createAgentModal';
-            modal.innerHTML = `<div class="modal">
-                <div class="modal-header">
-                    <h3>New Agent</h3>
-                    <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
-                </div>
-                <div class="form-group">
-                    <label>Agent ID</label>
-                    <input id="newAgentId" type="text" placeholder="my-agent">
-                </div>
-                <div class="form-group">
-                    <label>Pattern</label>
-                    <select id="newAgentPattern">
-                        <option value="support">support</option>
-                        <option value="project">project</option>
-                        <option value="tool">tool</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Description (optional)</label>
-                    <input id="newAgentDesc" type="text">
-                </div>
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-                    <button class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="createAgent(this)">Create</button>
-                </div>
-            </div>`;
-            modal.addEventListener('click', e => { if (e.target === modal) closeCreateAgentModal(); });
-            document.body.appendChild(modal);
-            document.getElementById('newAgentId').focus();
-        }
-
-        function closeCreateAgentModal() {
-            const m = document.getElementById('createAgentModal');
-            if (m) m.remove();
-        }
-
-        async function createAgent(btn) {
-            const agentId = document.getElementById('newAgentId').value.trim();
-            if (!/^[a-zA-Z0-9_-]+$/.test(agentId)) {
-                toast('Agent ID may only contain letters, numbers, hyphens and underscores.', 'error');
-                return;
-            }
-            const body = { agent_id: agentId, pattern: document.getElementById('newAgentPattern').value };
-            const desc = document.getElementById('newAgentDesc').value.trim();
-            if (desc) body.description = desc;
-            btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating...';
-            try {
-                await api('POST', '/api/v2/agents', body);
-                closeCreateAgentModal();
-                toast(`Agent "${agentId}" created`);
-                loadAgents();
-            } catch (e) {
-                toast('Create failed: ' + e.message, 'error');
-                btn.disabled = false; btn.textContent = 'Create';
-            }
-        }
-
         // Mirrors ``memanto agent delete``: confirm, then ask whether to keep
         // the agent's memory namespace in Moorcheh (kept by default).
         async function deleteAgent(agentId, btn) {
