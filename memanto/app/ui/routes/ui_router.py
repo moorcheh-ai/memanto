@@ -26,6 +26,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from memanto.app.clients.agent_conflict import (
     CANCELLED_MESSAGE,
@@ -1099,6 +1100,50 @@ async def dismiss_template_status(_: None = Depends(_require_local)):
 
     _config_manager.set("cli.dismissed_template_version", TEMPLATE_VERSION)
     return {"status": "success", "dismissed_version": TEMPLATE_VERSION}
+
+
+class AchievementsState(BaseModel):
+    """UI achievement progress: milestone id -> earned-at ISO timestamp,
+    metrics already observed once, and the best value seen per metric."""
+
+    earned: dict[str, str] = {}
+    seen: dict[str, bool] = {}
+    best: dict[str, int] = {}
+
+
+# Serializes reads and writes of achievements.json within this process, so a
+# read never races the os.replace() of a concurrent write.
+_achievements_lock = threading.Lock()
+
+
+def _achievements_path() -> Path:
+    from memanto.app.config import get_data_dir
+
+    return get_data_dir() / "achievements.json"
+
+
+@router.get("/api/ui/achievements")
+async def get_achievements(_: None = Depends(_require_local)):
+    """Return stored achievement progress. ``exists`` is False until the
+    first save, so the UI can migrate progress kept in older browser storage."""
+    path = _achievements_path()
+    with _achievements_lock:
+        if not path.exists():
+            return {"exists": False, "state": AchievementsState().model_dump()}
+        state = AchievementsState.model_validate_json(path.read_text(encoding="utf-8"))
+    return {"exists": True, "state": state.model_dump()}
+
+
+@router.put("/api/ui/achievements")
+async def put_achievements(state: AchievementsState, _: None = Depends(_require_local)):
+    """Replace stored achievement progress."""
+    path = _achievements_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    with _achievements_lock:
+        tmp.write_text(state.model_dump_json(indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+    return {"status": "success"}
 
 
 @router.post("/api/ui/template-status/update")

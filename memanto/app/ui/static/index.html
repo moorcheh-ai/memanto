@@ -21,8 +21,8 @@
             --border-hover: #2a2a3a;
             --border-focus: #06b6d4;
             --text-primary: #f0f0f5;
-            --text-secondary: #8a8a9a;
-            --text-dim: #55556a;
+            --text-secondary: #b4b4c4;
+            --text-dim: #8e8ea3;
             --accent: #06b6d4;
             --accent-hover: #22d3ee;
             --accent-glow: rgba(6, 182, 212, 0.15);
@@ -411,6 +411,7 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
             font-family: var(--font-mono);
+            white-space: nowrap;
         }
 
         .badge-success {
@@ -1797,6 +1798,240 @@
             margin-top: 4px;
         }
 
+        /* ── Achievements (badges on History + milestone celebration) ── */
+        .achv-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .achv {
+            width: 104px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 4px 10px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            transition: background var(--transition);
+        }
+
+        .achv:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .achv .achv-badge {
+            transition: transform 0.25s ease, filter 0.25s ease;
+        }
+
+        .achv.earned:hover .achv-badge {
+            transform: translateY(-3px) rotate(-4deg);
+            filter: drop-shadow(0 6px 14px rgba(157, 122, 214, 0.35));
+        }
+
+        .achv.locked .achv-badge {
+            filter: grayscale(1) brightness(0.55);
+            opacity: 0.55;
+        }
+
+        .achv-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .achv.locked .achv-name {
+            color: var(--text-dim);
+        }
+
+        .achv-sub {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .achv-bar {
+            width: 60px;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .achv-bar span {
+            display: block;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .celebrate {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            z-index: 9500;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            width: max-content;
+            max-width: min(540px, calc(100vw - 32px));
+            padding: 18px 44px 18px 18px;
+            background: linear-gradient(135deg, rgba(24, 18, 44, 0.97), rgba(8, 8, 13, 0.97));
+            border: 1px solid rgba(157, 122, 214, 0.4);
+            border-radius: var(--radius);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 44px rgba(157, 122, 214, 0.2);
+            font-family: var(--font-mono);
+            animation: celIn 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+        }
+
+        .celebrate.leaving {
+            animation: celOut 0.35s ease forwards;
+        }
+
+        @keyframes celIn {
+            from { opacity: 0; transform: translate(-50%, 30px) scale(0.94); }
+            to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        @keyframes celOut {
+            from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+            to   { opacity: 0; transform: translate(-50%, 16px) scale(0.97); }
+        }
+
+        /* One light sweep across the card; kept in its own clipped layer so
+           the confetti can still fly outside the card. */
+        .celebrate-shine {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .celebrate-shine::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.09) 50%, transparent 65%);
+            transform: translateX(-100%);
+            animation: celShine 1.4s 0.35s ease forwards;
+        }
+
+        @keyframes celShine {
+            to { transform: translateX(100%); }
+        }
+
+        .cel-stage {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .cel-ant {
+            width: 60px;
+            height: auto;
+            color: #b69cf0;
+            overflow: visible;
+            transform-origin: 50% 100%;
+            animation: celJump 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) 3;
+        }
+
+        @keyframes celJump {
+            0%   { transform: translateY(0) scale(1.08, 0.9); }
+            15%  { transform: translateY(0) scale(1); }
+            45%  { transform: translateY(-16px) scale(0.96, 1.05); }
+            75%  { transform: translateY(0) scale(1); }
+            85%  { transform: translateY(0) scale(1.06, 0.92); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        .cel-arm {
+            transform-box: fill-box;
+            transform-origin: 50% 100%;
+            animation: celWave 0.45s ease-in-out infinite alternate;
+        }
+
+        .cel-arm-l { --a: -16deg; }
+        .cel-arm-r { --a: 16deg; animation-delay: 0.22s; }
+
+        @keyframes celWave {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(var(--a)); }
+        }
+
+        .cel-legs {
+            transform-box: fill-box;
+            transform-origin: 50% 0%;
+            animation: celKick 0.45s ease-in-out infinite alternate;
+        }
+
+        @keyframes celKick {
+            from { transform: scaleX(1); }
+            to   { transform: scaleX(1.14); }
+        }
+
+        .cel-confetti {
+            position: absolute;
+            left: 50%;
+            top: 40%;
+            width: 5px;
+            height: 5px;
+            background: var(--c);
+            opacity: 0;
+            animation: celBurst 1.4s cubic-bezier(0.15, 0.8, 0.3, 1) var(--d) both;
+        }
+
+        @keyframes celBurst {
+            0%   { transform: translate(0, 0) scale(0); opacity: 1; }
+            35%  { transform: translate(var(--dx), var(--dy)) scale(1) rotate(90deg); opacity: 1; }
+            100% { transform: translate(var(--dx), calc(var(--dy) + 36px)) rotate(var(--r)); opacity: 0; }
+        }
+
+        .cel-text {
+            min-width: 0;
+        }
+
+        .cel-kicker {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #b69cf0;
+        }
+
+        .cel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        .cel-msg {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .cel-badge {
+            flex-shrink: 0;
+            animation: celBadgePop 0.7s 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+        }
+
+        @keyframes celBadgePop {
+            from { transform: scale(0) rotate(-25deg); opacity: 0; }
+            to   { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .cel-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+        }
+
         .hh-container {
             display: flex;
             flex-direction: column;
@@ -2777,6 +3012,9 @@
                         <button class="btn btn-secondary btn-sm" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                     </div>
                 </div>
+                <div style="margin-bottom:16px">
+                    <button class="btn btn-primary btn-sm" onclick="openCreateAgentModal()">+ New Agent</button>
+                </div>
                 <div id="agentsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>
                 </div>
@@ -3203,17 +3441,13 @@
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById('page-' + btn.dataset.page).classList.add('active');
-                if (btn.dataset.page === 'agents') loadAgents();
-                if (btn.dataset.page === 'explorer' && !S._explorerLoaded) { loadExplorer(); S._explorerLoaded = true; }
-                if (btn.dataset.page === 'analytics') loadAnalytics();
-                if (btn.dataset.page === 'config') loadConfig();
-                if (btn.dataset.page === 'dashboard') loadDashboard();
-                if (btn.dataset.page === 'conflicts') loadConflicts();
-                if (btn.dataset.page === 'policy') loadPolicyPage();
-                if (btn.dataset.page === 'connections') { loadConnections(); startMeshPolling(); }
+                // Re-fetch on every visit so a page never shows stale data
+                // after changes made elsewhere (CLI, another page, etc.).
+                const reload = PAGE_RELOADERS[btn.dataset.page];
+                if (reload) reload();
+                if (btn.dataset.page === 'history') S._historyLoaded = true;
+                if (btn.dataset.page === 'connections') startMeshPolling();
                 else stopMeshPolling();
-                if (btn.dataset.page === 'migrate') openMigrate();
-                if (btn.dataset.page === 'history' && !S._historyLoaded) { loadHistory(); S._historyLoaded = true; }
             });
         });
 
@@ -3223,10 +3457,8 @@
             if (btn) btn.click();
         }
 
-        // Per-page reload used by the Refresh button in each page header. The
-        // map mirrors the nav-item handler above, minus its once-only guards —
-        // an explicit Refresh should always re-fetch, even on pages that
-        // normally load lazily (Explorer, History).
+        // Per-page reload used by the nav-item handler above and by the
+        // Refresh button in each page header.
         const PAGE_RELOADERS = {
             dashboard: () => loadDashboard(),
             agents: () => loadAgents(),
@@ -3280,6 +3512,7 @@
             }
             applyBackendVisibility();
             updateSidebarStatus();
+            achvInit();
             loadDashboard();
             // Load conflict count for badge
             loadConflictBadge();
@@ -3403,6 +3636,7 @@
             try {
                 const res = await api('GET', '/api/v2/agents');
                 const agents = res.agents || [];
+                checkAchievements(agents);
                 if (!agents.length) {
                     box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Click <strong>New Agent</strong> above to create one, or use the CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
                     return;
@@ -3423,6 +3657,7 @@
                 const actions = isActive
                     ? `<button class="btn btn-sm btn-secondary" onclick="deactivateAgent('${a.agent_id}', this)">Deactivate</button>`
                     : `<button class="btn btn-sm btn-primary" onclick="activateAgent('${a.agent_id}', this)">Activate</button>`;
+                const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteAgent('${a.agent_id}', this)">Delete</button>`;
                 html += `<tr${isActive ? ' style="background:var(--accent-glow)"' : ''}>
                     <td style="color:var(--text-primary);font-weight:600">${escHtml(a.agent_id)}</td>
                     <td><span class="badge badge-accent">${escHtml(a.pattern || '—')}</span></td>
@@ -3431,7 +3666,7 @@
                     <td>${a.session_count ?? 0}</td>
                     <td style="white-space:nowrap">${fmtDate(a.created_at)}</td>
                     <td>${statusBadge}</td>
-                    <td style="text-align:right;white-space:nowrap">${actions}</td>
+                    <td style="text-align:right;white-space:nowrap">${actions} ${deleteBtn}</td>
                 </tr>`;
             });
             html += '</tbody></table></div>';
@@ -3556,7 +3791,6 @@
                     S.config.has_active_session = true;
                 }
                 // Invalidate cached views tied to the previous agent
-                S._explorerLoaded = false;
                 S.explorerAll = [];
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" activated`);
@@ -3578,7 +3812,6 @@
                     S.config.active_agent_id = null;
                     S.config.has_active_session = false;
                 }
-                S._explorerLoaded = false;
                 S.explorerAll = [];
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" deactivated`);
@@ -3588,6 +3821,304 @@
                 toast('Deactivation failed: ' + e.message, 'error');
                 if (btn) { btn.disabled = false; btn.textContent = 'Deactivate'; }
             }
+        }
+
+        function openCreateAgentModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'createAgentModal';
+            modal.innerHTML = `<div class="modal">
+                <div class="modal-header">
+                    <h3>New Agent</h3>
+                    <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label>Agent ID</label>
+                    <input id="newAgentId" type="text" placeholder="my-agent">
+                </div>
+                <div class="form-group">
+                    <label>Pattern</label>
+                    <select id="newAgentPattern">
+                        <option value="support">support</option>
+                        <option value="project">project</option>
+                        <option value="tool">tool</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description (optional)</label>
+                    <input id="newAgentDesc" type="text">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="createAgent(this)">Create</button>
+                </div>
+            </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) closeCreateAgentModal(); });
+            document.body.appendChild(modal);
+            document.getElementById('newAgentId').focus();
+        }
+
+        function closeCreateAgentModal() {
+            const m = document.getElementById('createAgentModal');
+            if (m) m.remove();
+        }
+
+        async function createAgent(btn) {
+            const agentId = document.getElementById('newAgentId').value.trim();
+            if (!/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+                toast('Agent ID may only contain letters, numbers, hyphens and underscores.', 'error');
+                return;
+            }
+            const body = { agent_id: agentId, pattern: document.getElementById('newAgentPattern').value };
+            const desc = document.getElementById('newAgentDesc').value.trim();
+            if (desc) body.description = desc;
+            btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating...';
+            try {
+                await api('POST', '/api/v2/agents', body);
+                closeCreateAgentModal();
+                toast(`Agent "${agentId}" created`);
+                loadAgents();
+            } catch (e) {
+                toast('Create failed: ' + e.message, 'error');
+                btn.disabled = false; btn.textContent = 'Create';
+            }
+        }
+
+        // Mirrors ``memanto agent delete``: confirm, then ask whether to keep
+        // the agent's memory namespace in Moorcheh (kept by default).
+        async function deleteAgent(agentId, btn) {
+            const ok = await confirmDialog({
+                title: 'Delete agent',
+                message: `Delete agent '${agentId}'? This cannot be undone.`,
+                confirmLabel: 'Delete',
+                danger: true,
+            });
+            if (!ok) return;
+            const dropMemories = await confirmDialog({
+                title: 'Agent memories',
+                message: `Also delete the memories stored for '${agentId}' in Moorcheh? Keep them to access later from your Moorcheh namespaces.`,
+                confirmLabel: 'Delete memories',
+                cancelLabel: 'Keep memories',
+                danger: true,
+            });
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Deleting...'; }
+            try {
+                await api('DELETE', `/api/v2/agents/${agentId}${dropMemories ? '?delete-backup-too=true' : ''}`);
+                // The server revokes the agent's session; drop it locally too.
+                if (agentId === S.agentId) {
+                    S.agentId = null;
+                    S.token = null;
+                    if (S.config) {
+                        S.config.active_agent_id = null;
+                        S.config.has_active_session = false;
+                    }
+                    S.explorerAll = [];
+                    updateSidebarStatus();
+                    loadConflictBadge();
+                }
+                toast(`Agent "${agentId}" deleted`);
+                loadAgents();
+            } catch (e) {
+                toast('Delete failed: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+            }
+        }
+
+        // ================================================================
+        // ACHIEVEMENTS
+        // Progress is stored server-side in <data dir>/achievements.json
+        // (GET/PUT /api/ui/achievements), loaded once into achvState. The first time
+        // a metric is observed its already-met milestones are recorded
+        // silently, so existing users are not flooded with pop-ups; after
+        // that, newly reached milestones are celebrated. "resolved" and
+        // "policy" are event counts, so they celebrate from the first observation.
+        // ================================================================
+        // Browser-storage key used before progress moved server-side; read
+        // once to migrate, then removed.
+        const ACHV_LEGACY_KEY = 'memanto.achievements.v1';
+        const ACHV_UNITS = { agents: 'agents', memories: 'memories', streak: 'day streak', resolved: 'conflicts resolved', policy: 'policies saved', connections: 'tools connected' };
+        const MILESTONES = [
+            { id: 'first-agent', metric: 'agents', at: 1, badge: 'First Agent', label: '#1', colors: ['#a78bfa', '#5b21b6'], req: 'Create your first agent', title: 'You created your first agent', msg: 'Memanto is ready to start remembering for it.' },
+            { id: 'squad', metric: 'agents', at: 5, badge: 'Squad', label: '\u00d75', colors: ['#67e8f9', '#0e7490'], req: 'Create 5 agents', title: '5 agents created', msg: "You're building a whole colony." },
+            { id: 'mem-10', metric: 'memories', at: 10, title: 'Memanto stored 10 memories', msg: 'Your agents are starting to remember.' },
+            { id: 'centurion', metric: 'memories', at: 100, badge: 'Centurion', label: '100', colors: ['#6ee7b7', '#047857'], req: 'Store 100 memories', title: 'Memanto stored 100 memories', msg: 'Keep it up!' },
+            { id: 'mem-500', metric: 'memories', at: 500, title: 'Memanto stored 500 memories', msg: 'Your agents remember more every day.' },
+            { id: 'archivist', metric: 'memories', at: 1000, badge: 'Archivist', label: '1K', colors: ['#fcd34d', '#b45309'], req: 'Store 1,000 memories', title: 'Memanto stored 1,000 memories', msg: 'A true archive. Keep it up!' },
+            { id: 'on-a-roll', metric: 'streak', at: 7, badge: 'On a Roll', label: '7 DAY', colors: ['#fdba74', '#c2410c'], req: 'Store memories 7 days in a row', title: '7-day memory streak', msg: 'Memories stored 7 days in a row.' },
+            { id: 'peacemaker', metric: 'resolved', at: 1, badge: 'Peacemaker', label: '\u2713', colors: ['#a5b4fc', '#4338ca'], req: 'Resolve your first conflict', title: 'First conflict resolved', msg: "Your agents' memory just got more trustworthy." },
+            { id: 'policy-setter', metric: 'policy', at: 1, badge: 'Policy Setter', label: 'POLICY', colors: ['#fda4af', '#be123c'], req: 'Save an expiry policy', title: 'First expiry policy saved', msg: 'Your agent now keeps its memory tidy.' },
+            { id: 'connected', metric: 'connections', at: 1, badge: 'Connected', label: 'LINK', colors: ['#93c5fd', '#1d4ed8'], req: 'Connect an AI tool to Memanto', title: 'First tool connected', msg: 'Your AI tool can now remember with Memanto.' },
+            { id: 'conn-3', metric: 'connections', at: 3, title: '3 tools connected', msg: 'Memanto is now shared across your tools.' },
+        ];
+
+        let achvState = { earned: {}, seen: {}, best: {} };
+        let achvLoaded = false;
+        let achvReady = null;
+
+        // Loads progress once. If the load fails nothing is recorded, so a
+        // later save can't overwrite the stored file with partial state.
+        function achvInit() {
+            if (!achvReady) achvReady = (async () => {
+                let exists;
+                try {
+                    const res = await api('GET', '/api/ui/achievements');
+                    achvState = res.state;
+                    exists = res.exists;
+                    achvLoaded = true;
+                } catch (e) {
+                    console.warn('Achievements unavailable:', e.message);
+                    return;
+                }
+                let legacy = null;
+                try { legacy = JSON.parse(localStorage.getItem(ACHV_LEGACY_KEY)); } catch { }
+                if (legacy) {
+                    if (!exists) {
+                        achvState = { earned: legacy.earned || {}, seen: legacy.seen || {}, best: legacy.best || {} };
+                        await achvSave();
+                    }
+                    try { localStorage.removeItem(ACHV_LEGACY_KEY); } catch { }
+                }
+                renderAchievements();
+            })();
+            return achvReady;
+        }
+
+        function achvSave() {
+            return api('PUT', '/api/ui/achievements', achvState)
+                .catch(e => console.warn('Saving achievements failed:', e.message));
+        }
+
+        async function achvRecord(metric, value, silentFirst = true) {
+            await achvInit();
+            if (!achvLoaded) return;
+            const st = achvState;
+            st.best[metric] = Math.max(st.best[metric] || 0, value);
+            const silent = silentFirst && !st.seen[metric];
+            st.seen[metric] = true;
+            const fresh = MILESTONES.filter(m => m.metric === metric && !st.earned[m.id] && st.best[metric] >= m.at);
+            fresh.forEach(m => { st.earned[m.id] = new Date().toISOString(); });
+            achvSave();
+            // A jump past several thresholds at once (e.g. an import) earns
+            // every badge but celebrates only the highest one.
+            if (!silent && fresh.length) celebrate(fresh[fresh.length - 1]);
+            if (fresh.length) renderAchievements();
+        }
+
+        async function checkAchievements(agents) {
+            if (!agents) {
+                try { agents = (await api('GET', '/api/v2/agents')).agents || []; } catch { return; }
+            }
+            achvRecord('agents', agents.length);
+            achvRecord('memories', agents.reduce((sum, a) => sum + (a.memory_count || 0), 0));
+        }
+
+        // Event metrics count actions (conflicts resolved, policies saved).
+        async function recordAchievementEvent(metric) {
+            await achvInit();
+            achvRecord(metric, (achvState.best[metric] || 0) + 1, false);
+        }
+
+        // Pixel ant (same shapes as the logo) used inside every badge.
+        const ACHV_ANT = `<path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+            <polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="#fff" stroke-width="2" />
+            <polygon points="42,32 44,36 42,40 40,36" />
+            <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="#fff" stroke-width="2" />
+            <polygon points="54,32 56,36 54,40 52,36" />
+            <path d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />`;
+
+        // Gradient ids must be unique per rendered badge: Chrome won't paint a
+        // url(#id) whose first match sits inside a display:none page.
+        let achvSvgSeq = 0;
+        function achvBadgeSvg(m, size = 60) {
+            const g = `achv-g-${m.id}-${++achvSvgSeq}`;
+            return `<svg class="achv-badge" width="${size}" height="${Math.round(size * 72 / 64)}" viewBox="0 0 64 72" aria-hidden="true">
+                <defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m.colors[0]}" /><stop offset="1" stop-color="${m.colors[1]}" /></linearGradient></defs>
+                <polygon points="32,2 61,18.5 61,53.5 32,70 3,53.5 3,18.5" fill="url(#${g})" />
+                <polygon points="32,2 61,18.5 32,35 3,18.5" fill="rgba(255,255,255,0.12)" />
+                <polygon points="32,7 56.5,21 56.5,51 32,65 7.5,51 7.5,21" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" />
+                <g transform="translate(18.6 12) scale(0.28)" fill="#fff">${ACHV_ANT}</g>
+                <rect x="12" y="46" width="40" height="12" rx="2" fill="rgba(0,0,0,0.35)" />
+                <text x="32" y="55" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="8" font-weight="700" fill="#fff" letter-spacing="0.5">${m.label}</text>
+            </svg>`;
+        }
+
+        function achievementsInner() {
+            const st = achvState;
+            const badges = MILESTONES.filter(m => m.badge);
+            const earnedCount = badges.filter(m => st.earned[m.id]).length;
+            const tiles = badges.map(m => {
+                const earnedAt = st.earned[m.id];
+                if (earnedAt) {
+                    const when = new Date(earnedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    return `<div class="achv earned" title="${escHtml(m.title)}">${achvBadgeSvg(m)}<div class="achv-name">${m.badge}</div><div class="achv-sub">${when}</div></div>`;
+                }
+                const have = Math.min(st.best[m.metric] || 0, m.at);
+                return `<div class="achv locked" title="${escHtml(m.req)} (${have} / ${m.at} ${ACHV_UNITS[m.metric]})">${achvBadgeSvg(m)}<div class="achv-name">${m.badge}</div><div class="achv-bar"><span style="width:${Math.round(have / m.at * 100)}%"></span></div><div class="achv-sub">${have} / ${m.at}</div></div>`;
+            }).join('');
+            return `<div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+                    <span>🏆 Achievements</span><span style="font-size:12px;color:var(--text-dim)">${earnedCount} / ${badges.length}</span>
+                </div>
+                <div class="achv-grid">${tiles}</div>`;
+        }
+
+        function renderAchievements() {
+            const panel = document.getElementById('achvPanel');
+            if (panel) panel.innerHTML = achievementsInner();
+        }
+
+        // The logo ant, celebrating: arms raised and waving, happy eyes,
+        // kicking legs; the whole ant jumps via .cel-ant.
+        const CELEBRATE_ANT = `<svg class="cel-ant" viewBox="-8 -12 112 124" fill="currentColor" aria-hidden="true">
+            <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+            <path class="cel-arm cel-arm-l" d="M 6,24 H 12 V 30 H 6 Z M 0,0 H 6 V 30 H 0 Z" />
+            <path class="cel-arm cel-arm-r" d="M 84,24 H 90 V 30 H 84 Z M 90,0 H 96 V 30 H 90 Z" />
+            <polyline points="37,40 42,33 47,40" fill="none" stroke="currentColor" stroke-width="3.5" />
+            <polyline points="49,40 54,33 59,40" fill="none" stroke="currentColor" stroke-width="3.5" />
+            <path class="cel-legs" d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
+        </svg>`;
+
+        const CONFETTI_COLORS = ['#9d7ad6', '#22d3ee', '#fbbf24', '#ec4899', '#34d399'];
+        const celebrationQueue = [];
+        let celebrationShowing = false;
+
+        function celebrate(m) {
+            celebrationQueue.push(m);
+            if (!celebrationShowing) showNextCelebration();
+        }
+
+        function showNextCelebration() {
+            const m = celebrationQueue.shift();
+            if (!m) { celebrationShowing = false; return; }
+            celebrationShowing = true;
+            // Two bursts of pixel confetti fanning upward from the ant.
+            let confetti = '';
+            for (let i = 0; i < 18; i++) {
+                const angle = (-160 + Math.random() * 140) * Math.PI / 180;
+                const dist = 30 + Math.random() * 22;
+                confetti += `<span class="cel-confetti" style="--c:${CONFETTI_COLORS[i % CONFETTI_COLORS.length]};--dx:${Math.round(Math.cos(angle) * dist)}px;--dy:${Math.round(Math.sin(angle) * dist)}px;--r:${Math.round(Math.random() * 540 - 270)}deg;--d:${i < 9 ? 0.1 : 1}s"></span>`;
+            }
+            const el = document.createElement('div');
+            el.className = 'celebrate';
+            el.setAttribute('role', 'status');
+            el.innerHTML = `<div class="celebrate-shine"></div>
+                <div class="cel-stage">${confetti}${CELEBRATE_ANT}</div>
+                <div class="cel-text">
+                    <div class="cel-kicker">${m.badge ? 'Achievement unlocked' : 'Milestone reached'}</div>
+                    <div class="cel-title">${escHtml(m.title)}</div>
+                    <div class="cel-msg">${escHtml(m.msg)}${m.badge ? ` Badge earned: <strong style="color:var(--text-primary)">${m.badge}</strong>.` : ''}</div>
+                </div>
+                ${m.badge ? `<div class="cel-badge">${achvBadgeSvg(m, 52)}</div>` : ''}
+                <button class="modal-close cel-close" aria-label="Close">×</button>`;
+            let closed = false;
+            const close = () => {
+                if (closed) return;
+                closed = true;
+                el.classList.add('leaving');
+                setTimeout(() => { el.remove(); showNextCelebration(); }, 350);
+            };
+            el.querySelector('.cel-close').addEventListener('click', close);
+            document.body.appendChild(el);
+            setTimeout(close, 6500);
         }
 
         // ================================================================
@@ -3611,6 +4142,7 @@
                 const agents = await api('GET', '/api/v2/agents');
                 const list = agents.agents || agents || [];
                 agentCount = Array.isArray(list) ? list.length : '?';
+                if (Array.isArray(list)) checkAchievements(list);
             } catch { }
 
             cards.innerHTML = `
@@ -3718,13 +4250,9 @@
         async function openHistoryForDay(key) {
             S.historyFilter = key;
             S.summaryOpen = true;
-            const wasLoaded = !!S._historyLoaded;
+            // The nav handler's loadHistory() preserves the
+            // filter/summaryOpen state set above when it renders.
             goToPage('history');
-            // If history is already loaded, re-render now so the summary
-            // tab appears immediately (the nav handler doesn't reload).
-            // Otherwise the in-flight loadHistory() will renderHistory()
-            // for us — it now preserves the filter/summaryOpen state.
-            if (wasLoaded) renderHistory();
         }
 
         // ================================================================
@@ -3750,6 +4278,7 @@
             try {
                 await api('POST', `/api/v2/agents/${S.agentId}/remember`, body);
                 toast('Memory stored successfully!');
+                checkAchievements();
                 document.getElementById('remContent').value = '';
                 document.getElementById('remTitle').value = '';
                 document.getElementById('remTags').value = '';
@@ -3853,6 +4382,7 @@
                     throw new Error(data.message || `Upload failed with status "${data.status || 'unknown'}"`);
                 }
                 toast(`Uploaded "${data.file_name}" to ${data.agent_id}`);
+                checkAchievements();
                 out.innerHTML = `<p style="color:var(--success)">✓ ${escHtml(data.file_name)} (${data.status})${data.message ? ' — ' + escHtml(data.message) : ''}</p>`;
                 input.value = '';
             } catch (e) {
@@ -3945,6 +4475,7 @@
 
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/batch-remember`, { memories: memoriesToCreate });
                 toast(`Saved ${res.success_count || memoriesToCreate.length} memories successfully`);
+                checkAchievements();
                 _extractionCandidates = [];
                 document.getElementById('extractResults').style.display = 'none';
                 document.getElementById('extractInput').value = '';
@@ -4425,6 +4956,8 @@
                 .filter(([k]) => k >= startKey && k <= endKey)
                 .reduce((s, [, v]) => s + v.length, 0);
 
+            achvRecord('streak', longest);
+
             let html = '';
             html += `<div class="hh-stats">
                 <div class="hh-stat"><div class="hh-stat-label">Total memories</div><div class="hh-stat-value">${total}</div></div>
@@ -4432,6 +4965,7 @@
                 <div class="hh-stat"><div class="hh-stat-label">Most in a day</div><div class="hh-stat-value">${maxDay}</div></div>
                 <div class="hh-stat"><div class="hh-stat-label">Longest streak</div><div class="hh-stat-value">${longest}</div></div>
             </div>`;
+            html += `<div class="panel" id="achvPanel">${achievementsInner()}</div>`;
 
             html += `<div class="panel">
                 <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -5673,6 +6207,7 @@
             try {
                 await api('PUT', `/api/v2/agents/${S.agentId}/policy`, payload);
                 toast('Policy saved. Run a sweep to apply it.', 'success');
+                recordAchievementEvent('policy');
                 loadPolicyPage();
             } catch (e) { toast('Failed to save policy: ' + e.message, 'error'); }
         }
@@ -5700,7 +6235,6 @@
                 box.innerHTML = head + note + (rows
                     ? `<div class="table-wrap"><table><thead><tr><th>Title</th><th>Type</th><th>Rule</th></tr></thead><tbody>${rows}</tbody></table></div>`
                     : '<p style="font-size:13px;color:var(--text-dim)">Nothing matched.</p>');
-                if (!dryRun) { S._explorerLoaded = false; }
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);font-size:13px">Error: ${escHtml(e.message)}</p>`;
             }
@@ -5735,7 +6269,6 @@
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/policy/purge`, { dry_run: false });
                 box.innerHTML = `<p style="font-size:13px;color:var(--success)">Purged ${res.purged} memories.</p>`;
-                S._explorerLoaded = false;
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);font-size:13px">Error: ${escHtml(e.message)}</p>`;
             }
@@ -5789,6 +6322,7 @@
                 if (manualContent) body.manual_content = manualContent;
                 await api('POST', '/api/ui/conflicts/resolve', body);
                 toast(`Conflict #${idx} resolved (${action})!`);
+                recordAchievementEvent('resolved');
                 card.style.opacity = '0.3';
                 card.style.pointerEvents = 'none';
                 card.querySelector('.conflict-header .badge').className = 'badge badge-success';
@@ -5889,25 +6423,25 @@
                 S.charts.usage = new Chart(document.getElementById('chartUsage'), {
                     type: 'line',
                     data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#b4b4c4', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#b4b4c4', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
                 });
 
                 S.charts.type = new Chart(document.getElementById('chartType'), {
                     type: 'doughnut',
                     data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#b4b4c4', padding: 16, font: { family: 'Inter' } } } } }
                 });
 
                 S.charts.source = new Chart(document.getElementById('chartSource'), {
                     type: 'doughnut',
                     data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#b4b4c4', padding: 16, font: { family: 'Inter' } } } } }
                 });
 
                 S.charts.conf = new Chart(document.getElementById('chartConf'), {
                     type: 'bar',
                     data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#b4b4c4', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#b4b4c4', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
                 });
 
                 // Generate Word Cloud
@@ -6627,8 +7161,8 @@
         // After a real import, refresh everything affected so the user
         // doesn't have to manually reload Explorer/Dashboard/History.
         async function postMigrateRefresh() {
-            S._explorerLoaded = false;
             S._historyLoaded = false;
+            checkAchievements();
             try { await loadConflictBadge(); } catch { }
             // If the user happens to already be on a refreshable page, refresh
             // it in place. Otherwise the next nav into it picks up the change
@@ -6917,6 +7451,7 @@
                 const res = await api('GET', '/api/ui/connections');
                 S.connections = res.connections || [];
                 S.cwd = res.cwd || '';
+                achvRecord('connections', S.connections.filter(c => (c.projects || []).length || c.installed_global).length);
                 renderConnectionsGrid();
                 loadSessionActivity();
                 if (S.activeConnection) {

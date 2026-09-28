@@ -4141,6 +4141,64 @@
         }
       }
     },
+    "/api/ui/achievements": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Get Achievements",
+        "description": "Return stored achievement progress. ``exists`` is False until the\nfirst save, so the UI can migrate progress kept in older browser storage.",
+        "operationId": "get_achievements_api_ui_achievements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Put Achievements",
+        "description": "Replace stored achievement progress.",
+        "operationId": "put_achievements_api_ui_achievements_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AchievementsState"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ui/template-status/update": {
       "post": {
         "tags": [
@@ -4452,6 +4510,37 @@
   },
   "components": {
     "schemas": {
+      "AchievementsState": {
+        "properties": {
+          "earned": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Earned",
+            "default": {}
+          },
+          "seen": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Seen",
+            "default": {}
+          },
+          "best": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Best",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "AchievementsState",
+        "description": "UI achievement progress: milestone id -> earned-at ISO timestamp,\nmetrics already observed once, and the best value seen per metric."
+      },
       "AgentCreate": {
         "properties": {
           "agent_id": {
