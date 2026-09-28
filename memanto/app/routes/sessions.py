@@ -55,7 +55,7 @@ def get_agent_service():
     return agent_service
 
 
-_namespace_counts_state: dict[str, Any] = {"data": dict[str, int](), "time": 0.0}
+_namespace_counts_state: dict[str, Any] = {"data": dict[str, int](), "time": float("-inf")}
 _NAMESPACE_CACHE_TTL = 300.0  # seconds
 
 
@@ -95,6 +95,8 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
         _namespace_counts_state["time"] = now
         return counts
     except Exception:
+        # On failure, extend cache time slightly (60s backoff) to avoid hammering the upstream
+        _namespace_counts_state["time"] = now - _NAMESPACE_CACHE_TTL + 60.0
         return _namespace_counts_state["data"]  # type: ignore
 
 
