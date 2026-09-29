@@ -55,7 +55,10 @@ def get_agent_service():
     return agent_service
 
 
-_namespace_counts_state: dict[str, Any] = {"data": dict[str, int](), "time": float("-inf")}
+_namespace_counts_state: dict[str, Any] = {
+    "data": dict[str, int](),
+    "time": float("-inf"),
+}
 _NAMESPACE_CACHE_TTL = 300.0  # seconds
 
 
