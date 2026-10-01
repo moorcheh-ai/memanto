@@ -199,7 +199,7 @@ class TestMEMANTOAPI:
             json={"agent_id": "cross-site-agent", "pattern": "support"},
         )
 
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_cross_site_loopback_cannot_activate_agent(

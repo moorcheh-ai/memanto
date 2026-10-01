@@ -91,7 +91,7 @@ class TestUnauthenticatedUIEndpoints:
         )
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
         assert resp.json()["detail"] == (
-            "UI management endpoints reject cross-site browser requests."
+            "Origin not allowed for management endpoints"
         )
 
     def test_loopback_cross_site_fetch_metadata_rejected(self):
