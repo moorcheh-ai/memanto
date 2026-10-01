@@ -300,6 +300,7 @@ class TemporalRecallResponse(BaseModel):
     session_id: str
     memories: list[MemoryItem]
     count: int
+    total_available: int | None = None
     temporal_mode: str
     as_of_date: str | None = None
     since_date: str | None = None

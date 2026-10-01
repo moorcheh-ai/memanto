@@ -92,7 +92,7 @@ This is the part that matters in two years, and it's the part every platform-nat
 
 **Your estate is a file.** `memanto memory export --okf` gives you the [Open Knowledge Format](https://docs.memanto.ai/integrations/okf) — plain Markdown, readable, diffable, committable, greppable. Not a proprietary dump you can technically request. The actual working format.
 
-**It moves.** `memanto migrate` imports from Mem0, Letta, Supermemory, or any OKF bundle. The same command works in reverse. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
+**It moves.** `memanto migrate` imports from Mem0, Letta, Supermemory, Zep, Hindsight, or any OKF bundle. The same command works in reverse. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
 
 **It runs on your machine.** Local Docker + Ollama, no account, no API key, nothing leaves your infrastructure. Or free cloud, or your own hosting. `memanto config backend` switches between them in one command, and the estate comes with you.
 
@@ -214,7 +214,7 @@ Storage substrates sit *beneath* Memanto — vector stores, filesystems, and pla
 | Daily intelligence | `memanto daily-summary`, `memanto conflicts` | Summaries, contradiction detection, interactive resolution. |
 | Sessions & automation | `memanto session ...`, `memanto schedule ...` | Inspect sessions, enable scheduled daily runs. |
 | Estate export & sync | `memanto memory export`, `memanto memory sync` | Export structured Markdown, sync `MEMORY.md` into projects. `--okf` for a portable [OKF](https://docs.memanto.ai/integrations/okf) bundle. |
-| Import & migration | `memanto migrate` | Import from Mem0, Letta, Supermemory, or an OKF bundle. |
+| Import & migration | `memanto migrate` | Import from Mem0, Letta, Supermemory, Zep, Hindsight, or an OKF bundle. |
 | Configuration | `memanto config show` | API key status, active agent/session, server settings, schedule time. |
 | Fleet integration | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment. |
 

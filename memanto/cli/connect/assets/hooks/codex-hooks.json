@@ -4,8 +4,9 @@
       {
         "hooks": [
           {
+            "_managed_by": "memanto",
             "type": "command",
-            "command": "memanto memory sync --project-dir .",
+            "command": "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir .",
             "timeout": 30,
             "statusMessage": "Loading MEMANTO memory..."
           }
@@ -16,8 +17,9 @@
       {
         "hooks": [
           {
+            "_managed_by": "memanto",
             "type": "command",
-            "command": "memanto memory sync --project-dir .",
+            "command": "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir .",
             "timeout": 30,
             "statusMessage": "Saving MEMANTO memory..."
           }

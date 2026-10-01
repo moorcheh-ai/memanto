@@ -1,0 +1,51 @@
+# Dawn Chorus - High-Fidelity ASCII UI Refinement
+
+## Goal Description
+Address the "lack of space, style, and UI/UX" by elevating the "Dark ASCII Tech" aesthetic to a premium, high-fidelity interface.
+- **Space**: Increase negative space (padding/margins). Use a strict grid to organize information logically.
+- **Style**: "Curated Phosphor" aesthetic. Less "default green", more nuanced shades. Clean lines, intentional typography.
+- **UX**: Clearer hierarchy. Interactive elements should feel responsive and tactile (even in text).
+
+## User Review Required
+> [!IMPORTANT]
+> I will be applying standard UI/UX principles (Alignment, Proximity, Contrast) to the ASCII theme.
+> - **Strict Grid**: Everything aligns perfectly.
+> - **Visual Hierarchy**: Size and color will guide the eye.
+> - **Breathing Room**: No more cramped text.
+
+## Proposed Changes
+
+### Styling & Design System
+#### [MODIFY] [src/index.css](file://[redacted-path])
+- **Grid System**: Define a global grid variable or utility.
+- **Palette**: Refine colors.
+  - Background: Deepest Black (`#050505`).
+  - Primary: Phosphor Green (`#33ff00`) -> maybe slightly desaturated for body text to reduce eye strain.
+  - Surface: Very subtle gray (`#111`) for panels.
+- **Typography**: Adjust line heights and letter spacing for better readability.
+
+### Components
+#### [MODIFY] [src/components/ui/Layout.jsx](file://[redacted-path])
+- Create a "Main Frame" border that encompasses the app.
+- Improve the header/nav to look like a high-end dashboard top bar.
+
+#### [MODIFY] [src/components/ui/Card.jsx](file://[redacted-path])
+- Remove "box" borders for a cleaner look? Or make them very subtle.
+- Use "corner markers" `└ ┘` instead of full boxes to open up space.
+
+#### [MODIFY] [src/components/ui/Button.jsx](file://[redacted-path])
+- Make them look like clickable command zones.
+- Add a subtle background hover effect.
+
+### Pages
+#### [MODIFY] [src/pages/Dashboard.jsx](file://[redacted-path])
+- Reorganize into a cleaner 3-column layout with distinct "zones".
+- Use whitespace to separate the "Army" section from "Stats".
+
+#### [MODIFY] [src/pages/LandingPage.jsx](file://[redacted-path])
+- Center the experience.
+- Make the faction selection feel more like a "character creation" menu.
+
+## Verification Plan
+- **Visual Check**: Does it breathe? Is it aligned?
+- **Browser Tool**: Verify the new layout and spacing.

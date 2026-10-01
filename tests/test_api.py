@@ -59,7 +59,7 @@ def test_env_setup():
 async def client():
     """Create an async client for testing the FastAPI app"""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as ac:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as ac:
         yield ac
 
 
@@ -146,6 +146,13 @@ class TestMEMANTOAPI:
     """Contract tests for MEMANTO session-based API"""
 
     TEST_AGENT_ID = "test-api-agent"
+
+    @pytest.fixture(autouse=True)
+    def reset_cache(self):
+        from memanto.app.routes import sessions
+
+        sessions._namespace_counts_state["time"] = float("-inf")
+        sessions._namespace_counts_state["data"].clear()
 
     @pytest.mark.asyncio
     async def test_create_agent(self, client, auth_headers):

@@ -12,7 +12,6 @@ backends expose it.
 
 from typing import Annotated, Any
 
-from fastapi import Header
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
 
 from memanto.app.clients.backend import Backend, parse_backend
@@ -119,21 +118,26 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
-def get_moorcheh_client(
-    api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
-) -> Any:
-    """Return the active client as a FastAPI dependency or plain Python call.
+def get_moorcheh_client() -> Any:
+    """Dependency injection function (cloud or on-prem).
 
-    Keeping ``None`` as the actual default matters for internal callers such
-    as the answer and upload routes, which invoke this function directly.
-    With ``Header(...)`` as the default value, those calls passed FastAPI's
-    ``Header`` metadata object to the cloud SDK as the API key.
+    The backend credential is ALWAYS the server-configured key
+    (settings.MOORCHEH_API_KEY). Previously this dependency read the
+    ``X-Api-Key`` request header and built a client with the caller-chosen key
+    (MEM-02, confused deputy): any holder of a valid session token could run
+    server-side memory/LLM operations under their own Moorcheh credentials,
+    bypassing the server key's quotas, billing and audit, and potentially
+    reaching other tenants' namespaces. Server-to-backend credentials must
+    never be decided by the request. The ``api_key`` parameter was removed
+    entirely — FastAPI would otherwise expose it as a query parameter
+    (``?api_key=...``), re-opening the same bypass (CodeRabbit review).
     """
-    return moorcheh_client.get_client(api_key=api_key)
+    return moorcheh_client.get_client()
 
+def get_async_moorcheh_client() -> Any:
+    """Dependency injection function for async client (cloud or on-prem).
 
-def get_async_moorcheh_client(
-    api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
-) -> Any:
-    """Async equivalent of :func:`get_moorcheh_client`."""
-    return moorcheh_client.get_async_client(api_key=api_key)
+    Credentials are always the server-configured key (see get_moorcheh_client,
+    MEM-02); the request header and query parameter are never used.
+    """
+    return moorcheh_client.get_async_client()

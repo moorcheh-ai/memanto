@@ -26,6 +26,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from memanto.app.clients.agent_conflict import (
     CANCELLED_MESSAGE,
@@ -132,6 +133,14 @@ async def _require_local(request: Request) -> None:
     network addresses would let any reachable host kill the server, enumerate
     the filesystem, or replace API credentials without authentication.
     """
+    # MEM-01: a browser page on any other origin can drive fetches to
+    # 127.0.0.1 (DNS rebinding / localhost XSS). Reject non-whitelisted
+    # browser origins before the loopback check so admin endpoints stay
+    # unreadable from arbitrary web pages.
+    from memanto.app.routes.auth_deps import _require_allowed_origin
+
+    _require_allowed_origin(request)
+
     client_host = request.client.host if request.client else None
     if not _is_loopback(client_host):
         raise HTTPException(
@@ -148,18 +157,17 @@ async def _require_local(request: Request) -> None:
             detail="UI management endpoints reject cross-site browser requests.",
         )
 
-    # A loopback peer is not by itself proof that the request came from the
-    # local UI. A browser can be pointed at 127.0.0.1 by DNS rebinding, in
-    # which case it opens a connection from the loopback interface but still
-    # sends the attacker's hostname in the Host header. Require the header to
-    # name a loopback interface too -- exactly the check
-    # ``require_management_access`` already performs.
+    # A loopback TCP peer is necessary but not sufficient: a DNS-rebinding
+    # page on an attacker domain makes the server see a 127.0.0.1 client
+    # while the Host header names the attacker origin. The Host header is
+    # the only signal that distinguishes "local UI on localhost" from
+    # "attacker domain bound to loopback", so require it to name loopback.
     if not _is_loopback_host_header(request.headers.get("host")):
         raise HTTPException(
             status_code=403,
             detail=(
-                "UI management endpoints require a loopback Host header. "
-                f"Request host: {request.headers.get('host')}"
+                "UI management endpoints must be requested with a loopback "
+                "Host header."
             ),
         )
 
@@ -1117,6 +1125,50 @@ async def dismiss_template_status(_: None = Depends(_require_local)):
     return {"status": "success", "dismissed_version": TEMPLATE_VERSION}
 
 
+class AchievementsState(BaseModel):
+    """UI achievement progress: milestone id -> earned-at ISO timestamp,
+    metrics already observed once, and the best value seen per metric."""
+
+    earned: dict[str, str] = {}
+    seen: dict[str, bool] = {}
+    best: dict[str, int] = {}
+
+
+# Serializes reads and writes of achievements.json within this process, so a
+# read never races the os.replace() of a concurrent write.
+_achievements_lock = threading.Lock()
+
+
+def _achievements_path() -> Path:
+    from memanto.app.config import get_data_dir
+
+    return get_data_dir() / "achievements.json"
+
+
+@router.get("/api/ui/achievements")
+async def get_achievements(_: None = Depends(_require_local)):
+    """Return stored achievement progress. ``exists`` is False until the
+    first save, so the UI can migrate progress kept in older browser storage."""
+    path = _achievements_path()
+    with _achievements_lock:
+        if not path.exists():
+            return {"exists": False, "state": AchievementsState().model_dump()}
+        state = AchievementsState.model_validate_json(path.read_text(encoding="utf-8"))
+    return {"exists": True, "state": state.model_dump()}
+
+
+@router.put("/api/ui/achievements")
+async def put_achievements(state: AchievementsState, _: None = Depends(_require_local)):
+    """Replace stored achievement progress."""
+    path = _achievements_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    with _achievements_lock:
+        tmp.write_text(state.model_dump_json(indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+    return {"status": "success"}
+
+
 @router.post("/api/ui/template-status/update")
 async def apply_template_update(_: None = Depends(_require_local)):
     """Update all active Memanto agent instructions in the workspace and globally."""
@@ -1242,13 +1294,21 @@ async def shutdown_server(
     return {"status": "shutting down"}
 
 
-_MIGRATE_PROVIDERS = ("mem0", "letta", "supermemory", "okf", "langfuse")
+_MIGRATE_PROVIDERS = (
+    "mem0",
+    "letta",
+    "supermemory",
+    "zep",
+    "hindsight",
+    "okf",
+    "langfuse",
+)
 
 # Providers with no cost/latency baseline to benchmark Memanto against: OKF is
-# a portable local format, and Langfuse is an observability backend, not a
-# memory store being migrated off. The UI hides the savings tiles when the
-# savings object comes back empty.
-_NO_SAVINGS_PROVIDERS = ("okf", "langfuse")
+# a portable local format, Langfuse is an observability backend, not a memory
+# store being migrated off, and Zep/Hindsight have no compare module yet. The
+# UI hides the savings tiles when the savings object comes back empty.
+_NO_SAVINGS_PROVIDERS = ("okf", "langfuse", "zep", "hindsight")
 
 
 def _migrate_compact_metrics(provider: str, metrics: dict) -> dict:
@@ -1437,6 +1497,38 @@ def _migrate_savings(provider: str, export: dict) -> dict:
     return _migrate_compact_metrics(provider, _migrate_get_metrics_fn(provider)(export))
 
 
+def _safe_migrate_source_path(file_path: str, provider: str) -> Path:
+    """Resolve a caller-supplied migration ``file`` inside the migrate dir.
+
+    Migration endpoints accepted an arbitrary server-side ``file`` path, which
+    let a caller read any ``.md``/JSON document the server process can open —
+    the parsed content is reflected straight back in the dry-run/discover
+    response. Confining the source to the provider's own migrate directory
+    (where legitimate exports are written) removes the read primitive while
+    keeping the documented workflow intact.
+    """
+    base_dir = _config_manager.get_migrate_dir(provider).resolve()
+    candidate = Path(file_path).expanduser()
+    if not candidate.is_absolute():
+        candidate = base_dir / candidate
+    try:
+        resolved = candidate.resolve()
+    except (OSError, RuntimeError):
+        raise HTTPException(status_code=400, detail="Invalid `file` path")
+
+    try:
+        resolved.relative_to(base_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "`file` must live inside the migrate directory for this "
+                "provider. Absolute paths outside it are not allowed."
+            ),
+        )
+    return resolved
+
+
 def _migrate_load_or_export(
     provider: str,
     file_path: str | None,
@@ -1452,9 +1544,11 @@ def _migrate_load_or_export(
     provider), so it has no ``api_key`` branch — ``file`` is required and
     points at a bundle directory or a single ``.md`` file.
     """
+    from memanto.cli.analyze.hindsight_export import run_hindsight_export
     from memanto.cli.analyze.letta_export import run_letta_export
     from memanto.cli.analyze.mem0_export import run_mem0_export
     from memanto.cli.analyze.supermemory_export import run_supermemory_export
+    from memanto.cli.analyze.zep_export import run_zep_export
     from memanto.cli.migrate.okf_loader import load_okf_bundle
     from memanto.cli.migrate.runner import load_export
 
@@ -1462,9 +1556,9 @@ def _migrate_load_or_export(
         if not file_path:
             raise HTTPException(
                 status_code=400,
-                detail="`file` (server-side path to an OKF bundle directory or .md file) is required for OKF.",
+                detail="`file` (path to an OKF bundle directory or .md file inside the migrate directory) is required for OKF.",
             )
-        path = Path(file_path).expanduser()
+        path = _safe_migrate_source_path(file_path, provider)
         if not path.exists():
             raise HTTPException(
                 status_code=400, detail=f"OKF bundle not found: {file_path}"
@@ -1472,7 +1566,7 @@ def _migrate_load_or_export(
         return str(path), load_okf_bundle(path)
 
     if file_path:
-        path = Path(file_path).expanduser()
+        path = _safe_migrate_source_path(file_path, provider)
         if not path.exists() or not path.is_file():
             raise HTTPException(
                 status_code=400, detail=f"Export file not found: {file_path}"
@@ -1499,13 +1593,21 @@ def _migrate_load_or_export(
         "mem0": run_mem0_export,
         "letta": run_letta_export,
         "supermemory": run_supermemory_export,
+        "zep": run_zep_export,
+        "hindsight": run_hindsight_export,
     }
     exporter = exporters[provider]
+    # Hindsight is often self-hosted; ``host`` points at that server.
+    exporter_kwargs: dict[str, Any] = {}
+    if provider == "hindsight":
+        exporter_kwargs["base_url"] = (options or {}).get(
+            "host"
+        ) or _config_manager.get_hindsight_base_url()
     stamp = time.strftime("%Y%m%d_%H%M%S")
     dest = _config_manager.get_migrate_dir(provider) / stamp
     dest.mkdir(parents=True, exist_ok=True)
     try:
-        export_path, export = exporter(api_key.strip(), dest)
+        export_path, export = exporter(api_key.strip(), dest, **exporter_kwargs)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"{provider} export failed: {e}")
     return str(export_path), export
