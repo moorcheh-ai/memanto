@@ -37,6 +37,7 @@ from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
     SESSION_COOKIE_NAME,
+    _has_forwarded_non_loopback,
     _is_cross_site_browser_request,
     _is_loopback_host_header,
     clear_session_cookie,
@@ -142,7 +143,7 @@ async def _require_local(request: Request) -> None:
     _require_allowed_origin(request)
 
     client_host = request.client.host if request.client else None
-    if not _is_loopback(client_host):
+    if not _is_loopback(client_host) or _has_forwarded_non_loopback(request):
         raise HTTPException(
             status_code=403,
             detail=(

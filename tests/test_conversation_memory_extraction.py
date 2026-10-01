@@ -176,3 +176,76 @@ def test_conversation_text_exact_budget_boundary_with_separator():
     )
     assert "assistant:" not in text_exceeds
     assert len(text_exceeds) == len(prefix1) + len1
+
+
+def test_extract_redacts_sensitive_credentials():
+    """Secrets, API keys, passwords, and tokens must be redacted from extracted memories."""
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Config with token ghp_123456789012345678901234567890123456",
+            "content": "User configured openai key sk-proj-1234567890123456789012345 and password: secretpassword123",
+            "confidence": 0.95
+          },
+          {
+            "type": "fact",
+            "title": "DB URL",
+            "content": "Database url is postgresql://usr:mypassword99@db.internal:5432/prod",
+            "confidence": 0.88
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Here are my credentials"}],
+    )
+
+    assert len(candidates) == 2
+    # Ensure sensitive credentials are sanitized
+    assert "sk-proj-1234567890123456789012345" not in candidates[0]["content"]
+    assert "[REDACTED_API_KEY]" in candidates[0]["content"]
+    assert "secretpassword123" not in candidates[0]["content"]
+    assert "[REDACTED_CREDENTIAL]" in candidates[0]["content"]
+    assert "ghp_123456789012345678901234567890123456" not in candidates[0]["title"]
+    assert "[REDACTED_API_KEY]" in candidates[0]["title"]
+
+    assert "mypassword99" not in candidates[1]["content"]
+    assert (
+        "Database url is postgresql://usr:[REDACTED_PASSWORD]@db.internal:5432/prod"
+        == candidates[1]["content"]
+    )
+
+
+def test_redact_sensitive_data_helper():
+    from memanto.app.services.conversation_memory_extraction_service import (
+        redact_sensitive_data,
+    )
+
+    privkey = "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0...\n-----END RSA PRIVATE KEY-----"
+    assert redact_sensitive_data(privkey) == "[REDACTED_PRIVATE_KEY]"
+
+    bearer = "Bearer ya29.a0AfH6SMBxyz1234567890"
+    assert redact_sensitive_data(bearer) == "Bearer [REDACTED_TOKEN]"
+
+    bearer_token68 = "Bearer aBc12+34/56~test=="
+    assert redact_sensitive_data(bearer_token68) == "Bearer [REDACTED_TOKEN]"
+
+    aws = "AWS credentials: AKIAIOSFODNN7EXAMPLE"
+    assert redact_sensitive_data(aws) == "AWS credentials: [REDACTED_API_KEY]"
+
+    aws_secret = 'aws_secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"'
+    assert (
+        redact_sensitive_data(aws_secret)
+        == 'aws_secret_access_key="[REDACTED_CREDENTIAL]"'
+    )
+
+    aws_secret_unquoted = "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG"
+    assert (
+        redact_sensitive_data(aws_secret_unquoted)
+        == "AWS_SECRET_ACCESS_KEY=[REDACTED_CREDENTIAL]"
+    )
