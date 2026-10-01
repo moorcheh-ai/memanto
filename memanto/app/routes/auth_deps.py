@@ -58,7 +58,7 @@ def set_session_cookie(
     """
     secure = request.url.scheme == "https"
     peer_host = request.client.host if request.client else None
-    if not secure and not is_loopback_host(peer_host):
+    if not secure and (not is_loopback_host(peer_host) or _has_forwarded_non_loopback(request)):
         logger.warning(
             "Issuing the browser UI session cookie over plain HTTP from %s. "
             "Any network peer that can reach this port can intercept it and "
@@ -116,29 +116,54 @@ def _extract_presented_credential(
     x_api_key: str | None,
 ) -> str | None:
     """Extract a client-presented management credential from request headers."""
-    if x_api_key and x_api_key.strip():
+    if isinstance(x_api_key, str) and x_api_key.strip():
         return x_api_key.strip()
-    if authorization:
+    if isinstance(authorization, str):
         parts = authorization.split(None, 1)
         if len(parts) == 2 and parts[0].lower() == "bearer" and parts[1].strip():
             return parts[1].strip()
     return None
 
 
-def _is_loopback_host(host: str | None) -> bool:
-    """Return True when *host* is a loopback address (IPv4/IPv6/mapped)."""
-    if not host:
-        return False
-    import ipaddress
+def _origin_is_allowed(request: Request) -> bool:
+    """Reject management requests carrying a non-whitelisted Origin header.
 
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    if addr.is_loopback:
+    The loopback trust in require_management_access is only safe when the
+    browser-side origin is also trusted. Without this check, any web page can
+    drive the victim's browser to issue requests to 127.0.0.1 (DNS rebinding /
+    localhost XSS); the TCP peer is loopback, so the request passes, and a
+    wildcard CORS config would let the page read the response (session tokens,
+    memories). Browsers always send the Origin header on cross-origin and
+    same-origin POST requests, so rejecting non-whitelisted Origins closes the
+    browser-driven bypass (MEM-01) without breaking CLI/curl callers (which
+    send no Origin).
+    """
+    origin = request.headers.get("origin")
+    if not origin or not isinstance(origin, str):
+        return True  # non-browser caller (CLI, curl, SDK) or mock/test request
+    from memanto.app.config import settings
+
+    origin_stripped = origin.rstrip("/")
+    allowed = [o.rstrip("/") for o in settings.ALLOWED_ORIGINS]
+    
+    if origin_stripped in allowed:
         return True
-    ipv4_mapped = getattr(addr, "ipv4_mapped", None)
-    return ipv4_mapped is not None and ipv4_mapped.is_loopback
+        
+    if settings.CORS_ORIGIN_REGEX:
+        import re
+        if re.match(settings.CORS_ORIGIN_REGEX, origin_stripped):
+            return True
+            
+    return False
+
+
+def _require_allowed_origin(request: Request) -> None:
+    """FastAPI dependency raising 403 for disallowed browser origins."""
+    if not _origin_is_allowed(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Origin not allowed for management endpoints",
+        )
 
 
 def _is_loopback_origin(origin: str | None) -> bool:
@@ -151,7 +176,7 @@ def _is_loopback_origin(origin: str | None) -> bool:
         return False
     if parsed.scheme not in {"http", "https"}:
         return False
-    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+    return parsed.hostname == "localhost" or is_loopback_host(parsed.hostname)
 
 
 def _is_loopback_host_header(host: str | None) -> bool:
@@ -162,7 +187,7 @@ def _is_loopback_host_header(host: str | None) -> bool:
         hostname = urlsplit(f"//{host}").hostname
     except ValueError:
         return False
-    return hostname == "localhost" or _is_loopback_host(hostname)
+    return hostname == "localhost" or is_loopback_host(hostname)
 
 
 def _is_cross_site_browser_request(request: Request) -> bool:
@@ -177,6 +202,47 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     else:
         fetch_site = ""
     return fetch_site in {"cross-site", "same-site"}
+
+
+def _has_forwarded_non_loopback(request: Request) -> bool:
+    """Return True when proxy forwarding headers indicate a non-loopback originator.
+
+    When Memanto is deployed behind a reverse proxy (e.g. Nginx/Caddy on localhost),
+    ``request.client.host`` evaluates to 127.0.0.1. If the proxy forwards requests from
+    an external client, headers such as ``X-Forwarded-For``, ``X-Real-IP``, or
+    ``Forwarded`` will contain non-loopback addresses. In such cases, the request must
+    NOT inherit localhost/loopback trust.
+    """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        for ip in xff.split(","):
+            cleaned = ip.strip()
+            if cleaned and not is_loopback_host(cleaned):
+                return True
+
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        cleaned = x_real_ip.strip()
+        if cleaned and not is_loopback_host(cleaned):
+            return True
+
+    forwarded = request.headers.get("forwarded")
+    if forwarded:
+        for item in forwarded.split(";"):
+            item = item.strip()
+            if item.lower().startswith("for="):
+                val = item[4:].strip().strip('"').strip("[]")
+                if ":" in val and not val.startswith(":"):
+                    try:
+                        import ipaddress
+
+                        ipaddress.ip_address(val)
+                    except ValueError:
+                        val = val.rsplit(":", 1)[0].strip()
+                if val and not is_loopback_host(val):
+                    return True
+
+    return False
 
 
 def require_management_access(
@@ -225,11 +291,17 @@ def require_management_access(
     if presented and expected and secrets.compare_digest(presented, expected):
         return server_key
 
+    # Reject browser-originated requests from non-whitelisted origins even when
+    # the TCP peer is loopback (MEM-01: DNS rebinding / localhost XSS lets any
+    # web page reach 127.0.0.1 and read admin responses under a wildcard CORS).
+    _require_allowed_origin(request)
+
     client_host = request.client.host if request.client else None
     if (
-        _is_loopback_host(client_host)
+        is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
+        and not _has_forwarded_non_loopback(request)
     ):
         return server_key
 
@@ -284,6 +356,30 @@ def get_current_session(
         raise HTTPException(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
+
+    # A session presented via the HttpOnly *cookie* (browser transport) must
+    # come from the loopback interface targeting a loopback Host. The TCP
+    # client alone is not enough to trust: a DNS-rebinding page on an
+    # attacker domain can inherit the loopback client (the server sees a
+    # 127.0.0.1 peer) while the request's Host names the attacker origin.
+    # Mirror ``require_management_access``'s loopback boundary here so a
+    # rebinding page cannot read or write the memory store. Header-
+    # authenticated API clients (X-Session-Token) are unaffected and may be
+    # remote.
+    if session_cookie and not x_session_token:
+        client_host = request.client.host if request.client else None
+        if (
+            not is_loopback_host(client_host)
+            or not _is_loopback_host_header(request.headers.get("host"))
+            or _is_cross_site_browser_request(request)
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Cookie-authenticated session requests must originate "
+                    "from the loopback interface targeting a loopback Host."
+                ),
+            )
 
     session_service = get_session_service()
 

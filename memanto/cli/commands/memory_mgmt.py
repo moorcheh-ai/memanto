@@ -212,16 +212,26 @@ def memory_sync(
     agent_id: str | None = typer.Option(
         None, "--agent", "-a", help="Agent identifier (defaults to active agent)"
     ),
+    connection: str | None = typer.Option(
+        None,
+        "--connection",
+        help="Connected integration to update when the caller cannot be detected",
+    ),
+    scope: str | None = typer.Option(
+        None,
+        "--scope",
+        help="Connection scope to update: local or global",
+    ),
     limit: int = typer.Option(
-        25,
+        10,
         "--limit",
         "-n",
-        help="Maximum memories per type in the export (default 25)",
+        help="Maximum memories to inject dynamically (default 10). For OKF, max per type.",
     ),
     okf: bool = typer.Option(
         False,
         "--okf",
-        help="Sync an OKF (Open Knowledge Format) bundle (<project>/okf) instead of MEMORY.md",
+        help="Sync an OKF (Open Knowledge Format) bundle to <project>/okf",
     ),
     split: str = typer.Option(
         "auto",
@@ -229,10 +239,13 @@ def memory_sync(
         help="OKF layout: auto | file | type (only used with --okf)",
     ),
 ):
-    """Sync agent memories to a project directory's MEMORY.md.
+    """Sync agent memories directly into your project's agent instructions.
 
-    Always performs a fresh export before syncing to ensure the latest
-    memories are captured in the project's MEMORY.md file. Pass --okf to instead
+    Fetches the highest relevance dynamic memories based on global project standards
+    and user preferences, and injects them into agent instructions via sentinels.
+    The invoking agent determines the connection automatically; manual invocations
+    can provide --connection and --scope when the target is ambiguous.
+    Pass --okf to instead
     sync an OKF bundle into ``<project>/okf``.
 
     Examples:
@@ -312,40 +325,56 @@ def memory_sync(
         )
     )
 
-    with console.status(f"[{PRIMARY}]Syncing memories...", spinner="dots"):
+    with console.status(f"[{PRIMARY}]Syncing dynamic memories...", spinner="dots"):
         try:
-            result = client.sync_memory_to_project(
+            from memanto.cli.connect.updater import inject_dynamic_memories
+
+            memories_result = client.recall(
                 agent_id=agent_id,
-                project_dir=project_dir,
-                limit_per_type=limit,
+                query="Global project standards, architectural rules, agent workflows, and core user preferences",
+                type=["instruction", "preference", "goal"],
+                min_confidence=0.8,
+                min_similarity=0.15,
+                limit=limit,
+                status="active",
             )
+
+            formatted_bullets = []
+            for mem in memories_result.get("memories", []):
+                mem_type = mem.get("type", "fact").upper()
+                content = mem.get("content", "").strip()
+                formatted_bullets.append(f"- [{mem_type}] {content}")
+
+            formatted_text = "\n".join(formatted_bullets)
+
+            injection_results = inject_dynamic_memories(
+                project_dir,
+                formatted_text,
+                connection=connection,
+                scope=scope,
+            )
+            recalled_total = len(memories_result.get("memories", []))
+
         except Exception as e:
-            _error(f"Failed to sync memories: {e}")
+            _error(f"Failed to sync dynamic memories: {e}")
 
     elapsed = time.perf_counter() - start
 
-    total = result.get("total_memories", 0)
-    source = result.get("source", "unknown")
-    out_path = result.get("output_path", "unknown")
-
-    if source == "stale-cache":
-        source_label = "stale cache (backend unreachable)"
-    else:
-        source_label = "fresh export"
-
-    if total == 0:
-        console.print("\n[yellow]No memories found for this agent.[/yellow]")
-        console.print(f"[dim]Empty memory.md written to: {out_path}[/dim]")
-    else:
-        console.print(f"\n[green]OK Synced {total} memories successfully![/green]")
-        console.print(f"[dim]Source: {source_label}[/dim]")
-
-    if source == "stale-cache":
+    if recalled_total == 0:
         console.print(
-            "[yellow]Warning: backend was unreachable; reused the previous "
-            "export. Memories may be out of date.[/yellow]"
+            "\n[yellow]No active dynamic memories found. Cleared dynamic sections (if any).[/yellow]"
+        )
+    else:
+        console.print(
+            f"\n[green]OK Recalled {recalled_total} dynamic memories![/green]"
         )
 
-    console.print(f"[dim]Output: {out_path}[/dim]")
+    for msg in injection_results.get("updated", []):
+        console.print(f"[green]* {msg}[/green]")
+    for msg in injection_results.get("already_current", []):
+        console.print(f"[dim]* {msg}[/dim]")
+    for msg in injection_results.get("no_eligible_target", []):
+        console.print(f"[yellow]* {msg}[/yellow]")
+
     _check_template_updates(project_dir)
     console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")

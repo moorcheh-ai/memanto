@@ -1457,16 +1457,16 @@ class TestMEMANTOCLI:
 
         session_mock.assert_not_called()
 
-    def test_memory_sync(self, mock_all_clients):
+    @patch("memanto.cli.connect.updater.inject_dynamic_memories")
+    def test_memory_sync(self, mock_inject, mock_all_clients):
         """Test 'memanto memory sync'"""
-        mock_all_clients.sync_memory_to_project.return_value = {
-            "total_memories": 5,
-            "source": "fresh",
-            "output_path": "project/memory.md",
+        mock_all_clients.recall.return_value = {
+            "memories": [{"type": "instruction", "content": "Test instruction"}] * 5
         }
+        mock_inject.return_value = {"updated": ["Injected successfully"]}
         result = runner.invoke(app, ["memory", "sync"])
         assert result.exit_code == 0
-        assert "Synced 5 memories" in result.stdout
+        assert "Recalled 5 dynamic memories" in result.stdout
 
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""

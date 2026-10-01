@@ -148,7 +148,13 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS Configuration
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    # Default to an empty list since we use CORS_ORIGIN_REGEX to cover all
+    # localhost/127.0.0.1 ports safely.
+    # Operators exposing the UI on other origins must list them explicitly here (CVE/MEM-01).
+    ALLOWED_ORIGINS: list[str] = []
+    
+    # Safely matches exactly http://localhost:<any_port> and http://127.0.0.1:<any_port>
+    CORS_ORIGIN_REGEX: str | None = r"^http://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
     # Setting allow_credentials=True with a wildcard origin causes Starlette to
     # reflect any request Origin back, allowing any site to make credentialed
     # cross-origin requests.  Default to False; set to True only when ALLOWED_ORIGINS

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "claudecode-memanto"
-version = "0.1.0"
-description = "Cross-session engineering memory for Claude Code + mattpocock/skills, powered by Memanto. Real lifecycle hooks + LLM distillation = zero repeated instructions."
+version = "0.1.1"
+description = "Convenience CLI for installing Memanto's Claude Code integration."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<4"
@@ -18,14 +18,12 @@ keywords = [
     "claude-code",
     "claude",
     "anthropic",
-    "skills",
-    "mattpocock",
     "agent memory",
     "semantic memory",
     "hooks",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -34,13 +32,11 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dependencies = [
-    "memanto>=0.1.0",
-    "python-dotenv>=1.0.0",
-]
+dependencies = ["memanto>=0.2.21"]
 
 [project.optional-dependencies]
 dev = [
@@ -60,7 +56,7 @@ Repository = "https://github.com/moorcheh-ai/memanto"
 "Bug Tracker" = "https://github.com/moorcheh-ai/memanto/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["claudecode_memanto", "hooks"]
+packages = ["claudecode_memanto"]
 
 [tool.ruff]
 target-version = "py310"

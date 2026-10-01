@@ -21,8 +21,8 @@
             --border-hover: #2a2a3a;
             --border-focus: #06b6d4;
             --text-primary: #f0f0f5;
-            --text-secondary: #8a8a9a;
-            --text-dim: #55556a;
+            --text-secondary: #b4b4c4;
+            --text-dim: #8e8ea3;
             --accent: #06b6d4;
             --accent-hover: #22d3ee;
             --accent-glow: rgba(6, 182, 212, 0.15);
@@ -411,6 +411,7 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
             font-family: var(--font-mono);
+            white-space: nowrap;
         }
 
         .badge-success {
@@ -1797,6 +1798,240 @@
             margin-top: 4px;
         }
 
+        /* ── Achievements (badges on History + milestone celebration) ── */
+        .achv-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .achv {
+            width: 104px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 4px 10px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            transition: background var(--transition);
+        }
+
+        .achv:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .achv .achv-badge {
+            transition: transform 0.25s ease, filter 0.25s ease;
+        }
+
+        .achv.earned:hover .achv-badge {
+            transform: translateY(-3px) rotate(-4deg);
+            filter: drop-shadow(0 6px 14px rgba(157, 122, 214, 0.35));
+        }
+
+        .achv.locked .achv-badge {
+            filter: grayscale(1) brightness(0.55);
+            opacity: 0.55;
+        }
+
+        .achv-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .achv.locked .achv-name {
+            color: var(--text-dim);
+        }
+
+        .achv-sub {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .achv-bar {
+            width: 60px;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .achv-bar span {
+            display: block;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .celebrate {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            z-index: 9500;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            width: max-content;
+            max-width: min(540px, calc(100vw - 32px));
+            padding: 18px 44px 18px 18px;
+            background: linear-gradient(135deg, rgba(24, 18, 44, 0.97), rgba(8, 8, 13, 0.97));
+            border: 1px solid rgba(157, 122, 214, 0.4);
+            border-radius: var(--radius);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 44px rgba(157, 122, 214, 0.2);
+            font-family: var(--font-mono);
+            animation: celIn 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+        }
+
+        .celebrate.leaving {
+            animation: celOut 0.35s ease forwards;
+        }
+
+        @keyframes celIn {
+            from { opacity: 0; transform: translate(-50%, 30px) scale(0.94); }
+            to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        @keyframes celOut {
+            from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+            to   { opacity: 0; transform: translate(-50%, 16px) scale(0.97); }
+        }
+
+        /* One light sweep across the card; kept in its own clipped layer so
+           the confetti can still fly outside the card. */
+        .celebrate-shine {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .celebrate-shine::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.09) 50%, transparent 65%);
+            transform: translateX(-100%);
+            animation: celShine 1.4s 0.35s ease forwards;
+        }
+
+        @keyframes celShine {
+            to { transform: translateX(100%); }
+        }
+
+        .cel-stage {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .cel-ant {
+            width: 60px;
+            height: auto;
+            color: #b69cf0;
+            overflow: visible;
+            transform-origin: 50% 100%;
+            animation: celJump 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) 3;
+        }
+
+        @keyframes celJump {
+            0%   { transform: translateY(0) scale(1.08, 0.9); }
+            15%  { transform: translateY(0) scale(1); }
+            45%  { transform: translateY(-16px) scale(0.96, 1.05); }
+            75%  { transform: translateY(0) scale(1); }
+            85%  { transform: translateY(0) scale(1.06, 0.92); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        .cel-arm {
+            transform-box: fill-box;
+            transform-origin: 50% 100%;
+            animation: celWave 0.45s ease-in-out infinite alternate;
+        }
+
+        .cel-arm-l { --a: -16deg; }
+        .cel-arm-r { --a: 16deg; animation-delay: 0.22s; }
+
+        @keyframes celWave {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(var(--a)); }
+        }
+
+        .cel-legs {
+            transform-box: fill-box;
+            transform-origin: 50% 0%;
+            animation: celKick 0.45s ease-in-out infinite alternate;
+        }
+
+        @keyframes celKick {
+            from { transform: scaleX(1); }
+            to   { transform: scaleX(1.14); }
+        }
+
+        .cel-confetti {
+            position: absolute;
+            left: 50%;
+            top: 40%;
+            width: 5px;
+            height: 5px;
+            background: var(--c);
+            opacity: 0;
+            animation: celBurst 1.4s cubic-bezier(0.15, 0.8, 0.3, 1) var(--d) both;
+        }
+
+        @keyframes celBurst {
+            0%   { transform: translate(0, 0) scale(0); opacity: 1; }
+            35%  { transform: translate(var(--dx), var(--dy)) scale(1) rotate(90deg); opacity: 1; }
+            100% { transform: translate(var(--dx), calc(var(--dy) + 36px)) rotate(var(--r)); opacity: 0; }
+        }
+
+        .cel-text {
+            min-width: 0;
+        }
+
+        .cel-kicker {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #b69cf0;
+        }
+
+        .cel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        .cel-msg {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .cel-badge {
+            flex-shrink: 0;
+            animation: celBadgePop 0.7s 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+        }
+
+        @keyframes celBadgePop {
+            from { transform: scale(0) rotate(-25deg); opacity: 0; }
+            to   { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .cel-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+        }
+
         .hh-container {
             display: flex;
             flex-direction: column;
@@ -2624,9 +2859,9 @@
             font-size: 13px;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" integrity="sha384-NNQgBjjuhtXzPmmy4gurS5X7P4uTt1DThyevz4Ua0IVK5+kazYQI1W27JHjbbxQz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js" integrity="sha384-Ic7KEGROu37YaruU6NyiYeib7UhjFyDZQ5fzBAji965L75T/4LGk5nzwMEjNGexs" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -2771,8 +3006,11 @@
             <section class="page" id="page-agents">
                 <div class="page-header">
                     <h2>Agents</h2>
-                    <p>View all registered agents and activate one to start a session</p>
-                    <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
+                    <p>Create, activate, or delete agents</p>
+                    <div class="page-refresh" style="display:flex;gap:8px">
+                        <button class="btn btn-primary btn-sm" onclick="openCreateAgentModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg> New Agent</button>
+                        <button class="btn btn-secondary btn-sm" onclick="refreshPage('agents', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
+                    </div>
                 </div>
                 <div id="agentsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>
@@ -3021,7 +3259,7 @@
             <section class="page" id="page-migrate">
                 <div class="page-header">
                     <h2>Migrate</h2>
-                    <p>Import memories from Mem0, Letta, or Supermemory into your active Memanto agent.</p>
+                    <p>Import memories from Mem0, Letta, Supermemory, Zep, Hindsight, an OKF bundle, or Langfuse into your active Memanto agent.</p>
                     <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('migrate', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
                 </div>
                 <div id="migrateContent"></div>
@@ -3200,17 +3438,13 @@
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById('page-' + btn.dataset.page).classList.add('active');
-                if (btn.dataset.page === 'agents') loadAgents();
-                if (btn.dataset.page === 'explorer' && !S._explorerLoaded) { loadExplorer(); S._explorerLoaded = true; }
-                if (btn.dataset.page === 'analytics') loadAnalytics();
-                if (btn.dataset.page === 'config') loadConfig();
-                if (btn.dataset.page === 'dashboard') loadDashboard();
-                if (btn.dataset.page === 'conflicts') loadConflicts();
-                if (btn.dataset.page === 'policy') loadPolicyPage();
-                if (btn.dataset.page === 'connections') { loadConnections(); startMeshPolling(); }
+                // Re-fetch on every visit so a page never shows stale data
+                // after changes made elsewhere (CLI, another page, etc.).
+                const reload = PAGE_RELOADERS[btn.dataset.page];
+                if (reload) reload();
+                if (btn.dataset.page === 'history') S._historyLoaded = true;
+                if (btn.dataset.page === 'connections') startMeshPolling();
                 else stopMeshPolling();
-                if (btn.dataset.page === 'migrate') openMigrate();
-                if (btn.dataset.page === 'history' && !S._historyLoaded) { loadHistory(); S._historyLoaded = true; }
             });
         });
 
@@ -3220,10 +3454,8 @@
             if (btn) btn.click();
         }
 
-        // Per-page reload used by the Refresh button in each page header. The
-        // map mirrors the nav-item handler above, minus its once-only guards —
-        // an explicit Refresh should always re-fetch, even on pages that
-        // normally load lazily (Explorer, History).
+        // Per-page reload used by the nav-item handler above and by the
+        // Refresh button in each page header.
         const PAGE_RELOADERS = {
             dashboard: () => loadDashboard(),
             agents: () => loadAgents(),
@@ -3277,6 +3509,7 @@
             }
             applyBackendVisibility();
             updateSidebarStatus();
+            achvInit();
             loadDashboard();
             // Load conflict count for badge
             loadConflictBadge();
@@ -3368,12 +3601,15 @@
         // ================================================================
         async function loadConflictBadge() {
             try {
-                const data = await api('GET', '/api/ui/conflicts');
+                const [data] = await Promise.all([
+                    api('GET', '/api/ui/conflicts').catch(() => ({ count: 0 })),
+                    fetchConflictScans().catch(() => {}),
+                    fetchRecentMemories().catch(() => {})
+                ]);
                 const badge = document.getElementById('conflictBadge');
-                await fetchConflictScans();
-                await fetchRecentMemories();
+                if (!badge) return;
                 const staleToday = staleMemCountForDay(todayKey());
-                if (data.count > 0) {
+                if (data && data.count > 0) {
                     badge.textContent = data.count;
                     badge.title = `${data.count} unresolved conflict(s) today`;
                     badge.style.display = 'inline-flex';
@@ -3392,7 +3628,13 @@
         // ================================================================
         async function loadAgents() {
             const box = document.getElementById('agentsContent');
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>';
+            if (S._cachedAgents && S._cachedAgents.length > 0) {
+                box.innerHTML = buildAgentsTable(S._cachedAgents);
+                // Subtle updating indicator could go here
+            } else {
+                box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>';
+            }
+            
             if (!isBackendConfigured()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No backend configured. Set one in the Config page to manage agents.</p>';
                 return;
@@ -3400,13 +3642,17 @@
             try {
                 const res = await api('GET', '/api/v2/agents');
                 const agents = res.agents || [];
+                checkAchievements(agents);
+                S._cachedAgents = agents;
                 if (!agents.length) {
-                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Create one via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
+                    box.innerHTML = `<p style="color:var(--text-dim);padding:20px">No agents registered yet. Click <strong>New Agent</strong> above to create one, or use the CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto agent create &lt;id&gt;</code></p>`;
                     return;
                 }
                 box.innerHTML = buildAgentsTable(agents);
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error loading agents: ${escHtml(e.message)}</p>`;
+                if (!S._cachedAgents) {
+                    box.innerHTML = `<p style="color:var(--error);padding:20px">Error loading agents: ${escHtml(e.message)}</p>`;
+                }
             }
         }
 
@@ -3420,6 +3666,7 @@
                 const actions = isActive
                     ? `<button class="btn btn-sm btn-secondary" onclick="deactivateAgent('${a.agent_id}', this)">Deactivate</button>`
                     : `<button class="btn btn-sm btn-primary" onclick="activateAgent('${a.agent_id}', this)">Activate</button>`;
+                const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteAgent('${a.agent_id}', this)">Delete</button>`;
                 html += `<tr${isActive ? ' style="background:var(--accent-glow)"' : ''}>
                     <td style="color:var(--text-primary);font-weight:600">${escHtml(a.agent_id)}</td>
                     <td><span class="badge badge-accent">${escHtml(a.pattern || '—')}</span></td>
@@ -3428,11 +3675,116 @@
                     <td>${a.session_count ?? 0}</td>
                     <td style="white-space:nowrap">${fmtDate(a.created_at)}</td>
                     <td>${statusBadge}</td>
-                    <td style="text-align:right;white-space:nowrap">${actions}</td>
+                    <td style="text-align:right;white-space:nowrap">${actions} ${deleteBtn}</td>
                 </tr>`;
             });
             html += '</tbody></table></div>';
             return html;
+        }
+
+        // Create Agent modal — mirrors openConnectModal's structure/CSS classes
+        // so it matches the rest of the app instead of introducing new styles.
+        function openCreateAgentModal() {
+            window._createAgentModalPrevFocus = document.activeElement;
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'createAgentModal';
+            modal.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="createAgentModalHeading" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 id="createAgentModalHeading">New Agent</h3>
+                    <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label for="newAgentId">Agent ID</label>
+                    <input id="newAgentId" type="text" placeholder="e.g. support-bot" pattern="[a-zA-Z0-9_-]+"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault(); submitCreateAgent()}">
+                    <div class="helper-text">Letters, numbers, hyphens, and underscores only.</div>
+                </div>
+                <div class="form-group">
+                    <label for="newAgentPattern">Pattern</label>
+                    <select id="newAgentPattern">
+                        <option value="support">support</option>
+                        <option value="project">project</option>
+                        <option value="tool">tool</option>
+                    </select>
+                    <div class="helper-text">How this agent's memory should be organized — doesn't affect functionality.</div>
+                </div>
+                <div class="form-group">
+                    <label for="newAgentDescription">Description <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+                    <input id="newAgentDescription" type="text" placeholder="What this agent is for"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault(); submitCreateAgent()}">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
+                    <button class="btn btn-primary" id="createAgentBtn" onclick="submitCreateAgent()">Create</button>
+                </div>
+            </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) closeCreateAgentModal(); });
+            modal.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    closeCreateAgentModal();
+                } else if (e.key === 'Tab') {
+                    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                    if (!focusable.length) return;
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            });
+            document.body.appendChild(modal);
+            setTimeout(() => document.getElementById('newAgentId')?.focus(), 50);
+        }
+
+        function closeCreateAgentModal() {
+            const m = document.getElementById('createAgentModal');
+            if (m) m.remove();
+            if (window._createAgentModalPrevFocus) {
+                window._createAgentModalPrevFocus.focus();
+                window._createAgentModalPrevFocus = null;
+            }
+        }
+
+        async function submitCreateAgent() {
+            const btn = document.getElementById('createAgentBtn');
+            if (btn && btn.disabled) return;
+
+            const idInput = document.getElementById('newAgentId');
+            const agentId = (idInput.value || '').trim();
+            const pattern = document.getElementById('newAgentPattern').value;
+            const description = document.getElementById('newAgentDescription').value.trim();
+
+            if (!agentId) { toast('Agent ID is required', 'error'); idInput.focus(); return; }
+            if (!/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+                toast('Agent ID may only contain letters, numbers, hyphens, and underscores', 'error');
+                idInput.focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Creating...';
+            try {
+                await api('POST', '/api/v2/agents', {
+                    agent_id: agentId,
+                    pattern,
+                    description: description || null,
+                });
+                closeCreateAgentModal();
+                toast(`Agent "${agentId}" created`);
+                // Matches the CLI's behavior (memanto agent create activates
+                // automatically), so the new agent is immediately usable.
+                await activateAgent(agentId);
+                loadAgents();
+            } catch (e) {
+                toast('Failed to create agent: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Create';
+            }
         }
 
         async function activateAgent(agentId, btn) {
@@ -3448,8 +3800,12 @@
                     S.config.has_active_session = true;
                 }
                 // Invalidate cached views tied to the previous agent
-                S._explorerLoaded = false;
                 S.explorerAll = [];
+                S.history = [];
+                S._lastHistoryFetch = 0;
+                S._historyLoaded = false;
+                S.conflictScans = null;
+                S._cachedConflicts = null;
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" activated`);
                 loadAgents();
@@ -3470,8 +3826,12 @@
                     S.config.active_agent_id = null;
                     S.config.has_active_session = false;
                 }
-                S._explorerLoaded = false;
                 S.explorerAll = [];
+                S.history = [];
+                S._lastHistoryFetch = 0;
+                S._historyLoaded = false;
+                S.conflictScans = null;
+                S._cachedConflicts = null;
                 updateSidebarStatus();
                 toast(`Agent "${agentId}" deactivated`);
                 loadAgents();
@@ -3482,6 +3842,248 @@
             }
         }
 
+        // Mirrors ``memanto agent delete``: confirm, then ask whether to keep
+        // the agent's memory namespace in Moorcheh (kept by default).
+        async function deleteAgent(agentId, btn) {
+            const ok = await confirmDialog({
+                title: 'Delete agent',
+                message: `Delete agent '${agentId}'? This cannot be undone.`,
+                confirmLabel: 'Delete',
+                danger: true,
+            });
+            if (!ok) return;
+            const dropMemories = await confirmDialog({
+                title: 'Agent memories',
+                message: `Also delete the memories stored for '${agentId}' in Moorcheh? Keep them to access later from your Moorcheh namespaces.`,
+                confirmLabel: 'Delete memories',
+                cancelLabel: 'Keep memories',
+                danger: true,
+            });
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Deleting...'; }
+            try {
+                await api('DELETE', `/api/v2/agents/${agentId}${dropMemories ? '?delete-backup-too=true' : ''}`);
+                // The server revokes the agent's session; drop it locally too.
+                if (agentId === S.agentId) {
+                    S.agentId = null;
+                    S.token = null;
+                    if (S.config) {
+                        S.config.active_agent_id = null;
+                        S.config.has_active_session = false;
+                    }
+                    S.explorerAll = [];
+                    S.history = [];
+                    S._lastHistoryFetch = 0;
+                    S._historyLoaded = false;
+                    S.conflictScans = null;
+                    S._cachedConflicts = null;
+                    updateSidebarStatus();
+                    loadConflictBadge();
+                }
+                toast(`Agent "${agentId}" deleted`);
+                loadAgents();
+            } catch (e) {
+                toast('Delete failed: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+            }
+        }
+
+        // ================================================================
+        // ACHIEVEMENTS
+        // Progress is stored server-side in <data dir>/achievements.json
+        // (GET/PUT /api/ui/achievements), loaded once into achvState. The first time
+        // a metric is observed its already-met milestones are recorded
+        // silently, so existing users are not flooded with pop-ups; after
+        // that, newly reached milestones are celebrated. "resolved" and
+        // "policy" are event counts, so they celebrate from the first observation.
+        // ================================================================
+        // Browser-storage key used before progress moved server-side; read
+        // once to migrate, then removed.
+        const ACHV_LEGACY_KEY = 'memanto.achievements.v1';
+        const ACHV_UNITS = { agents: 'agents', memories: 'memories', streak: 'day streak', resolved: 'conflicts resolved', policy: 'policies saved', connections: 'tools connected' };
+        const MILESTONES = [
+            { id: 'first-agent', metric: 'agents', at: 1, badge: 'First Agent', label: '#1', colors: ['#a78bfa', '#5b21b6'], req: 'Create your first agent', title: 'You created your first agent', msg: 'Memanto is ready to start remembering for it.' },
+            { id: 'squad', metric: 'agents', at: 5, badge: 'Squad', label: '\u00d75', colors: ['#67e8f9', '#0e7490'], req: 'Create 5 agents', title: '5 agents created', msg: "You're building a whole colony." },
+            { id: 'mem-10', metric: 'memories', at: 10, title: 'Memanto stored 10 memories', msg: 'Your agents are starting to remember.' },
+            { id: 'centurion', metric: 'memories', at: 100, badge: 'Centurion', label: '100', colors: ['#6ee7b7', '#047857'], req: 'Store 100 memories', title: 'Memanto stored 100 memories', msg: 'Keep it up!' },
+            { id: 'mem-500', metric: 'memories', at: 500, title: 'Memanto stored 500 memories', msg: 'Your agents remember more every day.' },
+            { id: 'archivist', metric: 'memories', at: 1000, badge: 'Archivist', label: '1K', colors: ['#fcd34d', '#b45309'], req: 'Store 1,000 memories', title: 'Memanto stored 1,000 memories', msg: 'A true archive. Keep it up!' },
+            { id: 'on-a-roll', metric: 'streak', at: 7, badge: 'On a Roll', label: '7 DAY', colors: ['#fdba74', '#c2410c'], req: 'Store memories 7 days in a row', title: '7-day memory streak', msg: 'Memories stored 7 days in a row.' },
+            { id: 'peacemaker', metric: 'resolved', at: 1, badge: 'Peacemaker', label: '\u2713', colors: ['#a5b4fc', '#4338ca'], req: 'Resolve your first conflict', title: 'First conflict resolved', msg: "Your agents' memory just got more trustworthy." },
+            { id: 'policy-setter', metric: 'policy', at: 1, badge: 'Policy Setter', label: 'POLICY', colors: ['#fda4af', '#be123c'], req: 'Save an expiry policy', title: 'First expiry policy saved', msg: 'Your agent now keeps its memory tidy.' },
+            { id: 'connected', metric: 'connections', at: 1, badge: 'Connected', label: 'LINK', colors: ['#93c5fd', '#1d4ed8'], req: 'Connect an AI tool to Memanto', title: 'First tool connected', msg: 'Your AI tool can now remember with Memanto.' },
+            { id: 'conn-3', metric: 'connections', at: 3, title: '3 tools connected', msg: 'Memanto is now shared across your tools.' },
+        ];
+
+        let achvState = { earned: {}, seen: {}, best: {} };
+        let achvLoaded = false;
+        let achvReady = null;
+
+        // Loads progress once. If the load fails nothing is recorded, so a
+        // later save can't overwrite the stored file with partial state.
+        function achvInit() {
+            if (!achvReady) achvReady = (async () => {
+                let exists;
+                try {
+                    const res = await api('GET', '/api/ui/achievements');
+                    achvState = res.state;
+                    exists = res.exists;
+                    achvLoaded = true;
+                } catch (e) {
+                    console.warn('Achievements unavailable:', e.message);
+                    return;
+                }
+                let legacy = null;
+                try { legacy = JSON.parse(localStorage.getItem(ACHV_LEGACY_KEY)); } catch { }
+                if (legacy) {
+                    if (!exists) {
+                        achvState = { earned: legacy.earned || {}, seen: legacy.seen || {}, best: legacy.best || {} };
+                        await achvSave();
+                    }
+                    try { localStorage.removeItem(ACHV_LEGACY_KEY); } catch { }
+                }
+                renderAchievements();
+            })();
+            return achvReady;
+        }
+
+        function achvSave() {
+            return api('PUT', '/api/ui/achievements', achvState)
+                .catch(e => console.warn('Saving achievements failed:', e.message));
+        }
+
+        async function achvRecord(metric, value, silentFirst = true) {
+            await achvInit();
+            if (!achvLoaded) return;
+            const st = achvState;
+            st.best[metric] = Math.max(st.best[metric] || 0, value);
+            const silent = silentFirst && !st.seen[metric];
+            st.seen[metric] = true;
+            const fresh = MILESTONES.filter(m => m.metric === metric && !st.earned[m.id] && st.best[metric] >= m.at);
+            fresh.forEach(m => { st.earned[m.id] = new Date().toISOString(); });
+            achvSave();
+            // A jump past several thresholds at once (e.g. an import) earns
+            // every badge but celebrates only the highest one.
+            if (!silent && fresh.length) celebrate(fresh[fresh.length - 1]);
+            if (fresh.length) renderAchievements();
+        }
+
+        async function checkAchievements(agents) {
+            if (!agents) {
+                try { agents = (await api('GET', '/api/v2/agents')).agents || []; } catch { return; }
+            }
+            achvRecord('agents', agents.length);
+            achvRecord('memories', agents.reduce((sum, a) => sum + (a.memory_count || 0), 0));
+        }
+
+        // Event metrics count actions (conflicts resolved, policies saved).
+        async function recordAchievementEvent(metric) {
+            await achvInit();
+            achvRecord(metric, (achvState.best[metric] || 0) + 1, false);
+        }
+
+        // Pixel ant (same shapes as the logo) used inside every badge.
+        const ACHV_ANT = `<path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+            <polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="#fff" stroke-width="2" />
+            <polygon points="42,32 44,36 42,40 40,36" />
+            <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="#fff" stroke-width="2" />
+            <polygon points="54,32 56,36 54,40 52,36" />
+            <path d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />`;
+
+        // Gradient ids must be unique per rendered badge: Chrome won't paint a
+        // url(#id) whose first match sits inside a display:none page.
+        let achvSvgSeq = 0;
+        function achvBadgeSvg(m, size = 60) {
+            const g = `achv-g-${m.id}-${++achvSvgSeq}`;
+            return `<svg class="achv-badge" width="${size}" height="${Math.round(size * 72 / 64)}" viewBox="0 0 64 72" aria-hidden="true">
+                <defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m.colors[0]}" /><stop offset="1" stop-color="${m.colors[1]}" /></linearGradient></defs>
+                <polygon points="32,2 61,18.5 61,53.5 32,70 3,53.5 3,18.5" fill="url(#${g})" />
+                <polygon points="32,2 61,18.5 32,35 3,18.5" fill="rgba(255,255,255,0.12)" />
+                <polygon points="32,7 56.5,21 56.5,51 32,65 7.5,51 7.5,21" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" />
+                <g transform="translate(18.6 12) scale(0.28)" fill="#fff">${ACHV_ANT}</g>
+                <rect x="12" y="46" width="40" height="12" rx="2" fill="rgba(0,0,0,0.35)" />
+                <text x="32" y="55" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="8" font-weight="700" fill="#fff" letter-spacing="0.5">${m.label}</text>
+            </svg>`;
+        }
+
+        function achievementsInner() {
+            const st = achvState;
+            const badges = MILESTONES.filter(m => m.badge);
+            const earnedCount = badges.filter(m => st.earned[m.id]).length;
+            const tiles = badges.map(m => {
+                const earnedAt = st.earned[m.id];
+                if (earnedAt) {
+                    const when = new Date(earnedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    return `<div class="achv earned" title="${escHtml(m.title)}">${achvBadgeSvg(m)}<div class="achv-name">${m.badge}</div><div class="achv-sub">${when}</div></div>`;
+                }
+                const have = Math.min(st.best[m.metric] || 0, m.at);
+                return `<div class="achv locked" title="${escHtml(m.req)} (${have} / ${m.at} ${ACHV_UNITS[m.metric]})">${achvBadgeSvg(m)}<div class="achv-name">${m.badge}</div><div class="achv-bar"><span style="width:${Math.round(have / m.at * 100)}%"></span></div><div class="achv-sub">${have} / ${m.at}</div></div>`;
+            }).join('');
+            return `<div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+                    <span>🏆 Achievements</span><span style="font-size:12px;color:var(--text-dim)">${earnedCount} / ${badges.length}</span>
+                </div>
+                <div class="achv-grid">${tiles}</div>`;
+        }
+
+        function renderAchievements() {
+            const panel = document.getElementById('achvPanel');
+            if (panel) panel.innerHTML = achievementsInner();
+        }
+
+        // The logo ant, celebrating: arms raised and waving, happy eyes,
+        // kicking legs; the whole ant jumps via .cel-ant.
+        const CELEBRATE_ANT = `<svg class="cel-ant" viewBox="-8 -12 112 124" fill="currentColor" aria-hidden="true">
+            <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+            <path class="cel-arm cel-arm-l" d="M 6,24 H 12 V 30 H 6 Z M 0,0 H 6 V 30 H 0 Z" />
+            <path class="cel-arm cel-arm-r" d="M 84,24 H 90 V 30 H 84 Z M 90,0 H 96 V 30 H 90 Z" />
+            <polyline points="37,40 42,33 47,40" fill="none" stroke="currentColor" stroke-width="3.5" />
+            <polyline points="49,40 54,33 59,40" fill="none" stroke="currentColor" stroke-width="3.5" />
+            <path class="cel-legs" d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
+        </svg>`;
+
+        const CONFETTI_COLORS = ['#9d7ad6', '#22d3ee', '#fbbf24', '#ec4899', '#34d399'];
+        const celebrationQueue = [];
+        let celebrationShowing = false;
+
+        function celebrate(m) {
+            celebrationQueue.push(m);
+            if (!celebrationShowing) showNextCelebration();
+        }
+
+        function showNextCelebration() {
+            const m = celebrationQueue.shift();
+            if (!m) { celebrationShowing = false; return; }
+            celebrationShowing = true;
+            // Two bursts of pixel confetti fanning upward from the ant.
+            let confetti = '';
+            for (let i = 0; i < 18; i++) {
+                const angle = (-160 + Math.random() * 140) * Math.PI / 180;
+                const dist = 30 + Math.random() * 22;
+                confetti += `<span class="cel-confetti" style="--c:${CONFETTI_COLORS[i % CONFETTI_COLORS.length]};--dx:${Math.round(Math.cos(angle) * dist)}px;--dy:${Math.round(Math.sin(angle) * dist)}px;--r:${Math.round(Math.random() * 540 - 270)}deg;--d:${i < 9 ? 0.1 : 1}s"></span>`;
+            }
+            const el = document.createElement('div');
+            el.className = 'celebrate';
+            el.setAttribute('role', 'status');
+            el.innerHTML = `<div class="celebrate-shine"></div>
+                <div class="cel-stage">${confetti}${CELEBRATE_ANT}</div>
+                <div class="cel-text">
+                    <div class="cel-kicker">${m.badge ? 'Achievement unlocked' : 'Milestone reached'}</div>
+                    <div class="cel-title">${escHtml(m.title)}</div>
+                    <div class="cel-msg">${escHtml(m.msg)}${m.badge ? ` Badge earned: <strong style="color:var(--text-primary)">${m.badge}</strong>.` : ''}</div>
+                </div>
+                ${m.badge ? `<div class="cel-badge">${achvBadgeSvg(m, 52)}</div>` : ''}
+                <button class="modal-close cel-close" aria-label="Close">×</button>`;
+            let closed = false;
+            const close = () => {
+                if (closed) return;
+                closed = true;
+                el.classList.add('leaving');
+                setTimeout(() => { el.remove(); showNextCelebration(); }, 350);
+            };
+            el.querySelector('.cel-close').addEventListener('click', close);
+            document.body.appendChild(el);
+            setTimeout(close, 6500);
+        }
+
         // ================================================================
         // DASHBOARD
         // ================================================================
@@ -3490,25 +4092,13 @@
             const profile = document.getElementById('agentProfile');
             const session = document.getElementById('sessionInfo');
 
-            let healthStatus = '—', healthColor = 'var(--text-dim)';
             let agentCount = '—';
 
-            try {
-                const health = await api('GET', '/health');
-                healthStatus = health.status || 'unknown';
-                healthColor = healthStatus === 'healthy' ? 'var(--success)' : healthStatus === 'degraded' ? 'var(--warning)' : 'var(--error)';
-            } catch { healthStatus = 'offline'; healthColor = 'var(--error)'; }
-
-            try {
-                const agents = await api('GET', '/api/v2/agents');
-                const list = agents.agents || agents || [];
-                agentCount = Array.isArray(list) ? list.length : '?';
-            } catch { }
-
+            // Placeholder structure immediately
             cards.innerHTML = `
         <div class="card"><div class="card-label">Active Agent</div><div class="card-value" style="font-size:18px;color:var(--accent)">${S.agentId || '—'}</div><div class="card-sub">${S.config?.has_active_session ? 'Session active' : 'No session'}</div></div>
-        <div class="card" style="cursor:pointer" onclick="goToPage('agents')" title="View all agents"><div class="card-label">Agents</div><div class="card-value">${agentCount}</div><div class="card-sub">registered — click to manage</div></div>
-        <div class="card"><div class="card-label">System Health</div><div class="card-value" style="color:${healthColor};font-size:18px">${healthStatus}</div><div class="card-sub">Moorcheh connection</div></div>
+        <div class="card" style="cursor:pointer" onclick="goToPage('agents')" title="View all agents"><div class="card-label">Agents</div><div class="card-value" id="dashAgentCount">…</div><div class="card-sub">registered — click to manage</div></div>
+        <div class="card"><div class="card-label">System Health</div><div class="card-value" id="dashHealthStatus" style="font-size:18px">…</div><div class="card-sub">Moorcheh connection</div></div>
         ${isOnPrem()
             ? `<div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:14px"><span style="color:var(--success)">On-Prem</span></div><div class="card-sub">${escHtml(S.config?.on_prem?.url || 'http://localhost:8080')}</div></div>`
             : `<div class="card"><div class="card-label">API Key</div><div class="card-value" style="font-size:14px">${S.config?.api_key_configured ? '<span style="color:var(--success)">✓ Configured</span>' : '<span style="color:var(--error)">✗ Missing</span>'}</div><div class="card-sub">${S.config?.api_key_preview || ''}</div></div>`}
@@ -3518,12 +4108,35 @@
             <div class="card-sub">checking…</div>
         </div>
     `;
-            // Async probe — show whether today's summary already exists
+
+            // Async probe
             if (S.agentId) refreshTodaySummaryCard();
 
+            // Fire off health independently
+            api('GET', '/health').then(health => {
+                const healthStatus = health.status || 'unknown';
+                const healthColor = healthStatus === 'healthy' ? 'var(--success)' : healthStatus === 'degraded' ? 'var(--warning)' : 'var(--error)';
+                const el = document.getElementById('dashHealthStatus');
+                if (el) { el.textContent = healthStatus; el.style.color = healthColor; }
+            }).catch(() => {
+                const el = document.getElementById('dashHealthStatus');
+                if (el) { el.textContent = 'offline'; el.style.color = 'var(--error)'; }
+            });
+
+            // Fire off agent count independently
+            api('GET', '/api/v2/agents?include_counts=false').then(agents => {
+                const list = agents.agents || agents || [];
+                const el = document.getElementById('dashAgentCount');
+                if (el) el.textContent = Array.isArray(list) ? list.length : '?';
+                if (Array.isArray(list)) checkAchievements(list);
+            }).catch(() => {
+                const el = document.getElementById('dashAgentCount');
+                if (el) el.textContent = '?';
+            });
+
             if (S.agentId) {
-                try {
-                    const agent = await api('GET', `/api/v2/agents/${S.agentId}`);
+                profile.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                api('GET', `/api/v2/agents/${S.agentId}?include_counts=false`).then(agent => {
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
                 <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${escHtml(agent.agent_id)}</strong></td></tr>
@@ -3533,14 +4146,16 @@
                 <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
-                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
+                }).catch(e => {
+                    profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`;
+                });
             } else {
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
 
             if (hasActiveSession()) {
-                try {
-                    const sess = await api('GET', '/api/v2/status');
+                session.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                api('GET', '/api/v2/status').then(sess => {
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
@@ -3552,7 +4167,9 @@
                 <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
-                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
+                }).catch(e => {
+                    session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`;
+                });
             } else {
                 session.innerHTML = '<p style="color:var(--text-dim)">No active session</p>';
             }
@@ -3610,13 +4227,9 @@
         async function openHistoryForDay(key) {
             S.historyFilter = key;
             S.summaryOpen = true;
-            const wasLoaded = !!S._historyLoaded;
+            // The nav handler's loadHistory() preserves the
+            // filter/summaryOpen state set above when it renders.
             goToPage('history');
-            // If history is already loaded, re-render now so the summary
-            // tab appears immediately (the nav handler doesn't reload).
-            // Otherwise the in-flight loadHistory() will renderHistory()
-            // for us — it now preserves the filter/summaryOpen state.
-            if (wasLoaded) renderHistory();
         }
 
         // ================================================================
@@ -3642,6 +4255,7 @@
             try {
                 await api('POST', `/api/v2/agents/${S.agentId}/remember`, body);
                 toast('Memory stored successfully!');
+                checkAchievements();
                 document.getElementById('remContent').value = '';
                 document.getElementById('remTitle').value = '';
                 document.getElementById('remTags').value = '';
@@ -3745,6 +4359,7 @@
                     throw new Error(data.message || `Upload failed with status "${data.status || 'unknown'}"`);
                 }
                 toast(`Uploaded "${data.file_name}" to ${data.agent_id}`);
+                checkAchievements();
                 out.innerHTML = `<p style="color:var(--success)">✓ ${escHtml(data.file_name)} (${data.status})${data.message ? ' — ' + escHtml(data.message) : ''}</p>`;
                 input.value = '';
             } catch (e) {
@@ -3837,6 +4452,7 @@
 
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/batch-remember`, { memories: memoriesToCreate });
                 toast(`Saved ${res.success_count || memoriesToCreate.length} memories successfully`);
+                checkAchievements();
                 _extractionCandidates = [];
                 document.getElementById('extractResults').style.display = 'none';
                 document.getElementById('extractInput').value = '';
@@ -4223,8 +4839,12 @@
         async function fetchRecentMemories() {
             if (!hasActiveSession()) return;
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
-                S.history = res.memories || [];
+                const now = Date.now();
+                if (!S._lastHistoryFetch || (now - S._lastHistoryFetch > 300000) || !S.history || S.history.length === 0) {
+                    const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
+                    S.history = res.memories || [];
+                    S._lastHistoryFetch = now;
+                }
             } catch { }
         }
 
@@ -4234,16 +4854,26 @@
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
+            
+            if (S.history && S.history.length > 0) {
+                renderHistory();
+            } else {
+                box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
+            }
+            
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
-                S.history = res.memories || [];
-                await fetchConflictScans();
+                await Promise.all([
+                    fetchRecentMemories(),
+                    fetchConflictScans()
+                ]);
+                
                 // Preserve any pre-set filter/summary state (e.g. dashboard
                 // navigated here with a specific day pre-selected).
                 renderHistory();
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
+                if (!S.history || S.history.length === 0) {
+                    box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
+                }
             }
         }
 
@@ -4317,6 +4947,8 @@
                 .filter(([k]) => k >= startKey && k <= endKey)
                 .reduce((s, [, v]) => s + v.length, 0);
 
+            achvRecord('streak', longest);
+
             let html = '';
             html += `<div class="hh-stats">
                 <div class="hh-stat"><div class="hh-stat-label">Total memories</div><div class="hh-stat-value">${total}</div></div>
@@ -4324,6 +4956,7 @@
                 <div class="hh-stat"><div class="hh-stat-label">Most in a day</div><div class="hh-stat-value">${maxDay}</div></div>
                 <div class="hh-stat"><div class="hh-stat-label">Longest streak</div><div class="hh-stat-value">${longest}</div></div>
             </div>`;
+            html += `<div class="panel" id="achvPanel">${achievementsInner()}</div>`;
 
             html += `<div class="panel">
                 <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -5565,6 +6198,7 @@
             try {
                 await api('PUT', `/api/v2/agents/${S.agentId}/policy`, payload);
                 toast('Policy saved. Run a sweep to apply it.', 'success');
+                recordAchievementEvent('policy');
                 loadPolicyPage();
             } catch (e) { toast('Failed to save policy: ' + e.message, 'error'); }
         }
@@ -5592,7 +6226,6 @@
                 box.innerHTML = head + note + (rows
                     ? `<div class="table-wrap"><table><thead><tr><th>Title</th><th>Type</th><th>Rule</th></tr></thead><tbody>${rows}</tbody></table></div>`
                     : '<p style="font-size:13px;color:var(--text-dim)">Nothing matched.</p>');
-                if (!dryRun) { S._explorerLoaded = false; }
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);font-size:13px">Error: ${escHtml(e.message)}</p>`;
             }
@@ -5627,7 +6260,6 @@
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/policy/purge`, { dry_run: false });
                 box.innerHTML = `<p style="font-size:13px;color:var(--success)">Purged ${res.purged} memories.</p>`;
-                S._explorerLoaded = false;
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);font-size:13px">Error: ${escHtml(e.message)}</p>`;
             }
@@ -5635,15 +6267,45 @@
 
         async function loadConflicts() {
             const container = document.getElementById('conflictsContent');
-            container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
+            
+            const dateInput = document.getElementById('conflictsDateInput');
+            if (dateInput && !dateInput.value) dateInput.value = todayKey();
+            const date = conflictsDateValue();
+            
+            // Check if we have cached conflicts for this exact date
+            const cacheKey = `${S.agentId || 'none'}_${date}`;
+            
+            if (S._cachedConflicts && S._cachedConflicts.key === cacheKey) {
+                // Instantly render from cache
+                const conflicts = S._cachedConflicts.data.conflicts || [];
+                const scanDate = S._cachedConflicts.data.date || date;
+                const scan = (S.conflictScans || {})[scanDate];
+                const staleCount = staleMemCountForDay(scanDate);
+                const rawAgentId = S._cachedConflicts.data.agent_id || '';
+                const rawDate = S._cachedConflicts.data.date || date;
+                const bannerEl = buildConflictBannerEl(scanDate, scan, staleCount);
+                
+                if (!conflicts.length) {
+                    renderConflictsEmpty(container, bannerEl);
+                } else {
+                    renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
+                }
+            } else {
+                container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
+            }
 
             try {
-                const dateInput = document.getElementById('conflictsDateInput');
-                if (dateInput && !dateInput.value) dateInput.value = todayKey();
-                const date = conflictsDateValue();
                 const agentQ = S.agentId ? `&agent_id=${encodeURIComponent(S.agentId)}` : '';
                 const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}${agentQ}`);
                 const conflicts = data.conflicts || [];
+
+                // Abort if the user changed the date or agent while we were fetching
+                const currentCacheKey = `${S.agentId || 'none'}_${conflictsDateValue()}`;
+                if (cacheKey !== currentCacheKey) return;
+                
+                // Cache the response
+                S._cachedConflicts = { key: cacheKey, data: data };
+                
                 await fetchConflictScans();
                 await fetchRecentMemories();
 
@@ -5661,11 +6323,13 @@
 
                 renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
             } catch (e) {
-                container.replaceChildren();
-                const err = document.createElement('p');
-                err.style.cssText = 'color:var(--error);padding:20px';
-                err.textContent = `Failed to load conflicts: ${e.message}`;
-                container.appendChild(err);
+                if (!S._cachedConflicts || S._cachedConflicts.key !== cacheKey) {
+                    container.replaceChildren();
+                    const err = document.createElement('p');
+                    err.style.cssText = 'color:var(--error);padding:20px';
+                    err.textContent = `Failed to load conflicts: ${e.message}`;
+                    container.appendChild(err);
+                }
             }
         }
 
@@ -5681,6 +6345,7 @@
                 if (manualContent) body.manual_content = manualContent;
                 await api('POST', '/api/ui/conflicts/resolve', body);
                 toast(`Conflict #${idx} resolved (${action})!`);
+                recordAchievementEvent('resolved');
                 card.style.opacity = '0.3';
                 card.style.pointerEvents = 'none';
                 card.querySelector('.conflict-header .badge').className = 'badge badge-success';
@@ -5714,113 +6379,129 @@
                 return;
             }
             const cards = document.getElementById('analyticsCards');
-            cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
+            
+            let mems = S.history || [];
+            if (mems.length > 0) {
+                renderAnalyticsCards(cards, mems);
+            } else {
+                cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
+            }
 
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
-                const mems = res.memories || [];
+                const now = Date.now();
+                if (!S._lastHistoryFetch || (now - S._lastHistoryFetch > 300000) || mems.length === 0) {
+                    const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
+                    mems = res.memories || [];
+                    S.history = mems;
+                    S._lastHistoryFetch = now;
+                    renderAnalyticsCards(cards, mems);
+                }
+            } catch (e) {
+                if (mems.length === 0) {
+                    cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
+                }
+            }
+        }
 
-                const typeCounts = {};
-                const confBuckets = { 'High (0.8-1.0)': 0, 'Medium (0.5-0.8)': 0, 'Low (0-0.5)': 0 };
-                const usageBuckets = {};
-                const sourceBuckets = {};
-                const tagCounts = {};
-                let totalConf = 0;
-                mems.forEach(m => {
-                    const t = m.type || 'unknown';
-                    typeCounts[t] = (typeCounts[t] || 0) + 1;
+        function renderAnalyticsCards(cards, mems) {
+            const typeCounts = {};
+            const confBuckets = { 'High (0.8-1.0)': 0, 'Medium (0.5-0.8)': 0, 'Low (0-0.5)': 0 };
+            const usageBuckets = {};
+            const sourceBuckets = {};
+            const tagCounts = {};
+            let totalConf = 0;
+            mems.forEach(m => {
+                const t = m.type || 'unknown';
+                typeCounts[t] = (typeCounts[t] || 0) + 1;
 
-                    const s = m.source || 'unknown';
-                    sourceBuckets[s] = (sourceBuckets[s] || 0) + 1;
+                const s = m.source || 'unknown';
+                sourceBuckets[s] = (sourceBuckets[s] || 0) + 1;
 
-                    if (m.tags && Array.isArray(m.tags)) {
-                        m.tags.forEach(tag => {
-                            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                        });
-                    } else if (m.tags && typeof m.tags === 'string') {
-                        m.tags.split(',').map(tag => tag.trim()).forEach(tag => {
-                            if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                        });
-                    }
+                if (m.tags && Array.isArray(m.tags)) {
+                    m.tags.forEach(tag => {
+                        if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                    });
+                } else if (m.tags && typeof m.tags === 'string') {
+                    m.tags.split(',').map(tag => tag.trim()).forEach(tag => {
+                        if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                    });
+                }
 
-                    const c = parseFloat(m.confidence) || 0;
-                    totalConf += c;
-                    if (c >= 0.8) confBuckets['High (0.8-1.0)']++;
-                    else if (c >= 0.5) confBuckets['Medium (0.5-0.8)']++;
-                    else confBuckets['Low (0-0.5)']++;
+                const c = parseFloat(m.confidence) || 0;
+                totalConf += c;
+                if (c >= 0.8) confBuckets['High (0.8-1.0)']++;
+                else if (c >= 0.5) confBuckets['Medium (0.5-0.8)']++;
+                else confBuckets['Low (0-0.5)']++;
 
-                    if (m.created_at) {
-                        try {
-                            const dateObj = new Date(m.created_at);
-                            if (!isNaN(dateObj.getTime())) {
-                                const isoDate = dateObj.toISOString().split('T')[0];
-                                usageBuckets[isoDate] = (usageBuckets[isoDate] || 0) + 1;
-                            }
-                        } catch (e) { }
-                    }
-                });
-                const avgConf = mems.length ? (totalConf / mems.length) : 0;
+                if (m.created_at) {
+                    try {
+                        const dateObj = new Date(m.created_at);
+                        if (!isNaN(dateObj.getTime())) {
+                            const isoDate = dateObj.toISOString().split('T')[0];
+                            usageBuckets[isoDate] = (usageBuckets[isoDate] || 0) + 1;
+                        }
+                    } catch (e) { }
+                }
+            });
+            const avgConf = mems.length ? (totalConf / mems.length) : 0;
 
-                cards.innerHTML = `
+            cards.innerHTML = `
             <div class="card"><div class="card-label">Total Sampled</div><div class="card-value">${mems.length}</div><div class="card-sub">memories analyzed</div></div>
             <div class="card"><div class="card-label">Memory Types</div><div class="card-value">${Object.keys(typeCounts).length}</div><div class="card-sub">distinct types</div></div>
             <div class="card"><div class="card-label">Avg Confidence</div><div class="card-value ${confClass(avgConf)}">${avgConf.toFixed(2)}</div></div>
         `;
 
-                const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
-                const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
+            const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
+            const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
 
-                if (S.charts.usage) S.charts.usage.destroy();
-                if (S.charts.type) S.charts.type.destroy();
-                if (S.charts.conf) S.charts.conf.destroy();
-                if (S.charts.source) S.charts.source.destroy();
+            if (S.charts.usage) S.charts.usage.destroy();
+            if (S.charts.type) S.charts.type.destroy();
+            if (S.charts.conf) S.charts.conf.destroy();
+            if (S.charts.source) S.charts.source.destroy();
 
-                const sortedDates = Object.keys(usageBuckets).sort();
-                const usageData = sortedDates.map(d => usageBuckets[d]);
+            const sortedDates = Object.keys(usageBuckets).sort();
+            const usageData = sortedDates.map(d => usageBuckets[d]);
 
-                S.charts.usage = new Chart(document.getElementById('chartUsage'), {
-                    type: 'line',
-                    data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+            S.charts.usage = new Chart(document.getElementById('chartUsage'), {
+                type: 'line',
+                data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+            });
+
+            S.charts.type = new Chart(document.getElementById('chartType'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+            });
+
+            S.charts.source = new Chart(document.getElementById('chartSource'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+            });
+
+            S.charts.conf = new Chart(document.getElementById('chartConf'), {
+                type: 'bar',
+                data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
+            });
+
+            // Generate Word Cloud
+            const tagsContainer = document.getElementById('tagsCloud');
+            const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 30);
+            if (sortedTags.length === 0) {
+                tagsContainer.innerHTML = '<p style="color:var(--text-dim);padding:20px;text-align:center">No tags found</p>';
+            } else {
+                const maxCount = Math.max(...sortedTags.map(t => t[1]));
+                let cloudHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;padding:20px;">';
+                sortedTags.forEach(([tag, count]) => {
+                    const ratio = count / maxCount; // 0.0 to 1.0
+                    const size = Math.max(11, 11 + ratio * 18); // 11px to 29px
+                    const opacity = Math.max(0.4, ratio); // 0.4 to 1.0
+                    cloudHtml += `<span title="${count} memories" style="font-size:${size}px;color:rgba(6,182,212,${opacity});font-weight:600;font-family:var(--font-mono);border:1px solid rgba(6,182,212,${opacity*0.3});padding:4px 12px;border-radius:20px;background:rgba(6,182,212,${opacity*0.05});background-clip:padding-box;line-height:1;margin:4px">${escHtml(tag)} <small style="font-size:0.65em;opacity:0.7">(${count})</small></span>`;
                 });
-
-                S.charts.type = new Chart(document.getElementById('chartType'), {
-                    type: 'doughnut',
-                    data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
-                });
-
-                S.charts.source = new Chart(document.getElementById('chartSource'), {
-                    type: 'doughnut',
-                    data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
-                });
-
-                S.charts.conf = new Chart(document.getElementById('chartConf'), {
-                    type: 'bar',
-                    data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
-                });
-
-                // Generate Word Cloud
-                const tagsContainer = document.getElementById('tagsCloud');
-                const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 30);
-                if (sortedTags.length === 0) {
-                    tagsContainer.innerHTML = '<p style="color:var(--text-dim);padding:20px;text-align:center">No tags found</p>';
-                } else {
-                    const maxCount = Math.max(...sortedTags.map(t => t[1]));
-                    let cloudHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;padding:20px;">';
-                    sortedTags.forEach(([tag, count]) => {
-                        const ratio = count / maxCount; // 0.0 to 1.0
-                        const size = Math.max(11, 11 + ratio * 18); // 11px to 29px
-                        const opacity = Math.max(0.4, ratio); // 0.4 to 1.0
-                        cloudHtml += `<span title="${count} memories" style="font-size:${size}px;color:rgba(6,182,212,${opacity});font-weight:600;font-family:var(--font-mono);border:1px solid rgba(6,182,212,${opacity*0.3});padding:4px 12px;border-radius:20px;background:rgba(6,182,212,${opacity*0.05});background-clip:padding-box;line-height:1;margin:4px">${escHtml(tag)} <small style="font-size:0.65em;opacity:0.7">(${count})</small></span>`;
-                    });
-                    cloudHtml += '</div>';
-                    tagsContainer.innerHTML = cloudHtml;
-                }
-            } catch (e) {
-                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
+                cloudHtml += '</div>';
+                tagsContainer.innerHTML = cloudHtml;
             }
         }
         // ================================================================
@@ -5871,6 +6552,8 @@
             { id: 'mem0', label: 'Mem0', tagline: 'Distilled user facts and preferences', docs: 'https://app.mem0.ai' },
             { id: 'letta', label: 'Letta', tagline: 'Archival memory passages', docs: 'https://docs.letta.com' },
             { id: 'supermemory', label: 'Supermemory', tagline: 'Documents and chunks', docs: 'https://supermemory.ai/docs' },
+            { id: 'zep', label: 'Zep', tagline: 'Knowledge-graph facts per user', docs: 'https://help.getzep.com' },
+            { id: 'hindsight', label: 'Hindsight', tagline: 'Memory bank facts, experiences, observations', docs: 'https://docs.hindsight.vectorize.io/api-integration/' },
             { id: 'okf', label: 'Open Knowledge Format', tagline: 'Portable local memory bundles (.md)', docs: 'https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf' },
             { id: 'langfuse', label: 'Langfuse', tagline: 'Errors, failed evals, and cost/latency anomalies', docs: 'https://langfuse.com/docs/api-and-data-platform/features/public-api' },
         ];
@@ -5895,6 +6578,8 @@
             'mem0':        { src: 'https://github.com/mem0ai.png',           fallback: 'https://icons.duckduckgo.com/ip3/mem0.ai.ico' },
             'letta':       { src: 'https://github.com/letta-ai.png',         fallback: 'https://icons.duckduckgo.com/ip3/letta.com.ico' },
             'supermemory': { src: 'https://github.com/supermemoryai.png',    fallback: 'https://icons.duckduckgo.com/ip3/supermemory.ai.ico' },
+            'zep':         { src: 'https://github.com/getzep.png',           fallback: 'https://icons.duckduckgo.com/ip3/getzep.com.ico' },
+            'hindsight':   { src: 'https://github.com/vectorize-io.png',     fallback: 'https://icons.duckduckgo.com/ip3/vectorize.io.ico' },
             'okf':         { src: 'https://github.com/GoogleCloudPlatform.png', fallback: 'https://icons.duckduckgo.com/ip3/cloud.google.com.ico' },
             'langfuse':    { src: 'https://github.com/langfuse.png',           fallback: 'https://icons.duckduckgo.com/ip3/langfuse.com.ico' },
         };
@@ -5915,7 +6600,7 @@
 
         function migrateInitialState() {
             return {
-                provider: null, source: 'file', file: '', apiKey: '', preview: null,
+                provider: null, source: 'file', file: '', apiKey: '', hsHost: '', preview: null,
                 // Langfuse guarantees nothing about score meaning or what counts
                 // as slow/expensive, so every budget starts empty and the mode
                 // stays inert (and says so) until the user fills it in.
@@ -6137,6 +6822,10 @@
             }
         }
 
+        const MIG_KEY_PLACEHOLDERS = {
+            mem0: 'm0_...', letta: 'sk-let-...', supermemory: 'sm_...', zep: 'z_...', hindsight: 'hsk_...',
+        };
+
         function renderMigrateSource(st) {
             const p = MIG_PROVIDERS.find(x => x.id === st.provider);
             const isOkf = st.provider === 'okf';
@@ -6148,7 +6837,7 @@
                     </div>`
                 : `<div>
                         <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to a JSON export file</label>
-                        <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                        <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/${st.provider}_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
                     </div>`;
             const isLangfuse = st.provider === 'langfuse';
             // Langfuse authenticates with a key *pair*; they're joined as
@@ -6172,8 +6861,11 @@
                     </div>`
                 : `<div>
                     <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(p.label)} API key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">get one</a></label>
-                    <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <input id="migApiKey" type="password" placeholder="${MIG_KEY_PLACEHOLDERS[st.provider] || ''}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
                     <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Used once for this export — not saved to disk.</div>
+                    ${st.provider === 'hindsight' ? `<label style="display:block;font-size:12px;color:var(--text-dim);margin:14px 0 6px">Server URL</label>
+                    <input id="migHsHost" placeholder="https://api.hindsight.vectorize.io" value="${escHtml(st.hsHost || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Blank = Hindsight Cloud. Use your own URL if self-hosted (e.g. http://localhost:8888).</div>` : ''}
                 </div>`;
             const lfNote = isLangfuse
                 ? `<p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0">Groups observations into one memory per <strong>error signature</strong>, not one per occurrence. Safe to re-run — recurring signatures are updated in place, not duplicated.</p>`
@@ -6225,6 +6917,8 @@
             if (fileEl) S.migrate.file = fileEl.value.trim();
             const keyEl = document.getElementById('migApiKey');
             if (keyEl) S.migrate.apiKey = keyEl.value.trim();
+            const hsHostEl = document.getElementById('migHsHost');
+            if (hsHostEl) S.migrate.hsHost = hsHostEl.value.trim();
 
             const lf = S.migrate.lf;
             if (!lf) return;
@@ -6273,6 +6967,7 @@
             } else {
                 if (!st.apiKey) { toast(`Enter a ${st.provider} API key`, 'error'); return null; }
                 body.api_key = st.apiKey;
+                if (st.provider === 'hindsight' && st.hsHost) body.host = st.hsHost;
             }
 
             // Capture settings shape the mapping, so send them for file replays
@@ -6432,7 +7127,7 @@
                         <div class="mig-stat"><div class="label">Unchanged</div><div class="value">${plan.unchanged}</div><div class="sub">already synced</div></div>`
                 : `
                         <div class="mig-stat"><div class="label">Source records</div><div class="value">${preview.source_count.toLocaleString()}</div></div>
-                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty)</div></div>
+                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty or invalidated)</div></div>
                         <div class="mig-stat"><div class="label">Batches</div><div class="value">${preview.batch_count}</div><div class="sub">100 / req</div></div>`;
             return `
                 <div class="card">
@@ -6475,7 +7170,7 @@
                         <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>` : `
                         <div class="mig-stat"><div class="label">Imported</div><div class="value success">${(sum.imported || 0).toLocaleString()}</div><div class="sub">written to ${escHtml(res.agent_id)}</div></div>
                         <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>
-                        <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty content</div></div>
+                        <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty or invalidated</div></div>
                         <div class="mig-stat"><div class="label">Batches</div><div class="value">${sum.batches || 0}</div><div class="sub">100 / req</div></div>`;
 
             root.innerHTML = `
@@ -6505,8 +7200,8 @@
         // After a real import, refresh everything affected so the user
         // doesn't have to manually reload Explorer/Dashboard/History.
         async function postMigrateRefresh() {
-            S._explorerLoaded = false;
             S._historyLoaded = false;
+            checkAchievements();
             try { await loadConflictBadge(); } catch { }
             // If the user happens to already be on a refreshable page, refresh
             // it in place. Otherwise the next nav into it picks up the change
@@ -6795,6 +7490,7 @@
                 const res = await api('GET', '/api/ui/connections');
                 S.connections = res.connections || [];
                 S.cwd = res.cwd || '';
+                achvRecord('connections', S.connections.filter(c => (c.projects || []).length || c.installed_global).length);
                 renderConnectionsGrid();
                 loadSessionActivity();
                 if (S.activeConnection) {
@@ -6852,12 +7548,14 @@
                 projectsHtml = projects.map(p => {
                     const missingTag = p.exists ? '' : ' <span class="badge badge-warning" style="margin-left:8px">missing</span>';
                     const btnLabel = p.exists ? 'Disconnect' : 'Untrack';
-                    const safePath = escHtml(p.path).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `<div class="conn-project-row${p.exists ? '' : ' missing'}" id="proj-row-${btoa(unescape(encodeURIComponent(p.path))).replace(/=/g, '')}">
                         <div>
                             <div class="conn-project-path">${escHtml(p.path)}${missingTag}</div>
                         </div>
-                        <button class="btn btn-sm btn-secondary" onclick="confirmDisconnect('${escHtml(conn.name)}', '${safePath}', false, this)">${btnLabel}</button>
+                        <button class="btn btn-sm btn-secondary"
+                                data-connection-name="${attrEsc(conn.name)}"
+                                data-project-path="${attrEsc(p.path)}"
+                                onclick="confirmDisconnect(this.dataset.connectionName, this.dataset.projectPath, false, this)">${btnLabel}</button>
                     </div>`;
                 }).join('');
             }
@@ -6865,7 +7563,7 @@
             const globalHtml = conn.installed_global
                 ? `<div class="conn-project-row">
                     <div class="conn-project-path">✓ Installed at ${escHtml(conn.skill_global_path)}</div>
-                    <button class="btn btn-sm btn-danger" onclick="confirmDisconnect('${escHtml(conn.name)}', null, true, this)">Remove Global</button>
+                    <button class="btn btn-sm btn-danger" data-connection-name="${attrEsc(conn.name)}" onclick="confirmDisconnect(this.dataset.connectionName, null, true, this)">Remove Global</button>
                 </div>`
                 : `<p style="color:var(--text-dim);font-size:13px;padding:10px 0">Not installed globally.
                     <a href="#" onclick="openConnectModalGlobal('${escHtml(conn.name)}');return false" style="color:var(--accent);text-decoration:none;margin-left:6px">Install globally →</a></p>`;
@@ -6903,7 +7601,7 @@
                 return;
             }
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/all`, {});
                 const all = res.memories || [];
                 const filtered = all.filter(m => sourceMatchesConnection(m.source, conn));
                 if (!filtered.length) {

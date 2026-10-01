@@ -103,10 +103,12 @@ def test_remove_claude_code_preserves_unrelated_hooks_and_permissions(
                             "hooks": [
                                 {"type": "command", "command": "echo keep"},
                                 {
+                                    "_managed_by": "memanto",
                                     "type": "command",
                                     "command": "memanto memory sync --project-dir .",
                                 },
                                 {
+                                    "_managed_by": "memanto",
                                     "type": "command",
                                     "command": "memanto memory sync --project-dir .",
                                     "timeout": 30,
@@ -117,6 +119,7 @@ def test_remove_claude_code_preserves_unrelated_hooks_and_permissions(
                             "matcher": "manual",
                             "hooks": [
                                 {
+                                    "_managed_by": "memanto",
                                     "type": "command",
                                     "command": "memanto memory sync --project-dir .",
                                     "timeout": 30,
@@ -151,6 +154,10 @@ def test_remove_claude_code_preserves_unrelated_hooks_and_permissions(
     permissions = read_json(permissions_path)
     assert settings["theme"] == "dark"
     assert settings["hooks"]["SessionStart"] == [
+        {
+            "matcher": "startup",
+            "hooks": [{"type": "command", "command": "echo keep"}],
+        },
         {"matcher": "other", "hooks": [{"command": "echo other"}]},
     ]
     assert permissions == {

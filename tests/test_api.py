@@ -59,7 +59,7 @@ def test_env_setup():
 async def client():
     """Create an async client for testing the FastAPI app"""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as ac:
         yield ac
 
 
@@ -147,6 +147,13 @@ class TestMEMANTOAPI:
 
     TEST_AGENT_ID = "test-api-agent"
 
+    @pytest.fixture(autouse=True)
+    def reset_cache(self):
+        from memanto.app.routes import sessions
+
+        sessions._namespace_counts_state["time"] = float("-inf")
+        sessions._namespace_counts_state["data"].clear()
+
     @pytest.mark.asyncio
     async def test_create_agent(self, client, auth_headers):
         """Test creating a new agent"""
@@ -192,7 +199,7 @@ class TestMEMANTOAPI:
             json={"agent_id": "cross-site-agent", "pattern": "support"},
         )
 
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_cross_site_loopback_cannot_activate_agent(
@@ -586,6 +593,8 @@ class TestMEMANTOAPI:
         assert "mocked answer" in response.json()["answer"]
         call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
         assert "threshold" not in call_kwargs
+        assert "SECURITY NOTICE" in call_kwargs["header_prompt"]
+        assert "REMINDER" in call_kwargs["footer_prompt"]
 
     @pytest.mark.asyncio
     async def test_answer_omits_unset_active_ai_model(

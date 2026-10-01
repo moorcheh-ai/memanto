@@ -70,8 +70,9 @@ def test_normalize_host_handles_cloud_and_self_hosted():
     assert normalize_host("https://us.cloud.langfuse.com/") == (
         "https://us.cloud.langfuse.com"
     )
-    assert normalize_host("langfuse.internal") == "https://langfuse.internal"
-    assert normalize_host("http://localhost:3000") == "http://localhost:3000"
+    # Rebind/SSRF mitigation: Unresolvable internal hosts fall back to the cloud default.
+    assert normalize_host("langfuse.internal") == "https://cloud.langfuse.com"
+    assert normalize_host("http://localhost:3000") == "https://cloud.langfuse.com"
 
 
 # --------------------------------------------------------------------------

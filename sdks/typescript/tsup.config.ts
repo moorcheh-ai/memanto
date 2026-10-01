@@ -7,6 +7,7 @@ export default defineConfig({
     "src/integrations/openai.ts",
     "src/integrations/mastra.ts",
     "src/integrations/voltagent.ts",
+    "src/integrations/eve.ts",
   ],
   format: ["cjs", "esm"],
   dts: true,

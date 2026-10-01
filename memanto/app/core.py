@@ -82,6 +82,12 @@ def agent_namespace(agent_id: str) -> str:
     return f"memanto_agent_{agent_id}"
 
 
+# Every code point that Python's str.splitlines(), Markdown renderers, and
+# LLMs treat as a line break. Titles are single-line labels, so all of them
+# must be folded -- a partial set lets a title forge document structure.
+_TITLE_LINE_BREAKS = "\n\r\u2028\u2029\x0b\x0c\x85"
+
+
 class MemoryRecord(BaseModel):
     """Structured memory record with standardized format"""
 
@@ -102,10 +108,16 @@ class MemoryRecord(BaseModel):
         into the recalled title and compounds on every update). Newline titles
         arrive from any caller, including the derived-title fallback that
         slices multi-line content.
+
+        The set of characters folded here must cover everything that
+        ``str.splitlines()``, Markdown renderers, and LLMs treat as a line
+        break -- not just ``\\n`` and ``\\r``. Folding only those two let
+        U+2028, U+2029, U+000B, U+000C and U+0085 through, which allowed a
+        title to forge standalone headings in the session summary.
         """
-        if isinstance(value, str) and ("\n" in value or "\r" in value):
-            return re.sub(r"[ \t]*[\r\n]+[ \t]*", " ", value).strip()
-        return value
+        if not isinstance(value, str):
+            return value
+        return re.sub(rf"[ \t]*[{_TITLE_LINE_BREAKS}]+[ \t]*", " ", value).strip()
 
     # Metadata fields
     agent_id: str

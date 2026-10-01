@@ -69,7 +69,7 @@ memory_app = typer.Typer(help="Memory management commands")
 policy_app = typer.Typer(help="Memory expiry policy commands")
 connect_app = typer.Typer(help="Connect MEMANTO to external tools")
 migrate_app = typer.Typer(
-    help="Migrate memories from other providers (Mem0/Letta/Supermemory) into Memanto"
+    help="Migrate memories from other providers (Mem0/Letta/Supermemory/Zep/Hindsight) into Memanto"
 )
 
 app.add_typer(agent_app, name="agent")

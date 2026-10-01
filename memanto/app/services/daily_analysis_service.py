@@ -6,6 +6,7 @@ the AI daily summary and the conflict report.
 """
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -276,6 +277,14 @@ Format the output as a Markdown report:
         if not isinstance(raw_conflicts, list):
             raise ValueError("Agent conflict report conflicts field must be a list")
 
+        def _clean_text(text: str | None) -> str | None:
+            if not text:
+                return text
+            first_line, separator, body = text.partition("\n\n")
+            if re.match(r"^\[.*?\]\s*.*$", first_line) and separator:
+                return body.strip()
+            return text.strip()
+
         normalized: list[dict[str, Any]] = []
         for item in raw_conflicts:
             if not isinstance(item, dict):
@@ -291,7 +300,10 @@ Format the output as a Markdown report:
             conflict_type = item.get("type") or "conflict"
             if conflict_type in ("compatible", "duplicate"):
                 continue
-            if conflict_type != "contradiction" and item.get("conflict") is not True:
+            if (
+                conflict_type not in ("contradiction", "conflict", "update")
+                and item.get("conflict") is not True
+            ):
                 continue
 
             recommendation = item.get("recommendation") or "keep_new"
@@ -303,9 +315,13 @@ Format the output as a Markdown report:
                     "type": conflict_type,
                     "title": item.get("title") or "Memory conflict",
                     "old_memory_id": old_id,
-                    "old_content": item.get("old_text") or item.get("old_content"),
+                    "old_content": _clean_text(
+                        item.get("old_text") or item.get("old_content")
+                    ),
                     "new_memory_id": new_id if new_id != "candidate" else None,
-                    "new_content": item.get("new_text") or item.get("new_content"),
+                    "new_content": _clean_text(
+                        item.get("new_text") or item.get("new_content")
+                    ),
                     "description": item.get("reason") or item.get("description"),
                     "recommendation": recommendation,
                     "resolved": False,
