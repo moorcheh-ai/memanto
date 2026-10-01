@@ -1,15 +1,4 @@
-"""
-OKF bundle loader.
 
-Reads an OKF (Open Knowledge Format) bundle — a directory of markdown files
-with YAML frontmatter — into the ``{"memories": [...]}`` shape consumed by
-``mappers.map_okf``. Handles both foreign OKF bundles (one concept per file)
-and Memanto's own stacked exports (multiple documents per file, separated by
-the ``okf-entry`` sentinel).
-
-``index.md`` / ``log.md`` navigation files and any document with ``type: index``
-are skipped.
-"""
 
 from __future__ import annotations
 
@@ -28,14 +17,10 @@ from memanto.app.utils.atomic_write import okf_bundle_lock
 
 logger = logging.getLogger(__name__)
 
-# Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
-# non-greedy so the first ``\n---`` closes the block even when the body below
-# contains its own ``---`` rules.
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 
 _SKIP_FILENAMES = {"index.md", "log.md"}
-# OKF baseline fields + Memanto's namespaced extension block. Anything else in
-# the frontmatter is preserved as "extra" so import stays lossless.
+
 _KNOWN_FIELDS = {
     "type",
     "title",
@@ -66,18 +51,16 @@ _NOFOLLOW_ERRNOS: set[int] = {
     if isinstance(code, int)
 }
 
-
 def _read_open_regular_file(fd: int, display_path: Path) -> str:
-    """Read a regular file from an already validated, stable descriptor."""
+    
     if not stat.S_ISREG(os.fstat(fd).st_mode):
         raise ValueError(f"OKF document is not a regular file: {display_path}")
 
     with os.fdopen(os.dup(fd), "r", encoding="utf-8") as stream:
         return stream.read()
 
-
 def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
-    """Open and read one regular document without following a final symlink."""
+    
     document_fd: int | None = None
     try:
         document_fd = os.open(
@@ -96,11 +79,10 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
         if document_fd is not None:
             os.close(document_fd)
 
-
 def _read_directory_documents(
     directory_fd: int, prefix: Path = Path()
 ) -> list[tuple[Path, str]]:
-    """Read Markdown documents recursively from a pinned directory."""
+    
     try:
         with os.scandir(directory_fd) as entries:
             names = sorted(entry.name for entry in entries)
@@ -166,15 +148,8 @@ def _read_directory_documents(
 
     return documents
 
-
 def _extract_links(body: str) -> list[tuple[str, str]]:
-    """Extract inline Markdown links in a single left-to-right pass.
-
-    Repeatedly applying a regular expression from every ``[`` candidate makes
-    malformed Markdown increasingly expensive to scan. ``str.find`` keeps the
-    loader linear while preserving the intentionally small link syntax handled
-    here (non-empty ``[text](target)`` pairs).
-    """
+    
     links: list[tuple[str, str]] = []
     cursor = 0
 
@@ -204,11 +179,10 @@ def _extract_links(body: str) -> list[tuple[str, str]]:
 
     return links
 
-
 def _load_documents_secure(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
-    """Pin the bundle root and read documents through no-follow descriptors."""
+    
     try:
         root_fd = os.open(root, _READ_FLAGS | os.O_NOFOLLOW)
     except FileNotFoundError as exc:
@@ -274,11 +248,10 @@ def _load_documents_secure(
             os.close(scan_fd)
         os.close(root_fd)
 
-
 def _load_documents_portable(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
-    """Best-effort fallback for platforms without secure dir_fd support."""
+    
     try:
         root_stat = root.lstat()
     except FileNotFoundError:
@@ -312,7 +285,6 @@ def _load_documents_portable(
         if file_path.name.lower() in _SKIP_FILENAMES:
             continue
 
-        # Best-effort TOCTOU mitigation: check if any part of the path is a symlink
         current = file_path
         is_unsafe = False
         while current != root:
@@ -330,37 +302,28 @@ def _load_documents_portable(
 
     return root, documents
 
-
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
-    """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
+    
     root = Path(os.path.abspath(os.fspath(path)))
     if root.is_symlink():
         raise ValueError(f"OKF bundle path must not be a symbolic link: {path}")
-    # Hold the corresponding reader lock through discovery and every file
-    # read, so an exporter cannot move the bundle aside midway through a load.
+
     with okf_bundle_lock(_bundle_lock_root(root), shared=True):
         return _load_okf_bundle(root, path)
 
-
 def _bundle_lock_root(path: Path) -> Path:
-    """Return the bundle path whose lock protects a requested import path."""
+    
     if path.suffix.lower() != ".md":
         return path
 
-    # A Memanto entry lives at ``<bundle>/<section>/<entry>.md`` or deeper.
-    # Resolve this lexically so the same bundle lock is selected even while
-    # the exporter has temporarily moved the bundle directory aside.
     for parent in path.parents:
         if parent.name in ("memories", "daily-summaries", "sessions", "metrics"):
             return parent.parent
 
-    # Root-level documents belong to their containing bundle. For a standalone
-    # Markdown import this merely serializes imports from the same directory.
     return path.parent
 
-
 def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
-    """Load ``root`` while the caller holds its bundle reader lock."""
+    
     if _SECURE_DIR_FD:
         rel_base, documents = _load_documents_secure(root, display_path)
     else:
@@ -378,9 +341,8 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
 
     return {"memories": memories}
 
-
 def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] | None:
-    """Parse one OKF document (frontmatter + body) into an entry dict."""
+    
     match = _FRONTMATTER_RE.match(chunk)
     if match:
         raw_frontmatter, body = match.group(1), match.group(2)
@@ -395,7 +357,6 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
 
     body = body.strip()
 
-    # Skip navigation index documents.
     if str(frontmatter.get("type", "")).strip().lower() == "index":
         return None
     if not body and not frontmatter.get("title"):

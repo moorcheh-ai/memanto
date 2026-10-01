@@ -1,8 +1,4 @@
-"""
-Authentication Dependencies for V2 API
 
-Shared authentication utilities to avoid circular imports.
-"""
 
 import logging
 from urllib.parse import urlsplit, urlunsplit
@@ -24,38 +20,21 @@ SESSION_COOKIE_NAME = "memanto_session_token"
 
 logger = logging.getLogger(__name__)
 
-
 def _sanitize_log_value(value: object) -> str:
-    """Render ``value`` for logs without control characters (CWE-117).
-
-    Request-derived values (e.g. a URL built from the Host header) must not be
-    able to forge log lines via embedded CR/LF bytes.
-    """
+    
     return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
 
-
 def _redact_and_sanitize_url(url: str) -> str:
-    """Make a request URL safe to log.
-
-    Query strings and fragments may carry sensitive client data (e.g. tokens),
-    so they are dropped before the remaining URL is sanitized (CWE-532).
-    """
+    
     parts = urlsplit(url)
     return _sanitize_log_value(
         urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
     )
 
-
 def set_session_cookie(
     response: Response, session_token: str, request: Request
 ) -> None:
-    """Store the browser UI session token outside JavaScript-readable state.
-
-    MEMANTO defaults to binding 0.0.0.0 with no built-in TLS (see docker-compose.yml
-    and Settings.HOST), so a hardcoded Secure=True would silently stop browsers from
-    ever sending the cookie back over the plain-HTTP deployment this ships with by
-    default. Mark it Secure only when the current request actually arrived over HTTPS.
-    """
+    
     secure = request.url.scheme == "https"
     peer_host = request.client.host if request.client else None
     if not secure and (not is_loopback_host(peer_host) or _has_forwarded_non_loopback(request)):
@@ -75,31 +54,17 @@ def set_session_cookie(
         path="/",
     )
 
-
 def clear_session_cookie(response: Response) -> None:
-    """Clear the browser UI session cookie."""
+    
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
 
-
 def get_moorcheh_api_key() -> str:
-    """
-    Get Moorcheh API key from server configuration.
-
-    Returns:
-        API key (or a placeholder string when running against the on-prem
-        backend, which does not require an API key).
-
-    Raises:
-        HTTPException: If cloud is selected and no key is configured.
-    """
+    
     from memanto.app.clients.backend import Backend, parse_backend
     from memanto.app.config import settings
 
     if parse_backend(settings.MEMANTO_BACKEND) == Backend.ON_PREM:
-        # On-prem talks to localhost; routes that take ``moorcheh_api_key`` as
-        # a dependency no longer use it for outbound calls (they go through
-        # ``get_moorcheh_client()``), but the FastAPI signatures still need a
-        # string. Return a placeholder so the dependency resolves.
+
         return "on-prem"
 
     if settings.MOORCHEH_API_KEY:
@@ -110,12 +75,11 @@ def get_moorcheh_api_key() -> str:
         detail="Server misconfigured: MOORCHEH_API_KEY is not set",
     )
 
-
 def _extract_presented_credential(
     authorization: str | None,
     x_api_key: str | None,
 ) -> str | None:
-    """Extract a client-presented management credential from request headers."""
+    
     if isinstance(x_api_key, str) and x_api_key.strip():
         return x_api_key.strip()
     if isinstance(authorization, str):
@@ -124,20 +88,8 @@ def _extract_presented_credential(
             return parts[1].strip()
     return None
 
-
 def _origin_is_allowed(request: Request) -> bool:
-    """Reject management requests carrying a non-whitelisted Origin header.
-
-    The loopback trust in require_management_access is only safe when the
-    browser-side origin is also trusted. Without this check, any web page can
-    drive the victim's browser to issue requests to 127.0.0.1 (DNS rebinding /
-    localhost XSS); the TCP peer is loopback, so the request passes, and a
-    wildcard CORS config would let the page read the response (session tokens,
-    memories). Browsers always send the Origin header on cross-origin and
-    same-origin POST requests, so rejecting non-whitelisted Origins closes the
-    browser-driven bypass (MEM-01) without breaking CLI/curl callers (which
-    send no Origin).
-    """
+    
     origin = request.headers.get("origin")
     if not origin or not isinstance(origin, str):
         return True  # non-browser caller (CLI, curl, SDK) or mock/test request
@@ -156,18 +108,16 @@ def _origin_is_allowed(request: Request) -> bool:
             
     return False
 
-
 def _require_allowed_origin(request: Request) -> None:
-    """FastAPI dependency raising 403 for disallowed browser origins."""
+    
     if not _origin_is_allowed(request):
         raise HTTPException(
             status_code=403,
             detail="Origin not allowed for management endpoints",
         )
 
-
 def _is_loopback_origin(origin: str | None) -> bool:
-    """Return True when a browser Origin points at the local Memanto host."""
+    
     if not origin or not isinstance(origin, str):
         return False
     try:
@@ -178,9 +128,8 @@ def _is_loopback_origin(origin: str | None) -> bool:
         return False
     return parsed.hostname == "localhost" or is_loopback_host(parsed.hostname)
 
-
 def _is_loopback_host_header(host: str | None) -> bool:
-    """Return True when an HTTP Host header names a loopback interface."""
+    
     if not host or not isinstance(host, str):
         return False
     try:
@@ -189,9 +138,8 @@ def _is_loopback_host_header(host: str | None) -> bool:
         return False
     return hostname == "localhost" or is_loopback_host(hostname)
 
-
 def _is_cross_site_browser_request(request: Request) -> bool:
-    """Detect browser requests that must not inherit loopback trust."""
+    
     origin = request.headers.get("origin")
     if origin is not None and isinstance(origin, str):
         return not _is_loopback_origin(origin)
@@ -203,16 +151,8 @@ def _is_cross_site_browser_request(request: Request) -> bool:
         fetch_site = ""
     return fetch_site in {"cross-site", "same-site"}
 
-
 def _has_forwarded_non_loopback(request: Request) -> bool:
-    """Return True when proxy forwarding headers indicate a non-loopback originator.
-
-    When Memanto is deployed behind a reverse proxy (e.g. Nginx/Caddy on localhost),
-    ``request.client.host`` evaluates to 127.0.0.1. If the proxy forwards requests from
-    an external client, headers such as ``X-Forwarded-For``, ``X-Real-IP``, or
-    ``Forwarded`` will contain non-loopback addresses. In such cases, the request must
-    NOT inherit localhost/loopback trust.
-    """
+    
     xff = request.headers.get("x-forwarded-for")
     if xff:
         for ip in xff.split(","):
@@ -244,33 +184,12 @@ def _has_forwarded_non_loopback(request: Request) -> bool:
 
     return False
 
-
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
-    """Authorize agent-lifecycle / management endpoints.
-
-    MEMANTO is a single-tenant companion service. Agent create/list/delete/
-    activate endpoints previously only checked that the *server* had a
-    configured API key, not that the *caller* was authorized. Combined with
-    the default ``HOST=0.0.0.0`` bind (see Settings / docker-compose), any
-    network peer could create agents, activate sessions, and obtain
-    ``session_token`` values for memory read/write.
-
-    Access is granted when either:
-
-    1. The caller presents the server management credential
-       (``Authorization: Bearer <key>`` or ``X-Api-Key``), matched with
-       ``secrets.compare_digest`` against the configured cloud API key, or
-       against ``MEMANTO_SECRET_KEY`` for on-prem; or
-    2. The request originates from the loopback interface (local desktop
-       CLI / browser UX without forcing every local call to attach a key).
-
-    Returns the server-side Moorcheh credential string used by downstream
-    service calls (same contract as ``get_moorcheh_api_key``).
-    """
+    
     import secrets
 
     from memanto.app.clients.backend import Backend, parse_backend
@@ -282,8 +201,7 @@ def require_management_access(
 
     expected: str | None
     if backend == Backend.ON_PREM:
-        # On-prem has no cloud API key; use the JWT/session secret as the
-        # management shared secret when one is configured.
+
         expected = (settings.MEMANTO_SECRET_KEY or "").strip() or None
     else:
         expected = server_key if server_key and server_key != "on-prem" else None
@@ -291,9 +209,6 @@ def require_management_access(
     if presented and expected and secrets.compare_digest(presented, expected):
         return server_key
 
-    # Reject browser-originated requests from non-whitelisted origins even when
-    # the TCP peer is loopback (MEM-01: DNS rebinding / localhost XSS lets any
-    # web page reach 127.0.0.1 and read admin responses under a wildcard CORS).
     _require_allowed_origin(request)
 
     client_host = request.client.host if request.client else None
@@ -314,20 +229,13 @@ def require_management_access(
         ),
     )
 
-
 def verify_moorcheh_api_key(
     request: Request,
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
-    """Authorize management access and return the server Moorcheh credential.
-
-    Kept as a thin wrapper so existing ``Depends(verify_moorcheh_api_key)``
-    call sites pick up the new authorization rules without signature churn
-    at every route.
-    """
+    
     return require_management_access(request, authorization, x_api_key)
-
 
 def get_current_session(
     request: Request,
@@ -337,35 +245,13 @@ def get_current_session(
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Session:
-    """
-    Get and validate current session
-
-    Args:
-        x_session_token: Session token header
-        authorization: Bearer management credential (for auto-recreate)
-        x_api_key: Management credential header (for auto-recreate)
-
-    Returns:
-        Validated Session
-
-    Raises:
-        HTTPException: If session is invalid or expired
-    """
+    
     session_token = x_session_token or session_cookie
     if not session_token:
         raise HTTPException(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
 
-    # A session presented via the HttpOnly *cookie* (browser transport) must
-    # come from the loopback interface targeting a loopback Host. The TCP
-    # client alone is not enough to trust: a DNS-rebinding page on an
-    # attacker domain can inherit the loopback client (the server sees a
-    # 127.0.0.1 peer) while the request's Host names the attacker origin.
-    # Mirror ``require_management_access``'s loopback boundary here so a
-    # rebinding page cannot read or write the memory store. Header-
-    # authenticated API clients (X-Session-Token) are unaffected and may be
-    # remote.
     if session_cookie and not x_session_token:
         client_host = request.client.host if request.client else None
         if (
@@ -386,44 +272,29 @@ def get_current_session(
     try:
         token_payload = session_service.validate_session(session_token)
 
-        # Get session from storage
         session = session_service.get_session(token_payload.agent_id)
         if not session:
             raise SessionNotFoundError(
                 f"Session for agent {token_payload.agent_id} not found"
             )
 
-        # Auto-renew session if near expiry
         renewed = session_service.check_and_auto_renew(
             agent_id=token_payload.agent_id,
         )
         if renewed:
             session = renewed
-            # The renewed session gets a new session_id/token, invalidating
-            # the one the caller just presented. Browser callers authenticate
-            # via the HttpOnly cookie (never re-read the token in JS), so
-            # without this the cookie goes stale and the very next request
-            # fails signature/session_id validation.
+
             if session_cookie:
                 set_session_cookie(response, renewed.session_token, request)
-            # API clients authenticate with the request header instead of a
-            # cookie. Return the replacement token on the response so they can
-            # use it after auto-renewal invalidates the presented token.
+
             if x_session_token:
                 response.headers["X-Session-Token"] = renewed.session_token
 
-        # Bind the session for activity logging: the memory services below
-        # only receive an agent_id and cannot tell which session a request
-        # belongs to.
         set_memanto_session(session.session_id)
         return session
 
     except SessionExpiredError as e:
-        # The presented token belongs to a session that has fully lapsed.
-        # With SESSION_AUTO_RECREATE_ENABLED the caller gets a fresh session
-        # on this first operation — but only after passing the same
-        # management-access check as explicit activation (valid API key or
-        # loopback origin), so a stolen stale token alone is worthless.
+
         recreated = _maybe_auto_recreate_session(
             request=request,
             response=response,
@@ -440,7 +311,6 @@ def get_current_session(
     except (SessionNotFoundError, InvalidSessionTokenError) as e:
         raise map_error_to_http_exception(e)
 
-
 def _maybe_auto_recreate_session(
     request: Request,
     response: Response,
@@ -450,12 +320,7 @@ def _maybe_auto_recreate_session(
     authorization: str | None,
     x_api_key: str | None,
 ) -> Session | None:
-    """Attempt transparent recreation of an expired session.
-
-    Returns the fresh Session, or None when recreation does not apply
-    (disabled by config, terminated/logout session, superseded token) or is
-    not authorized — in which case the original expiry error surfaces.
-    """
+    
     try:
         require_management_access(request, authorization, x_api_key)
     except HTTPException:
@@ -465,8 +330,6 @@ def _maybe_auto_recreate_session(
     if recreated is None:
         return None
 
-    # Mirror the auto-renewal handoff: refresh the browser cookie and/or
-    # return the replacement token so the next request authenticates.
     if session_cookie:
         set_session_cookie(response, recreated.session_token, request)
     if x_session_token:

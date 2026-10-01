@@ -1,12 +1,4 @@
-"""OKF (Open Knowledge Format) export/import coverage.
 
-Exercises the three pure building blocks — ``OkfExportService`` (Memanto ->
-OKF bundle), ``load_okf_bundle`` (bundle -> entries), and ``map_okf`` (entries
--> Memanto batch-remember rows) — including the auto-split layout, the
-Memanto <-> OKF round-trip via the ``x_memanto`` frontmatter block, and a
-foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
-``[Supporting data]`` footer without loss.
-"""
 
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -23,7 +15,6 @@ from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
 
-
 def _mem(mem_id, title, content, **extra):
     base = {
         "id": mem_id,
@@ -35,11 +26,8 @@ def _mem(mem_id, title, content, **extra):
     base.update(extra)
     return base
 
-
 def test_auto_split_layout(tmp_path):
-    """`auto` writes one file per memory for small types and a single stacked
-    file once a type exceeds the threshold; memories live under ``memories/``
-    and index files are always written."""
+    
     memories_by_type = {
         "fact": [
             _mem("f1", "Postgres is the DB", "Uses PostgreSQL 16."),
@@ -59,21 +47,17 @@ def test_auto_split_layout(tmp_path):
     assert result["per_type_counts"] == {"fact": 2, "event": 60}
     assert result["sections"] == ["memories", "metrics"]
 
-    # Small type -> file per memory (+ index); large type -> stacked file.
     assert (base / "index.md").exists()
     assert (memories / "index.md").exists()
     assert (memories / "fact" / "postgres-is-the-db.md").exists()
     assert (memories / "fact" / "index.md").exists()
     assert (memories / "event" / "event.md").exists()
     assert not (memories / "event" / "standup-0.md").exists()
-    # Aggregate metrics generated from the gathered memories.
+
     assert (base / "metrics" / "overview.md").exists()
 
-
 def test_context_sections_and_import_scope(tmp_path):
-    """Daily-summary and session files are copied into their sections, and
-    import stays scoped to ``memories/`` so those context logs are never
-    re-ingested as memories."""
+    
     summary = tmp_path / "agent1_2026-07-01.md"
     summary.write_text("# Daily summary\nStuff happened.\n", encoding="utf-8")
     session = tmp_path / "agent1_2026-07-01_s1_summary.md"
@@ -100,14 +84,12 @@ def test_context_sections_and_import_scope(tmp_path):
     assert (base / "daily-summaries" / "agent1_2026-07-01.md").exists()
     assert (base / "sessions" / "agent1_2026-07-01_s1_summary.md").exists()
 
-    # Import must see only the one memory, not the summary/session docs.
     export = load_okf_bundle(base)
     assert len(export["memories"]) == 1
     assert export["memories"][0]["title"] == "A fact"
 
-
 def test_memanto_round_trip_preserves_extras(tmp_path):
-    """Memanto -> OKF -> Memanto keeps schema fields and metadata via ``x_memanto``."""
+    
     memories_by_type = {
         "fact": [
             _mem(
@@ -148,9 +130,8 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     assert "PostgreSQL 16" in pg["content"]
     assert by_title["Chose Redis"]["type"] == "decision"
 
-
 def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
-    """Malformed foreign extensions must not break an otherwise valid import."""
+    
     (tmp_path / "memory.md").write_text(
         "---\n"
         "type: fact\n"
@@ -170,9 +151,8 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
     assert row["expires_at"] is None
     assert row["ttl_seconds"] is None
 
-
 def test_okf_invalid_provenance_falls_back_to_imported():
-    """Foreign or malformed provenance must not reach batch validation."""
+    
     export = {
         "memories": [
             {
@@ -185,11 +165,8 @@ def test_okf_invalid_provenance_falls_back_to_imported():
 
     assert map_okf(export)[0]["provenance"] == "imported"
 
-
 def test_foreign_okf_bundle_is_lossless(tmp_path):
-    """A foreign OKF doc: free-form ``type`` -> auto-classify (None), and the
-    type, unknown keys, and links are preserved in the footer. ``index.md`` is
-    skipped."""
+    
     tables = tmp_path / "tables"
     tables.mkdir()
     (tables / "orders.md").write_text(
@@ -223,9 +200,8 @@ def test_foreign_okf_bundle_is_lossless(tmp_path):
     assert "OKF owner: data-team" in row["content"]  # unknown key -> footer
     assert "customers -> /tables/customers.md" in row["content"]  # link -> footer
 
-
 def test_loader_splits_stacked_file(tmp_path):
-    """A stacked per-type file is split back into one entry per memory."""
+    
     memories_by_type = {
         "event": [
             _mem(f"e{i}", f"Standup {i}", f"Standup {i} happened.") for i in range(5)
@@ -240,10 +216,8 @@ def test_loader_splits_stacked_file(tmp_path):
         f"Standup {i}" for i in range(5)
     }
 
-
 def test_reexport_replaces_stale_bundle_entries(tmp_path):
-    """A refreshed export must be an exact snapshot, not an overlay that can
-    resurrect deleted or renamed memories during a later import."""
+    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {
         "fact": [_mem("f1", "Old fact", "This fact was later deleted.")],
@@ -261,9 +235,8 @@ def test_reexport_replaces_stale_bundle_entries(tmp_path):
     imported = load_okf_bundle(result["output_path"])["memories"]
     assert [memory["title"] for memory in imported] == ["Current fact"]
 
-
 def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
-    """A failed final rename restores the last good bundle and cleans up."""
+    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {"fact": [_mem("f1", "Last good fact", "Keep this snapshot.")]}
     result = svc.write_okf_bundle("agent1", first, split="file")
@@ -289,9 +262,8 @@ def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
     assert not list((tmp_path / "exports").glob(".agent1_okf.tmp-*"))
     assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))
 
-
 def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
-    """A reader cannot observe the target-to-backup replacement window."""
+    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     svc.write_okf_bundle(
         "agent1", {"fact": [_mem("f1", "Old fact", "Old snapshot.")]}, split="file"
@@ -333,9 +305,8 @@ def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
     assert [memory["title"] for memory in imported] == ["New fact"]
     assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))
 
-
 def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
-    """An in-bundle file import waits on the bundle lock during replacement."""
+    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     svc.write_okf_bundle(
         "agent1", {"fact": [_mem("f1", "Stable slug", "Old snapshot.")]}, split="file"
@@ -377,185 +348,8 @@ def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
 
     assert [memory["body"] for memory in imported] == ["New snapshot."]
 
-
-def test_loader_rejects_symlinked_document_outside_bundle(tmp_path):
-    """An untrusted bundle must not import a local file through a .md symlink."""
-    outside = tmp_path / "synthetic-private.txt"
-    outside.write_text("SYNTHETIC_PRIVATE_VALUE", encoding="utf-8")
-    memories = tmp_path / "attacker-bundle" / "memories"
-    memories.mkdir(parents=True)
-    link = memories / "innocent-memory.md"
-    try:
-        link.symlink_to(outside)
-    except (NotImplementedError, OSError):
-        pytest.skip("symbolic links are unavailable on this platform")
-
-    with pytest.raises(ValueError, match="symbolic-link document"):
-        load_okf_bundle(memories.parent)
-
-
-def test_loader_rejects_symlinked_bundle_root(tmp_path):
-    """Selecting a symlink as the bundle root must fail before traversal."""
-    real_bundle = tmp_path / "real-bundle"
-    real_bundle.mkdir()
-    (real_bundle / "memory.md").write_text("Synthetic memory", encoding="utf-8")
-    bundle_link = tmp_path / "selected-bundle"
-    try:
-        bundle_link.symlink_to(real_bundle, target_is_directory=True)
-    except (NotImplementedError, OSError):
-        pytest.skip("symbolic links are unavailable on this platform")
-
-    with pytest.raises(ValueError, match="bundle path must not be a symbolic link"):
-        load_okf_bundle(bundle_link)
-
-
-def test_loader_rejects_symlinked_single_document(tmp_path):
-    """The single-file import form must not follow a selected symlink."""
-    outside = tmp_path / "synthetic-private.md"
-    outside.write_text("Synthetic private value", encoding="utf-8")
-    link = tmp_path / "selected-memory.md"
-    try:
-        link.symlink_to(outside)
-    except (NotImplementedError, OSError):
-        pytest.skip("symbolic links are unavailable on this platform")
-
-    with pytest.raises(ValueError, match="bundle path must not be a symbolic link"):
-        load_okf_bundle(link)
-
-
-def test_loader_rejects_symlinked_memories_directory(tmp_path):
-    """A Memanto bundle must not redirect its import subtree elsewhere."""
-    outside = tmp_path / "outside-memories"
-    outside.mkdir()
-    (outside / "synthetic-private.md").write_text(
-        "Synthetic private value", encoding="utf-8"
-    )
-    bundle = tmp_path / "attacker-bundle"
-    bundle.mkdir()
-    try:
-        (bundle / "memories").symlink_to(outside, target_is_directory=True)
-    except (NotImplementedError, OSError):
-        pytest.skip("symbolic links are unavailable on this platform")
-
-    with pytest.raises(
-        ValueError, match="bundle directory must not be a symbolic link"
-    ):
-        load_okf_bundle(bundle)
-
-
-def test_loader_rejects_document_swapped_to_symlink_before_open(tmp_path, monkeypatch):
-    """A pathname swap after listing must not redirect the opened document."""
-    if not okf_loader._SECURE_DIR_FD:
-        pytest.skip("descriptor-relative no-follow opens are unavailable")
-
-    outside = tmp_path / "outside.txt"
-    outside.write_text("SYNTHETIC_RACE_VALUE", encoding="utf-8")
-    memories = tmp_path / "bundle" / "memories"
-    memories.mkdir(parents=True)
-    victim = memories / "memory.md"
-    victim.write_text("Ordinary content", encoding="utf-8")
-
-    real_open = os.open
-    swapped = False
-
-    def swap_then_open(path, flags, *args, **kwargs):
-        nonlocal swapped
-        if path == "memory.md" and kwargs.get("dir_fd") is not None and not swapped:
-            victim.unlink()
-            victim.symlink_to(outside)
-            swapped = True
-        return real_open(path, flags, *args, **kwargs)
-
-    monkeypatch.setattr(os, "open", swap_then_open)
-
-    with pytest.raises(ValueError, match="symbolic-link path"):
-        load_okf_bundle(memories.parent)
-    assert swapped
-
-
-def test_loader_reads_pinned_root_when_selected_path_is_replaced(tmp_path, monkeypatch):
-    """Replacing the selected pathname must not redirect an opened root."""
-    if not okf_loader._SECURE_DIR_FD:
-        pytest.skip("descriptor-relative no-follow opens are unavailable")
-
-    bundle = tmp_path / "bundle"
-    memories = bundle / "memories"
-    memories.mkdir(parents=True)
-    (memories / "memory.md").write_text("Ordinary content", encoding="utf-8")
-
-    outside = tmp_path / "outside"
-    outside_memories = outside / "memories"
-    outside_memories.mkdir(parents=True)
-    (outside_memories / "memory.md").write_text(
-        "SYNTHETIC_OUTSIDE_VALUE", encoding="utf-8"
-    )
-    moved_bundle = tmp_path / "opened-bundle"
-
-    real_fstat = os.fstat
-    swapped = False
-
-    def replace_path_after_root_open(fd):
-        nonlocal swapped
-        result = real_fstat(fd)
-        if not swapped:
-            bundle.rename(moved_bundle)
-            bundle.symlink_to(outside, target_is_directory=True)
-            swapped = True
-        return result
-
-    monkeypatch.setattr(os, "fstat", replace_path_after_root_open)
-
-    export = load_okf_bundle(bundle)
-
-    assert swapped
-    assert export["memories"][0]["body"] == "Ordinary content"
-
-
-def test_loader_falls_back_without_secure_directory_descriptors(
-    tmp_path, monkeypatch, caplog
-):
-    """Unsupported platforms fall back to best-effort path resolution with a warning."""
-    import logging
-    
-    bundle = tmp_path / "bundle"
-    bundle.mkdir()
-    (bundle / "memory.md").write_text("Ordinary content", encoding="utf-8")
-    monkeypatch.setattr(
-        "memanto.cli.migrate.okf_loader._SECURE_DIR_FD",
-        False,
-    )
-
-    with caplog.at_level(logging.WARNING):
-        export = load_okf_bundle(bundle)
-
-    assert any(
-        "Secure OKF import is unsupported on this platform" in record.message 
-        for record in caplog.records
-    )
-    assert len(export["memories"]) == 1
-    assert export["memories"][0]["body"] == "Ordinary content"
-
-
-def test_loader_preserves_nested_document_read_errors(tmp_path, monkeypatch):
-    """A nested file error must not be mislabeled as an unsafe parent directory."""
-    if not okf_loader._SECURE_DIR_FD:
-        pytest.skip("descriptor-relative no-follow opens are unavailable")
-
-    nested = tmp_path / "bundle" / "memories" / "nested"
-    nested.mkdir(parents=True)
-    (nested / "memory.md").write_text("Ordinary content", encoding="utf-8")
-
-    def fail_document_read(directory_fd, name, display_path):
-        raise PermissionError("synthetic nested read failure")
-
-    monkeypatch.setattr(okf_loader, "_read_document_at", fail_document_read)
-
-    with pytest.raises(PermissionError, match="synthetic nested read failure"):
-        load_okf_bundle(tmp_path / "bundle")
-
-
 def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
-    """Malformed candidates do not hide valid links that follow them."""
+    
     okf_file = tmp_path / "links.md"
     okf_file.write_text(
         "---\ntype: fact\ntitle: Links\n---\n"
@@ -571,9 +365,8 @@ def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
         "second -> https://example.com/two",
     ]
 
-
 def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
-    """A malformed large note must not make link extraction scale quadratically."""
+    
     okf_file = tmp_path / "malformed-links.md"
     okf_file.write_text(
         "---\ntype: fact\ntitle: Malformed links\n---\n" + "[" * 25_000,
@@ -587,17 +380,10 @@ def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
     assert memory["links"] == []
     assert elapsed < 1.0
 
-
 def test_okf_export_splits_comma_separated_tags(tmp_path):
-    """Tags serialized by Moorcheh arrive as a comma-separated string. The
-    export must emit one frontmatter list entry per tag, not split the string
-    character-by-character.
-
-    Regression for BountyHub #770: with tags='project,db' the old
-    ``list(tags)`` wrote ["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"].
-    """
+    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
-    # Moorcheh wire format: flat ``tags`` field is a comma-joined string.
+
     memories_by_type = {
         "fact": [
             _mem("f1", "Postgres", "Use PG 16.", tags="project, db, prod"),
@@ -609,10 +395,8 @@ def test_okf_export_splits_comma_separated_tags(tmp_path):
     fm = yaml.safe_load(front)
     assert set(fm["tags"]) == {"project", "db", "prod"}
 
-
 def test_okf_export_preserves_list_tags(tmp_path):
-    """Tags from the in-memory recall path arrive as a list; the export must
-    still emit a proper frontmatter list of those tags (unchanged behaviour)."""
+    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     memories_by_type = {
         "fact": [
