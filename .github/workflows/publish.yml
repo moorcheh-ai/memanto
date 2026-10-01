@@ -13,6 +13,8 @@ jobs:
     environment: pypi
     permissions:
       contents: read
+      # Required for PyPI Trusted Publishing (OIDC) and PEP 740 attestations.
+      id-token: write
 
     steps:
     - name: Checkout code
@@ -43,9 +45,11 @@ jobs:
       run: uv run python -m build
 
     - name: Publish to PyPI
+      # Trusted Publishing: no API token. The OIDC identity of this workflow
+      # (repo + workflow file + environment) is what PyPI authenticates, and the
+      # action attaches PEP 740 provenance attestations by default.
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
         packages-dir: dist/
 
   publish-npm:

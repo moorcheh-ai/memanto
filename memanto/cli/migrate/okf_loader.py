@@ -20,6 +20,7 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
 # non-greedy so the first ``\n---`` closes the block even when the body below
@@ -81,8 +82,33 @@ def _extract_links(body: str) -> list[tuple[str, str]]:
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
     root = Path(path)
+    # Hold the corresponding reader lock through discovery and every file
+    # read, so an exporter cannot move the bundle aside midway through a load.
+    with okf_bundle_lock(_bundle_lock_root(root), shared=True):
+        return _load_okf_bundle(root, path)
+
+
+def _bundle_lock_root(path: Path) -> Path:
+    """Return the bundle path whose lock protects a requested import path."""
+    if path.suffix.lower() != ".md":
+        return path
+
+    # A Memanto entry lives at ``<bundle>/<section>/<entry>.md`` or deeper.
+    # Resolve this lexically so the same bundle lock is selected even while
+    # the exporter has temporarily moved the bundle directory aside.
+    for parent in path.parents:
+        if parent.name in ("memories", "daily-summaries", "sessions", "metrics"):
+            return parent.parent
+
+    # Root-level documents belong to their containing bundle. For a standalone
+    # Markdown import this merely serializes imports from the same directory.
+    return path.parent
+
+
+def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
+    """Load ``root`` while the caller holds its bundle reader lock."""
     if not root.exists():
-        raise FileNotFoundError(f"OKF bundle not found: {path}")
+        raise FileNotFoundError(f"OKF bundle not found: {display_path}")
 
     if root.is_file():
         files = [root]

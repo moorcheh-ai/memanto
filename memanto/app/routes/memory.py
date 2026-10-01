@@ -48,7 +48,7 @@ from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.services.policy_presets import PRESETS, list_presets, load_preset
 from memanto.app.utils.errors import (
     AuthorizationError,
-    MemoryError,
+    MemoryOperationError,
     map_error_to_http_exception,
 )
 from memanto.app.utils.temporal_helpers import (
@@ -724,14 +724,14 @@ async def extract_memories_from_conversation(
         session_service = get_session_service()
 
         if not isinstance(result, dict):
-            raise MemoryError(
+            raise MemoryOperationError(
                 message="Data corruption detected: Received malformed batch result from storage layer.",
                 details={"item_preview": str(result)[:100]},
             )
 
         batch_results = result.get("results", [])
         if not isinstance(batch_results, list):
-            raise MemoryError(
+            raise MemoryOperationError(
                 message="Data corruption detected: Received malformed batch result array from storage layer.",
                 details={"item_preview": str(batch_results)[:100]},
             )
@@ -741,7 +741,7 @@ async def extract_memories_from_conversation(
             if item_result is not None and (
                 not isinstance(item_result, dict) or not item_result
             ):
-                raise MemoryError(
+                raise MemoryOperationError(
                     message="Data corruption detected: Received malformed batch result from storage layer.",
                     details={"item_preview": str(item_result)[:100]},
                 )
@@ -1383,6 +1383,59 @@ async def recall_recent(
             "session_id": session.session_id,
             "memories": result["results"],
             "count": result["total_found"],
+            "total_available": result.get("total_available"),
+            "temporal_mode": "recent",
+        }
+
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/recall/all", response_model=TemporalRecallResponse)
+async def recall_all(
+    agent_id: str,
+    request: RecallRecentRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Recall ALL stored memories for the UI (bypasses MAX_K limit).
+
+    Returns memories sorted by created_at descending (newest first).
+    Optionally filter by memory type.
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    enforce_session_scope(session, agent_id)
+
+    try:
+        read_service = MemoryReadService(client)
+
+        result = await asyncio.to_thread(
+            read_service.search_recent,
+            agent_id=agent_id,
+            type=request.type,
+            tags=request.tags,
+            status=request.status,
+            limit=request.limit
+            or 5000,  # Bound the UI response to prevent huge payloads
+            created_after=request.created_after.isoformat()
+            if request.created_after
+            else None,
+            created_before=request.created_before.isoformat()
+            if request.created_before
+            else None,
+        )
+
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "memories": result["results"],
+            "count": result["total_found"],
+            "total_available": result.get("total_available"),
             "temporal_mode": "recent",
         }
 

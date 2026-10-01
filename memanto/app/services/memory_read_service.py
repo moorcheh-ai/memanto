@@ -13,9 +13,10 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import REMOVED_TRUST_FIELDS, VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
-from memanto.app.utils.errors import MemoryError
+from memanto.app.services.activity_service import log_memory_activity
+from memanto.app.utils.errors import MemoryOperationError
 
 _FILTER_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -88,14 +89,14 @@ class MemoryReadService:
             )
 
             if not isinstance(result, dict):
-                raise MemoryError(
+                raise MemoryOperationError(
                     message="Data corruption detected: Received malformed get result from storage layer.",
                     details={"result_preview": str(result)[:100]},
                 )
 
             items: Any = result.get("items", [])
             if not isinstance(items, list):
-                raise MemoryError(
+                raise MemoryOperationError(
                     message="Data corruption detected: Received malformed get items array from storage layer.",
                     details={"items_preview": str(items)[:100]},
                 )
@@ -105,10 +106,10 @@ class MemoryReadService:
 
             return None
 
-        except MemoryError:
+        except MemoryOperationError:
             raise
         except Exception as e:
-            raise MemoryError(f"Failed to retrieve memory: {e}")
+            raise MemoryOperationError(f"Failed to retrieve memory: {e}")
 
     def search_memories(
         self,
@@ -176,12 +177,22 @@ class MemoryReadService:
             # fetched `limit + offset` rows, a date-scoped, confidence-scoped,
             # or expired-heavy query would filter *within the top-N most-similar
             # rows*, causing in-window memories that rank just outside the top-N
-            # to be lost entirely (timeline amnesia / poor recall). We therefore
-            # always over-fetch up to Moorcheh's hard cap rather than only when
-            # a filter is explicitly requested.
-            top_k = min(
-                max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+            # to be lost entirely (timeline amnesia / poor recall).
+            # We over-fetch up to Moorcheh's hard cap only when a post-processing
+            # filter is actually requested to avoid the p95 latency penalty of
+            # over-fetching on simple recall queries.
+            needs_post_filter = (
+                created_after is not None
+                or created_before is not None
+                or min_confidence is not None
+                or status != "all"
             )
+            if needs_post_filter:
+                top_k = min(
+                    max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+                )
+            else:
+                top_k = min(requested_limit, MOORCHEH_MAX_TOP_K)
 
             # Perform search with server-side filtering.
             # Only enable kiosk_mode when the caller actually set a positive
@@ -220,7 +231,7 @@ class MemoryReadService:
                     try:
                         search_result = dict(search_result)
                     except (TypeError, ValueError):
-                        raise MemoryError(
+                        raise MemoryOperationError(
                             message=(
                                 "Data corruption detected: Received malformed "
                                 "search result from storage layer."
@@ -230,7 +241,7 @@ class MemoryReadService:
 
                 result_items = search_result.get("results", [])
                 if not isinstance(result_items, list):
-                    raise MemoryError(
+                    raise MemoryOperationError(
                         message=(
                             "Data corruption detected: Received malformed "
                             "search result array from storage layer."
@@ -292,6 +303,10 @@ class MemoryReadService:
             paginated_results = all_results[offset : offset + limit]
             has_more = len(all_results) > offset + limit
 
+            log_memory_activity(
+                op="recall", agent_id=agent_id, count=len(paginated_results)
+            )
+
             return {
                 "results": paginated_results,
                 "total_found": len(paginated_results),
@@ -304,10 +319,10 @@ class MemoryReadService:
                 "execution_time": execution_time,
             }
 
-        except MemoryError:
+        except MemoryOperationError:
             raise
         except Exception as e:
-            raise MemoryError(f"Failed to search memories: {e}")
+            raise MemoryOperationError(f"Failed to search memories: {e}")
 
     def search_as_of(
         self,
@@ -397,6 +412,10 @@ class MemoryReadService:
             if limit is not None:
                 valid_memories = valid_memories[:limit]
 
+            log_memory_activity(
+                op="recall", agent_id=agent_id, count=len(valid_memories)
+            )
+
             return {
                 "results": valid_memories,
                 "total_found": len(valid_memories),
@@ -405,7 +424,7 @@ class MemoryReadService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to perform as-of query: {e}")
+            raise MemoryOperationError(f"Failed to perform as-of query: {e}")
 
     def search_changed_since(
         self,
@@ -495,6 +514,10 @@ class MemoryReadService:
             if limit is not None:
                 changed_memories = changed_memories[:limit]
 
+            log_memory_activity(
+                op="recall", agent_id=agent_id, count=len(changed_memories)
+            )
+
             return {
                 "results": changed_memories,
                 "total_found": len(changed_memories),
@@ -503,7 +526,7 @@ class MemoryReadService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to search changed memories: {e}")
+            raise MemoryOperationError(f"Failed to search changed memories: {e}")
 
     def search_recent(
         self,
@@ -558,11 +581,18 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
+            total_available = len(unique_memories)
             results = unique_memories if limit is None else unique_memories[:limit]
-            return {"results": results, "total_found": len(results)}
+            log_memory_activity(op="recall", agent_id=agent_id, count=len(results))
+
+            return {
+                "results": results,
+                "total_found": len(results),
+                "total_available": total_available,
+            }
 
         except Exception as e:
-            raise MemoryError(f"Failed to retrieve recent memories: {e}")
+            raise MemoryOperationError(f"Failed to retrieve recent memories: {e}")
 
     def _fetch_all_memories(
         self,
@@ -680,7 +710,7 @@ class MemoryReadService:
                 continue
             try:
                 return parse_iso_timestamp(str(raw)), fetch_index
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 continue
         return fallback, fetch_index
 
@@ -735,8 +765,10 @@ class MemoryReadService:
 
         # Combine query with filters
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
-        return query
+            base = (query or "").strip()
+            joined = " ".join(filter_parts)
+            return f"{base} {joined}".strip() if base else joined
+        return (query or "").strip()
 
     def _apply_temporal_filter(
         self,
@@ -804,9 +836,11 @@ class MemoryReadService:
             raw_confidence: Any = result.get("confidence")
             try:
                 confidence = float(raw_confidence)
-            except (TypeError, ValueError):
-                if min_confidence <= 0:
-                    filtered.append(result)
+            except (TypeError, ValueError, OverflowError):
+                # Fail open: include memories with unknown confidence rather
+                # than silently dropping them. This preserves imported memories
+                # that may not carry a confidence score.
+                filtered.append(result)
                 continue
             if confidence >= min_confidence:
                 filtered.append(result)
@@ -850,7 +884,7 @@ class MemoryReadService:
                 # Use first available namespace
                 namespaces = self.namespace_service.list_namespaces()
                 if not namespaces:
-                    raise MemoryError("No namespaces found")
+                    raise MemoryOperationError("No namespaces found")
                 namespace = namespaces[0]
 
             # Generate answer. Omit ai_model when on-prem state has no LLM
@@ -862,6 +896,8 @@ class MemoryReadService:
                 gen_kwargs["ai_model"] = _model
             answer_result = self.client.answer.generate(**gen_kwargs)
 
+            log_memory_activity(op="answer", agent_id=agent_id)
+
             return {
                 "answer": answer_result["answer"],
                 "namespace": namespace,
@@ -869,7 +905,7 @@ class MemoryReadService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to generate answer: {e}")
+            raise MemoryOperationError(f"Failed to generate answer: {e}")
 
     def _get_search_namespaces(self, agent_id: str | None = None) -> list[str]:
         """Get namespaces to search based on filters"""
@@ -917,7 +953,7 @@ class MemoryReadService:
         Format memory item for response.
         """
         if not isinstance(item, dict):
-            raise MemoryError(
+            raise MemoryOperationError(
                 message="Data corruption detected: Received malformed memory item from storage layer.",
                 details={"item_preview": str(item)[:100]},
             )
@@ -930,7 +966,7 @@ class MemoryReadService:
         # Check if metadata is in nested format (Moorcheh API spec)
         metadata = item.get("metadata", {})
         if not isinstance(metadata, dict):
-            raise MemoryError(
+            raise MemoryOperationError(
                 message="Data corruption detected: Received malformed metadata from storage layer.",
                 details={"item_preview": str(item)[:100]},
             )
@@ -1017,6 +1053,19 @@ class MemoryReadService:
             # Provenance
             "provenance": provenance,
         }
+
+        # Preserve extra metadata keys (e.g. original_id) not in the schema.
+        # Exclude known keys, removed fields, and "memory_type" (duplicate of "type").
+        known_keys = set(formatted.keys()) | {"text", "memory_type", "metadata"}
+
+        extra_sources = [item]
+        if isinstance(metadata, dict):
+            extra_sources.append(metadata)
+
+        for source_dict in extra_sources:
+            for key, value in source_dict.items():
+                if key not in known_keys and key not in REMOVED_TRUST_FIELDS:
+                    formatted[key] = value
 
         return formatted
 

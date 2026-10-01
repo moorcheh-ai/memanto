@@ -42,9 +42,9 @@ def session_info():
             if expires_at_str.endswith("Z"):
                 expires_at_str = expires_at_str[:-1] + "+00:00"
             expires_at = datetime.fromisoformat(expires_at_str)
-            if expires_at.tzinfo is not None:
-                expires_at = expires_at.astimezone(timezone.utc).replace(tzinfo=None)
-            now = datetime.utcnow()
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
 
             if now > expires_at:
                 status = "[red]Expired[/red]"

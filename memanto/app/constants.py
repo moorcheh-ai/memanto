@@ -82,3 +82,14 @@ ALLOWED_UPDATE_FIELDS = {
 }
 
 VALID_PATTERNS = {"support", "project", "tool"}
+
+# Trust fields removed from the schema. Must not be resurrected during update.
+REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)

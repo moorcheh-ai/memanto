@@ -1,0 +1,54 @@
+{
+  "description": "MEMANTO: persistent memory for Claude Code. SessionStart refreshes MEMORY.md and installs the status line once, PreCompact re-syncs before compaction, and PostToolUse summarizes manual memory operations.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "_managed_by": "memanto",
+            "type": "command",
+            "command": "${SYS_EXECUTABLE}",
+            "args": ["${HOOKS_DIR}/session_start.py"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "_managed_by": "memanto",
+            "type": "command",
+            "command": "${SYS_EXECUTABLE}",
+            "args": [
+              "-m",
+              "memanto",
+              "memory",
+              "sync",
+              "--project-dir",
+              "${CLAUDE_PROJECT_DIR}"
+            ],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "_managed_by": "memanto",
+            "type": "command",
+            "if": "Bash(memanto *)",
+            "command": "${SYS_EXECUTABLE}",
+            "args": ["${HOOKS_DIR}/notify.py"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

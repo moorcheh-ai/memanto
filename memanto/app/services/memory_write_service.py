@@ -10,12 +10,43 @@ if TYPE_CHECKING:
 
 from memanto.app.constants import VALID_STATUS_TYPES
 from memanto.app.core import MemoryRecord, is_valid_expired_by, is_valid_source
+from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.services.memory_parsing_service import MemoryParsingService
-from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.ids import generate_memory_id
 from memanto.app.utils.temporal_helpers import as_utc_aware
 
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+
+# Fields owned by the current MemoryRecord/document schema. They must not be
+# copied from the old document after an update because an omitted optional field
+# (for example, tags=[] or source_ref=None) represents an intentional clear.
+_MEMORY_SCHEMA_FIELDS = frozenset(
+    {
+        "id",
+        "text",
+        "memory_type",
+        "type",
+        "title",
+        "content",
+        "agent_id",
+        "actor_id",
+        "source",
+        "source_ref",
+        "confidence",
+        "status",
+        "tags",
+        "provenance",
+        "created_at",
+        "updated_at",
+        "expired_at",
+        "expired_by",
+        "score",
+        "metadata",
+        "scope_type",
+        "scope_id",
+    }
+)
 
 # Fields removed from the active schema. Old on-prem data_store.json records
 # may still carry them; they must never be copied forward on update or we
@@ -119,6 +150,8 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
+            log_memory_activity(op="remember", agent_id=memory.agent_id, count=1)
+
             return {
                 "id": memory.id,
                 "namespace": namespace,
@@ -131,7 +164,7 @@ class MemoryWriteService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to store memory: {e}")
+            raise MemoryOperationError(f"Failed to store memory: {e}")
 
     def batch_store_memories(
         self, memories: list[MemoryRecord], context: dict[str, Any] | None = None
@@ -148,10 +181,10 @@ class MemoryWriteService:
         """
         try:
             if not memories:
-                raise MemoryError("No memories provided for batch operation")
+                raise MemoryOperationError("No memories provided for batch operation")
 
             if len(memories) > 100:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Batch size {len(memories)} exceeds Moorcheh's limit of 100 documents per request"
                 )
 
@@ -276,8 +309,14 @@ class MemoryWriteService:
                     failed += 1
                     r["status"] = "failed"
 
+            log_memory_activity(
+                op="remember",
+                agent_id=memories[0].agent_id if memories else None,
+                count=successful,
+            )
+
             return {
-                "total_submitted": len(memories),
+                "total_submitted": len(results),
                 "successful": successful,
                 "failed": failed,
                 "rejected": rejected,
@@ -286,7 +325,7 @@ class MemoryWriteService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to batch store memories: {e}")
+            raise MemoryOperationError(f"Failed to batch store memories: {e}")
 
     def update_memory(
         self,
@@ -320,7 +359,7 @@ class MemoryWriteService:
             existing_memory_data = read_service.get_memory(memory_id, namespace)
 
             if not existing_memory_data:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Memory {memory_id} not found in namespace {namespace}"
                 )
 
@@ -338,7 +377,7 @@ class MemoryWriteService:
             if not agent_id and namespace.startswith("memanto_agent_"):
                 agent_id = namespace.removeprefix("memanto_agent_")
             if not agent_id:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Cannot determine agent_id for memory {memory_id} "
                     f"in namespace {namespace}"
                 )
@@ -417,7 +456,9 @@ class MemoryWriteService:
                 if is_valid_expired_by(expired_by):
                     updated_memory.expired_by = expired_by
 
-            # Step 3: Upload new version (overwrites existing document with same ID)
+            # Step 3: Upload new version (overwrites existing document with same ID).
+            # Uploading with the same ID is safe — Moorcheh treats it as an upsert,
+            # so the original is never lost if the upload call fails.
             from typing import Any, cast
 
             from moorcheh_sdk.types.document import Document
@@ -435,13 +476,10 @@ class MemoryWriteService:
             # every restore.
             existing_meta = existing_memory_data.get("metadata", existing_memory_data)
             if isinstance(existing_meta, dict):
-                # ``document`` is a TypedDict; cast to a plain dict to attach
-                # extra schema-external keys (e.g. original_id) dynamically.
                 extra_document = cast(dict[str, Any], document)
                 for key in existing_meta:
                     if (
-                        key not in document
-                        and key != "text"
+                        key not in _MEMORY_SCHEMA_FIELDS
                         and key not in _REMOVED_SCHEMA_FIELDS
                         and key not in _LIFECYCLE_STAMP_FIELDS
                     ):
@@ -452,11 +490,11 @@ class MemoryWriteService:
                     namespace_name=namespace, documents=[document]
                 )
             except Exception as e:
-                raise MemoryError(f"Upload failed. Error: {e}")
+                raise MemoryOperationError(f"Upload failed. Error: {e}")
 
             status = upload_result.get("status", "unknown")
             if str(status).lower() not in SUCCESSFUL_UPLOAD_STATUSES:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Failed to upload updated memory {memory_id}: {status}"
                 )
 
@@ -470,10 +508,10 @@ class MemoryWriteService:
                 "updated_fields": list(updates.keys()),
             }
 
-        except MemoryError:
+        except MemoryOperationError:
             raise
         except Exception as e:
-            raise MemoryError(f"Failed to update memory: {e}")
+            raise MemoryOperationError(f"Failed to update memory: {e}")
 
     def set_lifecycle(
         self,
@@ -505,9 +543,11 @@ class MemoryWriteService:
         """
         if expired:
             if not reason:
-                raise MemoryError("A reason is required when expiring a memory")
+                raise MemoryOperationError(
+                    "A reason is required when expiring a memory"
+                )
             if not is_valid_expired_by(reason):
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Invalid expiry reason '{reason}': only letters, digits, "
                     "'.', '_' and '-' are allowed"
                 )
@@ -546,7 +586,7 @@ class MemoryWriteService:
             return self._deletion_succeeded(result)
 
         except Exception as e:
-            raise MemoryError(f"Failed to delete memory: {e}")
+            raise MemoryOperationError(f"Failed to delete memory: {e}")
 
     @staticmethod
     def _deletion_succeeded(result: dict[str, Any]) -> bool:

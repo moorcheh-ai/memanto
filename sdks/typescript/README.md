@@ -91,6 +91,10 @@ The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and 
 | `healthTimeoutMs` | `number` | `60000` | Health-check timeout. |
 | `verbose` | `boolean` | `false` | Stream server logs to the parent process. |
 
+When `baseUrl` points to an existing server, `apiKey` is sent as `X-Api-Key`
+on agent-management and activation requests. Session-scoped memory requests
+continue to use the server-issued session token.
+
 ### Methods
 
 **Memory writes**

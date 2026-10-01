@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write  # required for PyPI trusted publishing
       contents: read
 
     steps:
@@ -134,6 +133,12 @@ jobs:
         cd "integrations/$INTEGRATION"
         uv build --out-dir dist
 
+    # Token auth, deliberately — not Trusted Publishing like the main memanto
+    # package in publish.yml. A trusted publisher has to be registered on PyPI
+    # per project, so every new integration would need a manual PyPI visit
+    # before its first release could go out. An account-scoped token can create
+    # projects that do not exist yet, so a new integration ships by tagging it
+    # and nothing else.
     - name: Publish Python package to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:

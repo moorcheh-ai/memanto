@@ -35,10 +35,12 @@ from memanto.app.constants import (
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
+from memanto.app.services.activity_service import log_memory_activity
+from memanto.app.utils.client_identity import set_memanto_session
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
-    MemoryError,
+    MemoryOperationError,
     SessionError,
     SessionExpiredError,
     SessionNotFoundError,
@@ -180,6 +182,17 @@ class SdkClient:
     # Internal helpers
 
     def _get_validated_session_for_agent(self, agent_id: str):
+        """Return the active session for *agent_id*, and bind it for activity logging.
+
+        Every memory operation passes through here, which makes it the one
+        place that reliably knows both the agent and its live session id - the
+        memory services below only ever receive an agent_id.
+        """
+        session = self._resolve_validated_session(agent_id)
+        set_memanto_session(session.session_id)
+        return session
+
+    def _resolve_validated_session(self, agent_id: str):
         """
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
@@ -221,7 +234,17 @@ class SdkClient:
         try:
             # Validate JWT token
             token_payload = session_service.validate_session(self.session_token)
-        except (SessionExpiredError, InvalidSessionTokenError):
+        except SessionExpiredError:
+            # The stored session fully lapsed (e.g. the process was idle past
+            # its expiry). With auto-recreate enabled, transparently issue a
+            # fresh session on this first operation instead of failing.
+            recreated = session_service.check_and_auto_recreate(self.session_token)
+            if recreated is None:
+                raise
+            self._cached_session = recreated
+            self.session_token = recreated.session_token
+            return recreated
+        except InvalidSessionTokenError:
             # Surface the same specific session errors as the service
             raise
 
@@ -474,7 +497,6 @@ class SdkClient:
         """
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
-        _ = session
 
         self._validate_memory_input(memory_type, title, content, confidence)
 
@@ -508,10 +530,9 @@ class SdkClient:
 
         # Log to local session Markdown summary only after a durable write.
         if self.session_token and is_successful_write_result(result):
-            session_id = "unknown"
             self._get_session_service().try_log_memory_to_session_summary(
                 agent_id=agent_id,
-                session_id=session_id,
+                session_id=session.session_id,
                 memory_record=memory,
                 memory_id=result.get("id"),
             )
@@ -543,7 +564,7 @@ class SdkClient:
             ValueError: If batch is empty or exceeds 100 items.
         """
         # Ensure there is a valid, non-expired session for this agent
-        self._get_validated_session_for_agent(agent_id)
+        session = self._get_validated_session_for_agent(agent_id)
 
         if not memories:
             raise ValueError("Batch must contain at least one memory")
@@ -588,7 +609,11 @@ class SdkClient:
                 "source": item.get("source") or "user",
                 "provenance": provenance,
             }
-            for opt_key in ("source_ref", "created_at", "updated_at"):
+            for opt_key in (
+                "source_ref",
+                "created_at",
+                "updated_at",
+            ):
                 val = item.get(opt_key)
                 if val is not None:
                     kwargs[opt_key] = val
@@ -608,29 +633,35 @@ class SdkClient:
 
         # Log each memory to local session Markdown summary
         if self.session_token:
-            session_id = "unknown"
+            session_id = session.session_id
             session_svc = self._get_session_service()
 
             # Extract per-memory IDs from the batch result
             if not isinstance(result, dict):
-                raise MemoryError(
+                raise MemoryOperationError(
                     message="Data corruption detected: Received malformed batch result from storage layer.",
                     details={"item_preview": str(result)[:100]},
                 )
 
-            batch_results = result.get("results", [])
-            if not isinstance(batch_results, list):
-                raise MemoryError(
+            if "results" not in result:
+                raise MemoryOperationError(
+                    message="Data corruption detected: Missing 'results' in batch response from storage layer.",
+                    details={"item_preview": str(result)[:100]},
+                )
+
+            batch_results = result["results"]
+            if not isinstance(batch_results, list) or len(batch_results) != len(
+                memory_records
+            ):
+                raise MemoryOperationError(
                     message="Data corruption detected: Received malformed batch result array from storage layer.",
                     details={"item_preview": str(batch_results)[:100]},
                 )
 
             for i, mem in enumerate(memory_records):
-                item_result = batch_results[i] if i < len(batch_results) else None
-                if item_result is not None and (
-                    not isinstance(item_result, dict) or not item_result
-                ):
-                    raise MemoryError(
+                item_result = batch_results[i]
+                if not isinstance(item_result, dict) or not item_result:
+                    raise MemoryOperationError(
                         message="Data corruption detected: Received malformed batch result from storage layer.",
                         details={"item_preview": str(item_result)[:100]},
                     )
@@ -1283,6 +1314,11 @@ class SdkClient:
             footer_prompt=footer_prompt,
         )
 
+        # The RAG path calls Moorcheh directly rather than going through
+        # MemoryReadService, so it needs its own activity entry - otherwise
+        # `answer` is the one memory operation that leaves no trace.
+        log_memory_activity(op="answer", agent_id=agent_id)
+
         return {
             "agent_id": agent_id,
             "question": question,
@@ -1337,7 +1373,9 @@ class SdkClient:
             "export": export_result,
         }
 
-    def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
+    def generate_conflict_report(
+        self, agent_id: str, date: str, on_progress=None, cancel_event=None
+    ) -> dict[str, Any]:
         """
         Generate the conflict report for an agent/date.
 
@@ -1361,7 +1399,9 @@ class SdkClient:
         )
 
         service = self._get_daily_analysis_service()
-        conflict_result = service.generate_conflict_report(agent_id, date)
+        conflict_result = service.generate_conflict_report(
+            agent_id, date, on_progress=on_progress, cancel_event=cancel_event
+        )
         return {"conflicts": conflict_result}
 
     # Conflict Resolution
@@ -1383,9 +1423,9 @@ class SdkClient:
         if not date:
             date = utc_date_str()
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        from memanto.app.config import get_conflict_report_path
+
+        json_path = get_conflict_report_path(agent_id, date)
 
         if not json_path.exists():
             return []
@@ -1442,9 +1482,9 @@ class SdkClient:
                 f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}"
             )
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        from memanto.app.config import get_conflict_report_path
+
+        json_path = get_conflict_report_path(agent_id, date)
         if not json_path.exists():
             raise ValueError(f"No conflict report found for {agent_id} on {date}")
 

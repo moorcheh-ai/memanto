@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { openAsBlob } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
-import { Readable } from "node:stream";
 
 import { ServerLifecycle, type ServerOptions } from "./lifecycle.js";
 
@@ -499,42 +498,21 @@ export class Memanto {
     const headers: Record<string, string> = {
       "X-Session-Token": this.sessionToken ?? "",
     };
-    const send = () => {
-      const boundary = `----memanto-${randomUUID()}`;
-      const header = Buffer.from(
-        `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="file"; filename="${escapeMultipartValue(filename)}"\r\n` +
-          "Content-Type: application/octet-stream\r\n\r\n",
-      );
-      const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
-      const body = Readable.from(
-        (async function* streamMultipart() {
-          yield header;
-          for await (const chunk of createReadStream(filePath)) {
-            yield chunk;
-          }
-          yield footer;
-        })(),
-      );
-      headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
-      headers["Content-Length"] = String(
-        header.length + fileStats.size + footer.length,
-      );
+    const send = async () => {
+      const formData = new FormData();
+      const fileBlob = await openAsBlob(filePath);
+      formData.set("file", fileBlob, filename);
+
       return fetch(`${baseUrl}${path}`, {
         method: "POST",
         headers,
-        body: body as unknown as BodyInit,
-        duplex: "half",
-      } as RequestInit & { duplex: "half" });
+        body: formData,
+      });
     };
     const res = await this.sendWithSessionRetry(send, headers, true);
     if (!res.ok) throw await asError(res, `POST ${path} failed`);
     return (await res.json()) as T;
   }
-}
-
-function escapeMultipartValue(value: string): string {
-  return value.replace(/[\r\n]/g, "_").replace(/[\\"]/g, "\\$&");
 }
 
 async function asError(res: Response, prefix: string): Promise<Error> {

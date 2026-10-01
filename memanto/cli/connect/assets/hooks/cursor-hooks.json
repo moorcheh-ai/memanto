@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "_managed_by": "memanto",
+        "command": "\"${SYS_EXECUTABLE}\" \"${HOOKS_DIR}/session_start.py\" --host cursor"
+      }
+    ],
+    "preCompact": [
+      {
+        "_managed_by": "memanto",
+        "command": "\"${SYS_EXECUTABLE}\" \"${HOOKS_DIR}/session_start.py\" --host cursor"
+      }
+    ]
+  }
+}

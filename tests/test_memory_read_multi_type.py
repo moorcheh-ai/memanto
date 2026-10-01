@@ -8,7 +8,7 @@ import pytest
 
 import memanto.app.services.memory_read_service as memory_read_service_module
 from memanto.app.services.memory_read_service import MemoryReadService
-from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.errors import MemoryOperationError as MemoryError
 
 
 def _memory(memory_id: str, memory_type: str, score: float) -> dict:

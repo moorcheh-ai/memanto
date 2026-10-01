@@ -64,7 +64,7 @@ class MemoryParsingService:
                 ),
                 (
                     r"\b(?:i|we|they|he|she|user|client|customer)\s+"
-                    r"(?:can['’]t|cannot)\s+stand\b",
+                    r"(?:can['’]t|can not|cannot)\s+stand\b",
                     6,
                 ),
                 (r"\b(?:prefer|prefers)\s+not\s+to\b", 5),
@@ -81,7 +81,10 @@ class MemoryParsingService:
                     r"\b(?:would rather|rather use|prefer to|prefers to|preference for|likes to)\b",
                     4,
                 ),
-                (r"\b(?:dislike|dislikes|hate|hates|avoid using|not a fan of)\b", 3),
+                (
+                    r"\b(?:dislike|dislikes|hate|hates|detest|detests|loathe|loathes|despise|despises|not a fan of)\b",
+                    5,
+                ),
                 (
                     r"\b(?:works best for|feels better with|is more comfortable with)\b",
                     3,
@@ -173,7 +176,7 @@ class MemoryParsingService:
                     r"\b(?:insight|key point|root cause|what worked|what did not work)\b",
                     4,
                 ),
-                (r"\b(?:next time|in hindsight)\b", 3),
+                (r"\b(?:next time|in retrospect|looking back|going forward)\b", 3),
             ]
         ],
         "error": [

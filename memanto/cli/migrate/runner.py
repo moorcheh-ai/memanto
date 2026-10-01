@@ -256,13 +256,38 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
         # Observations, not memories — many collapse into one signature.
         return len(export.get("observations", []) or [])
     memories = export.get("memories", []) or []
-    if provider == "supermemory" and not memories:
-        # Mirror map_supermemory's fallback: when no extracted memories exist
-        # we harvest document chunks, so the summary should reflect that.
-        return sum(
-            len(doc.get("chunks", []) or [])
-            for doc in (export.get("documents", []) or [])
-        )
+    if provider == "supermemory":
+        mapped_memory_ids: set[str] = set()
+        represented_document_ids: set[str] = set()
+        for memory in memories:
+            content = (
+                memory.get("content")
+                or memory.get("memory")
+                or memory.get("text")
+                or ""
+            ).strip()
+            if not content:
+                continue
+            if memory.get("id"):
+                mapped_memory_ids.add(str(memory["id"]))
+            document_id = memory.get("documentId") or memory.get("document_id")
+            if document_id:
+                represented_document_ids.add(str(document_id))
+
+        uncovered_chunks = 0
+        for doc in export.get("documents", []) or []:
+            doc_id = doc.get("id")
+            doc_memory_ids = {
+                str(memory_id)
+                for memory_id in (doc.get("memory_ids") or [])
+                if memory_id
+            }
+            if (doc_id and str(doc_id) in represented_document_ids) or (
+                doc_memory_ids & mapped_memory_ids
+            ):
+                continue
+            uncovered_chunks += len(doc.get("chunks", []) or [])
+        return len(memories) + uncovered_chunks
     return len(memories)
 
 
@@ -294,7 +319,7 @@ def run_migration(
     batches = list(chunked(rows, BATCH_LIMIT))
     summary.batches = len(batches)
 
-    from memanto.app.utils.errors import MemoryError
+    from memanto.app.utils.errors import MemoryOperationError
 
     for idx, batch in enumerate(batches, 1):
         if on_progress:
@@ -303,7 +328,7 @@ def run_migration(
             )
         try:
             result = client.batch_remember(agent_id=agent_id, memories=batch)
-        except MemoryError:
+        except MemoryOperationError:
             raise
         except Exception as exc:
             summary.failed += len(batch)
@@ -311,27 +336,44 @@ def run_migration(
             continue
 
         if not isinstance(result, dict):
-            raise MemoryError(
+            raise MemoryOperationError(
                 message="Data corruption detected: Received malformed batch response envelope during migration.",
                 details={"result_preview": str(result)[:100]},
             )
 
         batch_results = result.get("results")
         if not isinstance(batch_results, list):
-            raise MemoryError(
+            raise MemoryOperationError(
                 message="Data corruption detected: Received malformed batch result array during migration.",
                 details={"results_preview": str(batch_results)[:100]},
             )
 
+        total_submitted = int(result.get("total_submitted") or 0)
         successful = int(result.get("successful") or 0)
         failed = int(result.get("failed") or 0)
+        rejected = int(result.get("rejected") or 0)
+
+        if (
+            total_submitted < 0
+            or successful < 0
+            or failed < 0
+            or rejected < 0
+            or total_submitted != len(batch)
+            or len(batch_results) != len(batch)
+            or successful + failed + rejected != len(batch)
+        ):
+            raise MemoryOperationError(
+                message="Data corruption detected: Inconsistent batch counters during migration.",
+                details={"result_preview": str(result)[:100]},
+            )
+
         summary.imported += successful
-        summary.failed += failed
+        summary.failed += failed + rejected
 
         # batch_remember reports per-item errors in results[]; surface all errors.
         for item in batch_results:
             if not isinstance(item, dict) or not item:
-                raise MemoryError(
+                raise MemoryOperationError(
                     message="Data corruption detected: Received malformed batch result from storage layer during migration.",
                     details={"item_preview": str(item)[:100]},
                 )
