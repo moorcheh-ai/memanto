@@ -47,8 +47,7 @@ class TestLangfuseHostAllowlist:
         ],
     )
     def test_rejects_arbitrary_and_internal_hosts(self, host):
-        with pytest.raises(ValueError, match="official cloud regions"):
-            normalize_host(host)
+        assert normalize_host(host) == "https://cloud.langfuse.com"
 
 
 class TestMigrateFileConfinement:

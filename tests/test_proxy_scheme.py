@@ -1,0 +1,348 @@
+"""
+Tests for trusted-proxy scheme restoration (MEMANTO_PROXY_ALLOWED_IPS).
+
+When TLS terminates at a reverse proxy, X-Forwarded-Proto carries the
+browser-facing scheme. The middleware may only honor that header from an
+explicit allowlist of proxy peers; otherwise a random client could force the
+session cookie's Secure flag on or off.
+"""
+
+import asyncio
+import logging
+
+import pytest
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+from starlette.testclient import TestClient
+
+from memanto.app.config import settings
+from memanto.app.middleware import TrustedProxySchemeMiddleware
+from memanto.app.routes.auth_deps import (
+    _redact_and_sanitize_url,
+    _sanitize_log_value,
+    set_session_cookie,
+)
+
+TRUSTED_PEER = "10.0.0.5"
+UNTRUSTED_PEER = "203.0.113.9"
+
+
+def _run_middleware(scope: dict, allowed_ips: list[str]) -> str:
+    """Drive the middleware against a stub ASGI child that reports the scheme."""
+    seen: dict[str, str] = {}
+
+    async def child(scope_: dict, receive, send) -> None:
+        seen["scheme"] = scope_.get("scheme") or ""
+
+    async def noop_receive():
+        return {}
+
+    middleware = TrustedProxySchemeMiddleware(child, allowed_ips)
+    asyncio.run(middleware(scope, noop_receive, lambda m: None))
+    return seen["scheme"]
+
+
+def _http_scope(peer: str, proto: str | None) -> dict:
+    headers = []
+    if proto is not None:
+        headers.append((b"x-forwarded-proto", proto.encode("latin-1")))
+    return {
+        "type": "http",
+        "scheme": "http",
+        "client": (peer, 50000),
+        "headers": headers,
+    }
+
+
+class TestTrustedProxySchemeMiddleware:
+    def test_trusted_peer_forwarded_https(self):
+        scope = _http_scope(TRUSTED_PEER, "https")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "https"
+
+    def test_trusted_peer_forwarded_http(self):
+        scope = _http_scope(TRUSTED_PEER, "http")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
+
+    def test_trusted_peer_no_header_unchanged(self):
+        scope = _http_scope(TRUSTED_PEER, None)
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
+
+    def test_untrusted_peer_header_ignored(self):
+        scope = _http_scope(UNTRUSTED_PEER, "https")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
+
+    def test_bogus_proto_ignored(self):
+        scope = _http_scope(TRUSTED_PEER, "ftp")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
+
+    def test_uppercase_proto_normalized(self):
+        scope = _http_scope(TRUSTED_PEER, "HTTPS")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "https"
+
+    def test_empty_allowlist_never_trusts(self):
+        scope = _http_scope(UNTRUSTED_PEER, "https")
+        assert _run_middleware(scope, []) == "http"
+
+    def test_non_http_scope_unaffected(self):
+        scope = {"type": "websocket", "scheme": "ws", "client": (TRUSTED_PEER, 1)}
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "ws"
+
+    def test_ipv4_mapped_peer_matches_allowlist(self):
+        scope = _http_scope("::ffff:10.0.0.5", "https")
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "https"
+
+
+def _run_with_enforcement(
+    scope: dict, allowed_ips: list[str], require_secure: bool
+) -> tuple[bool, int | None]:
+    """Drive the middleware, reporting whether the app ran and any response status."""
+
+    called = {"app": False}
+    start_status = {"value": None}
+
+    async def child(scope_: dict, receive, send) -> None:
+        called["app"] = True
+
+    async def noop_receive():
+        return {}
+
+    async def send(message: dict) -> None:
+        if message.get("type") == "http.response.start":
+            start_status["value"] = message.get("status")
+
+    middleware = TrustedProxySchemeMiddleware(
+        child, allowed_ips, require_secure=require_secure
+    )
+    asyncio.run(middleware(scope, noop_receive, send))
+    return called["app"], start_status["value"]
+
+
+class TestTrustedProxySchemeEnforcement:
+    """MEMANTO_REQUIRE_SECURE also blocks plain HTTP on the request path."""
+
+    def test_require_secure_rejects_plain_http(self):
+        scope = _http_scope(TRUSTED_PEER, None)
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is False
+        assert status == 403
+
+    def test_require_secure_allows_https_from_allowlisted_proxy(self):
+        scope = _http_scope(TRUSTED_PEER, "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_rejects_untrusted_https_spoof(self):
+        scope = _http_scope(UNTRUSTED_PEER, "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is False
+        assert status == 403
+
+    def test_secure_mode_disabled_passes_http_through(self):
+        scope = _http_scope(TRUSTED_PEER, None)
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], False)
+        assert called is True
+        assert status is None
+
+    def test_untrusted_peer_spoofed_https_reset_to_http(self):
+        scope = {
+            "type": "http",
+            "scheme": "https",
+            "client": (UNTRUSTED_PEER, 50000),
+            "headers": [(b"x-forwarded-proto", b"https")],
+        }
+        assert _run_middleware(scope, [TRUSTED_PEER]) == "http"
+
+    def test_require_secure_allows_loopback_plain_http(self):
+        scope = _http_scope("127.0.0.1", None)
+        called, status = _run_with_enforcement(scope, [], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_allows_ipv6_mapped_loopback(self):
+        scope = _http_scope("::ffff:127.0.0.1", None)
+        called, status = _run_with_enforcement(scope, [], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_still_rejects_lan_plain_http(self):
+        scope = _http_scope("192.168.1.15", None)
+        called, status = _run_with_enforcement(scope, [], True)
+        assert called is False
+        assert status == 403
+
+    def test_require_secure_allows_ipv4_mapped_trusted_proxy_https(self):
+        scope = _http_scope("::ffff:10.0.0.5", "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is True
+        assert status is None
+
+    def test_require_secure_rejects_mapped_lan_untrusted(self):
+        scope = _http_scope("::ffff:192.168.1.15", "https")
+        called, status = _run_with_enforcement(scope, [TRUSTED_PEER], True)
+        assert called is False
+        assert status == 403
+
+
+class TestSanitizeLogValue:
+    """CWE-117: request-derived values must not forge log lines via CR/LF."""
+
+    def test_escapes_crlf_and_control_chars(self):
+        payload = "http://evil.test\r\nINJECTED LOG LINE\x1b"
+        cleaned = _sanitize_log_value(payload)
+        assert "\r" not in cleaned
+        assert "\n" not in cleaned
+        assert cleaned == "http://evil.test\\x0d\\x0aINJECTED LOG LINE\\x1b"
+
+    def test_normal_url_unchanged(self):
+        assert _sanitize_log_value("http://127.0.0.1:8000/") == "http://127.0.0.1:8000/"
+
+    def test_non_string_value_stringified(self):
+        assert "127.0.0.1" in _sanitize_log_value(("127.0.0.1", 8000))
+
+
+class TestRedactAndSanitizeUrl:
+    """CWE-532: query data must never reach logs."""
+
+    def test_strips_query_and_fragment(self):
+        url = "http://testserver/login?token=SECRET&next=%2Fadmin#frag"
+        assert _redact_and_sanitize_url(url) == "http://testserver/login"
+
+    def test_control_chars_stripped_from_components(self):
+        result = _redact_and_sanitize_url("http://h/\r\n?q=1")
+        assert result == "http://h/"
+        assert "\r" not in result
+        assert "\n" not in result
+
+    def test_unchanged_when_no_query_or_fragment(self):
+        assert (
+            _redact_and_sanitize_url("https://127.0.0.1:8000/docs")
+            == "https://127.0.0.1:8000/docs"
+        )
+
+
+class TestProxySettingsDefault:
+    def test_proxy_allowed_ips_defaults_empty(self):
+        assert settings.MEMANTO_PROXY_ALLOWED_IPS == ""
+        assert settings.proxy_allowed_ips == []
+
+    def test_proxy_allowed_ips_parses_comma_list(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5,10.0.0.6")
+        assert settings.proxy_allowed_ips == ["10.0.0.5", "10.0.0.6"]
+
+    def test_proxy_allowed_ips_parses_json(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", '["10.0.0.5"]')
+        assert settings.proxy_allowed_ips == ["10.0.0.5"]
+
+    def test_proxy_allowed_ips_ignores_empty_string(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "")
+        assert settings.proxy_allowed_ips == []
+
+    def test_proxy_allowed_ips_rejects_cidr(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5/32")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_hostname(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "proxy.example.com")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_invalid_entry(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5,not-an-ip")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_invalid_json_entry(self, monkeypatch):
+        monkeypatch.setattr(
+            settings, "MEMANTO_PROXY_ALLOWED_IPS", '["10.0.0.5","oops"]'
+        )
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_rejects_malformed_json(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "[10.0.0.5")
+        with pytest.raises(ValueError, match="MEMANTO_PROXY_ALLOWED_IPS"):
+            _ = settings.proxy_allowed_ips
+
+    def test_proxy_allowed_ips_accepts_empty_array(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "[]")
+        assert settings.proxy_allowed_ips == []
+
+    def test_proxy_allowed_ips_canonicalizes_ipv6(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "2001:0DB8::0001")
+        assert settings.proxy_allowed_ips == ["2001:db8::1"]
+
+    def test_proxy_allowed_ips_strips_entries(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", " 10.0.0.5 , ::1 ")
+        assert settings.proxy_allowed_ips == ["10.0.0.5", "::1"]
+
+    def test_proxy_allowed_ips_canonicalizes_ipv4_mapped(self, monkeypatch):
+        monkeypatch.setattr(settings, "MEMANTO_PROXY_ALLOWED_IPS", "::ffff:10.0.0.5")
+        assert settings.proxy_allowed_ips == ["10.0.0.5"]
+
+
+def _proxy_client(allowed_ips: list[str], peer: str) -> TestClient:
+    """TestClient whose peer address is forced to ``peer`` before routing.
+
+    TestClient cannot change its own scope client, so wrap the middleware in an
+    outer ASGI callable that sets the client before delegating.
+    """
+
+    async def login(request) -> JSONResponse:
+        response = JSONResponse({"ok": True})
+        set_session_cookie(response, "token123", request)
+        return response
+
+    app = Starlette(routes=[Route("/login", login)])
+    middleware = TrustedProxySchemeMiddleware(app, allowed_ips)
+
+    async def outer(scope: dict, receive, send) -> None:
+        scope["client"] = (peer, 50001)
+        await middleware(scope, receive, send)
+
+    return TestClient(outer)
+
+
+class TestCookieBehindProxy:
+    def test_forwarded_https_sets_secure(self):
+        client = _proxy_client([TRUSTED_PEER], TRUSTED_PEER)
+        response = client.get("/login", headers={"X-Forwarded-Proto": "https"})
+        assert "Secure" in response.headers["set-cookie"]
+
+    def test_untrusted_proxy_keeps_cookie_plain(self, caplog):
+        client = _proxy_client([TRUSTED_PEER], UNTRUSTED_PEER)
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get("/login", headers={"X-Forwarded-Proto": "https"})
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "plain HTTP" in caplog.text
+
+    def test_cookie_warning_redacts_query_data(self, caplog):
+        client = _proxy_client([TRUSTED_PEER], UNTRUSTED_PEER)
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get(
+                "/login?token=SECRET&next=/admin",
+                headers={"X-Forwarded-Proto": "https"},
+            )
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "/login" in caplog.text
+        assert "SECRET" not in caplog.text
+        assert "next=" not in caplog.text
+
+    def test_spoofed_localhost_host_still_warns(self, caplog):
+        client = _proxy_client([TRUSTED_PEER], UNTRUSTED_PEER)
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get(
+                "/login",
+                headers={"Host": "localhost", "X-Forwarded-Proto": "https"},
+            )
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "plain HTTP" in caplog.text
+
+    def test_loopback_peer_does_not_warn(self, caplog):
+        client = _proxy_client([], "127.0.0.1")
+        with caplog.at_level(logging.WARNING, logger="memanto.app.routes.auth_deps"):
+            response = client.get("/login")
+        assert "Secure" not in response.headers["set-cookie"]
+        assert "plain HTTP" not in caplog.text

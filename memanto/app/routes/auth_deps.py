@@ -4,10 +4,12 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
-from urllib.parse import urlsplit
+import logging
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
+from memanto.app.config import is_loopback_host
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.client_identity import set_memanto_session
@@ -20,6 +22,29 @@ from memanto.app.utils.errors import (
 
 SESSION_COOKIE_NAME = "memanto_session_token"
 
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_log_value(value: object) -> str:
+    """Render ``value`` for logs without control characters (CWE-117).
+
+    Request-derived values (e.g. a URL built from the Host header) must not be
+    able to forge log lines via embedded CR/LF bytes.
+    """
+    return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
+
+
+def _redact_and_sanitize_url(url: str) -> str:
+    """Make a request URL safe to log.
+
+    Query strings and fragments may carry sensitive client data (e.g. tokens),
+    so they are dropped before the remaining URL is sanitized (CWE-532).
+    """
+    parts = urlsplit(url)
+    return _sanitize_log_value(
+        urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    )
+
 
 def set_session_cookie(
     response: Response, session_token: str, request: Request
@@ -31,12 +56,22 @@ def set_session_cookie(
     ever sending the cookie back over the plain-HTTP deployment this ships with by
     default. Mark it Secure only when the current request actually arrived over HTTPS.
     """
+    secure = request.url.scheme == "https"
+    peer_host = request.client.host if request.client else None
+    if not secure and (not is_loopback_host(peer_host) or _has_forwarded_non_loopback(request)):
+        logger.warning(
+            "Issuing the browser UI session cookie over plain HTTP from %s. "
+            "Any network peer that can reach this port can intercept it and "
+            "gain full memory read/write for the active agent. Terminate TLS "
+            "in front of Memanto or bind to a loopback address.",
+            _redact_and_sanitize_url(str(request.url)),
+        )
     response.set_cookie(
         SESSION_COOKIE_NAME,
         session_token,
         httponly=True,
         samesite="strict",
-        secure=request.url.scheme == "https",
+        secure=secure,
         path="/",
     )
 
@@ -131,22 +166,6 @@ def _require_allowed_origin(request: Request) -> None:
         )
 
 
-def _is_loopback_host(host: str | None) -> bool:
-    """Return True when *host* is a loopback address (IPv4/IPv6/mapped)."""
-    if not host:
-        return False
-    import ipaddress
-
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    if addr.is_loopback:
-        return True
-    ipv4_mapped = getattr(addr, "ipv4_mapped", None)
-    return ipv4_mapped is not None and ipv4_mapped.is_loopback
-
-
 def _is_loopback_origin(origin: str | None) -> bool:
     """Return True when a browser Origin points at the local Memanto host."""
     if not origin or not isinstance(origin, str):
@@ -157,7 +176,7 @@ def _is_loopback_origin(origin: str | None) -> bool:
         return False
     if parsed.scheme not in {"http", "https"}:
         return False
-    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+    return parsed.hostname == "localhost" or is_loopback_host(parsed.hostname)
 
 
 def _is_loopback_host_header(host: str | None) -> bool:
@@ -168,7 +187,7 @@ def _is_loopback_host_header(host: str | None) -> bool:
         hostname = urlsplit(f"//{host}").hostname
     except ValueError:
         return False
-    return hostname == "localhost" or _is_loopback_host(hostname)
+    return hostname == "localhost" or is_loopback_host(hostname)
 
 
 def _is_cross_site_browser_request(request: Request) -> bool:
@@ -198,13 +217,13 @@ def _has_forwarded_non_loopback(request: Request) -> bool:
     if xff:
         for ip in xff.split(","):
             cleaned = ip.strip()
-            if cleaned and not _is_loopback_host(cleaned):
+            if cleaned and not is_loopback_host(cleaned):
                 return True
 
     x_real_ip = request.headers.get("x-real-ip")
     if x_real_ip:
         cleaned = x_real_ip.strip()
-        if cleaned and not _is_loopback_host(cleaned):
+        if cleaned and not is_loopback_host(cleaned):
             return True
 
     forwarded = request.headers.get("forwarded")
@@ -220,7 +239,7 @@ def _has_forwarded_non_loopback(request: Request) -> bool:
                         ipaddress.ip_address(val)
                     except ValueError:
                         val = val.rsplit(":", 1)[0].strip()
-                if val and not _is_loopback_host(val):
+                if val and not is_loopback_host(val):
                     return True
 
     return False
@@ -279,7 +298,7 @@ def require_management_access(
 
     client_host = request.client.host if request.client else None
     if (
-        _is_loopback_host(client_host)
+        is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
         and not _has_forwarded_non_loopback(request)
@@ -350,7 +369,7 @@ def get_current_session(
     if session_cookie and not x_session_token:
         client_host = request.client.host if request.client else None
         if (
-            not _is_loopback_host(client_host)
+            not is_loopback_host(client_host)
             or not _is_loopback_host_header(request.headers.get("host"))
             or _is_cross_site_browser_request(request)
         ):
