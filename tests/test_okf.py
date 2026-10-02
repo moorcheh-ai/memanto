@@ -119,8 +119,8 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
                 status="active",
                 created_at="2026-05-28T14:30:00Z",
                 updated_at="2026-06-01T09:15:00Z",
-                expires_at="2026-08-01T09:15:00Z",
-                ttl_seconds=5_529_600,
+                expired_at="2026-08-01T09:15:00Z",
+                expired_by="manual",
                 source_ref="https://example.com/db",
             )
         ],
@@ -141,8 +141,8 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     assert set(pg["tags"]) == {"infra", "db"}
     assert pg["created_at"] is not None
     assert pg["updated_at"].isoformat() == "2026-06-01T09:15:00+00:00"
-    assert pg["expires_at"].isoformat() == "2026-08-01T09:15:00+00:00"
-    assert pg["ttl_seconds"] == 5_529_600
+    assert pg["expired_at"].isoformat() == "2026-08-01T09:15:00+00:00"
+    assert pg["expired_by"] == "manual"
     assert "PostgreSQL 16" in pg["content"]
     assert by_title["Chose Redis"]["type"] == "decision"
 
@@ -155,8 +155,8 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
         "title: Durable fact\n"
         "x_memanto:\n"
         "  updated_at: true\n"
-        "  expires_at: true\n"
-        "  ttl_seconds: true\n"
+        "  expired_at: true\n"
+        "  expired_by: true\n"
         "---\n\n"
         "This memory remains importable.\n",
         encoding="utf-8",
@@ -165,8 +165,8 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
     row = map_okf(load_okf_bundle(tmp_path))[0]
 
     assert row["updated_at"] is not None
-    assert row["expires_at"] is None
-    assert row["ttl_seconds"] is None
+    assert row["expired_at"] is None
+    assert row["expired_by"] is None
 
 
 def test_okf_invalid_provenance_falls_back_to_imported():
@@ -445,3 +445,46 @@ def test_okf_export_preserves_list_tags(tmp_path):
     fact_md = svc.exports_dir / "agent1_okf" / "memories" / "fact" / "a-fact.md"
     fm = yaml.safe_load(fact_md.read_text(encoding="utf-8").split("---", 2)[1])
     assert set(fm["tags"]) == {"infra", "db"}
+
+def test_okf_round_trip_preserves_expired_lifecycle(tmp_path):
+    """An expired memory's lifecycle stamp (expired_at + expired_by) must
+    survive the OKF export -> import round-trip.
+
+    Regression for BountyHub #770: the export previously wrote the dead
+    ``expires_at`` / ``ttl_seconds`` fields instead of the live
+    ``expired_at`` / ``expired_by`` pair, so re-importing an expired
+    memory lost its audit trail (when it expired and why).
+    """
+    memories_by_type = {
+        "fact": [
+            _mem(
+                "m-exp",
+                "Deprecated API endpoint",
+                "The old REST API at /v1 is no longer supported.",
+                tags=["api", "deprecated"],
+                confidence=0.95,
+                provenance="explicit_statement",
+                source="user",
+                status="expired",
+                created_at="2026-01-15T10:00:00Z",
+                updated_at="2026-06-01T12:00:00Z",
+                expired_at="2026-07-01T00:00:00Z",
+                expired_by="manual",
+            ),
+        ],
+    }
+
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle("agent1", memories_by_type, split="file")
+
+    rows = map_okf(load_okf_bundle(result["output_path"]))
+    assert len(rows) == 1
+
+    row = rows[0]
+    # The lifecycle stamp must round-trip, not the dead schema fields.
+    assert row["expired_at"] is not None
+    assert row["expired_at"].isoformat() == "2026-07-01T00:00:00+00:00"
+    assert row["expired_by"] == "manual"
+    # Dead fields must not appear in the mapped row.
+    assert "expires_at" not in row
+    assert "ttl_seconds" not in row

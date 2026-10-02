@@ -416,8 +416,8 @@ class OkfExportService:
             "source",
             "status",
             "updated_at",
-            "expires_at",
-            "ttl_seconds",
+            "expired_at",
+            "expired_by",
         ):
             val = mem.get(key)
             if val not in (None, ""):
