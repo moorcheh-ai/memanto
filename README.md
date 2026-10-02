@@ -19,8 +19,16 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
 </p>
 
+<p align="center">
+  <sub><a href="README.md">English</a> · <a href="i18n/README_es.md">Español</a> · <a href="i18n/README_zh-CN.md">简体中文</a> · <a href="i18n/README_ja.md">日本語</a></sub>
+</p>
+
 ```bash
 pip install memanto
+```
+
+```bash
+npm install @moorcheh-ai/memanto
 ```
 
 <!-- ============================================================
@@ -28,9 +36,9 @@ pip install memanto
      VHS tape provided separately. Under 15s, under 3MB.
      ============================================================ -->
 
-<p align="center">
+<!-- <p align="center">
   <img alt="Memanto in 15 seconds" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/demo.gif" width="900">
-</p>
+</p> -->
 
 ---
 
@@ -280,6 +288,19 @@ Recall is powered by an information-theoretic semantic engine that ships in the 
 
 <br>
 
+**Python** — the `memanto` package ships an in-process client; no server to start:
+
+```python
+from memanto import Memanto
+
+memanto = Memanto(agent_id="my-agent")   # creates the agent on first use
+memanto.remember("Alex prefers oat milk.", type="preference")
+memanto.recall("what does Alex drink?")
+memanto.answer("Does Alex drink dairy?")
+```
+
+Reference: [docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python).
+
 **TypeScript / Node.js** — [`@moorcheh-ai/memanto`](sdks/typescript) boots a local Memanto server via `uvx` and exposes an ergonomic client (`remember` / `recall` / `answer`).
 
 **REST API** — start with `memanto serve`. Endpoint reference at [docs.memanto.ai/api](https://docs.memanto.ai/api) and `http://localhost:8000/docs` while running.
@@ -338,6 +359,5 @@ Questions: [support@moorcheh.ai](mailto:support@moorcheh.ai) · [@moorcheh_ai](h
 ---
 
 <p align="center">
-  <strong>MIT License</strong><br>
-  <sub><a href="README.md">English</a> · <a href="i18n/README_es.md">Español</a> · <a href="i18n/README_zh-CN.md">简体中文</a> · <a href="i18n/README_ja.md">日本語</a></sub>
+  <strong>MIT License</strong>
 </p>

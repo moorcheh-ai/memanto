@@ -512,24 +512,44 @@ class DirectClient:
             raise AgentNotFoundError(f"Agent '{agent_id}' not found")
         return cast(dict[str, Any], agent.model_dump(mode="json"))
 
-    def delete_agent(self, agent_id: str) -> dict[str, Any]:
+    def delete_agent(
+        self, agent_id: str, delete_memories: bool = False
+    ) -> dict[str, Any]:
         """
         Delete an agent.
 
         Args:
             agent_id: Agent identifier.
+            delete_memories: Also permanently delete the agent's memories in
+                Moorcheh (its namespace). By default they are kept and come
+                back if an agent with the same id is created again.
 
         Returns:
-            Confirmation dict with ``status`` and ``agent_id``.
+            Confirmation dict with ``status``, ``agent_id`` and
+            ``memories_deleted``.
+
+        Raises:
+            AgentNotFoundError: If the agent does not exist.
+            NamespaceError: If deleting the memories fails; the agent is then
+                left intact so the delete can be retried.
         """
         logger.debug("Deleting agent '%s'", agent_id)
-        self._get_agent_service().delete_agent(agent_id)
+        agent_service = self._get_agent_service()
+        if not agent_service.get_agent(agent_id):
+            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        if delete_memories:
+            agent_service.delete_agent_memories(agent_id, self.api_key)
+        agent_service.delete_agent(agent_id)
         self._get_session_service().delete_session(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
             self.agent_id = None
             self._cached_session = None
-        return {"status": "deleted", "agent_id": agent_id}
+        return {
+            "status": "deleted",
+            "agent_id": agent_id,
+            "memories_deleted": delete_memories,
+        }
 
     # Session Management
 

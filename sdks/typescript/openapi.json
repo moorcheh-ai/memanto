@@ -3232,7 +3232,7 @@
           "Sessions & Agents"
         ],
         "summary": "Delete Agent",
-        "description": "Delete agent\n\nAlways deletes local agent metadata.\nIf `delete-backup-too=true`, also deletes the agent memory namespace in Moorcheh.",
+        "description": "Delete agent\n\nAlways deletes local agent metadata.\nIf `delete-backup-too=true`, also permanently deletes the agent memory\nnamespace in Moorcheh. If that fails, nothing is deleted and the error is\nreturned, so the request can be retried.",
         "operationId": "delete_agent_api_v2_agents__agent_id__delete",
         "parameters": [
           {

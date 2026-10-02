@@ -994,6 +994,28 @@ class TestMEMANTOAPI:
         )
 
     @pytest.mark.asyncio
+    async def test_delete_agent_backup_failure_keeps_agent(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A failed namespace delete is reported and the agent is left intact."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": "to-delete-fail"},
+        )
+        mock_moorcheh.namespaces.delete.side_effect = Exception("network down")
+        response = await client.delete(
+            "/api/v2/agents/to-delete-fail?delete-backup-too=true",
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+        assert "network down" in response.text
+        still_there = await client.get(
+            "/api/v2/agents/to-delete-fail", headers=auth_headers
+        )
+        assert still_there.status_code == 200
+
+    @pytest.mark.asyncio
     async def test_deactivate_agent(self, client, auth_headers):
         """Test deactivating session"""
         await client.post(

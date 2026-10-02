@@ -27,6 +27,7 @@ from memanto.app.utils.errors import (
     AgentNamespaceConflictError,
     AgentNotFoundError,
     AuthorizationError,
+    NamespaceError,
     SessionNotFoundError,
     map_error_to_http_exception,
 )
@@ -203,7 +204,9 @@ def delete_agent(
     Delete agent
 
     Always deletes local agent metadata.
-    If `delete-backup-too=true`, also deletes the agent memory namespace in Moorcheh.
+    If `delete-backup-too=true`, also permanently deletes the agent memory
+    namespace in Moorcheh. If that fails, nothing is deleted and the error is
+    returned, so the request can be retried.
     """
     try:
         agent = agent_service.get_agent(agent_id)
@@ -214,13 +217,7 @@ def delete_agent(
 
         if delete_backup_too:
             # Delete remote namespace only when explicitly requested.
-            moorcheh_client = moorcheh_clients.get_moorcheh_client()
-            try:
-                moorcheh_client.namespaces.delete(namespace_name=agent.namespace)
-            except Exception:
-                # If namespace is already gone/unreachable, keep best-effort behavior
-                # and continue removing local metadata.
-                pass
+            agent_service.delete_agent_memories(agent_id, moorcheh_api_key)
 
         # Revoke the persisted token before removing agent metadata. If local
         # session cleanup fails, abort the deletion so an apparently deleted
@@ -237,7 +234,7 @@ def delete_agent(
                 )
             )
         }
-    except AgentNotFoundError as e:
+    except (AgentNotFoundError, NamespaceError) as e:
         raise map_error_to_http_exception(e)
 
 
