@@ -426,7 +426,7 @@ def test_okf_export_splits_comma_separated_tags(tmp_path):
     Tags serialized by Moorcheh arrive as a comma-separated string. The
     export must emit one frontmatter list entry per tag, not split the string
     character-by-character.
-    
+
     Regression for BountyHub #770: with tags='project,db' the old
     ``list(tags)`` wrote ["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"].
     """

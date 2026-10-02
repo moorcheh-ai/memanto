@@ -6,7 +6,6 @@ CLI config models have been moved to cli/config/manager.py.
 """
 
 import ipaddress
-import json
 import logging
 import os
 from pathlib import Path
@@ -101,6 +100,7 @@ if _config_file.exists():
 # CLI & YAML Format Models (kept for backward compat with config.yaml structure)
 class ServerConfig(BaseModel):
     """Server configuration"""
+
     url: str = "localhost"
     port: int = 8000
     auto_start: bool = False
@@ -108,6 +108,7 @@ class ServerConfig(BaseModel):
 
 class SessionConfig(BaseModel):
     """Session management configuration"""
+
     default_duration_hours: int = 6
     auto_extend: bool = True
     extend_threshold_minutes: int = 30
@@ -119,6 +120,7 @@ class SessionConfig(BaseModel):
 
 class CLIConfig(BaseModel):
     """CLI behavior configuration"""
+
     interactive_mode: bool = True
     smart_parse: bool = True
     auto_title: bool = True
@@ -128,6 +130,7 @@ class CLIConfig(BaseModel):
 class Settings(BaseSettings):
     # Moorcheh Configuration
     """Unified Settings: sourced from environment / .env files"""
+
     MOORCHEH_API_KEY: str = ""
 
     # Backend selection: "cloud" (default) or "on-prem".
@@ -193,49 +196,13 @@ class Settings(BaseSettings):
 
     MEMANTO_ENABLE_DOCS: bool = False
 
-    MEMANTO_REQUIRE_SECURE: bool = False
-
-    MEMANTO_PROXY_ALLOWED_IPS: str = ""
-
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )
 
 
-    @property
-    def proxy_allowed_ips(self) -> list[str]:
-        raw = (self.MEMANTO_PROXY_ALLOWED_IPS or "").strip()
-        if not raw:
-            return []
-        if raw.startswith("["):
-            try:
-                values = json.loads(raw)
-            except json.JSONDecodeError as exc:
-                raise ValueError(
-                    "MEMANTO_PROXY_ALLOWED_IPS must be a valid JSON array of IP "
-                    "addresses or a comma-separated list"
-                ) from exc
-        else:
-            values = raw.split(",")
-        entries = [str(v).strip() for v in values if str(v).strip()]
-        try:
-            return [_canonical_ip_string(entry) for entry in entries]
-        except ValueError as exc:
-            raise ValueError(
-                "MEMANTO_PROXY_ALLOWED_IPS must contain valid IP addresses "
-                "(CIDR blocks and hostnames are not supported)"
-            ) from exc
-
-
 # Global settings instance
 settings = Settings()
-
-
-def _canonical_ip_string(value: str) -> str:
-    addr = ipaddress.ip_address(value)
-    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
-        return str(addr.ipv4_mapped)
-    return str(addr)
 
 
 def is_loopback_host(host: str | None) -> bool:
@@ -257,34 +224,10 @@ def is_loopback_host(host: str | None) -> bool:
     return False
 
 
-def plain_http_exposure_message(host: str) -> str | None:
-    if is_loopback_host(host):
-        return None
-    return (
-        f"Memanto is serving over plain HTTP on {host!r} (no built-in TLS). Any "
-        "network peer that can reach this port can sniff the session cookie "
-        "(full memory read/write for an active agent) and enumerate every API "
-        "route. Bind to a loopback address (127.0.0.1) or terminate TLS in "
-        "front of Memanto."
-    )
-
-
-def check_secure_deployment(host: str) -> None:
-    if is_loopback_host(host):
-        return
-    message = plain_http_exposure_message(host)
-    if settings.MEMANTO_REQUIRE_SECURE:
-        if not settings.proxy_allowed_ips:
-            raise RuntimeError(f"MEMANTO_REQUIRE_SECURE is set. {message}")
-        return
-    if not settings.DEBUG:
-        logger.warning("%s", message)
-
-
 def get_data_dir() -> Path:
     """
     Root data dir for the active backend.
-    
+
     Cloud users keep ``~/.memanto/`` (no migration). On-prem data is
     isolated under ``~/.memanto/on-prem/``.
     """

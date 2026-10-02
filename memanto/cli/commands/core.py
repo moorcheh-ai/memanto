@@ -21,7 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from memanto.app.clients.backend import Backend
-from memanto.app.config import is_loopback_host, plain_http_exposure_message, settings
+from memanto.app.config import is_loopback_host, settings
 from memanto.cli.commands._shared import (
     ACCENT,
     BOLD_BRIGHT,
@@ -42,25 +42,16 @@ from memanto.cli.commands._shared import (
 
 
 def _notify_exposed_deployment(host: str) -> None:
-    """Warn (or hard-fail) when MEMANTO serves plain HTTP on the network.
-
-    ``DEBUG`` suppresses the non-fatal warning only; it must never disable the
-    ``MEMANTO_REQUIRE_SECURE`` enforcement. A non-empty
-    ``MEMANTO_PROXY_ALLOWED_IPS`` permits startup under
-    ``MEMANTO_REQUIRE_SECURE``: a trusted TLS-terminating proxy fronts the
-    deployment (see ``check_secure_deployment``).
-    """
-    if is_loopback_host(host):
+    """Warn when MEMANTO serves plain HTTP on a network-facing address."""
+    if settings.DEBUG or is_loopback_host(host):
         return
-    message = plain_http_exposure_message(host)
-    if message is None:
-        return
-    if settings.MEMANTO_REQUIRE_SECURE:
-        if not settings.proxy_allowed_ips:
-            _error(message)
-        return
-    elif not settings.DEBUG:
-        _warn(message)
+    _warn(
+        f"Memanto is serving over plain HTTP on {host!r} (no built-in TLS). Any "
+        "network peer that can reach this port can sniff the session cookie "
+        "(full memory read/write for an active agent) and enumerate every API "
+        "route. Bind to a loopback address (127.0.0.1) or terminate TLS in "
+        "front of Memanto."
+    )
 
 
 def _first_run_setup() -> None:
@@ -1053,7 +1044,6 @@ def serve(
             port=port,
             reload=reload,
             log_level="info",
-            proxy_headers=False,
         )
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Server stopped.[/yellow]")
@@ -1172,7 +1162,6 @@ def ui(
             host=host,
             port=port,
             log_level="info",
-            proxy_headers=False,
         )
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Dashboard stopped.[/yellow]")

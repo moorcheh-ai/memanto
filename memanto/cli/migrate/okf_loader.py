@@ -81,7 +81,7 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
     try:
         document_fd = os.open(
             name,
-            _READ_FLAGS | os.O_NOFOLLOW,
+            _READ_FLAGS | getattr(os, "O_NOFOLLOW", 0),
             dir_fd=directory_fd,
         )
         return _read_open_regular_file(document_fd, display_path)
@@ -135,7 +135,7 @@ def _read_directory_documents(
             try:
                 child_fd = os.open(
                     name,
-                    _READ_FLAGS | os.O_DIRECTORY | os.O_NOFOLLOW,
+                    _READ_FLAGS | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
                     dir_fd=directory_fd,
                 )
             except OSError as exc:
@@ -168,7 +168,7 @@ def _read_directory_documents(
 def _extract_links(body: str) -> list[tuple[str, str]]:
     """
     Extract inline Markdown links in a single left-to-right pass.
-    
+
     Repeatedly applying a regular expression from every ``[`` candidate makes
     malformed Markdown increasingly expensive to scan. ``str.find`` keeps the
     loader linear while preserving the intentionally small link syntax handled
@@ -208,7 +208,7 @@ def _load_documents_secure(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
     try:
-        root_fd = os.open(root, _READ_FLAGS | os.O_NOFOLLOW)
+        root_fd = os.open(root, _READ_FLAGS | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError as exc:
         raise FileNotFoundError(f"OKF bundle not found: {original_path}") from exc
     except OSError as exc:
@@ -245,7 +245,7 @@ def _load_documents_secure(
             try:
                 scan_fd = os.open(
                     "memories",
-                    _READ_FLAGS | os.O_DIRECTORY | os.O_NOFOLLOW,
+                    _READ_FLAGS | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
                     dir_fd=root_fd,
                 )
             except OSError as exc:

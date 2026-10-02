@@ -64,15 +64,26 @@ def test_split_api_key_rejects_a_half_credential(bad):
         split_api_key(bad)
 
 
-def test_normalize_host_handles_cloud_and_self_hosted():
+def test_normalize_host_handles_cloud_and_public_self_hosted(monkeypatch):
     assert normalize_host(None) == "https://cloud.langfuse.com"
     assert normalize_host("") == "https://cloud.langfuse.com"
     assert normalize_host("https://us.cloud.langfuse.com/") == (
         "https://us.cloud.langfuse.com"
     )
-    # Rebind/SSRF mitigation: Unresolvable internal hosts fall back to the cloud default.
-    assert normalize_host("langfuse.internal") == "https://cloud.langfuse.com"
-    assert normalize_host("http://localhost:3000") == "https://cloud.langfuse.com"
+    monkeypatch.setattr(
+        langfuse_export, "_resolve_public_ip", lambda host: "203.0.113.10"
+    )
+    assert normalize_host("langfuse.example") == "https://langfuse.example"
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["http://localhost:3000", "langfuse.internal", "https://127.0.0.1"],
+)
+def test_normalize_host_rejects_unsafe_hosts(host, monkeypatch):
+    monkeypatch.setattr(langfuse_export, "_resolve_public_ip", lambda _host: None)
+    with pytest.raises(ValueError, match="Langfuse host"):
+        normalize_host(host)
 
 
 # --------------------------------------------------------------------------

@@ -279,7 +279,7 @@ class AgentService:
         """
         validate_safe_id(agent_id, "agent_id")
         namespace = self._generate_namespace(agent_id)
-        client = get_moorcheh_client(api_key=moorcheh_api_key)
+        client = get_moorcheh_client()
         try:
             client.namespaces.delete(namespace_name=namespace)
             logger.info("Namespace deleted in Moorcheh: %s", namespace)

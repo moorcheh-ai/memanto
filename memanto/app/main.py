@@ -11,8 +11,7 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
-from memanto.app.config import check_secure_deployment, settings
-from memanto.app.middleware import TrustedProxySchemeMiddleware
+from memanto.app.config import settings
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
@@ -102,20 +101,6 @@ def _validate_cors_settings(
         )
 
 
-# If TLS terminates at a trusted reverse proxy, restore the browser-facing
-# scheme so the session cookie is marked Secure (see auth_deps.py). Off by
-# default: X-Forwarded-Proto is only honored from explicit peers. The
-# middleware is always installed so MEMANTO_REQUIRE_SECURE is enforced on every
-# entrypoint, including direct `uvicorn memanto.app.main:app` launches that
-# skip the `__main__` startup guard. Tools then must also run Uvicorn with
-# --no-proxy-headers (as `memanto serve`/`ui` and the Dockerfile do), or Uvicorn
-# can rewrite scope["client"] from X-Forwarded-For and defeat the peer allowlist.
-app.add_middleware(
-    TrustedProxySchemeMiddleware,
-    allowed_ips=settings.proxy_allowed_ips,
-    require_secure=settings.MEMANTO_REQUIRE_SECURE,
-)
-
 # Add CORS middleware
 _validate_cors_settings(settings.ALLOWED_ORIGINS, settings.CORS_ALLOW_CREDENTIALS)
 app.add_middleware(
@@ -187,13 +172,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
 
-    try:
-        check_secure_deployment(host="0.0.0.0")
-    except RuntimeError as exc:
-        raise SystemExit(str(exc)) from exc
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        proxy_headers=False,
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000)

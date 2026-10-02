@@ -162,21 +162,26 @@ def normalize_host(host: str | None) -> str:
       * explicit http:// -> rejected (cleartext + Langfuse is HTTPS-only)
       * official cloud regions -> allowed as-is
       * any other host -> must resolve to a PUBLIC IP (DNS-rebind guard);
-        private/loopback/link-local/metadata hosts fall back to the default
+        private/loopback/link-local/metadata hosts are rejected
     """
     text = (host or "").strip().rstrip("/")
     if not text:
         return DEFAULT_HOST
     if text.startswith("http://"):
-        # Reject cleartext custom hosts: the secret key must not go over HTTP.
-        return DEFAULT_HOST
+        raise ValueError("Langfuse host must use HTTPS.")
     if not text.startswith("https://"):
         text = f"https://{text}"
+    parsed = urllib.parse.urlsplit(text)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ValueError("Langfuse host must be a valid HTTPS URL.")
     if text in _ALLOWED_LANGFUSE_HOSTS:
         return text
     ip = _resolve_public_ip(text)
     if ip is None:
-        return DEFAULT_HOST
+        raise ValueError(
+            "Langfuse host must resolve to a public IP address. "
+            "Private, loopback, and unresolvable hosts are not allowed."
+        )
     return text
 
 
