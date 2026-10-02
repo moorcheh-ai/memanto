@@ -173,11 +173,50 @@ async def _session(user_id: str = "alice", *events: Event):
 # ---------------------------------------------------------------------- #
 
 
-def test_default_agent_id_is_a_valid_memanto_id() -> None:
-    assert default_agent_id("travel app") == AGENT
-    assert default_agent_id("a/b::c") == "adk-a-b--c"
-    assert default_agent_id("!!!") == "adk-app"
+def test_default_agent_id_preserves_safe_names_and_bounds_length() -> None:
+    assert default_agent_id("travel-app") == AGENT
+    assert default_agent_id("a" * 60) == "adk-" + ("a" * 60)
+    assert len(default_agent_id("a" * 61)) == 64
+    assert default_agent_id("a" * 61).startswith("adk-h-")
 
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("acme.app", "acme-app"),
+        ("a/b::c", "a-b--c"),
+        ("!!!", "app"),
+        ("", "!!!"),
+    ],
+)
+def test_default_agent_id_does_not_collapse_distinct_app_names(
+    first: str, second: str
+) -> None:
+    assert default_agent_id(first) != default_agent_id(second)
+
+
+async def test_colliding_normalized_app_names_cannot_read_each_others_memories(
+    backend: FakeBackend, service: MemantoMemoryService
+) -> None:
+    await service.add_memory(
+        app_name="acme.app",
+        user_id="user-42",
+        memories=[
+            MemoryEntry(
+                content=types.Content(
+                    parts=[types.Part.from_text(text="private account recovery code")]
+                ),
+                custom_metadata={},
+            )
+        ],
+    )
+
+    result = await service.search_memory(
+        app_name="acme-app", user_id="user-42", query="recovery code"
+    )
+
+    assert result.memories == []
+    assert default_agent_id("acme.app") != default_agent_id("acme-app")
 
 def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
