@@ -1,0 +1,47 @@
+name: Go SDK
+
+on:
+  push:
+    branches: main
+    paths:
+      - "sdks/go/**"
+      - "sdks/typescript/openapi.json"
+      - ".github/workflows/sdk-go.yml"
+  pull_request:
+    paths:
+      - "sdks/go/**"
+      - "sdks/typescript/openapi.json"
+      - ".github/workflows/sdk-go.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/go
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: sdks/go/go.mod
+          cache-dependency-path: sdks/go/go.sum
+
+      - name: Check generated models match the spec
+        run: |
+          go generate ./...
+          git diff --exit-code -- . \
+            || (echo "::error::Generated Go models are out of date. Run \`go generate ./...\` in sdks/go and commit." && exit 1)
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
