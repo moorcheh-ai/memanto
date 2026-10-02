@@ -21,7 +21,18 @@ def test_generic_errors_redact_secrets_from_client_details():
     assert http_error.status_code == 500
     assert api_key not in rendered_detail
     assert session_token not in rendered_detail
-    assert "[REDACTED]" in rendered_detail
+    assert "upstream failed" not in rendered_detail
+
+
+def test_json_embedded_string_redaction():
+    from memanto.app.utils.errors import redact_sensitive_text
+
+    secret_val = "server-secret-" + ("x" * 20)
+    embedded_json = f'{{"password": "{secret_val}"}}'
+    redacted = redact_sensitive_text(embedded_json)
+
+    assert secret_val not in redacted
+    assert "[REDACTED]" in redacted
 
 
 def test_memanto_errors_redact_nested_detail_values():
@@ -89,9 +100,7 @@ def test_create_error_response_redacts_sensitive_fields():
 def test_redact_quoted_secret_assignments():
     """Verify that secrets assigned inside quotes are redacted properly."""
     raw_text = (
-        "password='supersecretpass' and "
-        'api_key="sk-1234567890" and '
-        "secret: some_val"
+        "password='supersecretpass' and api_key=\"sk-1234567890\" and secret: some_val"
     )
     http_error = map_error_to_http_exception(RuntimeError(raw_text))
     rendered_detail = http_error.detail["details"]["original_error"]

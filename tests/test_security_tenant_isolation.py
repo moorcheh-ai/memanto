@@ -6,7 +6,7 @@ Tests for Issue #1852 (The Memanto Security Challenge)
 import pytest
 from pydantic import ValidationError
 
-from memanto.app.core import MemoryRecord, MemoryTag
+from memanto.app.core import MemoryRecord
 
 
 def test_tag_rejects_null_byte_and_path_traversal():
@@ -33,7 +33,9 @@ def test_tag_rejects_null_byte_and_path_traversal():
             )
         # Verify the validation error is specifically raised for the tags field
         errors = exc_info.value.errors()
-        assert any("tags" in str(err.get("loc")) for err in errors), f"ValidationError did not target tags for {tag}: {errors}"
+        assert any("tags" in str(err.get("loc")) for err in errors), (
+            f"ValidationError did not target tags for {tag}: {errors}"
+        )
 
 
 def test_tag_accepts_valid_slugs():

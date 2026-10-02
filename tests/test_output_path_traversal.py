@@ -104,8 +104,6 @@ class TestValidateOutputPath:
             "config.json",
             "secret_key",
             ".env",
-            "exports",
-            "exports/victim_bundle",
         ]:
             with pytest.raises(HTTPException) as exc:
                 self.fn(target, base_dir=base)

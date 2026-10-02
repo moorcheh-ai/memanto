@@ -258,7 +258,6 @@ def validate_output_path(
         "config.json",
         "secret_key",
         ".env",
-        "exports",
     }
     rel_parts = rel_path.parts
     if rel_parts and rel_parts[0].lower() in RESERVED_ROOT_TARGETS:

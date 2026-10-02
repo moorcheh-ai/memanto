@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
+from fastapi import HTTPException
 
 from memanto.app.config import get_data_dir
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
@@ -155,11 +156,18 @@ class OkfExportService:
         if output_dir is None:
             base = self.exports_dir / f"{agent_id}_okf"
         else:
+            # We explicitly allow outputting under the 'exports' directory when writing OKF bundles
+            # unless the path points directly to 'exports' itself or escapes the parent.
             validated = validate_output_path(
                 str(output_dir), base_dir=self.exports_dir.parent
             )
             assert validated is not None
             base = validated
+            if base == self.exports_dir:
+                raise HTTPException(
+                    status_code=400,
+                    detail="output_path cannot target reserved internal path 'exports'.",
+                )
         if base.exists() and not base.is_dir():
             raise NotADirectoryError(f"OKF bundle path is not a directory: {base}")
         base.parent.mkdir(parents=True, exist_ok=True)
@@ -419,15 +427,16 @@ class OkfExportService:
     # Rendering helpers
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:
         """Render a single memory dict as one OKF markdown document."""
-        content = (mem.get("content") or "").strip()
-        content = encode_okf_delimiter(content)
+        raw_content = (mem.get("content") or "").strip()
         title = mem.get("title") or "Untitled"
 
         frontmatter: dict[str, Any] = {"type": mem_type, "title": title}
 
-        description = self._first_line(content)
+        description = self._first_line(raw_content)
         if description:
             frontmatter["description"] = description
+
+        content = encode_okf_delimiter(raw_content)
 
         # Tags arrive in two shapes depending on where the record came from:
         # Moorcheh serializes the flat ``tags`` field as a comma-separated string,

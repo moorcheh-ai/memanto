@@ -1133,8 +1133,12 @@ async def generate_daily_summary(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = DirectClient(moorcheh_api_key)
+        client.session_token = session.session_token
+        client.agent_id = agent_id
+
         result = await asyncio.to_thread(
-            DirectClient(moorcheh_api_key).generate_daily_summary,
+            client.generate_daily_summary,
             agent_id,
             resolved_date,
             None,

@@ -68,20 +68,34 @@ def _bounded_tags(tags: list[str]) -> tuple[list[str], list[str]]:
     """Split tags into ``(kept, extra)`` so every kept tag is storable as-is.
 
     One out-of-bounds tag list fails validation for the whole write batch,
-    so tags that are too long, contain a comma (tags are stored
-    comma-joined), or exceed the per-memory cap are returned as ``extra``
-    for the supporting-data footer instead of being altered.
+    so tags that are too long, contain invalid characters, or exceed the per-memory
+    cap are returned as ``extra`` for the supporting-data footer instead of being altered.
     """
+    import re
+
+    TAG_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+
     kept: list[str] = []
     extra: list[str] = []
     for tag in tags:
         text = tag.strip()
         if not text or text in kept:
             continue
-        if len(text) > _MAX_TAG_CHARS or "," in text or len(kept) >= _MAX_TAGS:
+        # Replace '=' with ':' for tag compatibility, as '=' is not allowed
+        text_for_match = text
+        if "=" in text:
+            text_for_match = text.replace("=", "-")
+
+        if (
+            len(text) > _MAX_TAG_CHARS
+            or "," in text
+            or not TAG_PATTERN.match(text_for_match)
+            or len(kept) >= _MAX_TAGS
+        ):
             extra.append(text)
         else:
-            kept.append(text)
+            # We must fix the tag itself to pass pydantic validation
+            kept.append(text.replace("=", "-") if "=" in text else text)
     return kept, extra
 
 

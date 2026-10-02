@@ -15,8 +15,8 @@ _AUTH_HEADER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _SECRET_ASSIGNMENT_PATTERN = re.compile(
-    r"\b(api[_-]?key|session[_-]?token|access[_-]?token|refresh[_-]?token|"
-    r"password|secret)\b(\s*[:=]\s*)(['\"]?)(.*?)\3(?=[\s,}]|\Z)",
+    r"(['\"]?)\b(api[_-]?key|session[_-]?token|access[_-]?token|refresh[_-]?token|"
+    r"password|secret)\b\1(\s*[:=]\s*)(['\"]?)(.*?)\4(?=[\s,}]|\Z)",
     re.IGNORECASE,
 )
 _CLI_SECRET_ARG_PATTERN = re.compile(
@@ -49,7 +49,7 @@ _SENSITIVE_DETAIL_KEYS = {
 def redact_sensitive_text(text: str) -> str:
     """Redact secrets from text before exposing it to API callers."""
     redacted = _AUTH_HEADER_PATTERN.sub(rf"\1{_REDACTED}", text)
-    redacted = _SECRET_ASSIGNMENT_PATTERN.sub(rf"\1\2\3{_REDACTED}\3", redacted)
+    redacted = _SECRET_ASSIGNMENT_PATTERN.sub(rf"\1\2\1\3\4{_REDACTED}\4", redacted)
     redacted = _CLI_SECRET_ARG_PATTERN.sub(rf"\1{_REDACTED}", redacted)
     redacted = _JWT_PATTERN.sub(_REDACTED, redacted)
     return _BARE_SECRET_PATTERN.sub(_REDACTED, redacted)
@@ -230,7 +230,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             500,
             "InternalServerError",
             "An unexpected error occurred",
-            {"original_error": str(error)},
+            None,
         )
 
 
