@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import errno
@@ -51,16 +49,16 @@ _NOFOLLOW_ERRNOS: set[int] = {
     if isinstance(code, int)
 }
 
+
 def _read_open_regular_file(fd: int, display_path: Path) -> str:
-    
     if not stat.S_ISREG(os.fstat(fd).st_mode):
         raise ValueError(f"OKF document is not a regular file: {display_path}")
 
     with os.fdopen(os.dup(fd), "r", encoding="utf-8") as stream:
         return stream.read()
 
+
 def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
-    
     document_fd: int | None = None
     try:
         document_fd = os.open(
@@ -79,10 +77,10 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
         if document_fd is not None:
             os.close(document_fd)
 
+
 def _read_directory_documents(
     directory_fd: int, prefix: Path = Path()
 ) -> list[tuple[Path, str]]:
-    
     try:
         with os.scandir(directory_fd) as entries:
             names = sorted(entry.name for entry in entries)
@@ -148,8 +146,8 @@ def _read_directory_documents(
 
     return documents
 
+
 def _extract_links(body: str) -> list[tuple[str, str]]:
-    
     links: list[tuple[str, str]] = []
     cursor = 0
 
@@ -179,10 +177,10 @@ def _extract_links(body: str) -> list[tuple[str, str]]:
 
     return links
 
+
 def _load_documents_secure(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
-    
     try:
         root_fd = os.open(root, _READ_FLAGS | os.O_NOFOLLOW)
     except FileNotFoundError as exc:
@@ -248,15 +246,15 @@ def _load_documents_secure(
             os.close(scan_fd)
         os.close(root_fd)
 
+
 def _load_documents_portable(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
-    
     try:
         root_stat = root.lstat()
     except FileNotFoundError:
         raise FileNotFoundError(f"OKF bundle not found: {original_path}")
-        
+
     if stat.S_ISLNK(root_stat.st_mode):
         raise ValueError(
             f"OKF bundle path must not be a symbolic link: {original_path}"
@@ -292,7 +290,7 @@ def _load_documents_portable(
                 is_unsafe = True
                 break
             current = current.parent
-            
+
         if is_unsafe:
             raise ValueError(
                 f"OKF bundle contains a symbolic-link document or directory: {file_path}"
@@ -302,8 +300,8 @@ def _load_documents_portable(
 
     return root, documents
 
+
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
-    
     root = Path(os.path.abspath(os.fspath(path)))
     if root.is_symlink():
         raise ValueError(f"OKF bundle path must not be a symbolic link: {path}")
@@ -311,8 +309,8 @@ def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     with okf_bundle_lock(_bundle_lock_root(root), shared=True):
         return _load_okf_bundle(root, path)
 
+
 def _bundle_lock_root(path: Path) -> Path:
-    
     if path.suffix.lower() != ".md":
         return path
 
@@ -322,8 +320,8 @@ def _bundle_lock_root(path: Path) -> Path:
 
     return path.parent
 
+
 def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
-    
     if _SECURE_DIR_FD:
         rel_base, documents = _load_documents_secure(root, display_path)
     else:
@@ -341,8 +339,8 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
 
     return {"memories": memories}
 
+
 def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] | None:
-    
     match = _FRONTMATTER_RE.match(chunk)
     if match:
         raw_frontmatter, body = match.group(1), match.group(2)

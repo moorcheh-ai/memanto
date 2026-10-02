@@ -167,8 +167,7 @@ async def _require_local(request: Request) -> None:
         raise HTTPException(
             status_code=403,
             detail=(
-                "UI management endpoints must be requested with a loopback "
-                "Host header."
+                "UI management endpoints must be requested with a loopback Host header."
             ),
         )
 

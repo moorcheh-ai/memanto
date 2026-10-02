@@ -90,9 +90,7 @@ class TestUnauthenticatedUIEndpoints:
             headers={"Origin": "https://evil.example"},
         )
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
-        assert resp.json()["detail"] == (
-            "Origin not allowed for management endpoints"
-        )
+        assert resp.json()["detail"] == ("Origin not allowed for management endpoints")
 
     def test_loopback_cross_site_fetch_metadata_rejected(self):
         """Fetch Metadata blocks no-cors style cross-site POSTs without Origin."""
@@ -200,13 +198,19 @@ class TestLoopbackDetection:
         assert exc_info.value.status_code == 403
 
         # Forwarded header with external IP
-        mock_request.headers = {"forwarded": "for=203.0.113.195;proto=http", "host": "127.0.0.1"}
+        mock_request.headers = {
+            "forwarded": "for=203.0.113.195;proto=http",
+            "host": "127.0.0.1",
+        }
         with pytest.raises(HTTPException) as exc_info:
             asyncio.run(_require_local(mock_request))
         assert exc_info.value.status_code == 403
 
         # Internal loopback proxy chain is allowed
-        mock_request.headers = {"x-forwarded-for": "127.0.0.1, ::1", "host": "127.0.0.1"}
+        mock_request.headers = {
+            "x-forwarded-for": "127.0.0.1, ::1",
+            "host": "127.0.0.1",
+        }
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_management_access_rejects_forwarded_non_loopback(self):

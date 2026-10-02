@@ -1,6 +1,3 @@
-
-
-import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
@@ -10,10 +7,10 @@ from time import perf_counter
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-import memanto.cli.migrate.okf_loader as okf_loader
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
+
 
 def _mem(mem_id, title, content, **extra):
     base = {
@@ -26,8 +23,8 @@ def _mem(mem_id, title, content, **extra):
     base.update(extra)
     return base
 
+
 def test_auto_split_layout(tmp_path):
-    
     memories_by_type = {
         "fact": [
             _mem("f1", "Postgres is the DB", "Uses PostgreSQL 16."),
@@ -56,8 +53,8 @@ def test_auto_split_layout(tmp_path):
 
     assert (base / "metrics" / "overview.md").exists()
 
+
 def test_context_sections_and_import_scope(tmp_path):
-    
     summary = tmp_path / "agent1_2026-07-01.md"
     summary.write_text("# Daily summary\nStuff happened.\n", encoding="utf-8")
     session = tmp_path / "agent1_2026-07-01_s1_summary.md"
@@ -88,8 +85,8 @@ def test_context_sections_and_import_scope(tmp_path):
     assert len(export["memories"]) == 1
     assert export["memories"][0]["title"] == "A fact"
 
+
 def test_memanto_round_trip_preserves_extras(tmp_path):
-    
     memories_by_type = {
         "fact": [
             _mem(
@@ -130,8 +127,8 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     assert "PostgreSQL 16" in pg["content"]
     assert by_title["Chose Redis"]["type"] == "decision"
 
+
 def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
-    
     (tmp_path / "memory.md").write_text(
         "---\n"
         "type: fact\n"
@@ -151,8 +148,8 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
     assert row["expires_at"] is None
     assert row["ttl_seconds"] is None
 
+
 def test_okf_invalid_provenance_falls_back_to_imported():
-    
     export = {
         "memories": [
             {
@@ -165,8 +162,8 @@ def test_okf_invalid_provenance_falls_back_to_imported():
 
     assert map_okf(export)[0]["provenance"] == "imported"
 
+
 def test_foreign_okf_bundle_is_lossless(tmp_path):
-    
     tables = tmp_path / "tables"
     tables.mkdir()
     (tables / "orders.md").write_text(
@@ -200,8 +197,8 @@ def test_foreign_okf_bundle_is_lossless(tmp_path):
     assert "OKF owner: data-team" in row["content"]  # unknown key -> footer
     assert "customers -> /tables/customers.md" in row["content"]  # link -> footer
 
+
 def test_loader_splits_stacked_file(tmp_path):
-    
     memories_by_type = {
         "event": [
             _mem(f"e{i}", f"Standup {i}", f"Standup {i} happened.") for i in range(5)
@@ -216,8 +213,8 @@ def test_loader_splits_stacked_file(tmp_path):
         f"Standup {i}" for i in range(5)
     }
 
+
 def test_reexport_replaces_stale_bundle_entries(tmp_path):
-    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {
         "fact": [_mem("f1", "Old fact", "This fact was later deleted.")],
@@ -235,8 +232,8 @@ def test_reexport_replaces_stale_bundle_entries(tmp_path):
     imported = load_okf_bundle(result["output_path"])["memories"]
     assert [memory["title"] for memory in imported] == ["Current fact"]
 
+
 def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
-    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {"fact": [_mem("f1", "Last good fact", "Keep this snapshot.")]}
     result = svc.write_okf_bundle("agent1", first, split="file")
@@ -262,8 +259,8 @@ def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
     assert not list((tmp_path / "exports").glob(".agent1_okf.tmp-*"))
     assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))
 
+
 def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
-    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     svc.write_okf_bundle(
         "agent1", {"fact": [_mem("f1", "Old fact", "Old snapshot.")]}, split="file"
@@ -305,8 +302,8 @@ def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
     assert [memory["title"] for memory in imported] == ["New fact"]
     assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))
 
+
 def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
-    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     svc.write_okf_bundle(
         "agent1", {"fact": [_mem("f1", "Stable slug", "Old snapshot.")]}, split="file"
@@ -348,8 +345,8 @@ def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
 
     assert [memory["body"] for memory in imported] == ["New snapshot."]
 
+
 def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
-    
     okf_file = tmp_path / "links.md"
     okf_file.write_text(
         "---\ntype: fact\ntitle: Links\n---\n"
@@ -365,8 +362,8 @@ def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
         "second -> https://example.com/two",
     ]
 
+
 def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
-    
     okf_file = tmp_path / "malformed-links.md"
     okf_file.write_text(
         "---\ntype: fact\ntitle: Malformed links\n---\n" + "[" * 25_000,
@@ -380,8 +377,8 @@ def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
     assert memory["links"] == []
     assert elapsed < 1.0
 
+
 def test_okf_export_splits_comma_separated_tags(tmp_path):
-    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
 
     memories_by_type = {
@@ -395,8 +392,8 @@ def test_okf_export_splits_comma_separated_tags(tmp_path):
     fm = yaml.safe_load(front)
     assert set(fm["tags"]) == {"project", "db", "prod"}
 
+
 def test_okf_export_preserves_list_tags(tmp_path):
-    
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     memories_by_type = {
         "fact": [

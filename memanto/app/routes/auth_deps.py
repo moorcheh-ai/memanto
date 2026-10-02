@@ -1,5 +1,3 @@
-
-
 import logging
 from urllib.parse import urlsplit, urlunsplit
 
@@ -20,24 +18,26 @@ SESSION_COOKIE_NAME = "memanto_session_token"
 
 logger = logging.getLogger(__name__)
 
+
 def _sanitize_log_value(value: object) -> str:
-    
     return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
 
+
 def _redact_and_sanitize_url(url: str) -> str:
-    
     parts = urlsplit(url)
     return _sanitize_log_value(
         urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
     )
 
+
 def set_session_cookie(
     response: Response, session_token: str, request: Request
 ) -> None:
-    
     secure = request.url.scheme == "https"
     peer_host = request.client.host if request.client else None
-    if not secure and (not is_loopback_host(peer_host) or _has_forwarded_non_loopback(request)):
+    if not secure and (
+        not is_loopback_host(peer_host) or _has_forwarded_non_loopback(request)
+    ):
         logger.warning(
             "Issuing the browser UI session cookie over plain HTTP from %s. "
             "Any network peer that can reach this port can intercept it and "
@@ -54,17 +54,16 @@ def set_session_cookie(
         path="/",
     )
 
+
 def clear_session_cookie(response: Response) -> None:
-    
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
 
+
 def get_moorcheh_api_key() -> str:
-    
     from memanto.app.clients.backend import Backend, parse_backend
     from memanto.app.config import settings
 
     if parse_backend(settings.MEMANTO_BACKEND) == Backend.ON_PREM:
-
         return "on-prem"
 
     if settings.MOORCHEH_API_KEY:
@@ -75,11 +74,11 @@ def get_moorcheh_api_key() -> str:
         detail="Server misconfigured: MOORCHEH_API_KEY is not set",
     )
 
+
 def _extract_presented_credential(
     authorization: str | None,
     x_api_key: str | None,
 ) -> str | None:
-    
     if isinstance(x_api_key, str) and x_api_key.strip():
         return x_api_key.strip()
     if isinstance(authorization, str):
@@ -88,8 +87,8 @@ def _extract_presented_credential(
             return parts[1].strip()
     return None
 
+
 def _origin_is_allowed(request: Request) -> bool:
-    
     origin = request.headers.get("origin")
     if not origin or not isinstance(origin, str):
         return True  # non-browser caller (CLI, curl, SDK) or mock/test request
@@ -97,27 +96,28 @@ def _origin_is_allowed(request: Request) -> bool:
 
     origin_stripped = origin.rstrip("/")
     allowed = [o.rstrip("/") for o in settings.ALLOWED_ORIGINS]
-    
+
     if origin_stripped in allowed:
         return True
-        
+
     if settings.CORS_ORIGIN_REGEX:
         import re
+
         if re.match(settings.CORS_ORIGIN_REGEX, origin_stripped):
             return True
-            
+
     return False
 
+
 def _require_allowed_origin(request: Request) -> None:
-    
     if not _origin_is_allowed(request):
         raise HTTPException(
             status_code=403,
             detail="Origin not allowed for management endpoints",
         )
 
+
 def _is_loopback_origin(origin: str | None) -> bool:
-    
     if not origin or not isinstance(origin, str):
         return False
     try:
@@ -128,8 +128,8 @@ def _is_loopback_origin(origin: str | None) -> bool:
         return False
     return parsed.hostname == "localhost" or is_loopback_host(parsed.hostname)
 
+
 def _is_loopback_host_header(host: str | None) -> bool:
-    
     if not host or not isinstance(host, str):
         return False
     try:
@@ -138,8 +138,8 @@ def _is_loopback_host_header(host: str | None) -> bool:
         return False
     return hostname == "localhost" or is_loopback_host(hostname)
 
+
 def _is_cross_site_browser_request(request: Request) -> bool:
-    
     origin = request.headers.get("origin")
     if origin is not None and isinstance(origin, str):
         return not _is_loopback_origin(origin)
@@ -151,8 +151,8 @@ def _is_cross_site_browser_request(request: Request) -> bool:
         fetch_site = ""
     return fetch_site in {"cross-site", "same-site"}
 
+
 def _has_forwarded_non_loopback(request: Request) -> bool:
-    
     xff = request.headers.get("x-forwarded-for")
     if xff:
         for ip in xff.split(","):
@@ -184,12 +184,12 @@ def _has_forwarded_non_loopback(request: Request) -> bool:
 
     return False
 
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
-    
     import secrets
 
     from memanto.app.clients.backend import Backend, parse_backend
@@ -201,7 +201,6 @@ def require_management_access(
 
     expected: str | None
     if backend == Backend.ON_PREM:
-
         expected = (settings.MEMANTO_SECRET_KEY or "").strip() or None
     else:
         expected = server_key if server_key and server_key != "on-prem" else None
@@ -229,13 +228,14 @@ def require_management_access(
         ),
     )
 
+
 def verify_moorcheh_api_key(
     request: Request,
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
-    
     return require_management_access(request, authorization, x_api_key)
+
 
 def get_current_session(
     request: Request,
@@ -245,7 +245,6 @@ def get_current_session(
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Session:
-    
     session_token = x_session_token or session_cookie
     if not session_token:
         raise HTTPException(
@@ -294,7 +293,6 @@ def get_current_session(
         return session
 
     except SessionExpiredError as e:
-
         recreated = _maybe_auto_recreate_session(
             request=request,
             response=response,
@@ -311,6 +309,7 @@ def get_current_session(
     except (SessionNotFoundError, InvalidSessionTokenError) as e:
         raise map_error_to_http_exception(e)
 
+
 def _maybe_auto_recreate_session(
     request: Request,
     response: Response,
@@ -320,7 +319,6 @@ def _maybe_auto_recreate_session(
     authorization: str | None,
     x_api_key: str | None,
 ) -> Session | None:
-    
     try:
         require_management_access(request, authorization, x_api_key)
     except HTTPException:

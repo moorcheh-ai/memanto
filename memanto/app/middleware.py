@@ -1,5 +1,3 @@
-
-
 import ipaddress
 import logging
 from collections.abc import Awaitable, Callable
@@ -13,8 +11,8 @@ _HTTPS = "https"
 _HTTP = "http"
 _PROTO_HEADER = "x-forwarded-proto"
 
+
 def _normalize_peer_address(peer: str) -> str:
-    
     try:
         addr = ipaddress.ip_address(peer)
     except ValueError:
@@ -23,9 +21,8 @@ def _normalize_peer_address(peer: str) -> str:
         return str(addr.ipv4_mapped)
     return peer
 
-class TrustedProxySchemeMiddleware:
-    
 
+class TrustedProxySchemeMiddleware:
     def __init__(
         self, app: Any, allowed_ips: list[str], require_secure: bool = False
     ) -> None:

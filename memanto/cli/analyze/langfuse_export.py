@@ -258,18 +258,30 @@ def _pinned_transport(host: str) -> httpx.HTTPTransport:
         if not _is_public_ip(ip):
             continue
         return _PinnedIPTransport(pin_host=hostname, pin_ip=addr, pin_family=info[0])
-    return httpx.HTTPTransport()
+    raise RuntimeError(
+        f"Host {host} no longer resolves to a public IP (DNS rebind detected)."
+    )
 
 
 def _client(api_key: str, host: str) -> httpx.Client:
     public_key, secret_key = split_api_key(api_key)
-    return httpx.Client(
+
+    # Instantiate the client normally to inherit environment proxy mounts.
+    # The default HTTPX implementation disables env proxies when `transport`
+    # is passed explicitly.
+    client = httpx.Client(
         base_url=host,
         timeout=REQUEST_TIMEOUT_S,
         auth=httpx.BasicAuth(public_key, secret_key),
         headers={"Content-Type": "application/json"},
-        transport=_pinned_transport(host),
     )
+
+    # Swap the default direct transport with the pinned SSRF-safe one,
+    # preserving proxy mounts for environments that require HTTPS_PROXY.
+    if hasattr(client, "_transport"):
+        client._transport = _pinned_transport(host)
+
+    return client
 
 
 US_HOST = "https://us.cloud.langfuse.com"

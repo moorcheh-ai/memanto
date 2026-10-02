@@ -10,7 +10,7 @@ Service code keeps calling ``get_moorcheh_client()`` and uses the same
 backends expose it.
 """
 
-from typing import Annotated, Any
+from typing import Any
 
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
 
@@ -133,6 +133,7 @@ def get_moorcheh_client() -> Any:
     (``?api_key=...``), re-opening the same bypass (CodeRabbit review).
     """
     return moorcheh_client.get_client()
+
 
 def get_async_moorcheh_client() -> Any:
     """Dependency injection function for async client (cloud or on-prem).

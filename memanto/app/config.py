@@ -1,5 +1,3 @@
-
-
 import ipaddress
 import json
 import logging
@@ -79,16 +77,14 @@ if _config_file.exists():
     except Exception as _exc:
         logger.warning("Failed to load ~/.memanto/on-prem/state.json: %s", _exc)
 
-class ServerConfig(BaseModel):
-    
 
+class ServerConfig(BaseModel):
     url: str = "localhost"
     port: int = 8000
     auto_start: bool = False
 
-class SessionConfig(BaseModel):
-    
 
+class SessionConfig(BaseModel):
     default_duration_hours: int = 6
     auto_extend: bool = True
     extend_threshold_minutes: int = 30
@@ -97,16 +93,15 @@ class SessionConfig(BaseModel):
     auto_renew_interval_hours: int = 6
     auto_recreate_enabled: bool = True
 
-class CLIConfig(BaseModel):
-    
 
+class CLIConfig(BaseModel):
     interactive_mode: bool = True
     smart_parse: bool = True
     auto_title: bool = True
     color_output: bool = True
 
-class Settings(BaseSettings):
 
+class Settings(BaseSettings):
     MOORCHEH_API_KEY: str = ""
 
     MEMANTO_BACKEND: str = "cloud"
@@ -163,7 +158,6 @@ class Settings(BaseSettings):
 
     @property
     def proxy_allowed_ips(self) -> list[str]:
-        
         raw = (self.MEMANTO_PROXY_ALLOWED_IPS or "").strip()
         if not raw:
             return []
@@ -186,17 +180,18 @@ class Settings(BaseSettings):
                 "(CIDR blocks and hostnames are not supported)"
             ) from exc
 
+
 settings = Settings()
 
+
 def _canonical_ip_string(value: str) -> str:
-    
     addr = ipaddress.ip_address(value)
     if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
         return str(addr.ipv4_mapped)
     return str(addr)
 
+
 def is_loopback_host(host: str | None) -> bool:
-    
     raw = (host or "").strip().lower().strip("[]")
     if raw == "localhost":
         return True
@@ -214,8 +209,8 @@ def is_loopback_host(host: str | None) -> bool:
         return mapped is not None and mapped.is_loopback
     return False
 
+
 def plain_http_exposure_message(host: str) -> str | None:
-    
     if is_loopback_host(host):
         return None
     return (
@@ -226,8 +221,8 @@ def plain_http_exposure_message(host: str) -> str | None:
         "front of Memanto."
     )
 
+
 def check_secure_deployment(host: str) -> None:
-    
     if is_loopback_host(host):
         return
     message = plain_http_exposure_message(host)
@@ -238,8 +233,8 @@ def check_secure_deployment(host: str) -> None:
     if not settings.DEBUG:
         logger.warning("%s", message)
 
+
 def get_data_dir() -> Path:
-    
     base = Path.home() / ".memanto"
     if settings.MEMANTO_BACKEND.strip().lower() == "on-prem":
         d = base / "on-prem"
@@ -247,14 +242,14 @@ def get_data_dir() -> Path:
         return d
     return base
 
+
 def get_conflicts_dir() -> Path:
-    
     d = get_data_dir() / "conflicts"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
+
 def get_conflict_report_path(agent_id: str, date: str) -> Path:
-    
     import re
 
     if not re.match(r"^[\w\-]+$", agent_id):

@@ -8,7 +8,6 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from filelock import FileLock, Timeout
 from moorcheh_sdk.exceptions import ConflictError
