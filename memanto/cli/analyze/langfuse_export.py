@@ -21,18 +21,16 @@ provider, so both keys travel as ``"pk-lf-...:sk-lf-..."`` and are split here.
 
 from __future__ import annotations
 
-import contextlib
 import ipaddress
 import json
 import socket
-import socket as _socket_module
-import threading
 import urllib.parse
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+import httpcore
 import httpx
 
 from memanto.cli.migrate.langfuse_rules import CAPTURE_MODES
@@ -185,33 +183,41 @@ def normalize_host(host: str | None) -> str:
     return text
 
 
-_resolver_lock = threading.Lock()
+class _PinnedNetworkBackend(httpcore.NetworkBackend):
+    """Network backend that overrides connect_tcp to connect to a pinned IP address."""
 
+    def __init__(self, backend: httpcore.NetworkBackend, pin_host: str, pin_ip: str):
+        self._backend = backend
+        self._pin_host = pin_host
+        self._pin_ip = pin_ip
 
-@contextlib.contextmanager
-def _pinned_getaddrinfo(pin_host: str, pin_ip: str, pin_family: int):
-    """Temporarily shadow socket.getaddrinfo so *pin_host* always resolves to *pin_ip*.
+    def connect_tcp(  # type: ignore[override]
+        self,
+        host: str,
+        port: int,
+        timeout: Any = None,
+        local_address: Any = None,
+        socket_options: Any = None,
+    ) -> httpcore.NetworkStream:
+        if host == self._pin_host:
+            host = self._pin_ip
+        return self._backend.connect_tcp(
+            host,
+            port,
+            timeout=timeout,
+            local_address=local_address,
+            socket_options=socket_options,
+        )
 
-    This is the DNS-rebinding defense: we resolved and validated *pin_host* as a
-    public address once (see normalize_host/_pinned_transport), then force every
-    connect-time lookup of that name to return the same validated IP — even if the
-    real name server would now answer with an internal address. Restores the
-    original resolver on exit.
-    """
-    with _resolver_lock:
-        orig = _socket_module.getaddrinfo
+    def connect_unix_socket(  # type: ignore[override]
+        self, path: str, timeout: Any = None, socket_options: Any = None
+    ) -> httpcore.NetworkStream:
+        return self._backend.connect_unix_socket(
+            path, timeout=timeout, socket_options=socket_options
+        )
 
-        def _pinned(*args: Any, **kwargs: Any) -> Any:
-            if args and args[0] == pin_host:
-                port = args[1] if len(args) > 1 else kwargs.get("port", 0)
-                return [(pin_family, _socket_module.SOCK_STREAM, 6, "", (pin_ip, port))]
-            return orig(*args, **kwargs)
-
-        _socket_module.getaddrinfo = _pinned  # type: ignore[misc]
-        try:
-            yield
-        finally:
-            _socket_module.getaddrinfo = orig  # type: ignore[misc]
+    def sleep(self, seconds: float) -> None:
+        return self._backend.sleep(seconds)
 
 
 class _PinnedIPTransport(httpx.HTTPTransport):
@@ -220,21 +226,17 @@ class _PinnedIPTransport(httpx.HTTPTransport):
     httpx/httpcore resolve DNS when the connection opens, not when the URL is
     built. Without a pin, a hostile name server could return a public address at
     validation time and an internal (metadata/loopback/RFC1918) address at connect
-    time, bypassing the SSRF guard. We shadow ``socket.getaddrinfo`` for the target
-    hostname during the connect so the TCP connection always lands on the IP we
-    already validated as public. The original hostname stays in the Host header and
-    TLS SNI (``base_url`` is unchanged).
+    time, bypassing the SSRF guard. We use a custom NetworkBackend to rewrite
+    the destination IP for the TCP connection. The original hostname stays in
+    the Host header and TLS SNI (``base_url`` is unchanged).
     """
 
     def __init__(self, pin_host: str, pin_ip: str, pin_family: int, **kwargs: Any):
         super().__init__(**kwargs)
-        self._pin_host = pin_host
-        self._pin_ip = pin_ip
-        self._pin_family = pin_family
-
-    def handle_request(self, request: Any) -> Any:  # type: ignore[override]
-        with _pinned_getaddrinfo(self._pin_host, self._pin_ip, self._pin_family):
-            return super().handle_request(request)
+        if hasattr(self, "_pool") and hasattr(self._pool, "_network_backend"):
+            self._pool._network_backend = _PinnedNetworkBackend(
+                self._pool._network_backend, pin_host, pin_ip
+            )
 
 
 def _pinned_transport(host: str) -> httpx.HTTPTransport:
@@ -248,8 +250,8 @@ def _pinned_transport(host: str) -> httpx.HTTPTransport:
     if not hostname or hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
         return httpx.HTTPTransport()
     try:
-        infos = _socket_module.getaddrinfo(hostname, None)
-    except (_socket_module.gaierror, ValueError) as exc:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, ValueError) as exc:
         raise RuntimeError(f"Could not resolve host '{hostname}': {exc}")
     for info in infos:
         raw_addr = info[4][0]

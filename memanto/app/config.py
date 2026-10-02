@@ -196,6 +196,9 @@ class Settings(BaseSettings):
 
     MEMANTO_ENABLE_DOCS: bool = False
 
+    MEMANTO_REQUIRE_SECURE: bool = False
+    MEMANTO_PROXY_ALLOWED_IPS: list[str] = []
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )

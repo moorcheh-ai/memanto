@@ -12,6 +12,7 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
 from memanto.app.config import settings
+from memanto.app.middleware import TrustedProxySchemeMiddleware
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
@@ -113,6 +114,12 @@ app.add_middleware(
     # Header-authenticated API clients must be able to read an auto-renewed
     # token from the response. Custom response headers are not CORS-safelisted.
     expose_headers=["X-Session-Token"],
+)
+
+app.add_middleware(
+    TrustedProxySchemeMiddleware,
+    allowed_ips=settings.MEMANTO_PROXY_ALLOWED_IPS,
+    require_secure=settings.MEMANTO_REQUIRE_SECURE,
 )
 
 
