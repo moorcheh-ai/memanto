@@ -13,6 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "memanto-mcp",
+      "version": "0.1.3",
       "runtimeHint": "uvx",
       "transport": { "type": "stdio" }
     }

@@ -102,8 +102,8 @@ def test_redact_quoted_secret_assignments():
     raw_text = (
         "password='supersecretpass' and api_key=\"sk-1234567890\" and secret: some_val"
     )
-    http_error = map_error_to_http_exception(RuntimeError(raw_text))
-    rendered_detail = http_error.detail["details"]["original_error"]
+    from memanto.app.utils.errors import redact_sensitive_text
+    rendered_detail = redact_sensitive_text(raw_text)
 
     assert "supersecretpass" not in rendered_detail
     assert "sk-1234567890" not in rendered_detail

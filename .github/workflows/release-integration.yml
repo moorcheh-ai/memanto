@@ -16,6 +16,7 @@ jobs:
     environment: pypi
     permissions:
       contents: read
+      id-token: write # Required for OIDC authentication to MCP Registry
 
     steps:
     - name: Checkout code
@@ -145,3 +146,37 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
         packages-dir: ./integrations/${{ steps.info.outputs.integration }}/dist
         skip-existing: true
+
+    - name: Install mcp-publisher
+      if: steps.info.outputs.integration == 'mcp'
+      run: |
+        curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+        sudo mv mcp-publisher /usr/local/bin/
+
+    - name: Sync version for MCP release
+      if: steps.info.outputs.integration == 'mcp'
+      env:
+        INTEGRATION: ${{ steps.info.outputs.integration }}
+        VERSION: ${{ steps.info.outputs.version }}
+      run: |
+        cd "integrations/$INTEGRATION"
+        echo "Updating server.json to version $VERSION"
+        # Update both root version and the pypi package version
+        jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp.json
+        mv server.tmp.json server.json
+
+    - name: Authenticate to MCP Registry (OIDC)
+      if: steps.info.outputs.integration == 'mcp'
+      env:
+        INTEGRATION: ${{ steps.info.outputs.integration }}
+      run: |
+        cd "integrations/$INTEGRATION"
+        mcp-publisher login github-oidc
+
+    - name: Publish server to MCP Registry
+      if: steps.info.outputs.integration == 'mcp'
+      env:
+        INTEGRATION: ${{ steps.info.outputs.integration }}
+      run: |
+        cd "integrations/$INTEGRATION"
+        mcp-publisher publish
