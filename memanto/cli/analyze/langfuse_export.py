@@ -21,7 +21,13 @@ provider, so both keys travel as ``"pk-lf-...:sk-lf-..."`` and are split here.
 
 from __future__ import annotations
 
+import contextlib
+import ipaddress
 import json
+import socket
+import socket as _socket_module
+import threading
+import urllib.parse
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -87,9 +93,6 @@ def split_api_key(api_key: str) -> tuple[str, str]:
     return public_key, secret_key
 
 
-import ipaddress
-import socket
-
 # Official Langfuse Cloud regions (allowed as-is).
 _ALLOWED_LANGFUSE_HOSTS = {
     "https://cloud.langfuse.com",
@@ -98,28 +101,50 @@ _ALLOWED_LANGFUSE_HOSTS = {
 }
 
 
+def _extract_hostname(host: str) -> str | None:
+    text = (host or "").strip()
+    if not text:
+        return None
+    if not text.startswith(("http://", "https://")):
+        text = f"https://{text}"
+    try:
+        hostname = urllib.parse.urlsplit(text).hostname
+        return hostname
+    except Exception:
+        return None
+
+
+def _is_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or (ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10"))
+    ):
+        return False
+    return True
+
+
 def _resolve_public_ip(host: str) -> str | None:
     """Resolve *host* and return a single public IP, or None if unsafe.
 
     Used to pin the connection target so a DNS rebind between validation and
     connect time cannot redirect the request at an internal address.
     """
-    hostname = host.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0].strip()
-    if hostname in ("localhost", "0.0.0.0", "::1", "127.0.0.1"):
+    hostname = _extract_hostname(host)
+    if not hostname or hostname in ("localhost", "0.0.0.0", "::1", "127.0.0.1"):
         return None
     try:
         infos = socket.getaddrinfo(hostname, None)
         for info in infos:
-            addr = info[4][0].split("%", 1)[0]
+            raw_addr = info[4][0]
+            if not isinstance(raw_addr, str):
+                continue
+            addr = raw_addr.split("%", 1)[0]
             ip = ipaddress.ip_address(addr)
-            if (
-                ip.is_private
-                or ip.is_loopback
-                or ip.is_link_local
-                or ip.is_reserved
-                or ip.is_multicast
-                or (ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10"))
-            ):
+            if not _is_public_ip(ip):
                 continue  # skip internal addresses, but keep looking for a public one
             return addr
     except (socket.gaierror, ValueError):
@@ -155,8 +180,7 @@ def normalize_host(host: str | None) -> str:
     return text
 
 
-import contextlib
-import socket as _socket_module
+_resolver_lock = threading.Lock()
 
 
 @contextlib.contextmanager
@@ -169,19 +193,20 @@ def _pinned_getaddrinfo(pin_host: str, pin_ip: str, pin_family: int):
     real name server would now answer with an internal address. Restores the
     original resolver on exit.
     """
-    orig = _socket_module.getaddrinfo
+    with _resolver_lock:
+        orig = _socket_module.getaddrinfo
 
-    def _pinned(*args: Any, **kwargs: Any) -> Any:
-        if args and args[0] == pin_host:
-            port = args[1] if len(args) > 1 else kwargs.get("port", 0)
-            return [(pin_family, _socket_module.SOCK_STREAM, 6, "", (pin_ip, port))]
-        return orig(*args, **kwargs)
+        def _pinned(*args: Any, **kwargs: Any) -> Any:
+            if args and args[0] == pin_host:
+                port = args[1] if len(args) > 1 else kwargs.get("port", 0)
+                return [(pin_family, _socket_module.SOCK_STREAM, 6, "", (pin_ip, port))]
+            return orig(*args, **kwargs)
 
-    _socket_module.getaddrinfo = _pinned  # type: ignore[misc]
-    try:
-        yield
-    finally:
-        _socket_module.getaddrinfo = orig  # type: ignore[misc]
+        _socket_module.getaddrinfo = _pinned  # type: ignore[misc]
+        try:
+            yield
+        finally:
+            _socket_module.getaddrinfo = orig  # type: ignore[misc]
 
 
 class _PinnedIPTransport(httpx.HTTPTransport):
@@ -214,26 +239,23 @@ def _pinned_transport(host: str) -> httpx.HTTPTransport:
     public) and forced at connect time. If the host cannot be resolved to a public
     IP, a default transport is returned.
     """
-    hostname = host.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0].strip()
-    if hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+    hostname = _extract_hostname(host)
+    if not hostname or hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
         return httpx.HTTPTransport()
     try:
         infos = _socket_module.getaddrinfo(hostname, None)
     except (_socket_module.gaierror, ValueError):
         return httpx.HTTPTransport()
     for info in infos:
-        addr = info[4][0].split("%", 1)[0]
+        raw_addr = info[4][0]
+        if not isinstance(raw_addr, str):
+            continue
+        addr = raw_addr.split("%", 1)[0]
         try:
             ip = ipaddress.ip_address(addr)
         except ValueError:
             continue
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-        ):
+        if not _is_public_ip(ip):
             continue
         return _PinnedIPTransport(pin_host=hostname, pin_ip=addr, pin_family=info[0])
     return httpx.HTTPTransport()

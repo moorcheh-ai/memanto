@@ -24,6 +24,7 @@ from memanto.app.models.session import (
 from memanto.app.services.agent_service import AgentService
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
+    AgentNamespaceConflictError,
     AgentNotFoundError,
     AuthorizationError,
     SessionNotFoundError,
@@ -124,7 +125,7 @@ def create_agent(
     try:
         agent = agent_service.create_agent(agent_create, moorcheh_api_key)
         return agent
-    except AgentAlreadyExistsError as e:
+    except (AgentAlreadyExistsError, AgentNamespaceConflictError) as e:
         raise map_error_to_http_exception(e)
 
 
