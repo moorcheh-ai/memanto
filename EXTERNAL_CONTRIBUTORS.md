@@ -120,3 +120,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @AIVensk
 - @ayyurwork-lang
 - @Hariharanpugazh
+- @uknwplayer

@@ -1,5 +1,7 @@
 # Memanto MCP Server
 
+mcp-name: io.github.moorcheh-ai/memanto
+
 **Persistent semantic memory for any MCP-compatible agent.**
 
 This package exposes [Memanto's](https://memanto.ai) memory primitives —

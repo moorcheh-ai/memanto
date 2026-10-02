@@ -24,7 +24,7 @@ def moorcheh():
 def test_delete_agent_memories_deletes_namespace(tmp_path, moorcheh):
     AgentService(agents_dir=tmp_path).delete_agent_memories("bot", "key")
 
-    moorcheh.factory.assert_called_once_with(api_key="key")
+    moorcheh.factory.assert_called_once_with()
     moorcheh.namespaces.delete.assert_called_once_with(
         namespace_name="memanto_agent_bot"
     )

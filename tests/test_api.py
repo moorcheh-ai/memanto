@@ -59,7 +59,7 @@ def test_env_setup():
 async def client():
     """Create an async client for testing the FastAPI app"""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as ac:
         yield ac
 
 
@@ -199,7 +199,7 @@ class TestMEMANTOAPI:
             json={"agent_id": "cross-site-agent", "pattern": "support"},
         )
 
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_cross_site_loopback_cannot_activate_agent(
@@ -593,6 +593,8 @@ class TestMEMANTOAPI:
         assert "mocked answer" in response.json()["answer"]
         call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
         assert "threshold" not in call_kwargs
+        assert "persistent memory" in call_kwargs["header_prompt"]
+        assert "based on the memory context" in call_kwargs["footer_prompt"]
 
     @pytest.mark.asyncio
     async def test_answer_omits_unset_active_ai_model(
