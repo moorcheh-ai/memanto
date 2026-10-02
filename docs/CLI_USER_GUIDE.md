@@ -351,6 +351,7 @@ memanto recall QUERY [OPTIONS]
 - `--type, -t TEXT` - Filter by memory type
 - `--min-confidence FLOAT` - Minimum confidence score
 - `--tags TEXT` - Filter by tags (comma-separated)
+- `--agents TEXT` - Search several agents in one query (comma-separated agent ids). Every result reports the agent it came from, and `--limit` applies to the merged ranking rather than to each agent. Needs no active agent.
 
 **Examples:**
 ```bash
@@ -367,6 +368,11 @@ python -m cli.main recall "security" \
 python -m cli.main recall "architecture" \
   --tags "database,backend" \
   --limit 20
+
+# Search several agents at once
+python -m cli.main recall "deploy process" \
+  --agents agent-a,agent-b \
+  --limit 10
 ```
 
 **Output:**

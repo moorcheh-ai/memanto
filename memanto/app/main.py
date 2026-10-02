@@ -12,7 +12,7 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
 from memanto.app.config import settings
-from memanto.app.routes import health, sessions
+from memanto.app.routes import health, memory, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
 from memanto.app.utils.client_identity import (
@@ -146,6 +146,10 @@ app.include_router(health.router, tags=["Health"])
 
 # Session-Based API (Primary)
 app.include_router(sessions.router, prefix="/api/v2", tags=["Sessions & Agents"])
+# Cross-agent recall is the one memory route that is not session-scoped, so it
+# is mounted at the API root instead of under the session router's /agents
+# prefix. See ``multi_router`` in memanto/app/routes/memory.py.
+app.include_router(memory.multi_router, prefix="/api/v2", tags=["Memory Operations"])
 
 
 # Web UI Dashboard

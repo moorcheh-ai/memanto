@@ -295,6 +295,18 @@ class RecallResponse(BaseModel):
     count: int
 
 
+class MultiRecallResponse(BaseModel):
+    """Response for one query across several agents.
+
+    Every memory carries ``agent_id`` so a merged ranking stays attributable.
+    """
+
+    agent_ids: list[str]
+    query: str
+    memories: list[MemoryItem]
+    count: int
+
+
 class TemporalRecallResponse(BaseModel):
     agent_id: str
     session_id: str

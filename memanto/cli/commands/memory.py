@@ -617,6 +617,14 @@ def recall(
     limit: int | None = typer.Option(
         None, "--limit", "-n", help="Maximum number of results"
     ),
+    agents: str | None = typer.Option(
+        None,
+        "--agents",
+        help=(
+            "Search several agents in one query (comma-separated agent ids). "
+            "Every result is labelled with the agent it came from."
+        ),
+    ),
     memory_type: str | None = typer.Option(
         None, "--type", "-t", help="Filter by memory type"
     ),
@@ -657,16 +665,49 @@ def recall(
     """Search and retrieve memories for the active agent with temporal query support.
 
     By default both active and expired memories are returned, each clearly
-    labelled. Narrow with --active or --expired.
+    labelled. Narrow with --active or --expired, or search several agents at
+    once with --agents.
     """
     _bind_calling_tool(tool)
     start = time.perf_counter()
-    active_agent_id, active_session_token = config_manager.get_active_session()
 
-    if not active_agent_id or not active_session_token:
-        _error(
-            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+    # ``--agents`` searches several agents at once, so it neither needs nor
+    # uses the active session; every other mode stays scoped to the active agent.
+    # Deduplicated the same way the clients do it, so the agent count in the
+    # header matches the searches actually run.
+    agent_ids = list(
+        dict.fromkeys(
+            agent.strip() for agent in (agents or "").split(",") if agent.strip()
         )
+    )
+    if agents is not None and not agent_ids:
+        _error(
+            "No agents given.",
+            hint="Pass one or more agent ids: --agents agent-a,agent-b",
+        )
+    if agent_ids and (as_of or changed_since or recent):
+        _error(
+            "Cannot combine --agents with temporal flags.",
+            hint="--as-of, --changed-since and --recent follow one agent's timeline. Drop them to search several agents.",
+        )
+    if agent_ids and not query:
+        _error(
+            "Missing argument 'QUERY'.",
+            hint="Multi-agent recall needs a search query. Try 'memanto recall --help' for help.",
+        )
+
+    active_agent_id: str | None = None
+    if not agent_ids:
+        active_agent_id, active_session_token = config_manager.get_active_session()
+
+        if not active_agent_id or not active_session_token:
+            _error(
+                "No active agent.",
+                hint=(
+                    "Run 'memanto agent activate <agent-id>' first, or pass "
+                    "--agents to search several agents at once."
+                ),
+            )
 
     # Check for mutually exclusive temporal flags
     temporal_flags = [as_of, changed_since, recent]
@@ -700,7 +741,9 @@ def recall(
         )
 
     client = get_client()
-    agent_id = active_agent_id
+    # Only the single-agent paths below read ``agent_id``, and the session
+    # check above runs on exactly those paths.
+    agent_id = cast(str, active_agent_id)
 
     # CLI-side validation for timestamps to fail fast with a clear error
     def _validate_and_parse_timestamp(ts: str, flag_name: str) -> str:
@@ -772,17 +815,32 @@ def recall(
                 )
                 temporal_mode = "recent"
             elif query:
-                # Standard recall
-                results = client.recall(
-                    agent_id=agent_id,
-                    query=query,
-                    limit=limit,
-                    type=type,
-                    tags=tag_list,
-                    min_similarity=min_similarity,
-                    min_confidence=min_confidence,
-                    status=status,
-                )
+                if agent_ids:
+                    # Cross-agent search: one ranking, each hit attributed to
+                    # the agent it came from.
+                    results = client.recall_multi(
+                        agent_ids=agent_ids,
+                        query=query,
+                        limit=limit,
+                        type=type,
+                        tags=tag_list,
+                        min_similarity=min_similarity,
+                        min_confidence=min_confidence,
+                        status=status,
+                    )
+                    temporal_mode = "multi"
+                else:
+                    # Standard recall
+                    results = client.recall(
+                        agent_id=agent_id,
+                        query=query,
+                        limit=limit,
+                        type=type,
+                        tags=tag_list,
+                        min_similarity=min_similarity,
+                        min_confidence=min_confidence,
+                        status=status,
+                    )
             else:
                 _error(
                     "Missing argument 'QUERY'.",
@@ -798,11 +856,13 @@ def recall(
             return
 
         # Display temporal mode information
+        agent_noun = "agent" if len(agent_ids) == 1 else "agents"
         mode_labels = {
             "as_of": f"Point-in-time (as of {as_of})",
             "changed_since": f"Differential (since {changed_since})",
             "recent": "Recent (newest first)",
             "standard": "Standard search",
+            "multi": f"Multi-agent ({len(agent_ids)} {agent_noun})",
         }
         mode_label = mode_labels.get(temporal_mode, "Standard search")
 
@@ -823,6 +883,9 @@ def recall(
             source_ref = memory.get("source_ref") or ""
             provenance = memory.get("provenance") or ""
             mem_tags = memory.get("tags") or []
+            # A cross-agent recall merges several agents into one ranking, so
+            # every row reports the agent it came from.
+            mem_agent = memory.get("agent_id")
 
             # Determine memory source from ID pattern
             id_str = memory.get("id", "unknown")
@@ -842,7 +905,8 @@ def recall(
             )
             panel_content = f"{state_label}[bold]{title}[/bold]\n\n{content[:200]}{'...' if len(content) > 200 else ''}\n\n"
 
-            panel_content += f"[dim]ID: {id_str} | Type: {mem_type} | Confidence: {conf:.2f} | Score: {score:.3f}[/dim]"
+            agent_label = f"Agent: {mem_agent} | " if mem_agent else ""
+            panel_content += f"[dim]{agent_label}ID: {id_str} | Type: {mem_type} | Confidence: {conf:.2f} | Score: {score:.3f}[/dim]"
 
             if created:
                 panel_content += f"\n[dim]Created: {format_local_time(created)}[/dim]"

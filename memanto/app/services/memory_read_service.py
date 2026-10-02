@@ -324,6 +324,111 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryOperationError(f"Failed to search memories: {e}")
 
+    def search_memories_multi(
+        self,
+        agent_ids: list[str],
+        query: str,
+        type: list[str] | None = None,
+        tags: list[str] | None = None,
+        min_confidence: float | None = None,
+        status: str = "all",
+        limit: int = 10,
+        min_similarity_score: float | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Search several agents in one query, tagging every hit with its agent.
+
+        Each agent is searched through :meth:`search_memories`, so filters,
+        ranking and lifecycle handling stay in one place. The per-agent calls
+        are independent, so they are dispatched in parallel and the latency is
+        bounded by the slowest agent instead of the sum of all of them.
+
+        Results are merged, re-ranked on the shared backend score and capped at
+        ``limit`` across every agent — not ``limit`` per agent. Offsets are not
+        offered: a single offset has no meaning once several rankings are
+        merged, and truncating after the merge keeps the page boundary honest.
+        """
+        try:
+            distinct_agents = list(
+                dict.fromkeys(a.strip() for a in agent_ids if a.strip())
+            )
+            if not distinct_agents:
+                return {"results": [], "total_found": 0, "execution_time": 0}
+
+            def _search(agent_id: str) -> list[dict[str, Any]]:
+                """Search one agent and label its rows with the source agent."""
+                result = self.search_memories(
+                    query=query,
+                    agent_id=agent_id,
+                    type=type,
+                    tags=tags,
+                    min_confidence=min_confidence,
+                    status=status,
+                    limit=limit,
+                    min_similarity_score=min_similarity_score,
+                    created_after=created_after,
+                    created_before=created_before,
+                    metadata_filters=metadata_filters,
+                )
+                # Copy before labelling: a caller's own row must not be mutated.
+                return [
+                    {**memory, "agent_id": agent_id}
+                    for memory in result.get("results", [])
+                ]
+
+            dispatch_start = monotonic()
+            if len(distinct_agents) == 1:
+                merged = _search(distinct_agents[0])
+            else:
+                max_workers = min(len(distinct_agents), 8)
+                with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                    merged = [
+                        memory
+                        for batch in pool.map(_search, distinct_agents)
+                        for memory in batch
+                    ]
+            execution_time = monotonic() - dispatch_start
+
+            def _score(memory: dict[str, Any]) -> float:
+                """Return a sortable backend score, placing missing values last."""
+                raw_score = memory.get("score")
+                if raw_score is None:
+                    return float("-inf")
+                try:
+                    return float(raw_score)
+                except (TypeError, ValueError):
+                    return float("-inf")
+
+            merged.sort(key=_score, reverse=True)
+
+            # The same memory id can legitimately exist under two agents, so
+            # de-duplicate on the pair rather than on the id alone.
+            unique: list[dict[str, Any]] = []
+            seen: set[tuple[Any, Any]] = set()
+            for memory in merged:
+                memory_id = memory.get("id")
+                if memory_id is None:
+                    unique.append(memory)
+                    continue
+                key = (memory.get("agent_id"), memory_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                unique.append(memory)
+
+            return {
+                "results": unique[:limit],
+                "total_found": len(unique),
+                "execution_time": execution_time,
+            }
+
+        except MemoryOperationError:
+            raise
+        except Exception as e:
+            raise MemoryOperationError(f"Failed to search memories: {e}")
+
     def search_as_of(
         self,
         as_of_date: str,
