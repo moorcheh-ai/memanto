@@ -44,12 +44,14 @@ def test_auto_split_layout(tmp_path):
     assert result["per_type_counts"] == {"fact": 2, "event": 60}
     assert result["sections"] == ["memories", "metrics"]
 
+    # Small type -> file per memory (+ index); large type -> stacked file.
     assert (base / "index.md").exists()
     assert (memories / "index.md").exists()
     assert (memories / "fact" / "postgres-is-the-db.md").exists()
     assert (memories / "fact" / "index.md").exists()
     assert (memories / "event" / "event.md").exists()
     assert not (memories / "event" / "standup-0.md").exists()
+    # Aggregate metrics generated from the gathered memories.
 
     assert (base / "metrics" / "overview.md").exists()
 
@@ -81,6 +83,7 @@ def test_context_sections_and_import_scope(tmp_path):
     assert (base / "daily-summaries" / "agent1_2026-07-01.md").exists()
     assert (base / "sessions" / "agent1_2026-07-01_s1_summary.md").exists()
 
+    # Import must see only the one memory, not the summary/session docs.
     export = load_okf_bundle(base)
     assert len(export["memories"]) == 1
     assert export["memories"][0]["title"] == "A fact"
@@ -379,6 +382,7 @@ def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
 
 
 def test_okf_export_splits_comma_separated_tags(tmp_path):
+    # Moorcheh wire format: flat ``tags`` field is a comma-joined string.
     svc = OkfExportService(exports_dir=tmp_path / "exports")
 
     memories_by_type = {

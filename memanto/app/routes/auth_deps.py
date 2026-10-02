@@ -64,6 +64,10 @@ def get_moorcheh_api_key() -> str:
     from memanto.app.config import settings
 
     if parse_backend(settings.MEMANTO_BACKEND) == Backend.ON_PREM:
+        # On-prem talks to localhost; routes that take ``moorcheh_api_key`` as
+        # a dependency no longer use it for outbound calls (they go through
+        # ``get_moorcheh_client()``), but the FastAPI signatures still need a
+        # string. Return a placeholder so the dependency resolves.
         return "on-prem"
 
     if settings.MOORCHEH_API_KEY:
@@ -201,6 +205,8 @@ def require_management_access(
 
     expected: str | None
     if backend == Backend.ON_PREM:
+        # On-prem has no cloud API key; use the JWT/session secret as the
+        # management shared secret when one is configured.
         expected = (settings.MEMANTO_SECRET_KEY or "").strip() or None
     else:
         expected = server_key if server_key and server_key != "on-prem" else None
@@ -271,28 +277,46 @@ def get_current_session(
     try:
         token_payload = session_service.validate_session(session_token)
 
+        # Get session from storage
         session = session_service.get_session(token_payload.agent_id)
         if not session:
             raise SessionNotFoundError(
                 f"Session for agent {token_payload.agent_id} not found"
             )
 
+        # Auto-renew session if near expiry
         renewed = session_service.check_and_auto_renew(
             agent_id=token_payload.agent_id,
         )
         if renewed:
             session = renewed
+            # The renewed session gets a new session_id/token, invalidating
+            # the one the caller just presented. Browser callers authenticate
+            # via the HttpOnly cookie (never re-read the token in JS), so
+            # without this the cookie goes stale and the very next request
+            # fails signature/session_id validation.
 
             if session_cookie:
                 set_session_cookie(response, renewed.session_token, request)
+            # API clients authenticate with the request header instead of a
+            # cookie. Return the replacement token on the response so they can
+            # use it after auto-renewal invalidates the presented token.
 
             if x_session_token:
                 response.headers["X-Session-Token"] = renewed.session_token
 
+        # Bind the session for activity logging: the memory services below
+        # only receive an agent_id and cannot tell which session a request
+        # belongs to.
         set_memanto_session(session.session_id)
         return session
 
     except SessionExpiredError as e:
+        # The presented token belongs to a session that has fully lapsed.
+        # With SESSION_AUTO_RECREATE_ENABLED the caller gets a fresh session
+        # on this first operation — but only after passing the same
+        # management-access check as explicit activation (valid API key or
+        # loopback origin), so a stolen stale token alone is worthless.
         recreated = _maybe_auto_recreate_session(
             request=request,
             response=response,
@@ -328,6 +352,8 @@ def _maybe_auto_recreate_session(
     if recreated is None:
         return None
 
+    # Mirror the auto-renewal handoff: refresh the browser cookie and/or
+    # return the replacement token so the next request authenticates.
     if session_cookie:
         set_session_cookie(response, recreated.session_token, request)
     if x_session_token:

@@ -13,11 +13,16 @@ import yaml  # type: ignore[import-untyped]
 from memanto.app.services.okf_export_service import ENTRY_DELIMITER
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
+# Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
+# non-greedy so the first ``\n---`` closes the block even when the body below
+# contains its own ``---`` rules.
 logger = logging.getLogger(__name__)
 
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 
 _SKIP_FILENAMES = {"index.md", "log.md"}
+# OKF baseline fields + Memanto's namespaced extension block. Anything else in
+# the frontmatter is preserved as "extra" so import stays lossless.
 
 _KNOWN_FIELDS = {
     "type",
@@ -302,6 +307,8 @@ def _load_documents_portable(
 
 
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
+    # Hold the corresponding reader lock through discovery and every file
+    # read, so an exporter cannot move the bundle aside midway through a load.
     root = Path(os.path.abspath(os.fspath(path)))
     if root.is_symlink():
         raise ValueError(f"OKF bundle path must not be a symbolic link: {path}")
@@ -314,10 +321,15 @@ def _bundle_lock_root(path: Path) -> Path:
     if path.suffix.lower() != ".md":
         return path
 
+    # A Memanto entry lives at ``<bundle>/<section>/<entry>.md`` or deeper.
+    # Resolve this lexically so the same bundle lock is selected even while
+    # the exporter has temporarily moved the bundle directory aside.
     for parent in path.parents:
         if parent.name in ("memories", "daily-summaries", "sessions", "metrics"):
             return parent.parent
 
+    # Root-level documents belong to their containing bundle. For a standalone
+    # Markdown import this merely serializes imports from the same directory.
     return path.parent
 
 
@@ -325,6 +337,10 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
     if _SECURE_DIR_FD:
         rel_base, documents = _load_documents_secure(root, display_path)
     else:
+        # Memanto's own bundles nest importable memories under ``memories/``
+        # alongside export-only context (daily-summaries/, sessions/, metrics/).
+        # Scope import to ``memories/`` when present so context logs are never
+        # re-ingested as memories; foreign bundles (no ``memories/``) scan fully.
         rel_base, documents = _load_documents_portable(root, display_path)
 
     memories: list[dict[str, Any]] = []
@@ -355,6 +371,7 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
 
     body = body.strip()
 
+    # Skip navigation index documents.
     if str(frontmatter.get("type", "")).strip().lower() == "index":
         return None
     if not body and not frontmatter.get("title"):
