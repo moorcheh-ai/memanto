@@ -19,7 +19,11 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.services.okf_export_service import (
+    ENTRY_DELIMITER,
+    decode_okf_data,
+    decode_okf_delimiter,
+)
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
@@ -153,7 +157,9 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
     else:
         frontmatter, body = {}, chunk
 
-    body = body.strip()
+    body = decode_okf_delimiter(body.strip())
+    if frontmatter:
+        frontmatter = decode_okf_data(frontmatter)
 
     # Skip navigation index documents.
     if str(frontmatter.get("type", "")).strip().lower() == "index":
