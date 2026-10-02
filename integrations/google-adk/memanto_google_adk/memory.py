@@ -68,6 +68,8 @@ _MAX_EXTRACT = ConversationMemoryExtractionService.MAX_MEMORIES
 # Newest rows read back to find a session's retained markers. Rows from one
 # batch share a marker, so a handful covers the latest batch.
 _MARKER_LOOKBACK = 20
+_SAFE_APP_NAME_RE = re.compile(r"[A-Za-z0-9_-]+")
+_MAX_AGENT_ID_LENGTH = 64
 
 
 def _digest(*parts: str) -> str:
@@ -82,10 +84,21 @@ def user_tag(user_id: str) -> str:
 def default_agent_id(app_name: str) -> str:
     """The Memanto agent used for *app_name* when no ``agent_id`` is given.
 
-    Memanto agent IDs allow only letters, digits, ``-`` and ``_``.
+    Keep already-safe app names readable. Names that need normalization are
+    hashed instead: replacing punctuation with `-` is not injective, so
+    distinct ADK apps could otherwise share one memory namespace. The `h-`
+    prefix is reserved for hashed names and cannot be emitted by the readable
+    path.
     """
-    return "adk-" + (re.sub(r"[^A-Za-z0-9_-]", "-", app_name).strip("-") or "app")
+    if (
+        _SAFE_APP_NAME_RE.fullmatch(app_name)
+        and len(app_name) <= _MAX_AGENT_ID_LENGTH - len("adk-")
+        and not app_name.startswith("h-")
+    ):
+        return "adk-" + app_name
 
+    digest = hashlib.sha256(app_name.encode("utf-8")).hexdigest()
+    return "adk-h-" + digest[: _MAX_AGENT_ID_LENGTH - len("adk-h-")]
 
 class _Agent:
     """One Memanto agent with its own client: an SdkClient holds one session."""
