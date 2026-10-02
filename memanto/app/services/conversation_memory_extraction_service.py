@@ -25,13 +25,15 @@ API_KEY_PATTERNS = [
     re.compile(r"\bya29\.[0-9A-Za-z_\-]+\b"),
     re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
 ]
-BEARER_PATTERN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9_\-\.~+/]+={0,2}(?!\S)")
+BEARER_PATTERN = re.compile(
+    r"(?i)\bBearer\s+[A-Za-z0-9_\-\.~+/]+={0,2}(?=[^\w\-\.~+/=]|$)"
+)
 URL_CREDENTIAL_PATTERN = re.compile(r"(?i)([a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)")
 KV_CREDENTIAL_QUOTED = re.compile(
-    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)(['"])(?:(?!\2).){4,}\2"""
+    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)(['"])(?:(?!\2).){1,}\2"""
 )
 KV_CREDENTIAL_UNQUOTED = re.compile(
-    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)[^\s,;'"}\]]{4,}"""
+    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)[^\s,;'"}\]]{1,}"""
 )
 
 

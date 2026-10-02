@@ -249,8 +249,8 @@ def _pinned_transport(host: str) -> httpx.HTTPTransport:
         return httpx.HTTPTransport()
     try:
         infos = _socket_module.getaddrinfo(hostname, None)
-    except (_socket_module.gaierror, ValueError):
-        return httpx.HTTPTransport()
+    except (_socket_module.gaierror, ValueError) as exc:
+        raise RuntimeError(f"Could not resolve host '{hostname}': {exc}")
     for info in infos:
         raw_addr = info[4][0]
         if not isinstance(raw_addr, str):

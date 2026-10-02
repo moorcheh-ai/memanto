@@ -135,7 +135,9 @@ def _read_directory_documents(
             try:
                 child_fd = os.open(
                     name,
-                    _READ_FLAGS | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+                    _READ_FLAGS
+                    | getattr(os, "O_DIRECTORY", 0)
+                    | getattr(os, "O_NOFOLLOW", 0),
                     dir_fd=directory_fd,
                 )
             except OSError as exc:
@@ -245,7 +247,9 @@ def _load_documents_secure(
             try:
                 scan_fd = os.open(
                     "memories",
-                    _READ_FLAGS | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+                    _READ_FLAGS
+                    | getattr(os, "O_DIRECTORY", 0)
+                    | getattr(os, "O_NOFOLLOW", 0),
                     dir_fd=root_fd,
                 )
             except OSError as exc:

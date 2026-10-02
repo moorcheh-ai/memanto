@@ -335,6 +335,7 @@ def get_current_session(
             not is_loopback_host(client_host)
             or not _is_loopback_host_header(request.headers.get("host"))
             or _is_cross_site_browser_request(request)
+            or _has_forwarded_non_loopback(request)
         ):
             raise HTTPException(
                 status_code=403,

@@ -145,7 +145,19 @@ class AgentService:
                 session_count=0,
                 status="ready",
             )
-            self._save_agent(agent)
+            try:
+                self._save_agent(agent)
+            except Exception as e:
+                # Rollback namespace creation if metadata save fails
+                try:
+                    client.namespaces.delete(namespace_name=namespace)
+                except Exception as del_exc:
+                    logger.error(
+                        "Failed to rollback namespace '%s' after save failure: %s",
+                        namespace,
+                        del_exc,
+                    )
+                raise e
             return agent
         finally:
             # FileLock uses an OS-backed lock. The marker file may remain, but
