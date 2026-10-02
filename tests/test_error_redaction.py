@@ -84,3 +84,21 @@ def test_create_error_response_redacts_sensitive_fields():
     assert cli_key not in rendered_response
     assert response["details"]["x-api-key"] == "[REDACTED]"
     assert "[REDACTED]" in rendered_response
+
+
+def test_redact_quoted_secret_assignments():
+    """Verify that secrets assigned inside quotes are redacted properly."""
+    raw_text = (
+        "password='supersecretpass' and "
+        'api_key="sk-1234567890" and '
+        "secret: some_val"
+    )
+    http_error = map_error_to_http_exception(RuntimeError(raw_text))
+    rendered_detail = http_error.detail["details"]["original_error"]
+
+    assert "supersecretpass" not in rendered_detail
+    assert "sk-1234567890" not in rendered_detail
+    assert "some_val" not in rendered_detail
+    assert "password='[REDACTED]'" in rendered_detail
+    assert 'api_key="[REDACTED]"' in rendered_detail
+    assert "secret: [REDACTED]" in rendered_detail

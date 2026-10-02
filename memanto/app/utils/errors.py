@@ -16,7 +16,7 @@ _AUTH_HEADER_PATTERN = re.compile(
 )
 _SECRET_ASSIGNMENT_PATTERN = re.compile(
     r"\b(api[_-]?key|session[_-]?token|access[_-]?token|refresh[_-]?token|"
-    r"password|secret)\b(\s*[:=]\s*)([^\s,'\"}]+)",
+    r"password|secret)\b(\s*[:=]\s*)(['\"]?)(.*?)\3(?=[\s,}]|\Z)",
     re.IGNORECASE,
 )
 _CLI_SECRET_ARG_PATTERN = re.compile(
@@ -49,7 +49,7 @@ _SENSITIVE_DETAIL_KEYS = {
 def redact_sensitive_text(text: str) -> str:
     """Redact secrets from text before exposing it to API callers."""
     redacted = _AUTH_HEADER_PATTERN.sub(rf"\1{_REDACTED}", text)
-    redacted = _SECRET_ASSIGNMENT_PATTERN.sub(rf"\1\2{_REDACTED}", redacted)
+    redacted = _SECRET_ASSIGNMENT_PATTERN.sub(rf"\1\2\3{_REDACTED}\3", redacted)
     redacted = _CLI_SECRET_ARG_PATTERN.sub(rf"\1{_REDACTED}", redacted)
     redacted = _JWT_PATTERN.sub(_REDACTED, redacted)
     return _BARE_SECRET_PATTERN.sub(_REDACTED, redacted)
