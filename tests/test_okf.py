@@ -1,3 +1,14 @@
+"""
+OKF (Open Knowledge Format) export/import coverage.
+
+Exercises the three pure building blocks — ``OkfExportService`` (Memanto ->
+OKF bundle), ``load_okf_bundle`` (bundle -> entries), and ``map_okf`` (entries
+-> Memanto batch-remember rows) — including the auto-split layout, the
+Memanto <-> OKF round-trip via the ``x_memanto`` frontmatter block, and a
+foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
+``[Supporting data]`` footer without loss.
+"""
+
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
@@ -25,6 +36,11 @@ def _mem(mem_id, title, content, **extra):
 
 
 def test_auto_split_layout(tmp_path):
+    """
+    `auto` writes one file per memory for small types and a single stacked
+    file once a type exceeds the threshold; memories live under ``memories/``
+    and index files are always written.
+    """
     memories_by_type = {
         "fact": [
             _mem("f1", "Postgres is the DB", "Uses PostgreSQL 16."),
@@ -57,6 +73,11 @@ def test_auto_split_layout(tmp_path):
 
 
 def test_context_sections_and_import_scope(tmp_path):
+    """
+    Daily-summary and session files are copied into their sections, and
+    import stays scoped to ``memories/`` so those context logs are never
+    re-ingested as memories.
+    """
     summary = tmp_path / "agent1_2026-07-01.md"
     summary.write_text("# Daily summary\nStuff happened.\n", encoding="utf-8")
     session = tmp_path / "agent1_2026-07-01_s1_summary.md"
@@ -90,6 +111,7 @@ def test_context_sections_and_import_scope(tmp_path):
 
 
 def test_memanto_round_trip_preserves_extras(tmp_path):
+    """Memanto -> OKF -> Memanto keeps schema fields and metadata via ``x_memanto``."""
     memories_by_type = {
         "fact": [
             _mem(
@@ -132,6 +154,7 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
 
 
 def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
+    """Malformed foreign extensions must not break an otherwise valid import."""
     (tmp_path / "memory.md").write_text(
         "---\n"
         "type: fact\n"
@@ -153,6 +176,7 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
 
 
 def test_okf_invalid_provenance_falls_back_to_imported():
+    """Foreign or malformed provenance must not reach batch validation."""
     export = {
         "memories": [
             {
@@ -167,6 +191,11 @@ def test_okf_invalid_provenance_falls_back_to_imported():
 
 
 def test_foreign_okf_bundle_is_lossless(tmp_path):
+    """
+    A foreign OKF doc: free-form ``type`` -> auto-classify (None), and the
+    type, unknown keys, and links are preserved in the footer. ``index.md`` is
+    skipped.
+    """
     tables = tmp_path / "tables"
     tables.mkdir()
     (tables / "orders.md").write_text(
@@ -202,6 +231,7 @@ def test_foreign_okf_bundle_is_lossless(tmp_path):
 
 
 def test_loader_splits_stacked_file(tmp_path):
+    """A stacked per-type file is split back into one entry per memory."""
     memories_by_type = {
         "event": [
             _mem(f"e{i}", f"Standup {i}", f"Standup {i} happened.") for i in range(5)
@@ -218,6 +248,10 @@ def test_loader_splits_stacked_file(tmp_path):
 
 
 def test_reexport_replaces_stale_bundle_entries(tmp_path):
+    """
+    A refreshed export must be an exact snapshot, not an overlay that can
+    resurrect deleted or renamed memories during a later import.
+    """
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {
         "fact": [_mem("f1", "Old fact", "This fact was later deleted.")],
@@ -237,6 +271,7 @@ def test_reexport_replaces_stale_bundle_entries(tmp_path):
 
 
 def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
+    """A failed final rename restores the last good bundle and cleans up."""
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {"fact": [_mem("f1", "Last good fact", "Keep this snapshot.")]}
     result = svc.write_okf_bundle("agent1", first, split="file")
@@ -264,6 +299,7 @@ def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
 
 
 def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
+    """A reader cannot observe the target-to-backup replacement window."""
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     svc.write_okf_bundle(
         "agent1", {"fact": [_mem("f1", "Old fact", "Old snapshot.")]}, split="file"
@@ -307,6 +343,7 @@ def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
 
 
 def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
+    """An in-bundle file import waits on the bundle lock during replacement."""
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     svc.write_okf_bundle(
         "agent1", {"fact": [_mem("f1", "Stable slug", "Old snapshot.")]}, split="file"
@@ -350,6 +387,7 @@ def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
 
 
 def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
+    """Malformed candidates do not hide valid links that follow them."""
     okf_file = tmp_path / "links.md"
     okf_file.write_text(
         "---\ntype: fact\ntitle: Links\n---\n"
@@ -367,6 +405,7 @@ def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
 
 
 def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
+    """A malformed large note must not make link extraction scale quadratically."""
     okf_file = tmp_path / "malformed-links.md"
     okf_file.write_text(
         "---\ntype: fact\ntitle: Malformed links\n---\n" + "[" * 25_000,
@@ -383,6 +422,14 @@ def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
 
 def test_okf_export_splits_comma_separated_tags(tmp_path):
     # Moorcheh wire format: flat ``tags`` field is a comma-joined string.
+    """
+    Tags serialized by Moorcheh arrive as a comma-separated string. The
+    export must emit one frontmatter list entry per tag, not split the string
+    character-by-character.
+    
+    Regression for BountyHub #770: with tags='project,db' the old
+    ``list(tags)`` wrote ["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"].
+    """
     svc = OkfExportService(exports_dir=tmp_path / "exports")
 
     memories_by_type = {
@@ -398,6 +445,10 @@ def test_okf_export_splits_comma_separated_tags(tmp_path):
 
 
 def test_okf_export_preserves_list_tags(tmp_path):
+    """
+    Tags from the in-memory recall path arrive as a list; the export must
+    still emit a proper frontmatter list of those tags (unchanged behaviour).
+    """
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     memories_by_type = {
         "fact": [

@@ -1,3 +1,10 @@
+"""
+MEMANTO Configuration
+
+Server-side settings (loaded from .env via pydantic-settings).
+CLI config models have been moved to cli/config/manager.py.
+"""
+
 import ipaddress
 import json
 import logging
@@ -93,12 +100,14 @@ if _config_file.exists():
 
 # CLI & YAML Format Models (kept for backward compat with config.yaml structure)
 class ServerConfig(BaseModel):
+    """Server configuration"""
     url: str = "localhost"
     port: int = 8000
     auto_start: bool = False
 
 
 class SessionConfig(BaseModel):
+    """Session management configuration"""
     default_duration_hours: int = 6
     auto_extend: bool = True
     extend_threshold_minutes: int = 30
@@ -109,6 +118,7 @@ class SessionConfig(BaseModel):
 
 
 class CLIConfig(BaseModel):
+    """CLI behavior configuration"""
     interactive_mode: bool = True
     smart_parse: bool = True
     auto_title: bool = True
@@ -117,6 +127,7 @@ class CLIConfig(BaseModel):
 
 class Settings(BaseSettings):
     # Moorcheh Configuration
+    """Unified Settings: sourced from environment / .env files"""
     MOORCHEH_API_KEY: str = ""
 
     # Backend selection: "cloud" (default) or "on-prem".
@@ -271,6 +282,12 @@ def check_secure_deployment(host: str) -> None:
 
 
 def get_data_dir() -> Path:
+    """
+    Root data dir for the active backend.
+    
+    Cloud users keep ``~/.memanto/`` (no migration). On-prem data is
+    isolated under ``~/.memanto/on-prem/``.
+    """
     base = Path.home() / ".memanto"
     if settings.MEMANTO_BACKEND.strip().lower() == "on-prem":
         d = base / "on-prem"
@@ -280,12 +297,14 @@ def get_data_dir() -> Path:
 
 
 def get_conflicts_dir() -> Path:
+    """Return the shared directory for conflict reports."""
     d = get_data_dir() / "conflicts"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def get_conflict_report_path(agent_id: str, date: str) -> Path:
+    """Return a safely constructed path for a conflict report, validating components against traversal."""
     import re
 
     if not re.match(r"^[\w\-]+$", agent_id):

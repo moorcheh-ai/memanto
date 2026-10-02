@@ -1,3 +1,9 @@
+"""
+Authentication Dependencies for V2 API
+
+Shared authentication utilities to avoid circular imports.
+"""
+
 import logging
 from urllib.parse import urlsplit, urlunsplit
 
@@ -33,6 +39,14 @@ def _redact_and_sanitize_url(url: str) -> str:
 def set_session_cookie(
     response: Response, session_token: str, request: Request
 ) -> None:
+    """
+    Store the browser UI session token outside JavaScript-readable state.
+    
+    MEMANTO defaults to binding 0.0.0.0 with no built-in TLS (see docker-compose.yml
+    and Settings.HOST), so a hardcoded Secure=True would silently stop browsers from
+    ever sending the cookie back over the plain-HTTP deployment this ships with by
+    default. Mark it Secure only when the current request actually arrived over HTTPS.
+    """
     secure = request.url.scheme == "https"
     peer_host = request.client.host if request.client else None
     if not secure and (
@@ -56,10 +70,21 @@ def set_session_cookie(
 
 
 def clear_session_cookie(response: Response) -> None:
+    """Clear the browser UI session cookie."""
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
 
 
 def get_moorcheh_api_key() -> str:
+    """
+    Get Moorcheh API key from server configuration.
+    
+    Returns:
+        API key (or a placeholder string when running against the on-prem
+        backend, which does not require an API key).
+    
+    Raises:
+        HTTPException: If cloud is selected and no key is configured.
+    """
     from memanto.app.clients.backend import Backend, parse_backend
     from memanto.app.config import settings
 
@@ -83,6 +108,7 @@ def _extract_presented_credential(
     authorization: str | None,
     x_api_key: str | None,
 ) -> str | None:
+    """Extract a client-presented management credential from request headers."""
     if isinstance(x_api_key, str) and x_api_key.strip():
         return x_api_key.strip()
     if isinstance(authorization, str):
@@ -122,6 +148,7 @@ def _require_allowed_origin(request: Request) -> None:
 
 
 def _is_loopback_origin(origin: str | None) -> bool:
+    """Return True when a browser Origin points at the local Memanto host."""
     if not origin or not isinstance(origin, str):
         return False
     try:
@@ -134,6 +161,7 @@ def _is_loopback_origin(origin: str | None) -> bool:
 
 
 def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when an HTTP Host header names a loopback interface."""
     if not host or not isinstance(host, str):
         return False
     try:
@@ -144,6 +172,7 @@ def _is_loopback_host_header(host: str | None) -> bool:
 
 
 def _is_cross_site_browser_request(request: Request) -> bool:
+    """Detect browser requests that must not inherit loopback trust."""
     origin = request.headers.get("origin")
     if origin is not None and isinstance(origin, str):
         return not _is_loopback_origin(origin)
@@ -194,6 +223,28 @@ def require_management_access(
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
+    """
+    Authorize agent-lifecycle / management endpoints.
+    
+    MEMANTO is a single-tenant companion service. Agent create/list/delete/
+    activate endpoints previously only checked that the *server* had a
+    configured API key, not that the *caller* was authorized. Combined with
+    the default ``HOST=0.0.0.0`` bind (see Settings / docker-compose), any
+    network peer could create agents, activate sessions, and obtain
+    ``session_token`` values for memory read/write.
+    
+    Access is granted when either:
+    
+    1. The caller presents the server management credential
+       (``Authorization: Bearer <key>`` or ``X-Api-Key``), matched with
+       ``secrets.compare_digest`` against the configured cloud API key, or
+       against ``MEMANTO_SECRET_KEY`` for on-prem; or
+    2. The request originates from the loopback interface (local desktop
+       CLI / browser UX without forcing every local call to attach a key).
+    
+    Returns the server-side Moorcheh credential string used by downstream
+    service calls (same contract as ``get_moorcheh_api_key``).
+    """
     import secrets
 
     from memanto.app.clients.backend import Backend, parse_backend
@@ -240,6 +291,13 @@ def verify_moorcheh_api_key(
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
+    """
+    Authorize management access and return the server Moorcheh credential.
+    
+    Kept as a thin wrapper so existing ``Depends(verify_moorcheh_api_key)``
+    call sites pick up the new authorization rules without signature churn
+    at every route.
+    """
     return require_management_access(request, authorization, x_api_key)
 
 
@@ -251,6 +309,20 @@ def get_current_session(
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Session:
+    """
+    Get and validate current session
+    
+    Args:
+        x_session_token: Session token header
+        authorization: Bearer management credential (for auto-recreate)
+        x_api_key: Management credential header (for auto-recreate)
+    
+    Returns:
+        Validated Session
+    
+    Raises:
+        HTTPException: If session is invalid or expired
+    """
     session_token = x_session_token or session_cookie
     if not session_token:
         raise HTTPException(
@@ -343,6 +415,13 @@ def _maybe_auto_recreate_session(
     authorization: str | None,
     x_api_key: str | None,
 ) -> Session | None:
+    """
+    Attempt transparent recreation of an expired session.
+    
+    Returns the fresh Session, or None when recreation does not apply
+    (disabled by config, terminated/logout session, superseded token) or is
+    not authorized — in which case the original expiry error surfaces.
+    """
     try:
         require_management_access(request, authorization, x_api_key)
     except HTTPException:

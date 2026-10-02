@@ -1,3 +1,16 @@
+"""
+OKF bundle loader.
+
+Reads an OKF (Open Knowledge Format) bundle — a directory of markdown files
+with YAML frontmatter — into the ``{"memories": [...]}`` shape consumed by
+``mappers.map_okf``. Handles both foreign OKF bundles (one concept per file)
+and Memanto's own stacked exports (multiple documents per file, separated by
+the ``okf-entry`` sentinel).
+
+``index.md`` / ``log.md`` navigation files and any document with ``type: index``
+are skipped.
+"""
+
 from __future__ import annotations
 
 import errno
@@ -153,6 +166,14 @@ def _read_directory_documents(
 
 
 def _extract_links(body: str) -> list[tuple[str, str]]:
+    """
+    Extract inline Markdown links in a single left-to-right pass.
+    
+    Repeatedly applying a regular expression from every ``[`` candidate makes
+    malformed Markdown increasingly expensive to scan. ``str.find`` keeps the
+    loader linear while preserving the intentionally small link syntax handled
+    here (non-empty ``[text](target)`` pairs).
+    """
     links: list[tuple[str, str]] = []
     cursor = 0
 
@@ -309,6 +330,7 @@ def _load_documents_portable(
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     # Hold the corresponding reader lock through discovery and every file
     # read, so an exporter cannot move the bundle aside midway through a load.
+    """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
     root = Path(os.path.abspath(os.fspath(path)))
     if root.is_symlink():
         raise ValueError(f"OKF bundle path must not be a symbolic link: {path}")
@@ -318,6 +340,7 @@ def load_okf_bundle(path: str | Path) -> dict[str, Any]:
 
 
 def _bundle_lock_root(path: Path) -> Path:
+    """Return the bundle path whose lock protects a requested import path."""
     if path.suffix.lower() != ".md":
         return path
 
@@ -334,6 +357,7 @@ def _bundle_lock_root(path: Path) -> Path:
 
 
 def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
+    """Load ``root`` while the caller holds its bundle reader lock."""
     if _SECURE_DIR_FD:
         rel_base, documents = _load_documents_secure(root, display_path)
     else:
@@ -357,6 +381,7 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
 
 
 def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] | None:
+    """Parse one OKF document (frontmatter + body) into an entry dict."""
     match = _FRONTMATTER_RE.match(chunk)
     if match:
         raw_frontmatter, body = match.group(1), match.group(2)
