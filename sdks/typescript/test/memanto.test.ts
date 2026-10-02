@@ -88,7 +88,7 @@ function startFakeApi(
         if (url === "/api/v2/agents" && req.method === "POST")
           return reply(201, { agent_id: agentId });
         if (
-          url === `/api/v2/agents/${encodedAgentId}` &&
+          url.split("?")[0] === `/api/v2/agents/${encodedAgentId}` &&
           req.method === "DELETE"
         )
           return reply(200, { agent_id: agentId, deleted: true });
@@ -198,6 +198,54 @@ describe("Memanto", () => {
     expect(res).toMatchObject({ count: 0 });
   });
 
+  it("forwards recall tag filters", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.recall({ query: "coffee", tags: ["scope-a"] });
+
+    const recall = api.recorded.find((r) => r.url.endsWith("/recall"));
+    expect(JSON.parse(recall!.body)).toMatchObject({ tags: ["scope-a"] });
+  });
+
+  it("presents the API key as the management credential on every request", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url, apiKey: "mk-test" });
+    cleanupFns.push(() => m.close());
+
+    await m.remember({ content: "Het likes coffee" });
+
+    const paths = api.recorded.map((r) => `${r.method} ${r.url}`);
+    expect(paths).toEqual([
+      "GET /api/v2/agents/test-agent",
+      "POST /api/v2/agents",
+      "POST /api/v2/agents/test-agent/activate",
+      "POST /api/v2/agents/test-agent/remember",
+    ]);
+    for (const r of api.recorded) {
+      expect(r.headers["x-api-key"]).toBe("mk-test");
+    }
+  });
+
+  it("sends no API key header without an API key", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.remember({ content: "Het likes coffee" });
+
+    for (const r of api.recorded) {
+      expect(r.headers["x-api-key"]).toBeUndefined();
+    }
+  });
+
   it("reactivates once and retries when the cached session expires", async () => {
     const api = await startFakeApi("test-agent", { expireFirstSession: true });
     cleanupFns.push(api.close);
@@ -286,6 +334,26 @@ describe("Memanto", () => {
       "POST /api/v2/agents",
       "POST /api/v2/agents/test-agent/activate",
       "POST /api/v2/agents/test-agent/remember",
+    ]);
+  });
+
+  it("deletes cloud memories only when asked", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.deleteAgent();
+    await m.deleteAgent({ deleteMemories: true });
+
+    expect(
+      api.recorded
+        .filter((r) => r.method === "DELETE")
+        .map((r) => r.url),
+    ).toEqual([
+      "/api/v2/agents/test-agent",
+      "/api/v2/agents/test-agent?delete-backup-too=true",
     ]);
   });
 

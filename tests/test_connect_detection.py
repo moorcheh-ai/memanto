@@ -49,7 +49,7 @@ def test_cline_install_detection_requires_cline_rule_file(tmp_path):
 def test_skills_only_agent_detected_from_skill_file_alone(tmp_path):
     """Agents without an instruction file are detected from SKILL.md alone."""
     skills_only_agent = AGENT_REGISTRY["antigravity"]
-    assert skills_only_agent.instruction_file is None
+    assert skills_only_agent.instruction_local_file is None
     _write_agent_skill(tmp_path, skills_only_agent.name)
 
     installed = {agent.name for agent in detect_memanto_installed(tmp_path)}

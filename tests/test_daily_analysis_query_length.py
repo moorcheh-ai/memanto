@@ -53,28 +53,33 @@ def _make_summary_service(tmp_path, monkeypatch, session_content: str):
     return service, client
 
 
-def test_busy_day_conflict_report_keeps_embedded_query_within_context_window(
-    tmp_path, monkeypatch
-):
-    """Long session content in conflict reports must not be sent as an oversized embedding query."""
+def test_busy_day_conflict_report_uses_agent_conflict_detection(tmp_path, monkeypatch):
+    """Cloud conflict reports should call Moorche agent/run instead of /answer."""
     long_content = "Important decision: we chose PostgreSQL. " * 300
-    service, client = _make_summary_service(tmp_path, monkeypatch, long_content)
-    # mock home for the conflicts directory creation
+    service, _client = _make_summary_service(tmp_path, monkeypatch, long_content)
     monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(module, "parse_backend", lambda _: module.Backend.CLOUD)
+
+    captured: dict[str, object] = {}
+
+    def fake_detect(**kwargs):
+        captured.update(kwargs)
+        return {
+            "date": "2026-06-28",
+            "conflicts": [],
+            "count": 0,
+            "memories_scanned": 3,
+            "mode": "semantic",
+        }
+
+    monkeypatch.setattr(module, "detect_conflicts_via_agent", fake_detect)
 
     result = service.generate_conflict_report("agent-1", "2026-06-28")
 
     assert result["status"] == "success"
-    call_kwargs = client.answer.generate.call_args.kwargs
-    assert (
-        len(call_kwargs["query"].encode("utf-8"))
-        <= module._EMBEDDING_QUERY_TOKEN_BUDGET
-    )
-    assert call_kwargs["query"] in call_kwargs["header_prompt"]
-    assert len(call_kwargs["header_prompt"]) < len(long_content) + 1000
-    assert (
-        "You MUST respond with ONLY a valid JSON array" in call_kwargs["footer_prompt"]
-    )
+    assert captured["namespace"] == "memanto_agent_agent-1"
+    assert captured["date"] == "2026-06-28"
+    assert captured["ai_model"] == "test-model"
 
 
 def test_busy_day_summary_keeps_embedded_query_within_context_window(

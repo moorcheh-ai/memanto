@@ -301,7 +301,17 @@ Now that MEMANTO is running, you need to connect your AI agent to it.
 
 ### Quick Integration Example
 
-**Using the simplified agent API:**
+**Python, same process:** `pip install memanto` includes a client that needs no running server — see the [Python SDK](https://docs.memanto.ai/sdk/python):
+
+```python
+from memanto import Memanto
+
+memanto = Memanto(agent_id="my-agent")
+memanto.remember("User prefers concise answers", type="preference")
+memanto.recall("how should I answer?")
+```
+
+**Over HTTP, using the simplified agent API:**
 
 ```python
 import httpx

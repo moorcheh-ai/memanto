@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from filelock import FileLock, Timeout
-from moorcheh_sdk.exceptions import ConflictError
+from moorcheh_sdk.exceptions import ConflictError, NamespaceNotFound
 from pydantic import ValidationError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
@@ -99,7 +99,7 @@ class AgentService:
 
             try:
                 client.namespaces.create(namespace, type="text")
-                print(f"[OK] Namespace created in Moorcheh: {namespace}")
+                logger.info("Namespace created in Moorcheh: %s", namespace)
             except Exception as exc:
                 message = str(exc).lower()
                 if "limit" in message or "tier" in message or "quota" in message:
@@ -107,7 +107,7 @@ class AgentService:
                 if isinstance(exc, ConflictError) or (
                     "namespace" in message and "already exists" in message
                 ):
-                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                    logger.info("Namespace already exists in Moorcheh: %s", namespace)
                 else:
                     raise NamespaceError(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {exc}"
@@ -239,6 +239,36 @@ class AgentService:
                 raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
             agent_file.unlink()
+
+    def delete_agent_memories(
+        self, agent_id: str, moorcheh_api_key: str | None = None
+    ) -> None:
+        """
+        Permanently delete the agent's Moorcheh namespace and every memory in it.
+
+        A namespace that is already gone counts as deleted.
+
+        Args:
+            agent_id: Agent identifier
+            moorcheh_api_key: Moorcheh API key (ignored on-prem)
+
+        Raises:
+            NamespaceError: If Moorcheh fails to delete the namespace
+        """
+        validate_safe_id(agent_id, "agent_id")
+        namespace = self._generate_namespace(agent_id)
+        client = get_moorcheh_client(api_key=moorcheh_api_key)
+        try:
+            client.namespaces.delete(namespace_name=namespace)
+            logger.info("Namespace deleted in Moorcheh: %s", namespace)
+        except Exception as exc:
+            # The on-prem client raises its own exception types; match by message.
+            if isinstance(exc, NamespaceNotFound) or "not found" in str(exc).lower():
+                logger.info("Namespace already absent in Moorcheh: %s", namespace)
+                return
+            raise NamespaceError(
+                f"Failed to delete namespace '{namespace}' in Moorcheh: {exc}"
+            ) from exc
 
     def agent_exists(self, agent_id: str) -> bool:
         """

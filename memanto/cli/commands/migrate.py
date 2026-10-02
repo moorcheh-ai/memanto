@@ -34,6 +34,10 @@ from memanto.app.utils.errors import (
     SessionError,
     SessionExpiredError,
 )
+from memanto.cli.analyze.hindsight_export import (
+    normalize_base_url as normalize_hindsight_base_url,
+)
+from memanto.cli.analyze.hindsight_export import run_hindsight_export
 from memanto.cli.analyze.langfuse_export import (
     DEFAULT_WINDOW_DAYS,
     normalize_host,
@@ -69,6 +73,7 @@ from memanto.cli.analyze.supermemory_compare import (
     compute_metrics as compute_supermemory_metrics,
 )
 from memanto.cli.analyze.supermemory_export import run_supermemory_export
+from memanto.cli.analyze.zep_export import run_zep_export
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -118,6 +123,18 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
         "report": build_supermemory_report_markdown,
         "export_filename": "supermemory_export.json",
     },
+    # Zep and Hindsight have no savings baseline yet (no compare module), so
+    # their entries omit metrics/prompt/report and the flow skips the report.
+    "zep": {
+        "label": "Zep",
+        "exporter": run_zep_export,
+        "export_filename": "zep_export.json",
+    },
+    "hindsight": {
+        "label": "Hindsight",
+        "exporter": run_hindsight_export,
+        "export_filename": "hindsight_export.json",
+    },
     # Langfuse carries no savings report: it is an observability backend, not
     # a memory store to benchmark Memanto against. It also runs its own flow
     # (`_run_langfuse_flow`) because it reconciles against a sync ledger, so
@@ -153,6 +170,18 @@ def _resolve_provider_key(
             config_manager.set_supermemory_api_key,
             "https://supermemory.ai/docs",
             "SUPERMEMORY_API_KEY",
+        ),
+        "zep": (
+            config_manager.get_zep_api_key,
+            config_manager.set_zep_api_key,
+            "https://app.getzep.com (project settings, API keys)",
+            "ZEP_API_KEY",
+        ),
+        "hindsight": (
+            config_manager.get_hindsight_api_key,
+            config_manager.set_hindsight_api_key,
+            "https://docs.hindsight.vectorize.io/api-integration/",
+            "HINDSIGHT_API_KEY",
         ),
         "langfuse": (
             config_manager.get_langfuse_api_key,
@@ -301,6 +330,7 @@ def _load_or_export(
     api_key: str | None,
     run_dir: Path,
     progress: Callable[[str], None],
+    exporter_kwargs: dict[str, Any] | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     """Either load an existing export JSON or run the live exporter."""
     bundle = _PROVIDER_BUNDLES[provider]
@@ -315,7 +345,9 @@ def _load_or_export(
 
     key = _resolve_provider_key(provider, api_key)
     try:
-        result = bundle["exporter"](key, run_dir, on_progress=progress)
+        result = bundle["exporter"](
+            key, run_dir, on_progress=progress, **(exporter_kwargs or {})
+        )
         return cast(tuple[Path, dict[str, Any]], result)
     except ImportError as exc:
         _error(str(exc))
@@ -333,6 +365,7 @@ def _run_migrate_flow(
     agent: str | None,
     dry_run: bool,
     report: bool,
+    exporter_kwargs: dict[str, Any] | None = None,
 ) -> None:
     """Shared entry point for every migrate subcommand."""
     bundle = _PROVIDER_BUNDLES[provider]
@@ -363,6 +396,7 @@ def _run_migrate_flow(
         api_key=api_key,
         run_dir=run_dir,
         progress=progress,
+        exporter_kwargs=exporter_kwargs,
     )
 
     # Step 3 — map (and optionally write).
@@ -377,11 +411,12 @@ def _run_migrate_flow(
         on_progress=progress,
     )
 
-    # Step 4 — preview file (dry run) and savings report (dry run OR --report).
+    # Step 4 — preview file (dry run) and savings report (dry run OR --report),
+    # for providers that have a savings baseline to report against.
     preview_path = write_preview(rows, run_dir / "mapped_preview.json")
 
     report_path: Path | None = None
-    if dry_run or report:
+    if (dry_run or report) and "report" in bundle:
         progress("Rendering savings report...")
         report_path = _render_savings_report(
             provider=provider,
@@ -398,7 +433,7 @@ def _run_migrate_flow(
     body_lines = [
         f"[dim]Source records:[/dim] {summary.source_count}",
         f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
-        f"[dim](skipped {summary.skipped} empty)[/dim]",
+        f"[dim](skipped {summary.skipped} empty or invalidated)[/dim]",
         f"[dim]Type breakdown:[/dim] {type_lines}",
     ]
     if dry_run:
@@ -687,6 +722,110 @@ def migrate_supermemory(
         agent=agent,
         dry_run=dry_run,
         report=report,
+    )
+
+
+@migrate_app.command("zep")
+def migrate_zep(
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key",
+        envvar="ZEP_API_KEY",
+        help="Zep Cloud API key (saved to ~/.memanto/.env)",
+    ),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="Existing Zep export JSON (skip live export).",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Migrate Zep Cloud knowledge-graph facts into the active (or selected) agent.
+
+    Exports every user's graph edges. Facts Zep has superseded or marked no
+    longer true are skipped; each memory is tagged ``user=<zep user id>``.
+
+    Examples:
+        memanto migrate zep --dry-run
+        memanto migrate zep --file ./zep_export.json --agent my-agent
+    """
+    _run_migrate_flow(
+        provider="zep",
+        api_key=api_key,
+        file=file,
+        agent=agent,
+        dry_run=dry_run,
+        report=False,
+    )
+
+
+@migrate_app.command("hindsight")
+def migrate_hindsight(
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key",
+        envvar="HINDSIGHT_API_KEY",
+        help="Hindsight API key (saved to ~/.memanto/.env)",
+    ),
+    base_url: str | None = typer.Option(
+        None,
+        "--base-url",
+        envvar="HINDSIGHT_BASE_URL",
+        help="Hindsight server URL (default Hindsight Cloud; set for self-hosted).",
+    ),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="Existing Hindsight export JSON (skip live export).",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Migrate Hindsight memory banks into the active (or selected) agent.
+
+    Exports every bank's memory units. Units curated out as invalidated are
+    skipped; each memory is tagged ``bank=<bank id>``.
+
+    Examples:
+        memanto migrate hindsight --dry-run
+        memanto migrate hindsight --base-url http://localhost:8888
+        memanto migrate hindsight --file ./hindsight_export.json
+    """
+    resolved_base_url = normalize_hindsight_base_url(
+        base_url or config_manager.get_hindsight_base_url()
+    )
+    if base_url and file is None:
+        config_manager.set_hindsight_base_url(resolved_base_url)
+
+    _run_migrate_flow(
+        provider="hindsight",
+        api_key=api_key,
+        file=file,
+        agent=agent,
+        dry_run=dry_run,
+        report=False,
+        exporter_kwargs={"base_url": resolved_base_url},
     )
 
 

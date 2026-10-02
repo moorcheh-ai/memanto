@@ -9,7 +9,7 @@ license = "MIT"
 keywords = [
     "memanto",
     "moorcheh",
-    "memory layer",
+    "memory agent",
     "agentic ai",
     "llm",
     "agent memory",
@@ -17,7 +17,7 @@ keywords = [
     "rag",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
@@ -28,6 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
@@ -50,8 +51,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://www.moorcheh.ai"
-Documentation = "https://docs.moorcheh.ai"
+Homepage = "https://www.memanto.ai"
+Documentation = "https://docs.memanto.ai"
 Repository = "https://github.com/moorcheh-ai/memanto"
 "Bug Tracker" = "https://github.com/moorcheh-ai/memanto/issues"
 
@@ -87,6 +88,20 @@ version-file = "memanto/app/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["memanto"]
+
+# Keep the sdist to the buildable package plus its tests. Everything else in the
+# repo (assets/, examples/, integrations/, docs/, sdks/) is documentation or
+# sibling projects that nothing in the build needs, and the demo GIFs and
+# architecture PNGs alone accounted for most of the archive.
+[tool.hatch.build.targets.sdist]
+include = [
+    "/memanto",
+    "/tests",
+    "/pyproject.toml",
+    "/pytest.ini",
+    "/README.md",
+    "/LICENSE",
+]
 
 [dependency-groups]
 dev = [

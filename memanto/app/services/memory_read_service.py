@@ -15,6 +15,7 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
 from memanto.app.constants import REMOVED_TRUST_FIELDS, VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
+from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.utils.errors import MemoryOperationError
 
 _FILTER_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -176,12 +177,22 @@ class MemoryReadService:
             # fetched `limit + offset` rows, a date-scoped, confidence-scoped,
             # or expired-heavy query would filter *within the top-N most-similar
             # rows*, causing in-window memories that rank just outside the top-N
-            # to be lost entirely (timeline amnesia / poor recall). We therefore
-            # always over-fetch up to Moorcheh's hard cap rather than only when
-            # a filter is explicitly requested.
-            top_k = min(
-                max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+            # to be lost entirely (timeline amnesia / poor recall).
+            # We over-fetch up to Moorcheh's hard cap only when a post-processing
+            # filter is actually requested to avoid the p95 latency penalty of
+            # over-fetching on simple recall queries.
+            needs_post_filter = (
+                created_after is not None
+                or created_before is not None
+                or min_confidence is not None
+                or status != "all"
             )
+            if needs_post_filter:
+                top_k = min(
+                    max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+                )
+            else:
+                top_k = min(requested_limit, MOORCHEH_MAX_TOP_K)
 
             # Perform search with server-side filtering.
             # Only enable kiosk_mode when the caller actually set a positive
@@ -292,6 +303,10 @@ class MemoryReadService:
             paginated_results = all_results[offset : offset + limit]
             has_more = len(all_results) > offset + limit
 
+            log_memory_activity(
+                op="recall", agent_id=agent_id, count=len(paginated_results)
+            )
+
             return {
                 "results": paginated_results,
                 "total_found": len(paginated_results),
@@ -397,6 +412,10 @@ class MemoryReadService:
             if limit is not None:
                 valid_memories = valid_memories[:limit]
 
+            log_memory_activity(
+                op="recall", agent_id=agent_id, count=len(valid_memories)
+            )
+
             return {
                 "results": valid_memories,
                 "total_found": len(valid_memories),
@@ -495,6 +514,10 @@ class MemoryReadService:
             if limit is not None:
                 changed_memories = changed_memories[:limit]
 
+            log_memory_activity(
+                op="recall", agent_id=agent_id, count=len(changed_memories)
+            )
+
             return {
                 "results": changed_memories,
                 "total_found": len(changed_memories),
@@ -558,8 +581,15 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
+            total_available = len(unique_memories)
             results = unique_memories if limit is None else unique_memories[:limit]
-            return {"results": results, "total_found": len(results)}
+            log_memory_activity(op="recall", agent_id=agent_id, count=len(results))
+
+            return {
+                "results": results,
+                "total_found": len(results),
+                "total_available": total_available,
+            }
 
         except Exception as e:
             raise MemoryOperationError(f"Failed to retrieve recent memories: {e}")
@@ -865,6 +895,8 @@ class MemoryReadService:
             if _model is not None:
                 gen_kwargs["ai_model"] = _model
             answer_result = self.client.answer.generate(**gen_kwargs)
+
+            log_memory_activity(op="answer", agent_id=agent_id)
 
             return {
                 "answer": answer_result["answer"],

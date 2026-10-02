@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "_managed_by": "memanto",
+            "type": "command",
+            "command": "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir .",
+            "timeout": 30,
+            "statusMessage": "Loading MEMANTO memory..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "_managed_by": "memanto",
+            "type": "command",
+            "command": "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir .",
+            "timeout": 30,
+            "statusMessage": "Saving MEMANTO memory..."
+          }
+        ]
+      }
+    ]
+  }
+}

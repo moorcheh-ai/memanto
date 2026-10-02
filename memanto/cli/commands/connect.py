@@ -99,6 +99,36 @@ def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool) -
 # Individual agent connect commands
 
 
+@connect_app.command("update")
+def update_templates(
+    project_dir: str = typer.Option(
+        ".", "--project-dir", "-p", help="Target project directory"
+    ),
+):
+    """Update all active Memanto agent instructions (both local and global) to the latest version."""
+    from memanto.cli.connect.updater import update_all_agents
+
+    messages = update_all_agents(project_dir, update_global=True, update_local=True)
+
+    # Filter out empty state messages if we successfully updated at least one thing
+    has_success = any("Successfully updated" in m for m in messages)
+    if has_success:
+        messages = [
+            m for m in messages if "No active Memanto integrations found" not in m
+        ]
+
+    # Deduplicate messages while preserving order
+    seen = set()
+    deduped = []
+    for m in messages:
+        if m not in seen:
+            seen.add(m)
+            deduped.append(m)
+
+    for msg in deduped:
+        console.print(msg)
+
+
 @connect_app.command("claude-code")
 def connect_claude_code(
     project_dir: str = typer.Option(
@@ -421,7 +451,9 @@ def connect_list(
             det_icon,
             local_icon,
             global_icon,
-            agent.instruction_file or "[dim]skills only[/dim]",
+            agent.instruction_local_file
+            or agent.instruction_global_file
+            or "[dim]skills only[/dim]",
         )
 
     console.print(table)

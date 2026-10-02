@@ -347,6 +347,33 @@ def validate_session(session_token: str) -> Session:
     return Session(**payload)
 ```
 
+#### Auto-Recreate After Expiry
+
+When `auto_recreate_enabled` is on (the default), a request that presents a
+token whose session has *fully lapsed* is not rejected outright — MEMANTO
+issues a brand-new session and continues, returning the replacement token in
+the `X-Session-Token` response header (and refreshing the cookie for browser
+callers). This is what lets you pick MEMANTO back up after an idle gap without
+hitting "No active session".
+
+Three rules bound it:
+
+- **Authorization is unchanged.** Recreation runs behind the same
+  `require_management_access` check as explicit activation — a valid management
+  credential or a loopback caller. A stolen expired token on its own buys
+  nothing, and anyone who *does* pass that check could already call
+  `/activate` directly, so no new capability is granted.
+- **Logout is authoritative.** A session ended via `/deactivate` is
+  `TERMINATED` and is never revived; the caller must activate explicitly.
+- **Stale tokens never supersede a newer session.** The token's `session_id`
+  must still match the persisted record, so an old token cannot displace a
+  session that was already replaced.
+
+Note the trade-off: with auto-recreate on, expiry no longer bounds how long a
+leaked token remains useful to a caller who also has management access. Set
+`SESSION_AUTO_RECREATE_ENABLED=False` (or `auto_recreate_enabled: false`) where
+that matters.
+
 ### 3. Agent Isolation
 
 ```python
@@ -420,6 +447,13 @@ memanto:
     extend_threshold_minutes: 30  # Extend if < 30 min remaining
     auto_renew_enabled: true
     auto_renew_interval_hours: 6  # Fresh session every 6 hours
+    auto_recreate_enabled: true   # Fresh session on first request after expiry
+
+  # The two booleans above are overlaid onto the server settings at startup.
+  # An explicitly exported SESSION_AUTO_RENEW_ENABLED / SESSION_AUTO_RECREATE_ENABLED
+  # wins, so containerised deployments stay environment-driven. The numeric
+  # session fields are read by the CLI only; set them via SESSION_* env vars
+  # to change server behaviour.
 
   cli:
     interactive_mode: true

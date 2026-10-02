@@ -8,7 +8,7 @@ Uses extensive mocking to intercept API calls across all command modules.
 
 import json
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import jwt
 import pytest
@@ -280,6 +280,35 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         mock_all_clients.remember.assert_called_once()
         assert mock_all_clients.remember.call_args.kwargs["title"] == "Custom Title"
+
+    def test_remember_attributes_the_write_to_the_calling_tool(
+        self, mock_all_clients, monkeypatch
+    ):
+        """Without --source, the write is credited to the tool that ran it.
+
+        This is what makes the Connections view able to say which agent
+        produced which memory; a bare terminal still writes as "user".
+        """
+        mock_all_clients.remember.return_value = {"memory_id": "m1", "status": "queued"}
+        monkeypatch.setenv("CLAUDECODE", "1")
+
+        result = runner.invoke(app, ["remember", "Detected source memory"])
+
+        assert result.exit_code == 0
+        assert mock_all_clients.remember.call_args.kwargs["source"] == "claude-code"
+
+    def test_remember_source_flag_overrides_detection(
+        self, mock_all_clients, monkeypatch
+    ):
+        mock_all_clients.remember.return_value = {"memory_id": "m1", "status": "queued"}
+        monkeypatch.setenv("CLAUDECODE", "1")
+
+        result = runner.invoke(
+            app, ["remember", "Explicit source memory", "--source", "user"]
+        )
+
+        assert result.exit_code == 0
+        assert mock_all_clients.remember.call_args.kwargs["source"] == "user"
 
     def test_recall_displays_string_numeric_fields(self, mock_all_clients):
         """Recall output should not crash when API metadata numbers are strings."""
@@ -1046,8 +1075,9 @@ class TestMEMANTOCLI:
         )
         assert result.exit_code == 0
         assert "deleted" in result.stdout.lower()
-        mock_all_clients.delete_agent.assert_called_once_with("test-agent")
-        mock_all_clients._get_moorcheh.return_value.namespaces.delete.assert_not_called()
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=False
+        )
 
     def test_agent_delete_purge_cloud(self, mock_all_clients):
         """Test 'memanto agent delete --force' also deleting cloud namespace"""
@@ -1055,18 +1085,44 @@ class TestMEMANTOCLI:
             "status": "deleted",
             "agent_id": "test-agent",
         }
-        mock_moorcheh = MagicMock()
-        mock_all_clients._get_moorcheh.return_value = mock_moorcheh
 
         # Answer "n" to delete cloud memories too
         result = runner.invoke(
             app, ["agent", "delete", "test-agent", "--force"], input="n\n"
         )
         assert result.exit_code == 0
-        assert "deleted" in result.stdout.lower()
-        mock_moorcheh.namespaces.delete.assert_called_once_with(
-            "memanto_agent_test-agent"
+        assert "cloud memories deleted" in result.stdout.lower()
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=True
         )
+
+    @pytest.mark.parametrize(
+        ("flag", "expected"),
+        [("--delete-memories", True), ("--keep-memories", False)],
+    )
+    def test_agent_delete_memories_flag_skips_prompt(
+        self, mock_all_clients, flag, expected
+    ):
+        """--delete-memories / --keep-memories answer the prompt for scripts."""
+        result = runner.invoke(app, ["agent", "delete", "test-agent", "--force", flag])
+        assert result.exit_code == 0
+        assert "Keep cloud memories" not in result.stdout
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=expected
+        )
+
+    def test_agent_delete_memories_failure_reports_agent_kept(self, mock_all_clients):
+        """A failed cloud delete is an error, not a 'deleted' message."""
+        from memanto.app.utils.errors import NamespaceError
+
+        mock_all_clients.delete_agent.side_effect = NamespaceError(
+            "Failed to delete namespace 'memanto_agent_test-agent' in Moorcheh: boom"
+        )
+        result = runner.invoke(
+            app, ["agent", "delete", "test-agent", "--force", "--delete-memories"]
+        )
+        assert result.exit_code != 0
+        assert "was not deleted" in result.stdout
 
     def test_agent_delete_not_found(self, mock_all_clients):
         """Test 'memanto agent delete' when agent does not exist"""
@@ -1238,6 +1294,7 @@ class TestMEMANTOCLI:
         mock_all_clients.generate_conflict_report.assert_called_once_with(
             agent_id="test-agent",
             date="2026-07-30",
+            on_progress=ANY,
         )
 
     def test_conflicts_list(self, mock_all_clients):
@@ -1427,16 +1484,16 @@ class TestMEMANTOCLI:
 
         session_mock.assert_not_called()
 
-    def test_memory_sync(self, mock_all_clients):
+    @patch("memanto.cli.connect.updater.inject_dynamic_memories")
+    def test_memory_sync(self, mock_inject, mock_all_clients):
         """Test 'memanto memory sync'"""
-        mock_all_clients.sync_memory_to_project.return_value = {
-            "total_memories": 5,
-            "source": "fresh",
-            "output_path": "project/memory.md",
+        mock_all_clients.recall.return_value = {
+            "memories": [{"type": "instruction", "content": "Test instruction"}] * 5
         }
+        mock_inject.return_value = {"updated": ["Injected successfully"]}
         result = runner.invoke(app, ["memory", "sync"])
         assert result.exit_code == 0
-        assert "Synced 5 memories" in result.stdout
+        assert "Recalled 5 dynamic memories" in result.stdout
 
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""

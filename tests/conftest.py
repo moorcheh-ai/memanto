@@ -30,11 +30,44 @@ def cleanup_test_sessions():
 
 
 @pytest.fixture(autouse=True)
+def reset_client_identity():
+    """Clear the bound calling tool between tests.
+
+    ``memanto recall --tool X`` binds a ContextVar and never resets it - correct
+    for a CLI process that is about to exit, but inside pytest one test's
+    ``--tool`` would otherwise decide the attribution of every test after it.
+    """
+    from memanto.app.utils.client_identity import set_client, set_memanto_session
+
+    set_client(None)
+    set_memanto_session(None)
+    yield
+    set_client(None)
+    set_memanto_session(None)
+
+
+@pytest.fixture(autouse=True)
 def reset_auto_parse(monkeypatch):
     """Ensure tests are not affected by the local smart_parse config setting."""
     from memanto.app.config import settings
 
     monkeypatch.setattr(settings, "AUTO_PARSE_ENABLED", True)
+
+
+@pytest.fixture(autouse=True)
+def reset_session_toggles(monkeypatch):
+    """Pin the session toggles to their defaults for every test.
+
+    ``memanto.app.config`` overlays ``~/.memanto/config.yaml`` onto ``settings``
+    at import time, so a developer who has switched auto-renew or auto-recreate
+    off locally would otherwise change how the suite behaves. Tests that
+    exercise the disabled path override this with their own ``patch.object``.
+    The overlay itself is covered in ``tests/test_session_config_overlay.py``.
+    """
+    from memanto.app.config import settings
+
+    monkeypatch.setattr(settings, "SESSION_AUTO_RENEW_ENABLED", True)
+    monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
 
 
 @pytest.fixture(autouse=True)
