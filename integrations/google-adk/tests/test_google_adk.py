@@ -24,7 +24,7 @@ from memanto_google_adk import memory as memory_module
 from memanto.app.utils.errors import AgentNotFoundError, SessionExpiredError
 
 APP = "travel-app"
-AGENT = "adk-travel-app"
+AGENT = "adk2-travel-app"
 
 
 class FakeBackend:
@@ -173,11 +173,80 @@ async def _session(user_id: str = "alice", *events: Event):
 # ---------------------------------------------------------------------- #
 
 
-def test_default_agent_id_is_a_valid_memanto_id() -> None:
-    assert default_agent_id("travel app") == AGENT
-    assert default_agent_id("a/b::c") == "adk-a-b--c"
-    assert default_agent_id("!!!") == "adk-app"
+def test_default_agent_id_preserves_safe_names_and_bounds_length() -> None:
+    """Keep short names readable while respecting the 64-character limit."""
+    assert default_agent_id("travel-app") == AGENT
+    assert default_agent_id("a" * 59) == "adk2-" + ("a" * 59)
+    assert len(default_agent_id("a" * 60)) == 64
+    assert default_agent_id("a" * 60).startswith("adk2-h-")
+    assert default_agent_id("travel-app").startswith("adk2-")
+    assert not default_agent_id("travel-app").startswith("adk-")
 
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("acme.app", "acme-app"),
+        ("a/b::c", "a-b--c"),
+        ("!!!", "app"),
+        ("", "!!!"),
+    ],
+)
+def test_default_agent_id_does_not_collapse_distinct_app_names(
+    first: str, second: str
+) -> None:
+    """Give distinct ADK app names distinct default memory namespaces."""
+    assert default_agent_id(first) != default_agent_id(second)
+
+
+async def test_colliding_normalized_app_names_cannot_read_each_others_memories(
+    backend: FakeBackend, service: MemantoMemoryService
+) -> None:
+    """Prevent a new app from reading another app's newly stored memories."""
+    await service.add_memory(
+        app_name="acme.app",
+        user_id="user-42",
+        memories=[
+            MemoryEntry(
+                content=types.Content(
+                    parts=[types.Part.from_text(text="private account recovery code")]
+                ),
+                custom_metadata={},
+            )
+        ],
+    )
+
+    result = await service.search_memory(
+        app_name="acme-app", user_id="user-42", query="recovery code"
+    )
+
+    assert result.memories == []
+    assert default_agent_id("acme.app") != default_agent_id("acme-app")
+
+
+async def test_default_agent_id_does_not_read_legacy_normalized_namespaces(
+    backend: FakeBackend, service: MemantoMemoryService
+) -> None:
+    """Keep ambiguous rows from the old shared namespace out of new app reads."""
+    backend.memories.append(
+        {
+            "id": "legacy-1",
+            "agent_id": "adk-acme-app",
+            "type": "fact",
+            "title": "Legacy private memory",
+            "content": "Legacy app recovery detail.",
+            "confidence": 0.9,
+            "tags": [user_tag("user-42")],
+            "created_at": "2026-09-25T10:00:00Z",
+        }
+    )
+
+    result = await service.search_memory(
+        app_name="acme-app", user_id="user-42", query="recovery detail"
+    )
+
+    assert result.memories == []
+    assert default_agent_id("acme-app") != "adk-acme-app"
 
 def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
