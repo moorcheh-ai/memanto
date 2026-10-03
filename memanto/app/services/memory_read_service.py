@@ -177,12 +177,22 @@ class MemoryReadService:
             # fetched `limit + offset` rows, a date-scoped, confidence-scoped,
             # or expired-heavy query would filter *within the top-N most-similar
             # rows*, causing in-window memories that rank just outside the top-N
-            # to be lost entirely (timeline amnesia / poor recall). We therefore
-            # always over-fetch up to Moorcheh's hard cap rather than only when
-            # a filter is explicitly requested.
-            top_k = min(
-                max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+            # to be lost entirely (timeline amnesia / poor recall).
+            # We over-fetch up to Moorcheh's hard cap only when a post-processing
+            # filter is actually requested to avoid the p95 latency penalty of
+            # over-fetching on simple recall queries.
+            needs_post_filter = (
+                created_after is not None
+                or created_before is not None
+                or min_confidence is not None
+                or status != "all"
             )
+            if needs_post_filter:
+                top_k = min(
+                    max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+                )
+            else:
+                top_k = min(requested_limit, MOORCHEH_MAX_TOP_K)
 
             # Perform search with server-side filtering.
             # Only enable kiosk_mode when the caller actually set a positive
@@ -571,10 +581,15 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
+            total_available = len(unique_memories)
             results = unique_memories if limit is None else unique_memories[:limit]
             log_memory_activity(op="recall", agent_id=agent_id, count=len(results))
 
-            return {"results": results, "total_found": len(results)}
+            return {
+                "results": results,
+                "total_found": len(results),
+                "total_available": total_available,
+            }
 
         except Exception as e:
             raise MemoryOperationError(f"Failed to retrieve recent memories: {e}")

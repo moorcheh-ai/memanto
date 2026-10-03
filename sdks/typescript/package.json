@@ -32,6 +32,11 @@
       "types": "./dist/integrations/voltagent.d.ts",
       "import": "./dist/integrations/voltagent.js",
       "require": "./dist/integrations/voltagent.cjs"
+    },
+    "./eve": {
+      "types": "./dist/integrations/eve.d.ts",
+      "import": "./dist/integrations/eve.js",
+      "require": "./dist/integrations/eve.cjs"
     }
   },
   "files": [
@@ -57,6 +62,7 @@
     "@voltagent/core": "^2.9.0",
     "ai": "^7.0.22",
     "esbuild": "^0.28.1",
+    "eve": "^0.67.1",
     "openai": "^6.46.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
@@ -65,8 +71,8 @@
   },
   "peerDependencies": {
     "@mastra/core": ">=1.0.0",
-    "@voltagent/core": ">=2.0.0",
     "ai": ">=5.0.0",
+    "eve": ">=0.60.0",
     "openai": ">=4.55.0",
     "zod": ">=3.23.0"
   },
@@ -74,10 +80,10 @@
     "@mastra/core": {
       "optional": true
     },
-    "@voltagent/core": {
+    "ai": {
       "optional": true
     },
-    "ai": {
+    "eve": {
       "optional": true
     },
     "openai": {

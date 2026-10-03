@@ -150,15 +150,22 @@ def agent_deactivate():
 def agent_delete(
     agent_id: str = typer.Argument(..., help="Agent ID to delete"),
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
+    delete_memories: bool | None = typer.Option(
+        None,
+        "--delete-memories/--keep-memories",
+        help="Also permanently delete the agent's memories in Moorcheh, or keep "
+        "them. Prompts when omitted.",
+    ),
 ):
     """Delete an agent and optionally purge its cloud memories.
 
     Removes local agent metadata and optionally deletes the Moorcheh namespace.
-    You will be prompted whether to keep or purge cloud memories.
+    Unless --delete-memories or --keep-memories is given, you will be prompted
+    whether to keep or purge cloud memories.
 
     Examples:
         memanto agent delete my-agent
-        memanto agent delete my-agent --force
+        memanto agent delete my-agent --force --delete-memories
     """
     if not force:
         console.print(f"[red]Delete agent '{agent_id}'? This cannot be undone.[/red]")
@@ -171,8 +178,10 @@ def agent_delete(
     from memanto.app.clients.backend import Backend
 
     on_prem = config_manager.get_backend() == Backend.ON_PREM
-    console.print()
-    if on_prem:
+    if delete_memories is not None:
+        keep_cloud = not delete_memories
+    elif on_prem:
+        console.print()
         op = config_manager.get_onprem_config()
         console.print(
             "[bold]Keep the agent's namespace on the on-prem Moorcheh server?[/bold]\n"
@@ -180,6 +189,7 @@ def agent_delete(
         )
         keep_cloud = typer.confirm("Keep namespace", default=True)
     else:
+        console.print()
         console.print(
             "[bold]Keep a copy of agent memory on Moorcheh cloud?[/bold]\n"
             "[dim]You can access it anytime at "
@@ -198,27 +208,23 @@ def agent_delete(
 
     try:
         with console.status(f"Deleting agent '{agent_id}'...", spinner="dots"):
-            client.delete_agent(agent_id)
+            client.delete_agent(agent_id, delete_memories=not keep_cloud)
     except Exception as e:
         msg = str(e)
         hint = None
-        if "not found" in msg.lower():
+        if "not found" in msg.lower() and "namespace" not in msg.lower():
             hint = "Run 'memanto agent list' to see available agents."
+        elif not keep_cloud:
+            hint = (
+                "The agent was not deleted. Fix the problem and run the command again."
+            )
         _error(f"Failed to delete agent '{agent_id}': {msg}", hint=hint)
 
     if not keep_cloud:
-        namespace = f"memanto_agent_{agent_id}"
         store_label = "on-prem memories" if on_prem else "cloud memories"
-        try:
-            with console.status(f"Deleting {store_label}...", spinner="dots"):
-                client._get_moorcheh().namespaces.delete(namespace)
-            console.print(
-                f"[green]Agent '{agent_id}' and all {store_label} deleted.[/green]"
-            )
-        except Exception as e:
-            console.print(
-                f"[yellow]Agent deleted locally, but failed to delete {store_label}: {e}[/yellow]"
-            )
+        console.print(
+            f"[green]Agent '{agent_id}' and all {store_label} deleted.[/green]"
+        )
     else:
         if on_prem:
             op = config_manager.get_onprem_config()

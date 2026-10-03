@@ -58,7 +58,23 @@ memanto serve
 
 ## Integration Pattern: Python Agents
 
-### Basic Integration (Copy-Paste Ready)
+### Python Client (Recommended)
+
+`pip install memanto` includes an in-process Python client. It creates the agent on first use and reuses the agent's live session, so there is no `agent create` / `activate` step:
+
+```python
+from memanto import Memanto
+
+memory = Memanto(agent_id="your-agent-id")
+
+memory.remember("User prefers dark mode", type="preference", tags=["ui"])
+memory.recall("dark mode", limit=5)        # {"memories": [...], ...}
+memory.answer("What theme does the user prefer?")  # {"answer": "...", ...}
+```
+
+Full reference: [Python SDK](https://docs.memanto.ai/sdk/python).
+
+### Alternative: Shell Out to the CLI
 
 ```python
 import subprocess

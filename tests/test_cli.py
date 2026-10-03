@@ -1075,8 +1075,9 @@ class TestMEMANTOCLI:
         )
         assert result.exit_code == 0
         assert "deleted" in result.stdout.lower()
-        mock_all_clients.delete_agent.assert_called_once_with("test-agent")
-        mock_all_clients._get_moorcheh.return_value.namespaces.delete.assert_not_called()
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=False
+        )
 
     def test_agent_delete_purge_cloud(self, mock_all_clients):
         """Test 'memanto agent delete --force' also deleting cloud namespace"""
@@ -1084,18 +1085,44 @@ class TestMEMANTOCLI:
             "status": "deleted",
             "agent_id": "test-agent",
         }
-        mock_moorcheh = MagicMock()
-        mock_all_clients._get_moorcheh.return_value = mock_moorcheh
 
         # Answer "n" to delete cloud memories too
         result = runner.invoke(
             app, ["agent", "delete", "test-agent", "--force"], input="n\n"
         )
         assert result.exit_code == 0
-        assert "deleted" in result.stdout.lower()
-        mock_moorcheh.namespaces.delete.assert_called_once_with(
-            "memanto_agent_test-agent"
+        assert "cloud memories deleted" in result.stdout.lower()
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=True
         )
+
+    @pytest.mark.parametrize(
+        ("flag", "expected"),
+        [("--delete-memories", True), ("--keep-memories", False)],
+    )
+    def test_agent_delete_memories_flag_skips_prompt(
+        self, mock_all_clients, flag, expected
+    ):
+        """--delete-memories / --keep-memories answer the prompt for scripts."""
+        result = runner.invoke(app, ["agent", "delete", "test-agent", "--force", flag])
+        assert result.exit_code == 0
+        assert "Keep cloud memories" not in result.stdout
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=expected
+        )
+
+    def test_agent_delete_memories_failure_reports_agent_kept(self, mock_all_clients):
+        """A failed cloud delete is an error, not a 'deleted' message."""
+        from memanto.app.utils.errors import NamespaceError
+
+        mock_all_clients.delete_agent.side_effect = NamespaceError(
+            "Failed to delete namespace 'memanto_agent_test-agent' in Moorcheh: boom"
+        )
+        result = runner.invoke(
+            app, ["agent", "delete", "test-agent", "--force", "--delete-memories"]
+        )
+        assert result.exit_code != 0
+        assert "was not deleted" in result.stdout
 
     def test_agent_delete_not_found(self, mock_all_clients):
         """Test 'memanto agent delete' when agent does not exist"""

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from filelock import FileLock, Timeout
-from moorcheh_sdk.exceptions import ConflictError
+from moorcheh_sdk.exceptions import ConflictError, NamespaceNotFound
 from pydantic import ValidationError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
@@ -20,6 +20,7 @@ from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
+    AgentNamespaceConflictError,
     AgentNotFoundError,
     NamespaceError,
 )
@@ -55,14 +56,16 @@ class AgentService:
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
-        self, agent_create: AgentCreate, moorcheh_api_key: str
+        self, agent_create: AgentCreate, moorcheh_api_key: str | None = None
     ) -> AgentInfo:
         """
         Create a new agent
 
         Args:
             agent_create: Agent creation request
-            moorcheh_api_key: Moorcheh API key for namespace creation
+            moorcheh_api_key: DEPRECATED — ignored. The server-configured
+                MOORCHEH_API_KEY is always used (MEM-02 / CodeRabbit: caller
+                credentials must never drive backend operations).
 
         Returns:
             AgentInfo object
@@ -95,19 +98,38 @@ class AgentService:
                 )
 
             namespace = self._generate_namespace(agent_create.agent_id)
-            client = get_moorcheh_client(api_key=moorcheh_api_key)
+            # CodeRabbit review: always use the server-configured credential —
+            # never a caller-supplied key (the parameter was removed from the
+            # dependency wrapper to prevent ?api_key= overrides).
+            client = get_moorcheh_client()
 
             try:
                 client.namespaces.create(namespace, type="text")
-                print(f"[OK] Namespace created in Moorcheh: {namespace}")
+                logger.info("Namespace created in Moorcheh: %s", namespace)
+            except ConflictError:
+                # MEM-03: a deterministic namespace (memanto_agent_{id}) can be
+                # pre-created by another tenant on a globally-addressable backend.
+                # Per CodeRabbit review (round 2): reject EVERY pre-existing
+                # namespace — an emptiness check cannot establish ownership
+                # (TOCTOU: another tenant can write between the check and
+                # adoption). Fail closed unconditionally unless Moorcheh
+                # provides an atomic namespace-claim/ownership operation.
+                raise AgentNamespaceConflictError(
+                    f"Namespace '{namespace}' already exists; refusing to adopt a "
+                    "pre-existing namespace (possible cross-tenant memory poisoning)"
+                )
             except Exception as exc:
                 message = str(exc).lower()
                 if "limit" in message or "tier" in message or "quota" in message:
                     raise NamespaceError(f"Moorcheh namespace limit reached: {exc}")
-                if isinstance(exc, ConflictError) or (
+                if (
                     "namespace" in message and "already exists" in message
-                ):
-                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                ) or "conflict" in message:
+                    # Same unconditional rejection as ConflictError above.
+                    raise AgentNamespaceConflictError(
+                        f"Namespace '{namespace}' already exists; refusing to adopt a "
+                        "pre-existing namespace (possible cross-tenant memory poisoning)"
+                    )
                 else:
                     raise NamespaceError(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {exc}"
@@ -123,7 +145,19 @@ class AgentService:
                 session_count=0,
                 status="ready",
             )
-            self._save_agent(agent)
+            try:
+                self._save_agent(agent)
+            except Exception as e:
+                # Rollback namespace creation if metadata save fails
+                try:
+                    client.namespaces.delete(namespace_name=namespace)
+                except Exception as del_exc:
+                    logger.error(
+                        "Failed to rollback namespace '%s' after save failure: %s",
+                        namespace,
+                        del_exc,
+                    )
+                raise e
             return agent
         finally:
             # FileLock uses an OS-backed lock. The marker file may remain, but
@@ -239,6 +273,36 @@ class AgentService:
                 raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
             agent_file.unlink()
+
+    def delete_agent_memories(
+        self, agent_id: str, moorcheh_api_key: str | None = None
+    ) -> None:
+        """
+        Permanently delete the agent's Moorcheh namespace and every memory in it.
+
+        A namespace that is already gone counts as deleted.
+
+        Args:
+            agent_id: Agent identifier
+            moorcheh_api_key: Moorcheh API key (ignored on-prem)
+
+        Raises:
+            NamespaceError: If Moorcheh fails to delete the namespace
+        """
+        validate_safe_id(agent_id, "agent_id")
+        namespace = self._generate_namespace(agent_id)
+        client = get_moorcheh_client()
+        try:
+            client.namespaces.delete(namespace_name=namespace)
+            logger.info("Namespace deleted in Moorcheh: %s", namespace)
+        except Exception as exc:
+            # The on-prem client raises its own exception types; match by message.
+            if isinstance(exc, NamespaceNotFound) or "not found" in str(exc).lower():
+                logger.info("Namespace already absent in Moorcheh: %s", namespace)
+                return
+            raise NamespaceError(
+                f"Failed to delete namespace '{namespace}' in Moorcheh: {exc}"
+            ) from exc
 
     def agent_exists(self, agent_id: str) -> bool:
         """

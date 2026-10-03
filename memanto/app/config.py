@@ -5,6 +5,7 @@ Server-side settings (loaded from .env via pydantic-settings).
 CLI config models have been moved to cli/config/manager.py.
 """
 
+import ipaddress
 import logging
 import os
 from pathlib import Path
@@ -127,9 +128,9 @@ class CLIConfig(BaseModel):
 
 
 class Settings(BaseSettings):
+    # Moorcheh Configuration
     """Unified Settings: sourced from environment / .env files"""
 
-    # Moorcheh Configuration
     MOORCHEH_API_KEY: str = ""
 
     # Backend selection: "cloud" (default) or "on-prem".
@@ -138,6 +139,7 @@ class Settings(BaseSettings):
     MOORCHEH_ONPREM_EMBEDDING_PROVIDER: str = ""
     # HTTP read timeout (seconds) for the on-prem MoorchehClient. Default 300
     # so first-call LLM cold-starts on Ollama don't hit the SDK's 30s default.
+
     MOORCHEH_ONPREM_TIMEOUT: int = 300
 
     # Server Configuration
@@ -146,11 +148,14 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS Configuration
-    ALLOWED_ORIGINS: list[str] = ["*"]
     # Setting allow_credentials=True with a wildcard origin causes Starlette to
     # reflect any request Origin back, allowing any site to make credentialed
     # cross-origin requests.  Default to False; set to True only when ALLOWED_ORIGINS
     # lists explicit trusted domains (never with "*").
+    ALLOWED_ORIGINS: list[str] = []
+
+    CORS_ORIGIN_REGEX: str | None = r"^http://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
+
     CORS_ALLOW_CREDENTIALS: bool = False
 
     # Session Configuration
@@ -162,6 +167,7 @@ class Settings(BaseSettings):
     SESSION_AUTO_RENEW_INTERVAL_HOURS: int = 6
     # Transparently issue a fresh session (new token) when a request presents
     # an expired-but-not-terminated token. Gated behind management access.
+
     SESSION_AUTO_RECREATE_ENABLED: bool = True
 
     # Memory Configuration
@@ -188,6 +194,11 @@ class Settings(BaseSettings):
     # UI Mode
     MEMANTO_UI_MODE: bool = False
 
+    MEMANTO_ENABLE_DOCS: bool = False
+
+    MEMANTO_REQUIRE_SECURE: bool = False
+    MEMANTO_PROXY_ALLOWED_IPS: list[str] = []
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )
@@ -197,8 +208,28 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+def is_loopback_host(host: str | None) -> bool:
+    raw = (host or "").strip().lower().strip("[]")
+    if raw == "localhost":
+        return True
+    if not raw:
+        return False
+    try:
+        addr = ipaddress.ip_address(raw)
+    except ValueError:
+        return False
+    if addr.is_loopback:
+        return True
+
+    if isinstance(addr, ipaddress.IPv6Address):
+        mapped = addr.ipv4_mapped
+        return mapped is not None and mapped.is_loopback
+    return False
+
+
 def get_data_dir() -> Path:
-    """Root data dir for the active backend.
+    """
+    Root data dir for the active backend.
 
     Cloud users keep ``~/.memanto/`` (no migration). On-prem data is
     isolated under ``~/.memanto/on-prem/``.

@@ -19,8 +19,16 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
 </p>
 
+<p align="center">
+  <sub><a href="README.md">English</a> · <a href="i18n/README_es.md">Español</a> · <a href="i18n/README_zh-CN.md">简体中文</a> · <a href="i18n/README_ja.md">日本語</a></sub>
+</p>
+
 ```bash
 pip install memanto
+```
+
+```bash
+npm install @moorcheh-ai/memanto
 ```
 
 <!-- ============================================================
@@ -28,9 +36,9 @@ pip install memanto
      VHS tape provided separately. Under 15s, under 3MB.
      ============================================================ -->
 
-<p align="center">
+<!-- <p align="center">
   <img alt="Memanto in 15 seconds" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/demo.gif" width="900">
-</p>
+</p> -->
 
 ---
 
@@ -92,7 +100,7 @@ This is the part that matters in two years, and it's the part every platform-nat
 
 **Your estate is a file.** `memanto memory export --okf` gives you the [Open Knowledge Format](https://docs.memanto.ai/integrations/okf) — plain Markdown, readable, diffable, committable, greppable. Not a proprietary dump you can technically request. The actual working format.
 
-**It moves.** `memanto migrate` imports from Mem0, Letta, Supermemory, or any OKF bundle. The same command works in reverse. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
+**It moves.** `memanto migrate` imports from Mem0, Letta, Supermemory, Zep, Hindsight, or any OKF bundle. The same command works in reverse. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
 
 **It runs on your machine.** Local Docker + Ollama, no account, no API key, nothing leaves your infrastructure. Or free cloud, or your own hosting. `memanto config backend` switches between them in one command, and the estate comes with you.
 
@@ -214,7 +222,7 @@ Storage substrates sit *beneath* Memanto — vector stores, filesystems, and pla
 | Daily intelligence | `memanto daily-summary`, `memanto conflicts` | Summaries, contradiction detection, interactive resolution. |
 | Sessions & automation | `memanto session ...`, `memanto schedule ...` | Inspect sessions, enable scheduled daily runs. |
 | Estate export & sync | `memanto memory export`, `memanto memory sync` | Export structured Markdown, sync `MEMORY.md` into projects. `--okf` for a portable [OKF](https://docs.memanto.ai/integrations/okf) bundle. |
-| Import & migration | `memanto migrate` | Import from Mem0, Letta, Supermemory, or an OKF bundle. |
+| Import & migration | `memanto migrate` | Import from Mem0, Letta, Supermemory, Zep, Hindsight, or an OKF bundle. |
 | Configuration | `memanto config show` | API key status, active agent/session, server settings, schedule time. |
 | Fleet integration | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment. |
 
@@ -280,6 +288,19 @@ Recall is powered by an information-theoretic semantic engine that ships in the 
 
 <br>
 
+**Python** — the `memanto` package ships an in-process client; no server to start:
+
+```python
+from memanto import Memanto
+
+memanto = Memanto(agent_id="my-agent")   # creates the agent on first use
+memanto.remember("Alex prefers oat milk.", type="preference")
+memanto.recall("what does Alex drink?")
+memanto.answer("Does Alex drink dairy?")
+```
+
+Reference: [docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python).
+
 **TypeScript / Node.js** — [`@moorcheh-ai/memanto`](sdks/typescript) boots a local Memanto server via `uvx` and exposes an ergonomic client (`remember` / `recall` / `answer`).
 
 **REST API** — start with `memanto serve`. Endpoint reference at [docs.memanto.ai/api](https://docs.memanto.ai/api) and `http://localhost:8000/docs` while running.
@@ -338,6 +359,5 @@ Questions: [support@moorcheh.ai](mailto:support@moorcheh.ai) · [@moorcheh_ai](h
 ---
 
 <p align="center">
-  <strong>MIT License</strong><br>
-  <sub><a href="README.md">English</a> · <a href="i18n/README_es.md">Español</a> · <a href="i18n/README_zh-CN.md">简体中文</a> · <a href="i18n/README_ja.md">日本語</a></sub>
+  <strong>MIT License</strong>
 </p>

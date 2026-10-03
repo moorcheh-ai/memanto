@@ -2,7 +2,7 @@
 
 PR: https://github.com/moorcheh-ai/memanto/pull/2024
 
-This submission fixes package-side trust-boundary failures that can turn untrusted local state or recalled memory into durable agent instructions, the wrong memory namespace, or out-of-project config writes.
+This submission fixes package-side trust-boundary failures that can turn untrusted local state or recalled memory into durable agent instructions, the wrong memory namespace, or out-of-project config writes. The branch incorporates upstream main `c421ab8bb27f7dc4fca9abe938dc693d2998638d`; that upstream revision already includes the connect-time path-scope fix described in section 2 via PR #2010. The remaining source changes preserve dynamic-sync isolation, Hermes identity separation, provenance handling, and atomic memory-cache replacement.
 
 ## 1. Project-local dynamic sync can escape the project through a symlink
 
@@ -32,7 +32,7 @@ Resolve the destination before instruction-file I/O, reject local destinations t
 
 ### Fix
 
-Shared `assert_project_local_path` rejects local connect destinations that resolve outside the project root before mkdir/write for instructions, skills, extensions, hooks, and permissions. Global installs remain intentional.
+Upstream `_assert_local_write_scope` rejects local connect destinations that resolve outside the project root before mkdir/write for instructions, skills, extensions, hooks, and permissions. This branch keeps the upstream implementation unchanged, together with the existing local-connect regression coverage. Global installs remain intentional. The separate `assert_project_local_path` helper remains on the dynamic-sync path described in section 1.
 
 ## 3. Hermes identity normalization aliases distinct identities
 
@@ -67,7 +67,7 @@ Missing provenance now reads as the non-authoritative `unknown` sentinel. Unrela
 
 - `memanto/cli/connect/path_scope.py` — shared project-local path check.
 - `memanto/cli/connect/updater.py` — canonical project-local write-scope enforcement plus no-follow descriptor I/O for dynamic sync.
-- `memanto/cli/connect/engine.py` — same local-scope guard for connect-time instruction, skill, extension, hooks, and permissions writes.
+- `memanto/cli/connect/engine.py` — upstream's local-scope guard for connect-time instruction, skill, extension, hooks, and permissions writes; unchanged from upstream main after reconciliation.
 - `integrations/hermes-agents/hermes_memanto/provider.py` — collision-resistant identity/profile mapping with legacy continuity handling.
 - `memanto/app/services/memory_read_service.py` and `memory_write_service.py` — fail-closed provenance preservation.
 - `memanto/cli/commands/memory_mgmt.py` — exact trusted-provenance gate before dynamic instruction injection.

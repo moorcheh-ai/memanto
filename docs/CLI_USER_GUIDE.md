@@ -241,13 +241,14 @@ memanto agent delete AGENT_ID [OPTIONS]
 
 **Options:**
 - `--force, -f` - Skip confirmation prompt (default: false)
+- `--delete-memories` / `--keep-memories` - Purge or keep the cloud memories without being asked
 
 **Behavior:**
 1. Shows a red confirmation warning (skipped with `--force`)
-2. Asks whether to keep cloud memories — free storage accessible at [console.moorcheh.ai/namespaces](https://console.moorcheh.ai/namespaces)
+2. Asks whether to keep cloud memories — free storage accessible at [console.moorcheh.ai/namespaces](https://console.moorcheh.ai/namespaces) (skipped with `--delete-memories` / `--keep-memories`)
 3. If the agent has an active session, it is cleared automatically
-4. Deletes the local agent metadata with a loading spinner
-5. If cloud purge was chosen, also deletes the Moorcheh namespace (with spinner)
+4. If cloud purge was chosen, deletes the Moorcheh namespace first; if that fails, the agent is left intact so the command can be rerun
+5. Deletes the local agent metadata with a loading spinner
 
 > **Note:** Choosing to keep cloud memories means your agent's memories remain safely stored in Moorcheh and can be accessed or re-linked at any time.
 
@@ -258,6 +259,9 @@ memanto agent delete my-agent
 
 # Force delete, skip confirmation (still asks about cloud memories)
 memanto agent delete my-agent --force
+
+# Fully non-interactive, purging cloud memories too
+memanto agent delete my-agent --force --delete-memories
 ```
 
 ---

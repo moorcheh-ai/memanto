@@ -1,5 +1,7 @@
 # Memanto MCP Server
 
+mcp-name: io.github.moorcheh-ai/memanto
+
 **Persistent semantic memory for any MCP-compatible agent.**
 
 This package exposes [Memanto's](https://memanto.ai) memory primitives —
@@ -225,3 +227,5 @@ project. See [LICENSE](../../LICENSE).
 - [Moorcheh](https://moorcheh.ai) — the no-indexing semantic DB underneath
 - [Model Context Protocol spec](https://modelcontextprotocol.io)
 - [Anthropic MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+
+<!-- mcp-name: io.github.moorcheh-ai/memanto -->

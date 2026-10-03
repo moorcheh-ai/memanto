@@ -59,7 +59,7 @@ def test_env_setup():
 async def client():
     """Create an async client for testing the FastAPI app"""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as ac:
         yield ac
 
 
@@ -147,6 +147,13 @@ class TestMEMANTOAPI:
 
     TEST_AGENT_ID = "test-api-agent"
 
+    @pytest.fixture(autouse=True)
+    def reset_cache(self):
+        from memanto.app.routes import sessions
+
+        sessions._namespace_counts_state["time"] = float("-inf")
+        sessions._namespace_counts_state["data"].clear()
+
     @pytest.mark.asyncio
     async def test_create_agent(self, client, auth_headers):
         """Test creating a new agent"""
@@ -192,7 +199,7 @@ class TestMEMANTOAPI:
             json={"agent_id": "cross-site-agent", "pattern": "support"},
         )
 
-        assert response.status_code == 401
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_cross_site_loopback_cannot_activate_agent(
@@ -586,6 +593,8 @@ class TestMEMANTOAPI:
         assert "mocked answer" in response.json()["answer"]
         call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
         assert "threshold" not in call_kwargs
+        assert "persistent memory" in call_kwargs["header_prompt"]
+        assert "based on the memory context" in call_kwargs["footer_prompt"]
 
     @pytest.mark.asyncio
     async def test_answer_omits_unset_active_ai_model(
@@ -983,6 +992,28 @@ class TestMEMANTOAPI:
         mock_moorcheh.namespaces.delete.assert_called_once_with(
             namespace_name="memanto_agent_to-delete-remote"
         )
+
+    @pytest.mark.asyncio
+    async def test_delete_agent_backup_failure_keeps_agent(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A failed namespace delete is reported and the agent is left intact."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": "to-delete-fail"},
+        )
+        mock_moorcheh.namespaces.delete.side_effect = Exception("network down")
+        response = await client.delete(
+            "/api/v2/agents/to-delete-fail?delete-backup-too=true",
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+        assert "network down" in response.text
+        still_there = await client.get(
+            "/api/v2/agents/to-delete-fail", headers=auth_headers
+        )
+        assert still_there.status_code == 200
 
     @pytest.mark.asyncio
     async def test_deactivate_agent(self, client, auth_headers):
