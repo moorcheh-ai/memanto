@@ -44,7 +44,7 @@ from memanto.app.routes.auth_deps import (
     set_session_cookie,
 )
 from memanto.app.services.session_service import get_session_service
-from memanto.app.utils.errors import MemoryOperationError
+from memanto.app.utils.errors import MemoryOperationError, redact_sensitive_text
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -274,13 +274,17 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
             try:
                 server_updates["port"] = _validate_server_port(server_updates["port"])
             except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+                raise HTTPException(
+                    status_code=400, detail=redact_sensitive_text(str(exc))
+                ) from exc
 
     if "schedule_time" in updates:
         try:
             _config_manager.set_schedule_time(updates["schedule_time"])
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(
+                status_code=400, detail=redact_sensitive_text(str(e))
+            ) from e
 
     if "session" in updates:
         if not isinstance(updates["session"], dict):
@@ -288,7 +292,9 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
         try:
             _config_manager.set_session_config(updates["session"])
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=400, detail=redact_sensitive_text(str(exc))
+            ) from exc
 
         # config.yaml is overlaid onto settings at process start, so apply the
         # session toggles to the running server too - otherwise flipping them
@@ -333,7 +339,9 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
                     kiosk_mode=ans.get("kiosk_mode") if "kiosk_mode" in ans else None,
                 )
             except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+                raise HTTPException(
+                    status_code=400, detail=redact_sensitive_text(str(exc))
+                ) from exc
 
     if "recall" in updates and isinstance(updates["recall"], dict):
         rec = updates["recall"]
@@ -433,11 +441,12 @@ def _update_onprem_answer(ans: dict) -> None:
     except ImportError as e:
         raise HTTPException(
             status_code=500,
-            detail=f"moorcheh-client not installed: {e}",
+            detail=redact_sensitive_text(f"moorcheh-client not installed: {e}"),
         )
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to persist LLM config: {e}"
+            status_code=500,
+            detail=redact_sensitive_text(f"Failed to persist LLM config: {e}"),
         )
 
     _config_manager.set_onprem_state(llm_provider=provider, llm_model=model)
@@ -544,7 +553,10 @@ async def _do_restart_onprem_backend(_asyncio, subprocess, _httpx):
     try:
         await _asyncio.to_thread(subprocess.run, up_args, check=True, timeout=300)
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"`moorcheh up` failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=redact_sensitive_text(f"`moorcheh up` failed: {e}"),
+        )
     except subprocess.TimeoutExpired:
         raise HTTPException(
             status_code=500, detail="`moorcheh up` timed out after 5 minutes."
@@ -706,7 +718,10 @@ async def read_daily_summary(
     try:
         content = path.read_text(encoding="utf-8")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read summary: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=redact_sensitive_text(f"Failed to read summary: {e}"),
+        )
     return {
         "exists": True,
         "agent_id": agent_id,
@@ -741,7 +756,7 @@ async def generate_daily_summary(
         )
         return {"agent_id": agent_id, "date": date, **result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=redact_sensitive_text(str(e)))
 
 
 @router.post("/api/ui/conflicts/generate")
@@ -768,7 +783,7 @@ async def generate_conflict_report(
         result = client.generate_conflict_report(agent_id=str(agent_id), date=str(date))
         return {"agent_id": agent_id, "date": date, **result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=redact_sensitive_text(str(e)))
 
 
 @router.post(
@@ -947,9 +962,9 @@ async def resolve_conflict(body: dict, _: None = Depends(_require_local)):
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(e)))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=redact_sensitive_text(str(e)))
 
 
 @router.get("/api/ui/connections")
@@ -1415,7 +1430,7 @@ def _migrate_langfuse_config(options: dict) -> Any:
         try:
             return [parse_score_rule(str(item)) for item in raw]
         except ScoreRuleError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+            raise HTTPException(status_code=400, detail=redact_sensitive_text(str(exc)))
 
     def number(key: str, fallback: float | None) -> float | None:
         if options.get(key) in (None, ""):
@@ -1442,7 +1457,7 @@ def _migrate_langfuse_config(options: dict) -> Any:
         )
         return CaptureConfig.from_project(merged)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(exc)))
 
 
 def _migrate_langfuse_export(api_key: str, options: dict) -> tuple[str, dict]:
@@ -1484,9 +1499,12 @@ def _migrate_langfuse_export(api_key: str, options: dict) -> tuple[str, dict]:
             discover=discover,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(exc)))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Langfuse export failed: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail=redact_sensitive_text(f"Langfuse export failed: {exc}"),
+        )
     return str(export_path), export
 
 
@@ -1576,7 +1594,9 @@ def _migrate_load_or_export(
         except (json.JSONDecodeError, OSError, ValueError) as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"Export file is not valid JSON: {file_path} ({exc})",
+                detail=redact_sensitive_text(
+                    f"Export file is not valid JSON: {file_path} ({exc})"
+                ),
             )
 
     if not api_key or not api_key.strip():
@@ -1609,7 +1629,10 @@ def _migrate_load_or_export(
     try:
         export_path, export = exporter(api_key.strip(), dest, **exporter_kwargs)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"{provider} export failed: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=redact_sensitive_text(f"{provider} export failed: {e}"),
+        )
     return str(export_path), export
 
 
@@ -1842,7 +1865,10 @@ async def migrate_import(body: dict, _: None = Depends(_require_local)):
                 on_progress=None,
             )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Import failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=redact_sensitive_text(f"Import failed: {e}"),
+        )
     elapsed_ms = round((time.perf_counter() - started) * 1000)
 
     savings = _migrate_savings(provider, export)

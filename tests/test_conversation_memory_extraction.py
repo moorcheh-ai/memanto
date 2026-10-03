@@ -122,17 +122,19 @@ def test_conversation_text_includes_first_message_when_oversized():
     long_content = "x" * (service.MAX_CONTENT_CHARS + 500)
     text = service._conversation_text([{"role": "user", "content": long_content}])
     # The text must include the role prefix and truncated content, not just "user:"
-    assert text.startswith("user: ")
-    assert "x" in text  # actual content was retained
+    assert "user: x" in text
     assert len(text) <= service.MAX_CONTENT_CHARS
-    assert len(text) > len("user: ")  # more than just the prefix
+    assert len(text) > len(
+        "<conversation_content>\nuser: \n</conversation_content>"
+    )  # more than just the prefix
 
 
 def test_conversation_text_truncates_after_budget():
     """When the second message pushes total over the budget, only the
     first message should appear."""
     service = ConversationMemoryExtractionService(FakeClient("[]"))
-    half = service.MAX_CONTENT_CHARS // 2 + 100
+    # 47 is the wrapper length
+    half = (service.MAX_CONTENT_CHARS - 47) // 2 + 100
     text = service._conversation_text(
         [
             {"role": "user", "content": "a" * half},
@@ -140,7 +142,7 @@ def test_conversation_text_truncates_after_budget():
         ]
     )
     # First message must be complete with its content
-    expected = f"user: {'a' * half}"
+    expected = f"<conversation_content>\nuser: {'a' * half}\n</conversation_content>"
     assert text == expected
     assert len(text) <= service.MAX_CONTENT_CHARS
 
@@ -154,7 +156,8 @@ def test_conversation_text_exact_budget_boundary_with_separator():
     prefix1 = "user: "
     prefix2 = "assistant: "
 
-    avail = service.MAX_CONTENT_CHARS - len(prefix1) - 1 - len(prefix2)
+    wrapper_len = 47
+    avail = service.MAX_CONTENT_CHARS - wrapper_len - len(prefix1) - 1 - len(prefix2)
     len1 = avail // 2
     len2 = avail - len1
 
@@ -175,7 +178,7 @@ def test_conversation_text_exact_budget_boundary_with_separator():
         ]
     )
     assert "assistant:" not in text_exceeds
-    assert len(text_exceeds) == len(prefix1) + len1
+    assert len(text_exceeds) == wrapper_len + len(prefix1) + len1
 
 
 def test_extract_redacts_sensitive_credentials():

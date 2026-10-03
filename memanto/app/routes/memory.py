@@ -35,7 +35,11 @@ from memanto.app.models import (
     UploadFileResponse,
 )
 from memanto.app.models.session import Session
-from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.routes.auth_deps import (
+    get_current_session,
+    get_moorcheh_api_key,
+    get_session_service,
+)
 from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
@@ -50,6 +54,7 @@ from memanto.app.utils.errors import (
     AuthorizationError,
     MemoryOperationError,
     map_error_to_http_exception,
+    redact_sensitive_text,
 )
 from memanto.app.utils.temporal_helpers import (
     END_OF_DAY,
@@ -397,7 +402,8 @@ def resolve_recall_limit(request_limit: int | None) -> int:
         limit = int(raw_limit)
     except (TypeError, ValueError) as e:
         raise HTTPException(
-            status_code=400, detail=f"Invalid recall configuration: {e}"
+            status_code=400,
+            detail=redact_sensitive_text(f"Invalid recall configuration: {e}"),
         ) from e
     if limit < 1:
         raise HTTPException(
@@ -954,7 +960,8 @@ async def recall(
         )
     except (TypeError, ValueError) as e:
         raise HTTPException(
-            status_code=400, detail=f"Invalid recall configuration: {e}"
+            status_code=400,
+            detail=redact_sensitive_text(f"Invalid recall configuration: {e}"),
         )
     try:
         # Initialize memory read service
@@ -1113,6 +1120,7 @@ async def generate_daily_summary(
     agent_id: str,
     request: DailySummaryRequest = Body(default_factory=DailySummaryRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Generate the on-demand daily AI summary for an agent/date.
@@ -1125,8 +1133,12 @@ async def generate_daily_summary(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = DirectClient(moorcheh_api_key)
+        client.session_token = session.session_token
+        client.agent_id = agent_id
+
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            client.generate_daily_summary,
             agent_id,
             resolved_date,
             None,
@@ -1146,6 +1158,7 @@ async def generate_conflict_report(
     agent_id: str,
     request: ConflictDetectRequest = Body(default_factory=ConflictDetectRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Generate the conflict report for an agent/date.
@@ -1158,7 +1171,7 @@ async def generate_conflict_report(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            DirectClient(moorcheh_api_key).generate_conflict_report,
             agent_id,
             resolved_date,
         )
@@ -1177,6 +1190,7 @@ async def list_conflicts(
     agent_id: str,
     date: str | None = Query(None, description="Conflict report date (YYYY-MM-DD)"),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     List unresolved conflicts for an agent.
@@ -1193,7 +1207,7 @@ async def list_conflicts(
     _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
+            DirectClient(moorcheh_api_key).list_conflicts,
             agent_id,
             resolved_date,
         )
@@ -1213,6 +1227,7 @@ async def resolve_conflict(
     agent_id: str,
     request: ConflictResolveRequest = Body(...),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Resolve a conflict for an agent.
@@ -1225,7 +1240,7 @@ async def resolve_conflict(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
+            DirectClient(moorcheh_api_key).resolve_conflict,
             agent_id,
             resolved_date,
             request.conflict_index,
@@ -1626,7 +1641,7 @@ async def get_policy_preset(
     try:
         policy = load_preset(name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=redact_sensitive_text(str(e)))
 
     return {
         "name": name,
@@ -1655,7 +1670,7 @@ async def apply_policy_preset(
     try:
         policy = load_preset(request.name)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(e)))
 
     try:
         service = MemoryPolicyService(client)
