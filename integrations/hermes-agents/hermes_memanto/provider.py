@@ -69,9 +69,35 @@ _MAX_AGENT_ID_LENGTH = 64
 _ACTIVATION_RETRY_COOLDOWN = 60.0
 
 
+# Memanto agent ids accept only [A-Za-z0-9_-] (see
+# memanto.app.utils.validation.validate_safe_id). ``_`` is reserved as the
+# escape marker below; these are the characters that pass through verbatim.
+_AGENT_ID_VERBATIM_RE = re.compile(r"[A-Za-z0-9-]")
+
+
 def _sanitize_agent_id(raw: str) -> str:
-    """Sanitize charset and append a stable hash if over 64 chars."""
-    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
+    """Sanitize charset and append a stable hash if over 64 chars.
+
+    The mapping has to be *injective*: one Hermes profile must resolve to one
+    Memanto agent, and two profiles must never resolve to the same agent, or
+    they would read and overwrite each other's memories (the ``hermes-{identity}``
+    template promises per-profile isolation). Replacing every unsafe character
+    with ``_`` is lossy -- ``dev.alice``, ``dev_alice`` and ``dev alice`` all
+    collapsed onto ``hermes-dev_alice`` -- so unsafe characters are escaped as
+    the marker ``_`` followed by two hex digits per UTF-8 byte. A literal
+    underscore is escaped too (``_5f``), which keeps the encoding reversible;
+    the ``hermes-{identity}`` separator is a hyphen, so ordinary identities
+    such as ``hermes-coder`` are unaffected.
+    """
+    escaped: list[str] = []
+    for char in raw:
+        if char == "_":
+            escaped.append("_5f")
+        elif _AGENT_ID_VERBATIM_RE.fullmatch(char):
+            escaped.append(char)
+        else:
+            escaped.extend(f"_{byte:02x}" for byte in char.encode("utf-8"))
+    sanitized = "".join(escaped)
     if len(sanitized) > _MAX_AGENT_ID_LENGTH:
         suffix = hashlib.sha256(raw.encode()).hexdigest()[:8]
         sanitized = sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1] + "-" + suffix

@@ -17,6 +17,7 @@ from hermes_memanto.provider import (
     _detect_memory_type,
     _format_recall_block,
     _load_memanto_config,
+    _sanitize_agent_id,
     _save_memanto_config,
 )
 
@@ -262,6 +263,77 @@ def test_identity_template_default_profile(monkeypatch, tmp_path):
     p = MemantoMemoryProvider()
     p.initialize("s1", hermes_home=str(tmp_path), platform="cli")
     assert p._agent_id == "hermes-default"
+
+
+# Two DIFFERENT Hermes profiles must never resolve to the same memory agent, so
+# these pairs are all plausible identities whose only difference is a character
+# that Memanto's agent-id charset cannot express ('.', '@', ' ', '/').
+DISTINCT_BUT_SIMILAR_IDENTITIES = [
+    ("dev.alice", "dev_alice"),
+    ("alice@corp.com", "alice_corp_com"),
+    ("Alice Bob", "Alice_Bob"),
+    ("prod/team", "prod_team"),
+]
+
+
+@pytest.mark.parametrize("identity_a,identity_b", DISTINCT_BUT_SIMILAR_IDENTITIES)
+def test_sanitize_agent_id_is_injective(identity_a, identity_b):
+    """Distinct identities must map to distinct agent ids.
+
+    A lossy replacement (every unsafe character -> "_") collapses
+    "dev.alice", "dev_alice" and "dev alice" onto one agent, which would let
+    one Hermes profile recall and overwrite another profile's memories.
+    """
+    assert _sanitize_agent_id(f"hermes-{identity_a}") != _sanitize_agent_id(
+        f"hermes-{identity_b}"
+    )
+
+
+def test_sanitize_agent_id_stays_within_memanto_charset_and_length():
+    """Sanitized ids must always satisfy Memanto's agent-id validation."""
+    import re as _re
+
+    from memanto.app.utils.validation import validate_safe_id
+
+    for raw in [
+        "hermes-coder",
+        "hermes-dev.alice",
+        "hermes-alice@corp.com",
+        "hermes-Équipe été",
+        "hermes-" + "x" * 200,
+    ]:
+        sanitized = _sanitize_agent_id(raw)
+        assert _re.fullmatch(r"[A-Za-z0-9_-]+", sanitized), sanitized
+        assert len(sanitized) <= 64, sanitized
+        # ``validate_safe_id`` is what the Memanto server enforces.
+        assert validate_safe_id(sanitized, "agent_id") == sanitized
+
+
+def test_sanitize_agent_id_keeps_plain_identities_readable():
+    """The documented ``hermes-{identity}`` shape is preserved when possible."""
+    assert _sanitize_agent_id("hermes-coder") == "hermes-coder"
+    assert _sanitize_agent_id("hermes-default") == "hermes-default"
+
+
+def test_profiles_with_similar_identities_get_separate_agents(monkeypatch, tmp_path):
+    """End-to-end: two near-identical profile names must not share memory."""
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+    _save_memanto_config({"agent_id": "hermes-{identity}"}, str(tmp_path))
+
+    first = MemantoMemoryProvider()
+    first.initialize(
+        "s1", hermes_home=str(tmp_path), platform="cli", agent_identity="dev.alice"
+    )
+    second = MemantoMemoryProvider()
+    second.initialize(
+        "s2", hermes_home=str(tmp_path), platform="cli", agent_identity="dev_alice"
+    )
+
+    assert first._agent_id != second._agent_id
+    assert first._client.agent_id != second._client.agent_id
+    assert first._client.profile_path != second._client.profile_path
 
 
 def test_agent_id_env_override(monkeypatch, tmp_path):
