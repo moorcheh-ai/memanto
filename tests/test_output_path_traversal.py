@@ -71,6 +71,41 @@ class TestValidateOutputPath:
         with pytest.raises(HTTPException):
             self.fn("/root/.ssh/authorized_keys", base_dir=self._base(tmp_path))
 
+    @pytest.mark.parametrize(
+        "reserved_name",
+        ["secret_key", "secret_key.lock", ".env", "config.yaml", "connections.json"],
+    )
+    def test_reserved_files_rejected(self, tmp_path, reserved_name):
+        from fastapi import HTTPException
+
+        base = self._base(tmp_path)
+        with pytest.raises(HTTPException) as exc:
+            self.fn(reserved_name, base_dir=base)
+        assert exc.value.status_code == 400
+        assert "reserved internal file" in exc.value.detail
+
+    @pytest.mark.parametrize(
+        "reserved_dir",
+        ["sessions", "sessions/token.json", "agents", "agents/agent1.json", "policies"],
+    )
+    def test_reserved_directories_rejected(self, tmp_path, reserved_dir):
+        from fastapi import HTTPException
+
+        base = self._base(tmp_path)
+        with pytest.raises(HTTPException) as exc:
+            self.fn(reserved_dir, base_dir=base)
+        assert exc.value.status_code == 400
+        assert "reserved internal directory" in exc.value.detail
+
+    def test_base_directory_itself_rejected(self, tmp_path):
+        from fastapi import HTTPException
+
+        base = self._base(tmp_path)
+        with pytest.raises(HTTPException) as exc:
+            self.fn(".", base_dir=base)
+        assert exc.value.status_code == 400
+        assert "base directory" in exc.value.detail
+
 
 class TestDailyAnalysisOutputPath:
     """validate_output_path is called from DailyAnalysisService.generate_summary."""
@@ -120,3 +155,17 @@ class TestMemoryExportOutputPath:
         with pytest.raises(HTTPException) as exc:
             svc.write_memory_md("agent1", "# content", output_path="/etc/passwd")
         assert exc.value.status_code == 400
+
+    def test_secret_key_overwrite_raises(self, tmp_path):
+        from fastapi import HTTPException
+
+        from memanto.app.services.memory_export_service import MemoryExportService
+
+        svc = MemoryExportService.__new__(MemoryExportService)
+        svc.exports_dir = tmp_path / ".memanto" / "exports"
+        svc.exports_dir.mkdir(parents=True)
+
+        with pytest.raises(HTTPException) as exc:
+            svc.write_memory_md("agent1", {}, output_path="secret_key")
+        assert exc.value.status_code == 400
+        assert "reserved internal file" in exc.value.detail

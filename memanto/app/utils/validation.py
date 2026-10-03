@@ -191,6 +191,23 @@ def validate_safe_id(value: str, field_name: str = "id") -> str:
     return value
 
 
+RESERVED_OUTPUT_FILENAMES = {
+    "secret_key",
+    "secret_key.lock",
+    ".env",
+    "config.yaml",
+    "config.json",
+    "connections.json",
+}
+
+RESERVED_OUTPUT_DIRS = {
+    "sessions",
+    "agents",
+    "policies",
+    ".claude-statusline",
+}
+
+
 def validate_output_path(
     output_path: str | None, base_dir: Path | None = None
 ) -> Path | None:
@@ -198,7 +215,9 @@ def validate_output_path(
 
     An authenticated caller who supplies ``output_path="/etc/cron.d/evil"`` could
     overwrite arbitrary files on the server.  This guard resolves the requested path
-    and ensures it remains inside *base_dir* (defaults to ``~/.memanto/``).
+    and ensures it remains inside *base_dir* (defaults to ``~/.memanto/``), and
+    rejects paths targeting sensitive internal configuration, secret files, or
+    session storage directories.
 
     Args:
         output_path: Raw path string from the API request, or ``None``.
@@ -208,7 +227,8 @@ def validate_output_path(
         Resolved ``Path`` when *output_path* is provided, ``None`` otherwise.
 
     Raises:
-        HTTPException(400): When the resolved path escapes *base_dir*.
+        HTTPException(400): When the resolved path escapes *base_dir* or targets
+            reserved system files/directories.
     """
     if output_path is None:
         return None
@@ -223,7 +243,7 @@ def validate_output_path(
         raise HTTPException(status_code=400, detail="Invalid output_path")
 
     try:
-        resolved.relative_to(safe_base)
+        rel_path = resolved.relative_to(safe_base)
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -232,6 +252,28 @@ def validate_output_path(
                 "Absolute paths that escape it are not allowed."
             ),
         )
+
+    if rel_path == Path("."):
+        raise HTTPException(
+            status_code=400,
+            detail="output_path cannot be the base directory.",
+        )
+
+    if rel_path.parts and rel_path.parts[0] in RESERVED_OUTPUT_DIRS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"output_path cannot target reserved internal directory '{rel_path.parts[0]}'.",
+        )
+
+    if (
+        resolved.name in RESERVED_OUTPUT_FILENAMES
+        or rel_path.name in RESERVED_OUTPUT_FILENAMES
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"output_path cannot target reserved internal file '{resolved.name}'.",
+        )
+
     return resolved
 
 
