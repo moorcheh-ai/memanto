@@ -17,6 +17,7 @@ from hermes_memanto.provider import (
     _detect_memory_type,
     _format_recall_block,
     _load_memanto_config,
+    _sanitize_agent_id,
     _save_memanto_config,
 )
 
@@ -134,6 +135,53 @@ def test_detect_memory_type():
     assert _detect_memory_type("User prefers dark mode") == "preference"
     assert _detect_memory_type("We decided to use Postgres") == "decision"
     assert _detect_memory_type("The API is rate limited") == "fact"
+
+
+def test_sanitize_agent_id_differentiates_unsafe_spellings():
+    at_name = _sanitize_agent_id("alice@example.com")
+    hash_name = _sanitize_agent_id("alice#example.com")
+
+    assert at_name != hash_name
+    assert len(at_name) <= 64
+    assert len(hash_name) <= 64
+    assert "@" not in at_name
+    assert "#" not in hash_name
+
+
+def test_sanitize_agent_id_does_not_alias_literal_normalized_output():
+    unsafe_name = _sanitize_agent_id("alice@example.com")
+
+    assert _sanitize_agent_id(unsafe_name) != unsafe_name
+
+
+def test_distinct_unsafe_profiles_do_not_share_agent_or_token_path(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+
+    email_profile = MemantoMemoryProvider()
+    hash_profile = MemantoMemoryProvider()
+    email_profile.initialize(
+        "s1",
+        hermes_home=str(tmp_path),
+        platform="cli",
+        agent_identity="alice@example.com",
+    )
+    hash_profile.initialize(
+        "s2",
+        hermes_home=str(tmp_path),
+        platform="cli",
+        agent_identity="alice#example.com",
+    )
+    if email_profile._warmup_thread:
+        email_profile._warmup_thread.join(timeout=1)
+    if hash_profile._warmup_thread:
+        hash_profile._warmup_thread.join(timeout=1)
+
+    assert email_profile._agent_id != hash_profile._agent_id
+    assert email_profile._client.profile_path != hash_profile._client.profile_path
 
 
 def test_load_and_save_config_round_trip(tmp_path):
@@ -274,6 +322,57 @@ def test_agent_id_env_override(monkeypatch, tmp_path):
 
 
 # -- Session lifecycle --------------------------------------------------------
+
+
+def test_failed_reinitialization_drops_previous_identity_client(provider, tmp_path):
+    previous_client = provider._client
+    previous_client.recall_results = [
+        {"type": "fact", "content": "Previous identity's private memory"}
+    ]
+    profile = tmp_path / "profiles" / "coder"
+    profile.mkdir()
+    (profile / ".memanto_identity.json").write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "identity": "someone-else",
+                "raw_agent_id": "hermes-coder",
+                "profile": "coder",
+                "agent_namespace": "hermes-coder",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="metadata does not match 'identity'"):
+        provider.initialize(
+            "session-2", hermes_home=str(tmp_path), agent_identity="coder"
+        )
+
+    assert provider.prefetch("private memory", session_id="session-2") == ""
+    assert provider.system_prompt_block() == ""
+    for tool, arguments in (
+        ("memanto_recall", {"query": "private memory"}),
+        ("memanto_remember", {"content": "New identity's private memory"}),
+        ("memanto_answer", {"question": "What do you remember?"}),
+    ):
+        result = json.loads(provider.handle_tool_call(tool, arguments))
+        assert "error" in result
+    provider.sync_turn("New identity's private request", "A sufficiently long response")
+    provider.on_memory_write("add", "memory", "New identity's private memory")
+    assert previous_client.remember_calls == []
+    assert previous_client.answer_calls == []
+    assert provider._active is False
+    assert provider._client is None
+
+    provider.initialize(
+        "session-3", hermes_home=str(tmp_path), agent_identity="valid-coder"
+    )
+    provider._warmup_thread.join(timeout=1)
+    assert provider._active is True
+    assert provider._client is not previous_client
+    assert provider._client.agent_id == "hermes-valid-coder"
+    assert provider.prefetch("private memory", session_id="session-3") == ""
 
 
 def test_ensure_session_backs_off_then_allows_retry():

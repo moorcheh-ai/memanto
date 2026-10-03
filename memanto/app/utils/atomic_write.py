@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import errno
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -41,6 +42,39 @@ def atomic_write_text(path: Path, content: str) -> None:
         except OSError:
             pass  # Windows may not support POSIX permission bits
         os.replace(tmp_path, path)
+        tmp_path = None
+    finally:
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+
+
+def atomic_copy_file(source: Path, destination: Path) -> None:
+    """Replace *destination* with *source* without following destination symlinks.
+
+    The copy is staged in the destination directory, then os.replace swaps
+    the directory entry atomically. If destination is a symlink (or hard
+    link), that entry is replaced instead of writing through it to an
+    out-of-scope file.
+    """
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp:
+            tmp_path = Path(tmp.name)
+
+        shutil.copy2(source, tmp_path)
+        with tmp_path.open("rb") as staged:
+            os.fsync(staged.fileno())
+        os.replace(tmp_path, destination)
         tmp_path = None
     finally:
         if tmp_path is not None:

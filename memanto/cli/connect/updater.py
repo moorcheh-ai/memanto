@@ -1,9 +1,13 @@
+import os
 import re
+import secrets
+import stat
 from pathlib import Path
 from typing import Any
 
 from memanto.cli.connect.agent_registry import list_agents
 from memanto.cli.connect.engine import install_agent
+from memanto.cli.connect.path_scope import assert_project_local_path
 from memanto.cli.connect.templates import TEMPLATE_VERSION
 
 
@@ -173,12 +177,126 @@ def update_all_agents(
     return messages
 
 
+def _assert_dynamic_sync_write_scope(
+    project_path: Path, target: Path, is_global: bool
+) -> Path:
+    """Return the resolved target after enforcing project-local write scope."""
+    return assert_project_local_path(
+        project_path,
+        target,
+        is_global=is_global,
+        action="dynamic memory sync",
+    )
+
+
+def _open_local_dynamic_sync_file(project_path: Path, target: Path) -> tuple[int, int]:
+    """Open a local target and retain its no-follow parent directory descriptor."""
+    root = project_path.resolve()
+    try:
+        relative = target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Refusing dynamic memory sync outside project: {target}"
+        ) from exc
+
+    if not relative.parts:
+        raise ValueError(f"Refusing dynamic memory sync to project directory: {target}")
+
+    supports_dir_fd = getattr(os, "supports_dir_fd", ())
+    if (
+        not hasattr(os, "O_NOFOLLOW")
+        or not hasattr(os, "O_DIRECTORY")
+        or os.open not in supports_dir_fd
+    ):
+        raise ValueError(
+            "Secure local dynamic memory sync requires no-follow dir_fd support"
+        )
+
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    directory_fd = os.open(root, directory_flags)
+    file_fd = None
+    try:
+        for part in relative.parts[:-1]:
+            next_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+
+        file_fd = os.open(
+            relative.parts[-1],
+            os.O_RDWR | os.O_NOFOLLOW,
+            dir_fd=directory_fd,
+        )
+
+        if not stat.S_ISREG(os.fstat(file_fd).st_mode):
+            raise ValueError(
+                f"Refusing dynamic memory sync to non-regular file: {target}"
+            )
+        return file_fd, directory_fd
+    except BaseException:
+        if file_fd is not None:
+            os.close(file_fd)
+        os.close(directory_fd)
+        raise
+
+
+def _replace_local_dynamic_sync_file(
+    directory_fd: int, name: str, source_fd: int, content: str
+) -> None:
+    """Replace a local entry without writing through aliases of its old inode."""
+    original = os.fstat(source_fd)
+    temporary_name = f".{name}.{secrets.token_hex(16)}.tmp"
+    temporary_fd = os.open(
+        temporary_name,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
+    published = False
+    try:
+        with os.fdopen(temporary_fd, "w", encoding="utf-8", closefd=False) as temporary:
+            temporary.write(content)
+            temporary.flush()
+            os.fchmod(temporary_fd, stat.S_IMODE(original.st_mode))
+            os.fsync(temporary_fd)
+
+        current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if (current.st_dev, current.st_ino) != (original.st_dev, original.st_ino):
+            raise ValueError(f"Refusing dynamic memory sync to changed file: {name}")
+        os.replace(
+            temporary_name,
+            name,
+            src_dir_fd=directory_fd,
+            dst_dir_fd=directory_fd,
+        )
+        published = True
+    finally:
+        os.close(temporary_fd)
+        if not published:
+            try:
+                os.unlink(temporary_name, dir_fd=directory_fd)
+            except FileNotFoundError:
+                pass
+
+
 def inject_dynamic_memories(
     project_dir: str,
     content: str,
     connection: str | None = None,
     scope: str | None = None,
 ) -> dict[str, list[str]]:
+    """Write ``content`` into the dynamic memory section of connected agents.
+
+    Targets the named ``connection``, or every connection that applies to
+    ``project_dir`` for the requested ``scope`` (``"local"``, ``"global"``,
+    or local connections first and global ones as a fallback when omitted).
+    Only the text between the Memanto dynamic sentinels in each agent's
+    instruction file and ``SKILL.md`` is replaced. Local writes must stay
+    inside the project and replace the file through a no-follow descriptor chain.
+
+    Returns messages grouped under ``updated``, ``already_current`` and
+    ``no_eligible_target``. Raises ``ValueError`` for an invalid scope, when
+    no connection applies, or when a target falls outside the allowed scope.
+    """
     from memanto.cli.config.manager import ConfigManager
     from memanto.cli.connect.agent_registry import get_agent
     from memanto.cli.connect.templates import (
@@ -289,31 +407,67 @@ def inject_dynamic_memories(
 
         for path in paths_to_check:
             if path and path.exists():
-                text = path.read_text(encoding="utf-8")
-                if MEMANTO_DYNAMIC_SENTINEL in text:
-
-                    def replacer(match):
-                        if content:
-                            safe_content = content.replace(
-                                MEMANTO_DYNAMIC_SENTINEL, ""
-                            ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
-                            return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
-                        return f"{match.group(1)}\n{match.group(2)}"
-
-                    new_text = pattern.sub(replacer, text)
-                    if new_text != text:
-                        path.write_text(new_text, encoding="utf-8")
-                        results["updated"].append(
-                            f"Injected memories into {path.name} ({agent.name}, "
-                            f"{'global' if is_global else 'local'})"
-                        )
+                resolved_path = _assert_dynamic_sync_write_scope(
+                    project_path, path, is_global
+                )
+                # Keep local reads and replacement anchored to the same directory.
+                # Never mutate the source inode: it may have outside hard-link aliases.
+                local_handle = None
+                local_directory_fd = None
+                try:
+                    if is_global:
+                        text = resolved_path.read_text(encoding="utf-8")
                     else:
-                        results["already_current"].append(
-                            f"{path.name} ({agent.name}) is already current"
+                        file_fd, local_directory_fd = _open_local_dynamic_sync_file(
+                            project_path, resolved_path
                         )
-                else:
-                    results["no_eligible_target"].append(
-                        f"{path.name} ({agent.name}) has no dynamic section"
-                    )
+                        try:
+                            local_handle = os.fdopen(file_fd, "r", encoding="utf-8")
+                        except BaseException:
+                            os.close(file_fd)
+                            raise
+                        text = local_handle.read()
+
+                    if MEMANTO_DYNAMIC_SENTINEL in text:
+
+                        def replacer(match):
+                            """Replace one sentinel block's body with ``content``, minus any sentinels."""
+                            if content:
+                                safe_content = content.replace(
+                                    MEMANTO_DYNAMIC_SENTINEL, ""
+                                ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
+                                return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
+                            return f"{match.group(1)}\n{match.group(2)}"
+
+                        new_text = pattern.sub(replacer, text)
+                        if new_text != text:
+                            if is_global:
+                                resolved_path.write_text(new_text, encoding="utf-8")
+                            else:
+                                assert local_handle is not None
+                                assert local_directory_fd is not None
+                                _replace_local_dynamic_sync_file(
+                                    local_directory_fd,
+                                    resolved_path.name,
+                                    local_handle.fileno(),
+                                    new_text,
+                                )
+                            results["updated"].append(
+                                f"Injected memories into {path.name} ({agent.name}, "
+                                f"{'global' if is_global else 'local'})"
+                            )
+                        else:
+                            results["already_current"].append(
+                                f"{path.name} ({agent.name}) is already current"
+                            )
+                    else:
+                        results["no_eligible_target"].append(
+                            f"{path.name} ({agent.name}) has no dynamic section"
+                        )
+                finally:
+                    if local_handle is not None:
+                        local_handle.close()
+                    if local_directory_fd is not None:
+                        os.close(local_directory_fd)
 
     return results
