@@ -757,6 +757,9 @@ class MemantoMemoryProvider(MemoryProvider):
         current identity, disables writes for cron, flush and subagent contexts,
         and starts a background session warmup when an API key is available.
         """
+        # A rejected identity must not retain the preceding session's client.
+        self._active = False
+        self._client = None
         self._hermes_home = kwargs.get("hermes_home") or _resolve_hermes_home()
         self._config = _load_memanto_config(self._hermes_home)
         self._api_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
@@ -780,8 +783,6 @@ class MemantoMemoryProvider(MemoryProvider):
         agent_context = kwargs.get("agent_context", "")
         self._write_enabled = agent_context not in {"cron", "flush", "subagent"}
 
-        self._active = False
-        self._client = None
         if not self._api_key:
             return
         try:

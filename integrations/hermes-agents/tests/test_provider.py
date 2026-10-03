@@ -324,6 +324,57 @@ def test_agent_id_env_override(monkeypatch, tmp_path):
 # -- Session lifecycle --------------------------------------------------------
 
 
+def test_failed_reinitialization_drops_previous_identity_client(provider, tmp_path):
+    previous_client = provider._client
+    previous_client.recall_results = [
+        {"type": "fact", "content": "Previous identity's private memory"}
+    ]
+    profile = tmp_path / "profiles" / "coder"
+    profile.mkdir()
+    (profile / ".memanto_identity.json").write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "identity": "someone-else",
+                "raw_agent_id": "hermes-coder",
+                "profile": "coder",
+                "agent_namespace": "hermes-coder",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="metadata does not match 'identity'"):
+        provider.initialize(
+            "session-2", hermes_home=str(tmp_path), agent_identity="coder"
+        )
+
+    assert provider.prefetch("private memory", session_id="session-2") == ""
+    assert provider.system_prompt_block() == ""
+    for tool, arguments in (
+        ("memanto_recall", {"query": "private memory"}),
+        ("memanto_remember", {"content": "New identity's private memory"}),
+        ("memanto_answer", {"question": "What do you remember?"}),
+    ):
+        result = json.loads(provider.handle_tool_call(tool, arguments))
+        assert "error" in result
+    provider.sync_turn("New identity's private request", "A sufficiently long response")
+    provider.on_memory_write("add", "memory", "New identity's private memory")
+    assert previous_client.remember_calls == []
+    assert previous_client.answer_calls == []
+    assert provider._active is False
+    assert provider._client is None
+
+    provider.initialize(
+        "session-3", hermes_home=str(tmp_path), agent_identity="valid-coder"
+    )
+    provider._warmup_thread.join(timeout=1)
+    assert provider._active is True
+    assert provider._client is not previous_client
+    assert provider._client.agent_id == "hermes-valid-coder"
+    assert provider.prefetch("private memory", session_id="session-3") == ""
+
+
 def test_ensure_session_backs_off_then_allows_retry():
     """A transient activation failure must not poison the client forever."""
     import threading as _threading
