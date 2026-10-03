@@ -113,6 +113,7 @@ class DailyAnalysisService:
         self,
         sessions_dir: Path | None = None,
         summaries_dir: Path | None = None,
+        client: Any | None = None,
     ):
         """
         Initialize the daily analysis service.
@@ -120,11 +121,19 @@ class DailyAnalysisService:
         Args:
             sessions_dir: Directory where session MD files are stored
             summaries_dir: Directory where generated summaries will be saved
+            client: Backend client already bound to the caller's authority.
         """
         self.session_service = get_session_service()
         self.sessions_dir = sessions_dir or self.session_service.sessions_dir
         self.summaries_dir = summaries_dir or get_data_dir() / "summaries"
         self.summaries_dir.mkdir(parents=True, exist_ok=True)
+        self._client = client
+
+    def _get_moorcheh(self) -> Any:
+        """Use an injected client, or the server-configured client by default."""
+        if self._client is not None:
+            return self._client
+        return get_moorcheh_client()
 
     def generate_summary(
         self, agent_id: str, date: str, output_path: str | None = None
@@ -159,7 +168,7 @@ class DailyAnalysisService:
 
         full_text = "\n\n---\n\n".join(combined_content)
 
-        client = get_moorcheh_client()
+        client = self._get_moorcheh()
         namespace = agent_namespace(agent_id)
 
         retrieval_query = _truncate_embedding_query(
@@ -505,7 +514,7 @@ Example response format:
         validate_safe_id(agent_id, "agent_id")
         validate_safe_id(date, "date")
 
-        client = get_moorcheh_client()
+        client = self._get_moorcheh()
         namespace = agent_namespace(agent_id)
 
         if parse_backend(settings.MEMANTO_BACKEND) == Backend.CLOUD:
