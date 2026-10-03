@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from memanto.cli.connect import engine
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY
 from memanto.cli.connect.engine import _remove_instructions
@@ -286,3 +288,172 @@ def test_installed_skill_carries_the_agents_own_slug(tmp_path, monkeypatch):
     )
     assert "--tool cursor" in skill
     assert "--tool claude-code" not in skill
+
+
+def setup_kimi_dirs(tmp_path, monkeypatch):
+    """Kimi hooks are user-level: config.toml lands in ~/.kimi-code."""
+    stub_config_manager(monkeypatch)
+    monkeypatch.delenv("KIMI_CODE_HOME", raising=False)
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    project = tmp_path / "project"
+    project.mkdir()
+    return home, project
+
+
+def test_kimi_code_install_remove_round_trip(tmp_path, monkeypatch):
+    home, project = setup_kimi_dirs(tmp_path, monkeypatch)
+
+    install_result = engine.install_agent("kimi-code", str(project))
+
+    assert install_result["errors"] == []
+    assert (project / "AGENTS.md").exists()
+    assert (project / ".kimi-code" / "skills" / "memanto" / "SKILL.md").exists()
+    config_path = home / ".kimi-code" / "config.toml"
+    config = config_path.read_text(encoding="utf-8")
+    assert engine.TOML_HOOK_SENTINEL in config
+    assert 'event = "SessionStart"' in config
+    assert 'matcher = "startup|resume"' in config
+    assert "--host kimi-code" in config
+    assert 'pattern = "Bash(memanto *)"' in config
+    assert "${SYS_EXECUTABLE}" not in config
+    assert "${HOOKS_DIR}" not in config
+
+    remove_result = engine.remove_agent("kimi-code", str(project))
+
+    assert remove_result["errors"] == []
+    remaining = config_path.read_text(encoding="utf-8")
+    assert engine.TOML_HOOK_SENTINEL not in remaining
+    assert "hooks" not in remaining
+    assert config_path.exists()  # the user's config.toml is never deleted
+    assert not (project / "AGENTS.md").exists()
+    assert not (project / ".kimi-code" / "skills" / "memanto").exists()
+
+
+def test_kimi_code_preserves_existing_config_toml(tmp_path, monkeypatch):
+    home, project = setup_kimi_dirs(tmp_path, monkeypatch)
+    kimi_dir = home / ".kimi-code"
+    kimi_dir.mkdir()
+    config_path = kimi_dir / "config.toml"
+    original = (
+        'theme = "dark"\n'
+        "\n"
+        "[[hooks]]\n"
+        'event = "SessionStart"\n'
+        'matcher = "startup"\n'
+        'command = "echo user-hook"\n'
+        "\n"
+        "[[permission.rules]]\n"
+        'decision = "deny"\n'
+        'pattern = "Bash(rm *)"\n'
+    )
+    config_path.write_text(original, encoding="utf-8")
+
+    install_result = engine.install_agent("kimi-code", str(project))
+
+    assert install_result["errors"] == []
+    merged = config_path.read_text(encoding="utf-8")
+    assert merged.startswith(original.rstrip())
+    assert engine.TOML_HOOK_SENTINEL in merged
+    assert 'command = "echo user-hook"' in merged
+
+    remove_result = engine.remove_agent("kimi-code", str(project))
+
+    assert remove_result["errors"] == []
+    assert config_path.read_text(encoding="utf-8") == original
+
+
+def test_kimi_code_install_is_idempotent(tmp_path, monkeypatch):
+    home, project = setup_kimi_dirs(tmp_path, monkeypatch)
+
+    engine.install_agent("kimi-code", str(project))
+    result = engine.install_agent("kimi-code", str(project))
+
+    assert result["errors"] == []
+    config = (home / ".kimi-code" / "config.toml").read_text(encoding="utf-8")
+    assert config.count(engine.TOML_HOOK_SENTINEL) == 1
+    assert config.count(engine.TOML_HOOK_SENTINEL_END) == 1
+    agents_md = (project / "AGENTS.md").read_text(encoding="utf-8")
+    assert agents_md.count(MEMANTO_SENTINEL) == 1
+    assert agents_md.count(MEMANTO_SENTINEL_END) == 1
+
+
+def test_kimi_code_merged_config_parses_as_toml(tmp_path, monkeypatch):
+    tomllib = pytest.importorskip("tomllib")
+    home, project = setup_kimi_dirs(tmp_path, monkeypatch)
+    kimi_dir = home / ".kimi-code"
+    kimi_dir.mkdir()
+    config_path = kimi_dir / "config.toml"
+    config_path.write_text(
+        '[[hooks]]\nevent = "SessionStart"\ncommand = "echo user-hook"\n',
+        encoding="utf-8",
+    )
+
+    install_result = engine.install_agent("kimi-code", str(project))
+
+    assert install_result["errors"] == []
+    data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    events = [hook.get("event") for hook in data["hooks"]]
+    assert events.count("SessionStart") == 2  # user hook + memanto hook
+    assert "PreCompact" in events
+    assert "PostToolUse" in events
+    rules = data["permission"]["rules"]
+    assert any(rule.get("pattern") == "Bash(memanto *)" for rule in rules)
+
+
+def test_kimi_code_global_install_uses_kimi_code_home(tmp_path, monkeypatch):
+    stub_config_manager(monkeypatch)
+    monkeypatch.delenv("KIMI_CODE_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+    result = engine.install_agent(
+        "kimi-code", str(tmp_path / "project"), is_global=True
+    )
+
+    assert result["errors"] == []
+    assert (tmp_path / ".kimi-code" / "AGENTS.md").exists()
+    assert (tmp_path / ".kimi-code" / "skills" / "memanto" / "SKILL.md").exists()
+    config_path = tmp_path / ".kimi-code" / "config.toml"
+    assert engine.TOML_HOOK_SENTINEL in config_path.read_text(encoding="utf-8")
+
+    remove_result = engine.remove_agent(
+        "kimi-code", str(tmp_path / "project"), is_global=True
+    )
+
+    assert remove_result["errors"] == []
+    remaining = config_path.read_text(encoding="utf-8")
+    assert engine.TOML_HOOK_SENTINEL not in remaining
+    assert not (tmp_path / ".kimi-code" / "AGENTS.md").exists()
+    assert not (tmp_path / ".kimi-code" / "skills" / "memanto").exists()
+
+
+def test_kimi_code_global_install_honors_kimi_code_home_env(tmp_path, monkeypatch):
+    """KIMI_CODE_HOME relocates the whole global root (default ~/.kimi-code)."""
+    stub_config_manager(monkeypatch)
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    kimi_home = tmp_path / "custom-kimi-root"
+    monkeypatch.setenv("KIMI_CODE_HOME", str(kimi_home))
+
+    result = engine.install_agent(
+        "kimi-code", str(tmp_path / "project"), is_global=True
+    )
+
+    assert result["errors"] == []
+    assert (kimi_home / "AGENTS.md").exists()
+    assert (kimi_home / "skills" / "memanto" / "SKILL.md").exists()
+    config_path = kimi_home / "config.toml"
+    assert engine.TOML_HOOK_SENTINEL in config_path.read_text(encoding="utf-8")
+    assert not (fake_home / ".kimi-code").exists()
+
+    remove_result = engine.remove_agent(
+        "kimi-code", str(tmp_path / "project"), is_global=True
+    )
+
+    assert remove_result["errors"] == []
+    remaining = config_path.read_text(encoding="utf-8")
+    assert engine.TOML_HOOK_SENTINEL not in remaining
+    assert not (kimi_home / "AGENTS.md").exists()
+    assert not (kimi_home / "skills" / "memanto").exists()
