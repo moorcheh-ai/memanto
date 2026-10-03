@@ -327,7 +327,12 @@ def memory_sync(
 
     with console.status(f"[{PRIMARY}]Syncing dynamic memories...", spinner="dots"):
         try:
+            from memanto.cli.connect.templates import (
+                MEMANTO_DYNAMIC_SENTINEL_END,
+            )
             from memanto.cli.connect.updater import inject_dynamic_memories
+
+            TRUSTED_SYNC_PROVENANCES = {"explicit_statement", "validated", "corrected"}
 
             memories_result = client.recall(
                 agent_id=agent_id,
@@ -341,8 +346,13 @@ def memory_sync(
 
             formatted_bullets = []
             for mem in memories_result.get("memories", []):
+                prov = mem.get("provenance")
+                if prov and prov not in TRUSTED_SYNC_PROVENANCES:
+                    continue
                 mem_type = mem.get("type", "fact").upper()
                 content = mem.get("content", "").strip()
+                if MEMANTO_DYNAMIC_SENTINEL_END in content:
+                    content = content.replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
                 formatted_bullets.append(f"- [{mem_type}] {content}")
 
             formatted_text = "\n".join(formatted_bullets)
@@ -353,7 +363,7 @@ def memory_sync(
                 connection=connection,
                 scope=scope,
             )
-            recalled_total = len(memories_result.get("memories", []))
+            recalled_total = len(formatted_bullets)
 
         except Exception as e:
             _error(f"Failed to sync dynamic memories: {e}")
