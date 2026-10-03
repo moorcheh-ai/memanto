@@ -267,6 +267,20 @@ async def activate_agent(
             AgentNotFoundError(f"Agent '{agent_id}' not found")
         )
 
+    # Prevent session hijack: reject re-activation while a valid session is
+    # already live.  An attacker who knows an agent_id could otherwise call
+    # activate at any time to steal the session and lock out the real holder.
+    # Callers must deactivate the existing session before creating a new one.
+    existing = get_session_service().get_session(agent_id)
+    if existing and existing.is_active():
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Agent '{agent_id}' already has an active session. "
+                "Deactivate it first before re-activating."
+            ),
+        )
+
     # Session duration is controlled by server defaults.
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
