@@ -5,8 +5,12 @@ Tests the session and agent services directly without HTTP layer.
 """
 
 import errno
+import json
 import os
+import re
+import shutil
 import stat
+import subprocess
 import sys
 import threading
 import time
@@ -2871,6 +2875,48 @@ def test_ui_static_xss_escapes():
 
     for raw in forbidden_raw_interpolations:
         assert raw not in ui_html
+
+
+def _ui_esc_html_source() -> str:
+    ui_html = (
+        Path(__file__).resolve().parents[1]
+        / "memanto"
+        / "app"
+        / "ui"
+        / "static"
+        / "index.html"
+    ).read_text(encoding="utf-8")
+    match = re.search(r"function escHtml\(s\) \{.*?\n        \}", ui_html, re.DOTALL)
+    assert match, "escHtml helper not found in index.html"
+    return match.group(0)
+
+
+def test_ui_esc_html_escapes_attribute_quotes():
+    """escHtml output lands inside quoted attributes such as title="..."."""
+    source = _ui_esc_html_source()
+    assert "&quot;" in source
+    assert "&#39;" in source
+    assert "textContent" not in source
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_ui_esc_html_behaviour_in_node():
+    samples = ['x" data-probe="1', "it's", "<b>&</b>", None, 42]
+    script = (
+        _ui_esc_html_source()
+        + f"\nprocess.stdout.write(JSON.stringify({json.dumps(samples)}.map(escHtml)));"
+    )
+    out = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, check=True
+    ).stdout
+
+    assert json.loads(out) == [
+        "x&quot; data-probe=&quot;1",
+        "it&#39;s",
+        "&lt;b&gt;&amp;&lt;/b&gt;",
+        "",
+        "42",
+    ]
 
 
 def test_windows_lock_retries_contention_without_deadline(tmp_path, monkeypatch):

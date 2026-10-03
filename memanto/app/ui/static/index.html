@@ -3429,7 +3429,17 @@
         function trunc(s, n = 120) { if (!s) return ''; return s.length > n ? s.substring(0, n) + '…' : s; }
 
         // Escape HTML
-        function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        // Quotes must be escaped too: results are interpolated into quoted
+        // attributes (title="..."), where serializing a text node leaves them raw.
+        function escHtml(s) {
+            if (s == null) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         // Navigation
         document.querySelectorAll('.nav-item').forEach(btn => {

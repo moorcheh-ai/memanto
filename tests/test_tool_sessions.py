@@ -379,7 +379,11 @@ def _identity_probe_app():
     @app.get("/probe")
     def probe():
         identity = detect_client()
-        return {"tool": identity.tool, "project_dir": identity.project_dir}
+        return {
+            "tool": identity.tool,
+            "display": identity.display,
+            "project_dir": identity.project_dir,
+        }
 
     return app
 
@@ -393,7 +397,32 @@ def test_http_caller_is_named_by_its_headers():
         headers={"X-Memanto-Client": "Cursor", "X-Memanto-Project": "/repo"},
     )
 
-    assert resp.json() == {"tool": "cursor", "project_dir": "/repo"}
+    assert resp.json() == {
+        "tool": "cursor",
+        "display": "Cursor",
+        "project_dir": "/repo",
+    }
+
+
+def test_http_client_header_cannot_inject_markup_into_display_label():
+    """The display label is persisted and rendered by the dashboard.
+
+    It must come from the normalized slug, never the raw header text, so a
+    caller cannot plant quotes or tags that the UI later interpolates into
+    HTML attributes.
+    """
+    from fastapi.testclient import TestClient
+
+    client = TestClient(_identity_probe_app())
+    resp = client.get(
+        "/probe",
+        headers={"X-Memanto-Client": 'x" data-probe="1"><b>marker</b>'},
+    )
+
+    body = resp.json()
+    assert body["tool"] == "x-data-probe-1-b-marker-b"
+    for ch in "\"'<>&":
+        assert ch not in body["display"]
 
 
 def test_anonymous_http_caller_is_never_attributed_to_the_server_env(monkeypatch):
