@@ -404,25 +404,30 @@ def test_http_caller_is_named_by_its_headers():
     }
 
 
-def test_http_client_header_cannot_inject_markup_into_display_label():
-    """The display label is persisted and rendered by the dashboard.
-
-    It must come from the normalized slug, never the raw header text, so a
-    caller cannot plant quotes or tags that the UI later interpolates into
-    HTML attributes.
-    """
+@pytest.mark.parametrize(
+    "header,tool,display",
+    [
+        ("claude-ai", "claude-code", "Claude Code"),
+        ("My Custom Client", "my-custom-client", "My Custom Client"),
+        (
+            'x" data-probe="1"><b>marker</b>',
+            "x-data-probe-1-b-marker-b",
+            "X Data Probe 1 B Marker B",
+        ),
+    ],
+)
+def test_http_client_header_uses_normalized_display(header, tool, display):
+    """HTTP attribution uses the same labels as explicit CLI attribution."""
     from fastapi.testclient import TestClient
 
     client = TestClient(_identity_probe_app())
     resp = client.get(
         "/probe",
-        headers={"X-Memanto-Client": 'x" data-probe="1"><b>marker</b>'},
+        headers={"X-Memanto-Client": header},
     )
 
-    body = resp.json()
-    assert body["tool"] == "x-data-probe-1-b-marker-b"
-    for ch in "\"'<>&":
-        assert ch not in body["display"]
+    assert resp.status_code == 200
+    assert resp.json() == {"tool": tool, "display": display, "project_dir": None}
 
 
 def test_anonymous_http_caller_is_never_attributed_to_the_server_env(monkeypatch):

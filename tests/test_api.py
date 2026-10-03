@@ -769,6 +769,60 @@ class TestMEMANTOAPI:
         assert len(response.json()["memories"]) == 1
 
     @pytest.mark.asyncio
+    async def test_recall_client_label_is_safe_in_persisted_dashboard_activity(
+        self, client, auth_headers, tmp_path, monkeypatch
+    ):
+        """A session caller's header must not become raw dashboard markup."""
+        from memanto.app.services import activity_service
+
+        activity = activity_service.ActivityService(tmp_path / "activity")
+        monkeypatch.setattr(activity_service, "_service", activity)
+        created = await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        assert created.status_code == 201
+        activated = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activated.status_code == 200
+
+        # Use a remote peer with a real session token, not the local-management
+        # exemption or a dependency override for session authentication.
+        transport = ASGITransport(app=app, client=("203.0.113.10", 54321))
+        async with AsyncClient(
+            transport=transport, base_url="http://localhost"
+        ) as remote:
+            recalled = await remote.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+                headers={
+                    "X-Session-Token": activated.json()["session_token"],
+                    "X-Memanto-Client": 'x" data-probe="1',
+                },
+                json={"query": "regression marker"},
+            )
+            assert recalled.status_code == 200
+            assert (await remote.get("/api/ui/sessions")).status_code == 403
+
+        # Recreate the reader to verify persisted JSONL, not in-memory state.
+        monkeypatch.setattr(
+            activity_service,
+            "_service",
+            activity_service.ActivityService(activity.activity_dir),
+        )
+        dashboard = await client.get("/api/ui/sessions")
+        assert dashboard.status_code == 200
+        body = dashboard.json()
+        assert len(body["tools"]) == 1
+        assert body["tools"][0]["tool"] == "x-data-probe-1"
+        assert body["tools"][0]["display"] == "X Data Probe 1"
+        assert len(body["sessions"]) == 1
+        events = list(activity.iter_events())
+        assert len(events) == 1
+        assert events[0]["display"] == "X Data Probe 1"
+
+    @pytest.mark.asyncio
     async def test_recall_accepts_type_filter(
         self, client, auth_headers, mock_moorcheh
     ):

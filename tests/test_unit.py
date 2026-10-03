@@ -16,6 +16,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -2886,7 +2887,7 @@ def _ui_esc_html_source() -> str:
         / "static"
         / "index.html"
     ).read_text(encoding="utf-8")
-    match = re.search(r"function escHtml\(s\) \{.*?\n        \}", ui_html, re.DOTALL)
+    match = re.search(r"function escHtml\(s\) \{.*?\}", ui_html, re.DOTALL)
     assert match, "escHtml helper not found in index.html"
     return match.group(0)
 
@@ -2901,22 +2902,59 @@ def test_ui_esc_html_escapes_attribute_quotes():
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 def test_ui_esc_html_behaviour_in_node():
-    samples = ['x" data-probe="1', "it's", "<b>&</b>", None, 42]
+    samples = [
+        'x" data-probe="1',
+        "it's",
+        "<b>&</b>",
+        "&quot; &#39; &amp;",
+        "日本語 · café",
+        "",
+        None,
+        42,
+    ]
     script = (
         _ui_esc_html_source()
         + f"\nprocess.stdout.write(JSON.stringify({json.dumps(samples)}.map(escHtml)));"
     )
     out = subprocess.run(
-        ["node", "-e", script], capture_output=True, text=True, check=True
+        ["node", "-e", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
     ).stdout
 
-    assert json.loads(out) == [
+    escaped = json.loads(out)
+    assert escaped == [
         "x&quot; data-probe=&quot;1",
         "it&#39;s",
         "&lt;b&gt;&amp;&lt;/b&gt;",
+        "&amp;quot; &amp;#39; &amp;amp;",
+        "日本語 · café",
+        "",
         "",
         "42",
     ]
+
+    class Elements(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.tags = []
+            self.text = []
+
+        def handle_starttag(self, tag, attrs):
+            self.tags.append((tag, attrs))
+
+        def handle_data(self, data):
+            self.text.append(data)
+
+    for value, encoded in zip(samples, escaped, strict=True):
+        expected = "" if value is None else str(value)
+        for quote in ('"', "'"):
+            document = Elements()
+            document.feed(f"<span title={quote}{encoded}{quote}>{encoded}</span>")
+            assert document.tags == [("span", [("title", expected)])]
+            assert "".join(document.text) == expected
 
 
 def test_windows_lock_retries_contention_without_deadline(tmp_path, monkeypatch):
