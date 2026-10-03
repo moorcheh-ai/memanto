@@ -19,6 +19,7 @@ from memanto.app.ui.routes.ui_router import router as ui_router
 from memanto.app.utils.client_identity import (
     UNKNOWN_CLIENT,
     ClientIdentity,
+    display_for,
     normalize_tool,
     reset_client,
     set_client,
@@ -134,9 +135,13 @@ async def attribute_calling_tool(request, call_next):
     """
     tool = (request.headers.get("X-Memanto-Client") or "").strip()
     if tool:
+        slug = normalize_tool(tool)
+        # The label is persisted to the activity log and rendered by the
+        # dashboard, so derive it from the normalized slug rather than echoing
+        # caller-controlled header text.
         identity = ClientIdentity(
-            tool=normalize_tool(tool),
-            display=tool,
+            tool=slug,
+            display=display_for(slug),
             project_dir=(request.headers.get("X-Memanto-Project") or "").strip()
             or None,
         )
