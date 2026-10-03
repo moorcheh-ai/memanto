@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -6,6 +8,8 @@ import pytest
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.cli.commands.memory_mgmt import _format_trusted_dynamic_memories
+from memanto.cli.config.manager import ConfigManager
+from memanto.cli.connect import updater
 from memanto.cli.connect.updater import (
     _assert_dynamic_sync_write_scope,
     inject_dynamic_memories,
@@ -140,7 +144,6 @@ def test_dynamic_sync_rejects_symlinked_local_instruction(tmp_path):
     assert local_instruction.is_symlink()
 
 
-
 def test_dynamic_sync_rejects_parent_directory_symlink(tmp_path):
     """A symlinked parent directory must not redirect local sync writes."""
     home = tmp_path / "home"
@@ -169,6 +172,7 @@ def test_dynamic_sync_rejects_parent_directory_symlink(tmp_path):
             inject_dynamic_memories(str(project), "- [INSTRUCTION] injected")
 
     assert victim.read_text() == before
+
 
 def test_dynamic_sync_uses_validated_target_after_alias_retarget(tmp_path):
     project = tmp_path / "project"
@@ -213,6 +217,155 @@ def test_dynamic_sync_uses_validated_target_after_alias_retarget(tmp_path):
     assert "injected" in safe_target.read_text()
     assert victim.read_text() == victim_before
     assert local_instruction.resolve() == victim.resolve()
+
+
+@pytest.fixture
+def local_sync_project(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    project = tmp_path / "project"
+    project.mkdir()
+    ConfigManager().add_connection("github-copilot", str(project), is_global=False)
+    return project
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "mode"),
+    [
+        (".github/copilot-instructions.md", 0o640),
+        (".agents/skills/memanto/SKILL.md", 0o750),
+    ],
+)
+def test_dynamic_sync_separates_outside_hardlink(
+    local_sync_project, tmp_path, relative_path, mode
+):
+    local = local_sync_project / relative_path
+    _instruction_file(local)
+    local.chmod(mode)
+    outside = tmp_path / "outside.md"
+    outside.hardlink_to(local)
+    before = outside.read_bytes()
+
+    result = inject_dynamic_memories(str(local_sync_project), "- [INSTRUCTION] Local")
+
+    assert len(result["updated"]) == 1
+    assert "- [INSTRUCTION] Local" in local.read_text()
+    assert outside.read_bytes() == before
+    assert not local.samefile(outside)
+    assert stat.S_IMODE(local.stat().st_mode) == mode
+    assert stat.S_IMODE(outside.stat().st_mode) == mode
+    published_inode = local.stat().st_ino
+    repeat = inject_dynamic_memories(str(local_sync_project), "- [INSTRUCTION] Local")
+    assert repeat["updated"] == []
+    assert len(repeat["already_current"]) == 1
+    assert local.stat().st_ino == published_inode
+    assert not list(local.parent.glob(f".{local.name}.*.tmp"))
+
+
+def test_dynamic_sync_preserves_hardlink_created_after_open(
+    local_sync_project, tmp_path, monkeypatch
+):
+    local = local_sync_project / ".github" / "copilot-instructions.md"
+    _instruction_file(local)
+    outside = tmp_path / "late-alias.md"
+    before = local.read_bytes()
+    original_open = updater._open_local_dynamic_sync_file
+
+    def open_then_link(project, target):
+        handles = original_open(project, target)
+        outside.hardlink_to(local)
+        return handles
+
+    monkeypatch.setattr(updater, "_open_local_dynamic_sync_file", open_then_link)
+    inject_dynamic_memories(str(local_sync_project), "- [INSTRUCTION] Local")
+
+    assert "- [INSTRUCTION] Local" in local.read_text()
+    assert outside.read_bytes() == before
+    assert not local.samefile(outside)
+
+
+@pytest.mark.parametrize("replacement", ["regular", "symlink"])
+def test_dynamic_sync_refuses_replaced_leaf_without_writing_old_inode(
+    local_sync_project, tmp_path, monkeypatch, replacement
+):
+    local = local_sync_project / ".github" / "copilot-instructions.md"
+    _instruction_file(local)
+    moved = tmp_path / "moved-instructions.md"
+    victim = tmp_path / "outside.md"
+    _instruction_file(victim)
+    before = local.read_bytes()
+    victim_before = victim.read_bytes()
+    original_open = updater._open_local_dynamic_sync_file
+
+    def open_then_replace(project, target):
+        handles = original_open(project, target)
+        local.rename(moved)
+        if replacement == "symlink":
+            local.symlink_to(victim)
+        else:
+            local.write_text("Newer local instructions\n")
+        return handles
+
+    monkeypatch.setattr(updater, "_open_local_dynamic_sync_file", open_then_replace)
+    with pytest.raises(ValueError, match="changed file"):
+        inject_dynamic_memories(str(local_sync_project), "- [INSTRUCTION] Local")
+
+    assert moved.read_bytes() == before
+    assert victim.read_bytes() == victim_before
+    if replacement == "symlink":
+        assert local.is_symlink()
+        assert local.resolve() == victim.resolve()
+    else:
+        assert local.read_text() == "Newer local instructions\n"
+    assert not list(local.parent.glob(f".{local.name}.*.tmp"))
+
+
+def test_dynamic_sync_replacement_keeps_validated_parent_descriptor(
+    local_sync_project, tmp_path, monkeypatch
+):
+    local = local_sync_project / ".github" / "copilot-instructions.md"
+    _instruction_file(local)
+    original_parent = local_sync_project / "original-github"
+    outside = tmp_path / "outside"
+    victim = outside / local.name
+    _instruction_file(victim)
+    before = victim.read_bytes()
+    original_open = updater._open_local_dynamic_sync_file
+
+    def open_then_retarget_parent(project, target):
+        handles = original_open(project, target)
+        local.parent.rename(original_parent)
+        local.parent.symlink_to(outside)
+        return handles
+
+    monkeypatch.setattr(
+        updater, "_open_local_dynamic_sync_file", open_then_retarget_parent
+    )
+    inject_dynamic_memories(str(local_sync_project), "- [INSTRUCTION] Local")
+
+    assert "- [INSTRUCTION] Local" in (original_parent / local.name).read_text()
+    assert victim.read_bytes() == before
+    assert sorted(path.name for path in outside.iterdir()) == [local.name]
+    assert not list(original_parent.glob(f".{local.name}.*.tmp"))
+
+
+def test_dynamic_sync_failed_replacement_preserves_source_and_cleans_staging(
+    local_sync_project, monkeypatch
+):
+    local = local_sync_project / ".github" / "copilot-instructions.md"
+    _instruction_file(local)
+    before = local.read_bytes()
+
+    def fail_replace(*args, **kwargs):
+        raise OSError("replacement unavailable")
+
+    monkeypatch.setattr(os, "replace", fail_replace)
+    with pytest.raises(OSError, match="replacement unavailable"):
+        inject_dynamic_memories(str(local_sync_project), "- [INSTRUCTION] Local")
+
+    assert local.read_bytes() == before
+    assert not list(local.parent.glob(f".{local.name}.*.tmp"))
 
 
 def test_dynamic_formatter_rejects_imported_and_inferred_instruction_payloads():
