@@ -124,7 +124,7 @@ overrides = await memory.build_assistant_overrides({})
 #   {"assistantId": ..., "customer": ..., "assistantOverrides": overrides}
 ```
 
-Tools and end-of-call learning work the same for these calls. In caller scope, the call must carry `customer.number` or `customer.externalId` for the caller's private half to work; the shared half always works.
+Tools and end-of-call learning work the same for these calls. In caller scope, the call must carry `customer.number` or `customer.externalId`; otherwise automatic end-of-call retention is skipped. Shared memories can still be recalled at call start, but memories inferred from a caller transcript are retained only for that caller.
 
 ## Mount in your own FastAPI app
 
@@ -144,7 +144,7 @@ app.include_router(create_router(memory, secret=SECRET, assistant_id=ASSISTANT_I
 - **Memory never delays a call.** Vapi allows 7.5 seconds end to end for `assistant-request`; lookup is capped at `recall_timeout` (3s). On a timeout or error, the call starts with an empty `{{memanto_context}}` and a warning is logged.
 - **Context is bounded** to `recall_limit` (10) recent and 10 relevant memories per section, and `max_context_chars` (4000) in total.
 - **Learning happens after the response.** `end-of-call-report` is acknowledged immediately and processed in the background. Calls where nobody spoke are skipped.
-- **Shared memory holds no caller details by design.** The extraction prompt excludes them, and the `memanto_remember` tool stores everything as shared in shared scope. If you need per-person memory, use caller scope.
+- **Caller scope is fail-closed for automatic retention.** End-of-call memories inferred from caller-controlled transcripts are always tagged to that caller, and retention is skipped if the caller cannot be identified. Shared scope keeps its shared extraction behavior.
 - **Retries are ignored.** End-of-call memories carry a `retained-<call id>` tag, so a webhook Vapi re-delivers is not learned from twice. Something can still be saved twice within one call — once by the tool while talking, once by extraction at the end.
 - **Tags starting with `caller-` mark private memories.** Don't use that prefix for your own tags; shared lookups skip anything carrying one.
 - **Conflict scans and daily summaries cover the whole agent**, including every caller's memories in caller scope.
