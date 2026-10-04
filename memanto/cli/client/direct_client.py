@@ -642,9 +642,10 @@ class DirectClient:
         """
         logger.debug("Deactivating agent '%s'", agent_id)
         summary = self._get_session_service().end_session(agent_id)
-        self.session_token = None
-        self.agent_id = None
-        self._cached_session = None
+        if self.agent_id == agent_id:
+            self.session_token = None
+            self.agent_id = None
+            self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
