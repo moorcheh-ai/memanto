@@ -95,6 +95,7 @@ class SessionService:
         self._agent_locks_guard = threading.Lock()
         self._held_agent_file_locks = threading.local()
         self._active_marker_lock = threading.RLock()
+        self._held_active_marker_file_lock = threading.local()
         self._summary_lock = threading.Lock()
 
     @property
@@ -141,6 +142,28 @@ class SessionService:
                     yield
                 finally:
                     held.remove(agent_id)
+
+    @contextmanager
+    def _hold_active_marker_lock(self) -> Iterator[None]:
+        """Serialize active-marker reads and writes across threads and processes."""
+        with self._active_marker_lock:
+            depth = getattr(self._held_active_marker_file_lock, "depth", 0)
+            if depth:
+                self._held_active_marker_file_lock.depth = depth + 1
+                try:
+                    yield
+                finally:
+                    self._held_active_marker_file_lock.depth -= 1
+                return
+
+            self._harden_session_storage()
+            lock_file = self.sessions_dir / "active.lock"
+            with self._exclusive_file_lock(lock_file):
+                self._held_active_marker_file_lock.depth = 1
+                try:
+                    yield
+                finally:
+                    self._held_active_marker_file_lock.depth = 0
 
     @staticmethod
     def _set_private_permissions(path: Path, mode: int) -> None:
@@ -462,7 +485,7 @@ class SessionService:
     def _read_active_marker_agent_id(self) -> str | None:
         """Read the agent_id the active marker points at, or None.
 
-        Caller must hold ``_active_marker_lock``.
+        Caller must hold ``_hold_active_marker_lock``.
         """
         active_link = self.sessions_dir / "active"
         try:
@@ -484,7 +507,7 @@ class SessionService:
             marker named a session that has lapsed and could not be
             auto-recreated.
         """
-        with self._active_marker_lock:
+        with self._hold_active_marker_lock():
             agent_id = self._read_active_marker_agent_id()
             if agent_id is None:
                 return None
@@ -514,21 +537,33 @@ class SessionService:
         # point resolves its session through this marker, so clearing it on
         # expiry stranded the caller with "No active session. Call
         # activate_agent()" regardless of the auto-recreate setting.
-        recreated = self.check_and_auto_recreate(expired_token)
+        recreated = self.check_and_auto_recreate(
+            expired_token,
+            expected_active_agent_id=agent_id,
+        )
         if recreated is not None:
             return recreated
 
-        # Recreation declined (disabled by config, or the session was
-        # terminated). Drop the stale marker, but only if it still names the
-        # same lapsed session - another thread may have activated since.
-        with self._active_marker_lock:
-            if self._read_active_marker_agent_id() == agent_id:
+        # Recreation declined (disabled by config, terminated, replaced, or a
+        # newer activation won the marker). Never clear or overwrite that newer
+        # marker; return its live session when one is already available.
+        with self._hold_active_marker_lock():
+            current_agent_id = self._read_active_marker_agent_id()
+            if current_agent_id != agent_id:
+                if current_agent_id is None:
+                    return None
                 try:
-                    current = self.get_session(agent_id)
+                    current = self.get_session(current_agent_id)
                 except (ValueError, OSError):
-                    current = None
-                if current is None or not current.is_active():
-                    self._clear_active_session()
+                    return None
+                return current if current is not None and current.is_active() else None
+
+            try:
+                current = self.get_session(agent_id)
+            except (ValueError, OSError):
+                current = None
+            if current is None or not current.is_active():
+                self._clear_active_session()
         return None
 
     def end_session(self, agent_id: str) -> SessionSummary:
@@ -664,6 +699,8 @@ class SessionService:
     def check_and_auto_recreate(
         self,
         session_token: str,
+        *,
+        expected_active_agent_id: str | None = None,
     ) -> Session | None:
         """
         Recreate an expired session as a fresh one if auto-recreate is enabled.
@@ -678,6 +715,9 @@ class SessionService:
 
         Args:
             session_token: The expired JWT presented by the caller
+            expected_active_agent_id: When set, recreate only while the active
+                marker still names this agent. This keeps a stale expiry check
+                from overwriting a newer explicit activation.
         Returns:
             New Session if recreated, None when recreation does not apply
         """
@@ -711,6 +751,21 @@ class SessionService:
                 # Logout is authoritative; live sessions are handled by the
                 # regular validation/auto-renewal flow instead.
                 return None
+
+            if expected_active_agent_id is not None:
+                if expected_active_agent_id != token.agent_id:
+                    return None
+                # Keep the compare and publication in one cross-process marker
+                # critical section. create_session() re-enters this guard when
+                # it publishes the replacement marker.
+                with self._hold_active_marker_lock():
+                    if self._read_active_marker_agent_id() != expected_active_agent_id:
+                        return None
+                    return self.create_session(
+                        agent_id=token.agent_id,
+                        pattern=session.pattern,
+                        duration_hours=settings.SESSION_DEFAULT_DURATION_HOURS,
+                    )
 
             return self.create_session(
                 agent_id=token.agent_id,
@@ -937,7 +992,7 @@ class SessionService:
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
         validate_safe_id(agent_id, "agent_id")
-        with self._active_marker_lock:
+        with self._hold_active_marker_lock():
             self._harden_session_storage()
             active_link = self.sessions_dir / "active"
             staged_link = self.sessions_dir / f".active.{secrets.token_hex(8)}.tmp"
@@ -958,7 +1013,7 @@ class SessionService:
 
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
-        with self._active_marker_lock:
+        with self._hold_active_marker_lock():
             active_link = self.sessions_dir / "active"
             active_link.unlink(missing_ok=True)
 
@@ -973,7 +1028,7 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        with self._lock_for_agent(agent_id), self._active_marker_lock:
+        with self._lock_for_agent(agent_id), self._hold_active_marker_lock():
             active_link = self.sessions_dir / "active"
             active_agent_id: str | None = None
 
