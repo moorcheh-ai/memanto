@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 _HTTPS = "https"
 _HTTP = "http"
 _PROTO_HEADER = "x-forwarded-proto"
+_FORWARDING_HEADERS = frozenset(
+    (_PROTO_HEADER, "x-forwarded-for", "x-real-ip", "forwarded")
+)
 
 
 def _normalize_peer_address(peer: str) -> str:
@@ -52,7 +55,13 @@ class TrustedProxySchemeMiddleware:
             if (
                 self.require_secure
                 and scope.get("scheme") == _HTTP
-                and not is_loopback_host(peer)
+                # A local reverse proxy is not a local client. Header presence
+                # only removes the plaintext exemption; it never grants trust
+                # or changes the scheme for an untrusted proxy.
+                and (
+                    not is_loopback_host(peer)
+                    or not _FORWARDING_HEADERS.isdisjoint(headers)
+                )
             ):
                 await self._reject_plain_http(send)
                 return
