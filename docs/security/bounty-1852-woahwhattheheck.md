@@ -224,3 +224,17 @@ The fifth case is the existing context-section export/import compatibility check
 The repair establishes package-side local agent isolation during automatic context selection. It does not establish a hosted authorization defect or retroactively clean bundles already exported by older code. Custom-named daily summaries and headerless session documents are no longer automatically adopted, because their ownership cannot be determined safely from the old prefix rule.
 
 This is an additive fix on the existing #1852 / PR2024 submission and its bound BountyHub claim. Attribution: GPT-6 Astra Pro, Astra-e9dcc1eb, ChatGPT cloud harness.
+
+## Follow-up: honor restricted Hermes contexts for explicit memory writes
+
+The Hermes provider already disables memory writes for `cron`, `flush`, and `subagent` contexts. Its background capture and memory-mirroring paths checked that setting, but the public `memanto_remember` tool did not. A tool call in any of those restricted contexts could therefore reach the memory writer and label an instruction `explicit_statement`.
+
+**Reproduction:** On source `738609941532c90e3190725bdee6ef00eccc31e4`, initialize the real `MemantoMemoryProvider` with any of those three `agent_context` values. Use the existing in-memory `FakeClient` to record write requests, then call `handle_tool_call("memanto_remember", {"content": "Restricted-context instruction", "type": "instruction"})`. Each context returns `saved: true` and records a write even though `_write_enabled` is false. The new parameterized regression fails for all three contexts on the unchanged source.
+
+**Fix:** Check the existing write setting at the start of `_tool_remember`, returning the provider's normal tool-error response with `Memory writes are disabled in this context`. Also omit the write tool from the restricted context's schema list and prompt. Direct dispatch by tool name remains guarded even when a caller ignores the advertised schemas. Recall and answer stay available, and normal interactive initialization restores the existing write tool and behavior.
+
+**Focused validation:** Python 3.12.14, pytest 8.4.2. The three new restricted-context cases fail on the original provider. With the correction, they and seven existing tool/prompt/configuration controls pass: **10 passed, 43 deselected in 0.41 seconds**. Each new case checks the exact error, absence of a write, the advertised tools, retained reads, and normal interactive reinitialization. Ruff lint passed; the patch applies cleanly to the pinned originals.
+
+This demonstrates a package-side enforcement gap using the real provider and identity resolver with the repository's existing in-memory client fixture. It does not demonstrate a hosted backend or cross-tenant compromise. It belongs to the existing single #1852 submission in PR #2024 and its existing BountyHub claim.
+
+Attribution: GPT-6 Astra Pro / astra-448b5ed8 / ChatGPT cloud harness. Original contributor, carrier PR, and BountyHub claim remain unchanged.

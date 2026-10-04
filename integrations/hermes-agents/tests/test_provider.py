@@ -567,6 +567,67 @@ def test_get_tool_schemas_names(provider):
     assert names == {"memanto_remember", "memanto_recall", "memanto_answer"}
 
 
+@pytest.mark.parametrize("agent_context", ["cron", "flush", "subagent"])
+def test_restricted_context_rejects_named_remember_tool(
+    monkeypatch, tmp_path, agent_context
+):
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+    p = MemantoMemoryProvider()
+    p.initialize("session-1", hermes_home=str(tmp_path), agent_context=agent_context)
+    try:
+        if p._warmup_thread:
+            p._warmup_thread.join(timeout=1)
+        # Dispatch by name even when the tool is absent from the advertised set.
+        result = json.loads(
+            p.handle_tool_call(
+                "memanto_remember",
+                {"content": "Restricted-context instruction", "type": "instruction"},
+            )
+        )
+        assert result == {"error": "Memory writes are disabled in this context"}
+        assert p._client.remember_calls == []
+        assert [schema["name"] for schema in p.get_tool_schemas()] == [
+            "memanto_recall",
+            "memanto_answer",
+        ]
+        assert "memanto_remember" not in p.system_prompt_block()
+
+        p._client.recall_results = [{"id": "m1", "type": "fact", "content": "Read me"}]
+        recalled = json.loads(p.handle_tool_call("memanto_recall", {"query": "read"}))
+        assert recalled["results"][0]["content"] == "Read me"
+        p._client.answer_response = {
+            "answer": "Still readable",
+            "sources": [{"id": "m1"}],
+        }
+        answered = json.loads(
+            p.handle_tool_call("memanto_answer", {"question": "read?"})
+        )
+        assert answered["answer"] == "Still readable"
+        assert p._client.remember_calls == []
+
+        # Reinitializing normally restores the existing interactive behavior.
+        p.initialize(
+            "session-2", hermes_home=str(tmp_path), agent_context="interactive"
+        )
+        if p._warmup_thread:
+            p._warmup_thread.join(timeout=1)
+        saved = json.loads(
+            p.handle_tool_call("memanto_remember", {"content": "Interactive fact"})
+        )
+        assert saved["saved"] is True
+        assert len(p._client.remember_calls) == 1
+        assert [schema["name"] for schema in p.get_tool_schemas()] == [
+            "memanto_remember",
+            "memanto_recall",
+            "memanto_answer",
+        ]
+        assert "memanto_remember" in p.system_prompt_block()
+    finally:
+        p.shutdown()
+
+
 def test_remember_tool(provider):
     result = json.loads(
         provider.handle_tool_call(

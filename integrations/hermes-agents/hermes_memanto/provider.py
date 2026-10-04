@@ -851,11 +851,16 @@ class MemantoMemoryProvider(MemoryProvider):
         """Return the system prompt text describing the Memanto tools, if active."""
         if not self._active:
             return ""
+        remember_hint = (
+            "memanto_remember to save durable facts/preferences/decisions/goals, "
+            if self._write_enabled
+            else ""
+        )
         return (
             "# Memanto Memory Agent\n"
             f"Active. Memory agent: {self._agent_id}.\n"
-            "Use memanto_recall to look up stored memories, memanto_remember to save durable "
-            "facts/preferences/decisions/goals, and memanto_answer for a synthesized answer "
+            "Use memanto_recall to look up stored memories, "
+            f"{remember_hint}and memanto_answer for a synthesized answer "
             "grounded in memory."
         )
 
@@ -1001,11 +1006,15 @@ class MemantoMemoryProvider(MemoryProvider):
     # -- Tools ----------------------------------------------------------------
 
     def get_tool_schemas(self) -> list[dict[str, Any]]:
-        """Return the schemas of the remember, recall and answer tools."""
-        return [REMEMBER_SCHEMA, RECALL_SCHEMA, ANSWER_SCHEMA]
+        """Return tool schemas allowed in the current Hermes context."""
+        if self._write_enabled:
+            return [REMEMBER_SCHEMA, RECALL_SCHEMA, ANSWER_SCHEMA]
+        return [RECALL_SCHEMA, ANSWER_SCHEMA]
 
     def _tool_remember(self, args: dict) -> str:
         """Handle ``memanto_remember`` and return a JSON result or tool error."""
+        if not self._write_enabled:
+            return tool_error("Memory writes are disabled in this context")
         content = str(args.get("content") or "").strip()
         if not content:
             return tool_error("content is required")
