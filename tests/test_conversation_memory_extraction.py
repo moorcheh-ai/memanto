@@ -322,3 +322,63 @@ def test_redact_sensitive_data_helper():
         redact_sensitive_data(aws_secret_unquoted)
         == "AWS_SECRET_ACCESS_KEY=[REDACTED_CREDENTIAL]"
     )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (
+            "before -----BEGIN RSA PRIVATE KEY-----\r\nABC123\r\n"
+            "-----END RSA PRIVATE KEY----- after",
+            "before [REDACTED_PRIVATE_KEY] after",
+        ),
+        (
+            "before -----BEGIN PRIVATE KEY----- ABC -----END PRIVATE KEY----- after",
+            "before [REDACTED_PRIVATE_KEY] after",
+        ),
+        (
+            "-----BEGIN PRIVATE KEY----- ABC -----END PRIVATE KEY----- "
+            "-----BEGIN PRIVATE KEY----- DEF -----END PRIVATE KEY-----",
+            "[REDACTED_PRIVATE_KEY]",
+        ),
+        (
+            "-----BEGIN PRIVATE KEY-----\n-----BEGIN RSA PRIVATE KEY-----\n"
+            "ABC123\n-----END RSA PRIVATE KEY-----",
+            "[REDACTED_PRIVATE_KEY]",
+        ),
+        (
+            "-----BEGIN PRIVATE KEY-----\nABC123\n-----END PRIVATE KEY-----\n"
+            "-----BEGIN PRIVATE KEY-----\n",
+            "[REDACTED_PRIVATE_KEY]\n-----BEGIN PRIVATE KEY-----\n",
+        ),
+        (
+            "-----BEGIN rsa PRIVATE KEY-----\nABC123\n-----END rsa PRIVATE KEY-----",
+            "-----BEGIN rsa PRIVATE KEY-----\nABC123\n-----END rsa PRIVATE KEY-----",
+        ),
+    ],
+)
+def test_redact_private_keys_preserves_header_boundaries(value, expected):
+    from memanto.app.services.conversation_memory_extraction_service import (
+        redact_sensitive_data,
+    )
+
+    assert redact_sensitive_data(value) == expected
+
+
+@pytest.mark.timeout(5)
+def test_extract_bounds_work_for_unclosed_private_key_headers():
+    """An incomplete footer must not rescan every preceding PEM prefix."""
+    content = "-----BEGIN PRIVATE KEY-----\n" * 16_000 + "-----END "
+    client = FakeClient(json.dumps([{"type": "fact", "content": content}]))
+    service = ConversationMemoryExtractionService(client)
+
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the supplied text."}],
+    )
+
+    assert candidates[0]["content"] == (
+        content[: service.MAX_MEMORY_CONTENT_CHARS - 3].rstrip() + "..."
+    )
+    assert candidates[0]["source"] == "system"
+    assert candidates[0]["provenance"] == "inferred"

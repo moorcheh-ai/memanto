@@ -14,9 +14,8 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.utils.json_extraction import iter_json_arrays
 
-PRIVATE_KEY_PATTERN = re.compile(
-    r"-----BEGIN [A-Z0-9_\- ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9_\- ]*PRIVATE KEY-----"
-)
+_PRIVATE_KEY_HEADER_RUN = re.compile(r"[A-Z0-9_\- ]+")
+_PRIVATE_KEY_SUFFIX = "PRIVATE KEY-----"
 API_KEY_PATTERNS = [
     re.compile(r"\b(?:sk-(?:proj-|ant-|live-)?[A-Za-z0-9_\-]{20,})\b"),
     re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{36,}|github_pat_[A-Za-z0-9_]{22,})\b"),
@@ -37,12 +36,66 @@ KV_CREDENTIAL_UNQUOTED = re.compile(
 )
 
 
+def _redact_private_keys(text: str) -> str:
+    """Redact complete PEM blocks without rescanning unterminated prefixes."""
+    if "-----BEGIN " not in text or "-----END " not in text:
+        return text
+
+    # Headers use only this alphabet. Each run is scanned a constant number
+    # of times, including malformed headers with many BEGIN/END markers.
+    last_end_at = -1
+    for run in _PRIVATE_KEY_HEADER_RUN.finditer(text):
+        suffix_at = text.rfind(_PRIVATE_KEY_SUFFIX, run.start(), run.end())
+        if suffix_at >= 0:
+            end_at = text.rfind("-----END ", run.start(), suffix_at)
+            if end_at >= 0:
+                last_end_at = end_at
+    if last_end_at < 0:
+        return text
+
+    parts: list[str] = []
+    copied_until = 0
+    begin_at: int | None = None
+    for run in _PRIVATE_KEY_HEADER_RUN.finditer(text):
+        last_suffix = text.rfind(_PRIVATE_KEY_SUFFIX, run.start(), run.end())
+        if last_suffix < 0:
+            continue
+
+        search_after = run.start()
+        if begin_at is None:
+            # Preserve the old greedy BEGIN header: choose the last suffix
+            # in its run that still leaves a complete END header after it.
+            begin_suffix = text.rfind(
+                _PRIVATE_KEY_SUFFIX, run.start(), min(run.end(), last_end_at)
+            )
+            if begin_suffix < 0:
+                continue
+            candidate = text.find("-----BEGIN ", run.start(), begin_suffix)
+            if candidate < 0:
+                continue
+            begin_at = candidate
+            search_after = begin_suffix + len(_PRIVATE_KEY_SUFFIX)
+
+        # The body ends at the earliest END marker; its header is greedy.
+        end_at = text.find("-----END ", search_after, last_suffix)
+        if end_at < 0:
+            continue
+        parts.extend((text[copied_until:begin_at], "[REDACTED_PRIVATE_KEY]"))
+        copied_until = last_suffix + len(_PRIVATE_KEY_SUFFIX)
+        begin_at = None
+
+    if not parts:
+        return text
+    parts.append(text[copied_until:])
+    return "".join(parts)
+
+
 def redact_sensitive_data(text: str) -> str:
     """Sanitize secrets, API keys, passwords, and tokens before persistence."""
     if not text:
         return text
 
-    text = PRIVATE_KEY_PATTERN.sub("[REDACTED_PRIVATE_KEY]", text)
+    text = _redact_private_keys(text)
     text = BEARER_PATTERN.sub("Bearer [REDACTED_TOKEN]", text)
     for pat in API_KEY_PATTERNS:
         text = pat.sub("[REDACTED_API_KEY]", text)
