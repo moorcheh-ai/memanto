@@ -32,7 +32,7 @@ Resolve the destination before instruction-file I/O, reject local destinations t
 
 ### Fix
 
-Upstream `_assert_local_write_scope` rejects local connect destinations that resolve outside the project root before mkdir/write for instructions, skills, extensions, hooks, and permissions. This branch keeps the upstream implementation unchanged, together with the existing local-connect regression coverage. Global installs remain intentional. The separate `assert_project_local_path` helper remains on the dynamic-sync path described in section 1.
+Upstream `_assert_local_write_scope` rejects local connect destinations that resolve outside the project root before mkdir/write for instructions, skills, extensions, hooks, and permissions. The upstream scope guard remains, together with the existing local-connect regression coverage. The later [connect hard-link repair](https://github.com/woahwhattheheck/memanto/commit/2cdb0fd552741f1f7e222462e187c497c31e39cf) also replaces existing project-local entries atomically, preserving their modes without writing through an outside hard-link alias. Global installs remain intentional. The separate `assert_project_local_path` helper remains on the dynamic-sync path described in section 1.
 
 ## 3. Hermes identity normalization aliases distinct identities
 
@@ -104,16 +104,92 @@ env -u MOORCHEH_API_KEY PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. \
 
 **Scope:** The demonstrated memory already satisfies the existing trusted-provenance rule. This repairs local instruction persistence after clearing recalled memory; hosted backend or cross-tenant impact was not exercised. The change belongs to the existing single #1852 submission and its BountyHub claim.
 
+## 7. Moorcheh credentials survive conversation memory extraction
+
+Repair: [5fc148fbfa769b0dd5972bd6839f6b9715599870](https://github.com/woahwhattheheck/memanto/commit/5fc148fbfa769b0dd5972bd6839f6b9715599870).
+
+**Impact.** The documented `MOORCHEH_API_KEY` assignment bypassed both credential-field patterns. The generic `API_KEY` matcher requires a word boundary, but the preceding underscore in the provider setting is a word character. A generated memory containing that setting therefore retained its value in both title and content. The normal non-dry-run API and SDK paths forward these candidates to memory storage.
+
+### Reproduction on the vulnerable implementation
+
+1. Use the existing `FakeClient` in `tests/test_conversation_memory_extraction.py` to return a generated candidate with `MOORCHEH_API_KEY="mk_your_api_key_here"` in its title and content. This value is the public documentation placeholder, not a live credential.
+2. Call the real `ConversationMemoryExtractionService.extract` method with an ordinary conversation.
+3. Before the repair, the returned title and content contain the unchanged value. Single-quoted and unquoted assignments have the same behavior.
+
+### Fix and focused validation
+
+Recognize the complete provider setting in the existing quoted and unquoted credential-field expressions. The repair preserves the setting name, quote style, and useful surrounding memory text while replacing the value with `[REDACTED_CREDENTIAL]`. It does not infer a valid key's length or alphabet.
+
+All three added extraction cases failed before the repair. The complete existing extraction test file passes **12 tests in 2.08 seconds** afterward with pytest 8.4.2. Ruff check, formatting, and whitespace checks pass. The run used isolated process-local home resolution, an unset provider key, and blocked network/DNS. Validation exercised candidate extraction locally; it did not exercise a live provider, storage account, or cross-tenant access.
+
+```bash
+python -m pytest -p no:cacheprovider tests/test_conversation_memory_extraction.py
+```
+
+## 8. Automatic renewal can undo a completed logout across processes
+
+Repair: [5133637c42e38e0b3773672464f126b09fef737c](https://github.com/woahwhattheheck/memanto/commit/5133637c42e38e0b3773672464f126b09fef737c).
+
+**Impact.** The CLI and server share persisted session files, but their lifecycle locks were instance-local `threading.RLock` objects. A request that had already decided to renew a near-expiry session could overwrite a completed logout with a fresh active session and return a usable replacement bearer.
+
+This is a normal supported topology: the CLI uses a local `SessionService` through `SdkClient`, while the server obtains its own process-local singleton. Both resolve the same session directory for the same user and backend. Automatic renewal is enabled by default.
+
+### Reproduction on the vulnerable implementation
+
+1. Create two real `SessionService` instances sharing one disposable session directory and a synthetic signing secret. Create a valid session and advance the local clock into its renewal window.
+2. Invoke the real `auth_deps.get_current_session` dependency with that bearer. Pause immediately before renewal creates its replacement.
+3. End the session through the other service instance. On the original service blob `51591aceceb94d41d48ae7b839b4b5be30fb8953`, logout completes, persists `TERMINATED`, and rejects the original bearer.
+4. Resume the paused request. Its real `X-Session-Token` response header contains a fresh bearer. The other service accepts that bearer, and persisted state has returned to `ACTIVE`.
+
+### Fix and observed behavior
+
+Hold a stable per-agent advisory file lock across lifecycle reads and writes, alongside the existing thread lock. The lock covers renewal, recreation, creation, termination, and deletion. Same-thread nested renewal/recreation calls reuse the outer file-lock ownership, avoiding a second acquisition through another descriptor. Eager agent-ID validation and existing lock ordering remain; different agents retain independent locks.
+
+After the repair, the same two-instance authentication flow makes logout wait for the in-flight renewal. Logout then terminates the replacement session. The authentication dependency produces its normal replacement header, but that bearer is rejected after logout completes.
+
+| Observed result | Before repair | After repair |
+|---|---|---|
+| Logout completes while renewal is paused | Yes | No; it waits |
+| Replacement bearer authenticates after logout completes | Yes | No |
+| Final persisted session state | `ACTIVE` | `TERMINATED` |
+
+### Focused validation
+
+Ten selected session regressions passed in **3.96 seconds**, using pytest 8.4.2, Ruff 0.14.14, and pytest-timeout 2.4.0. Ruff checks, formatting, and whitespace checks passed. The tests and real authentication flow used disposable local state and blocked network/DNS access; both recorded zero attempts.
+
+The first two selectors below each expand into same-instance and separate-instance cases, producing ten cases total:
+
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest \
+  -p no:cacheprovider -p pytest_timeout -p pytest_asyncio.plugin \
+  --timeout=10 --import-mode=importlib \
+  tests/test_unit.py::TestSessionService::test_auto_renew_is_single_flight_per_agent \
+  tests/test_unit.py::TestSessionService::test_end_session_revokes_concurrent_auto_renewal \
+  tests/test_unit.py::TestSessionService::test_lifecycle_operations_for_different_agents_can_overlap \
+  tests/test_unit.py::TestSessionService::test_check_and_auto_recreate_revives_expired_session \
+  tests/test_unit.py::TestSessionService::test_check_and_auto_recreate_never_revives_terminated_session \
+  tests/test_unit.py::TestSessionService::test_check_and_auto_recreate_ignores_foreign_and_malformed_tokens \
+  tests/test_unit.py::TestSessionService::test_delete_session_tolerates_external_marker_removal \
+  tests/test_unit.py::TestSessionService::test_session_token_storage_is_owner_only
+```
+
+The current shared branch contained an unrelated DirectClient fixture change when this repair was published. Composition preserved that change, and the tested `TestSessionService` class remained byte-for-byte identical. The source and test postimages are `3b18b303ad3b482512cb14826ad7ff4ece46d8a5` and `3af108e79a5b43267f7f26097d558f0602cf2a6c`.
+
+This demonstrates a package-side session revocation defect using real signing, persistence, validation, and authentication handoff. It does not claim a hosted-backend or cross-tenant exploit.
+
 ## Patch map
 
 - `memanto/cli/connect/path_scope.py` — shared project-local path check.
 - `memanto/cli/connect/updater.py` — canonical project-local write-scope enforcement, no-follow descriptor I/O, and nested-marker separation for dynamic sync.
-- `memanto/cli/connect/engine.py` — upstream's local-scope guard for connect-time instruction, skill, extension, hooks, and permissions writes; unchanged from upstream main after reconciliation.
+- `memanto/cli/connect/engine.py` — upstream's local-scope guard for connect-time writes, plus atomic replacement of existing project-local entries to preserve outside hard-link aliases.
 - `integrations/hermes-agents/hermes_memanto/provider.py` — collision-resistant identity/profile mapping with legacy continuity handling.
 - `memanto/app/services/memory_read_service.py` and `memory_write_service.py` — fail-closed provenance preservation.
 - `memanto/cli/commands/memory_mgmt.py` — exact trusted-provenance gate before dynamic instruction injection.
 - `memanto/app/utils/atomic_write.py` — MEMORY.md cache restore replaces the destination entry instead of writing through a symlink.
 - `memanto/cli/client/memory_cache.py`, `direct_client.py`, and `sdk_client.py` — automatic sync cache isolation by credential and backend endpoint, without changing explicit user exports.
+
+- `memanto/app/services/conversation_memory_extraction_service.py` — provider credential-field redaction before extracted candidates reach storage.
+- `memanto/app/services/session_service.py` — shared per-agent lifecycle locks preventing renewal from undoing logout.
 
 This document is part of the existing single bounty carrier; it does not create a second submission.
 
