@@ -5,6 +5,8 @@ Shared authentication utilities to avoid circular imports.
 """
 
 import logging
+import re
+from collections.abc import Iterator
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
@@ -185,35 +187,74 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     return fetch_site in {"cross-site", "same-site"}
 
 
+def _split_forwarded_parameters(value: str) -> Iterator[str]:
+    """Split RFC 7239 elements and parameters without splitting quoted values."""
+    quoted = False
+    escaped = False
+    start = 0
+    for index, char in enumerate(value):
+        if escaped:
+            escaped = False
+        elif quoted and char == "\\":
+            escaped = True
+        elif char == '"':
+            quoted = not quoted
+        elif char in ",;" and not quoted:
+            yield value[start:index].strip()
+            start = index + 1
+    if quoted or escaped:
+        raise ValueError("Malformed Forwarded quoted string")
+    yield value[start:].strip()
+
+
+def _forwarded_node_is_loopback(value: str) -> bool:
+    if value.startswith('"'):
+        if not re.fullmatch(r'"(?:[^"\\\r\n]|\\[^\r\n])*"', value):
+            return False
+        value = re.sub(r"\\(.)", r"\1", value[1:-1])
+    if not value or any(char.isspace() for char in value):
+        return False
+
+    host, suffix = value, ""
+    if value.startswith("["):
+        host, closing, suffix = value[1:].partition("]")
+        if not closing or ":" not in host:
+            return False
+    elif value.count(":") == 1:
+        host, port = value.split(":", 1)
+        suffix = ":" + port
+    if "[" in host or "]" in host:
+        return False
+    if suffix and not re.fullmatch(r":(?:[0-9]+|_[A-Za-z0-9_.-]+)", suffix):
+        return False
+    return is_loopback_host(host)
+
+
 def _has_forwarded_non_loopback(request: Request) -> bool:
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        for ip in xff.split(","):
-            cleaned = ip.strip()
+    # Starlette preserves repeated physical fields in items(); get() reads only
+    # the first. Every forwarding field must agree before granting local trust.
+    for name, value in request.headers.items():
+        name = name.lower()
+        if name == "x-forwarded-for":
+            for ip in value.split(","):
+                cleaned = ip.strip()
+                if cleaned and not is_loopback_host(cleaned):
+                    return True
+        elif name == "x-real-ip":
+            cleaned = value.strip()
             if cleaned and not is_loopback_host(cleaned):
                 return True
-
-    x_real_ip = request.headers.get("x-real-ip")
-    if x_real_ip:
-        cleaned = x_real_ip.strip()
-        if cleaned and not is_loopback_host(cleaned):
-            return True
-
-    forwarded = request.headers.get("forwarded")
-    if forwarded:
-        for item in forwarded.split(";"):
-            item = item.strip()
-            if item.lower().startswith("for="):
-                val = item[4:].strip().strip('"').strip("[]")
-                if ":" in val and not val.startswith(":"):
-                    try:
-                        import ipaddress
-
-                        ipaddress.ip_address(val)
-                    except ValueError:
-                        val = val.rsplit(":", 1)[0].strip()
-                if val and not is_loopback_host(val):
-                    return True
+        elif name == "forwarded" and value:
+            try:
+                for item in _split_forwarded_parameters(value):
+                    parameter, separator, node = item.partition("=")
+                    if parameter.strip().lower() == "for" and (
+                        not separator or not _forwarded_node_is_loopback(node.strip())
+                    ):
+                        return True
+            except ValueError:
+                # An incomplete quoted string could conceal a later remote hop.
+                return True
 
     return False
 

@@ -3,6 +3,8 @@
 import asyncio
 from unittest.mock import MagicMock
 
+import pytest
+from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
 
@@ -39,6 +41,17 @@ class _LoopbackClient:
 
 def _make_loopback_client(app):
     return TestClient(_LoopbackClient(app), raise_server_exceptions=False)
+
+
+def _make_loopback_request(headers):
+    return Request(
+        {
+            "type": "http",
+            "client": ("127.0.0.1", 50000),
+            "headers": [(b"host", b"localhost:8000")]
+            + [(name.encode(), value.encode()) for name, value in headers],
+        }
+    )
 
 
 class TestUnauthenticatedUIEndpoints:
@@ -255,3 +268,88 @@ class TestLoopbackDetection:
 
         req.headers = {"forwarded": "for=198.51.100.1:443;proto=https"}
         assert _has_forwarded_non_loopback(req) is True
+
+    @pytest.mark.parametrize(
+        ("forwarded", "non_loopback"),
+        [
+            ("for=127.0.0.1;proto=https, for=203.0.113.195", True),
+            ("by=127.0.0.1, for=203.0.113.195", True),
+            ('for=127.0.0.1, for="[::1]";proto=https', False),
+            ('for="[::1]:4711"', False),
+            ('for="[::ffff:127.0.0.1]:4711"', False),
+            ('for="127.0.0.1:4711"', False),
+            ('for="[::1]:_local"', False),
+            ('for="[2001:db8::1]:4711"', True),
+            ('for=""', True),
+            ("for=", True),
+            ("for", True),
+            ('for="127.0.0.1', True),
+            ('for="[::1]garbage"', True),
+            ("for=127.0.0.1:bad", True),
+            ("for=evil@127.0.0.1", True),
+            ("for=unknown", True),
+            ("for=_hidden", True),
+            ('by="x,for=203.0.113.195;for=198.51.100.1";for=127.0.0.1', False),
+            ('by="x\\\";for=127.0.0.1,y";for=203.0.113.195', True),
+        ],
+    )
+    def test_forwarded_list_and_node_syntax(self, forwarded, non_loopback):
+        from memanto.app.routes.auth_deps import _has_forwarded_non_loopback
+
+        request = _make_loopback_request([("forwarded", forwarded)])
+        assert _has_forwarded_non_loopback(request) is non_loopback
+
+    @pytest.mark.parametrize("name", ["forwarded", "x-forwarded-for", "x-real-ip"])
+    def test_repeated_forwarding_fields_check_every_value(self, name):
+        from memanto.app.routes.auth_deps import _has_forwarded_non_loopback
+
+        prefix = "for=" if name == "forwarded" else ""
+        request = _make_loopback_request(
+            [(name, prefix + "127.0.0.1"), (name, prefix + "203.0.113.195")]
+        )
+        assert _has_forwarded_non_loopback(request) is True
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            [("forwarded", "for=127.0.0.1;proto=https, for=203.0.113.195")],
+            [("forwarded", "by=127.0.0.1, for=203.0.113.195")],
+            [("forwarded", "for=127.0.0.1"), ("forwarded", "for=203.0.113.195")],
+        ],
+    )
+    def test_remote_forwarded_chain_cannot_inherit_loopback_access(
+        self, headers, monkeypatch
+    ):
+        from memanto.app.config import settings
+        from memanto.app.routes.auth_deps import require_management_access
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "test-management-key")
+        request = _make_loopback_request(headers)
+        with pytest.raises(HTTPException) as management_error:
+            require_management_access(request, authorization=None, x_api_key=None)
+        assert management_error.value.status_code == 401
+        with pytest.raises(HTTPException) as ui_error:
+            asyncio.run(_require_local(request))
+        assert ui_error.value.status_code == 403
+
+        # A supplied management credential still authorizes a remote caller.
+        assert (
+            require_management_access(request, x_api_key="test-management-key")
+            == "test-management-key"
+        )
+
+    def test_loopback_forwarded_chain_keeps_local_access(self, monkeypatch):
+        from memanto.app.config import settings
+        from memanto.app.routes.auth_deps import require_management_access
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "test-management-key")
+        request = _make_loopback_request(
+            [("forwarded", 'for=127.0.0.1;proto=https, for="[::1]:4711"')]
+        )
+        asyncio.run(_require_local(request))
+        assert (
+            require_management_access(request, authorization=None, x_api_key=None)
+            == "test-management-key"
+        )
