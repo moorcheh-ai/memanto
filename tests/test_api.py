@@ -385,6 +385,39 @@ class TestMEMANTOAPI:
         assert data["agent_id"] == self.TEST_AGENT_ID
 
     @pytest.mark.asyncio
+    async def test_browser_activate_keeps_token_out_of_json(self, client, auth_headers):
+        """Loopback browser activation exposes the bearer only through HttpOnly cookie."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID, "pattern": "support"},
+        )
+
+        browser_headers = {
+            **auth_headers,
+            "Host": "localhost:8000",
+            "Origin": "http://localhost:8000",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "cors",
+        }
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate",
+            headers=browser_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["agent_id"] == self.TEST_AGENT_ID
+        assert "session_token" not in data
+
+        cookie = response.headers.get("set-cookie", "")
+        assert "memanto_session_token=" in cookie
+        assert "HttpOnly" in cookie
+        cookie_token = cookie.split("memanto_session_token=", 1)[1].split(";", 1)[0]
+        assert cookie_token
+        assert cookie_token not in response.text
+
+    @pytest.mark.asyncio
     async def test_remember_with_session(self, client, auth_headers, mock_moorcheh):
         """Test storing memory with session token"""
         # Setup session
