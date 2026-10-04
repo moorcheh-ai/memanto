@@ -221,7 +221,8 @@ class OkfExportService:
                     (m.get("title") or "Untitled", f"{mem_type}.md") for m in memories
                 ]
             else:
-                used_slugs: set[str] = set()
+                # Navigation filenames are overwritten or skipped on import.
+                used_slugs: set[str] = {"index", "log"}
                 links = []
                 for mem in memories:
                     slug = self._unique_slug(mem.get("title") or "memory", used_slugs)

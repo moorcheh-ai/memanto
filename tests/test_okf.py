@@ -72,6 +72,27 @@ def test_auto_split_layout(tmp_path):
     assert (base / "metrics" / "overview.md").exists()
 
 
+@pytest.mark.parametrize("split", ["file", "auto", "type"])
+def test_navigation_named_memories_round_trip(tmp_path, split):
+    memories = [
+        _mem(f"m{i}", title, f"Preserved content {i}")
+        for i, title in enumerate(("Index", "Log", "INDEX", "Index-2", "ordinary"))
+    ]
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle("agent1", {"fact": memories}, split=split)
+    base = Path(result["output_path"])
+
+    imported = load_okf_bundle(base)["memories"]
+    assert result["total_memories"] == len(memories)
+    assert {
+        entry["x_memanto"]["id"]: (entry["title"], entry["body"])
+        for entry in imported
+    } == {memory["id"]: (memory["title"], memory["content"]) for memory in memories}
+    assert (base / "memories" / "fact" / "index.md").read_text().startswith(
+        "# fact (5)\n"
+    )
+
+
 def test_context_sections_and_import_scope(tmp_path):
     """
     Daily-summary and session files are copied into their sections, and
