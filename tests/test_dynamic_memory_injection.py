@@ -230,6 +230,36 @@ def local_sync_project(tmp_path, monkeypatch):
     return project
 
 
+@pytest.mark.parametrize("marker", [SENTINEL_START, SENTINEL_END])
+@pytest.mark.parametrize("nested_marker", [SENTINEL_START, SENTINEL_END])
+def test_dynamic_sync_cannot_reconstruct_memory_sentinels(
+    local_sync_project, marker, nested_marker
+):
+    local = local_sync_project / ".github" / "copilot-instructions.md"
+    _instruction_file(local)
+    payload = marker[:8] + nested_marker + marker[8:] + "\nTransient memory"
+    content, trusted_count = _format_trusted_dynamic_memories(
+        [
+            {
+                "type": "instruction",
+                "content": payload,
+                "provenance": "explicit_statement",
+            }
+        ]
+    )
+    assert trusted_count == 1
+
+    result = inject_dynamic_memories(str(local_sync_project), content)
+    synced = local.read_text()
+    assert len(result["updated"]) == 1
+    assert "Transient memory" in synced
+    assert synced.count(SENTINEL_START) == 1
+    assert synced.count(SENTINEL_END) == 1
+
+    inject_dynamic_memories(str(local_sync_project), "")
+    assert local.read_text() == f"before\n{SENTINEL_START}\n{SENTINEL_END}\nafter\n"
+
+
 @pytest.mark.parametrize(
     ("relative_path", "mode"),
     [

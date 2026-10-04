@@ -433,9 +433,11 @@ def inject_dynamic_memories(
                         def replacer(match):
                             """Replace one sentinel block's body with ``content``, minus any sentinels."""
                             if content:
+                                # Separate fragments so nested markers cannot
+                                # reconstruct a delimiter when one is removed.
                                 safe_content = content.replace(
-                                    MEMANTO_DYNAMIC_SENTINEL, ""
-                                ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "")
+                                    MEMANTO_DYNAMIC_SENTINEL, "\n"
+                                ).replace(MEMANTO_DYNAMIC_SENTINEL_END, "\n")
                                 return f"{match.group(1)}\n{safe_content}\n{match.group(2)}"
                             return f"{match.group(1)}\n{match.group(2)}"
 
