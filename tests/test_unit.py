@@ -368,6 +368,89 @@ class TestSessionService:
         assert active_session is not None
         assert active_session.session_id == session.session_id
 
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX symlink interleaving required")
+    def test_active_marker_interleaving_preserves_other_agent_session(
+        self, session_service, monkeypatch
+    ):
+        """Independent activations must never write through another session's link."""
+        sessions_dir = session_service.sessions_dir
+        other = SessionService(
+            secret_key=session_service.secret_key, sessions_dir=sessions_dir
+        )
+        original_symlink = Path.symlink_to
+        observed = {}
+
+        def interleaved_symlink(path, target, *args, **kwargs):
+            if (
+                path.parent == sessions_dir
+                and target == "agent-a.json"
+                and not observed
+            ):
+                observed["session"] = other.create_session("agent-b", duration_hours=1)
+                observed["bytes"] = (sessions_dir / "agent-b.json").read_bytes()
+            return original_symlink(path, target, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "symlink_to", interleaved_symlink)
+        first = session_service.create_session("agent-a", duration_hours=1)
+        second = observed["session"]
+
+        assert (sessions_dir / "agent-b.json").read_bytes() == observed["bytes"]
+        for session in (first, second):
+            saved = Session.model_validate_json(
+                (sessions_dir / f"{session.agent_id}.json").read_text(encoding="utf-8")
+            )
+            assert saved.session_id == session.session_id
+            assert (
+                other.validate_session(session.session_token).session_id
+                == session.session_id
+            )
+        assert (sessions_dir / "active").readlink() == Path("agent-a.json")
+        assert session_service.get_active_session().session_id == first.session_id
+        assert not list(sessions_dir.glob(".active.*.tmp"))
+
+    def test_active_marker_text_fallback_preserves_sessions(self, session_service):
+        """Unsupported symlinks retain the existing private plain-text format."""
+        first = session_service.create_session("agent-a", duration_hours=1)
+        with patch.object(Path, "symlink_to", side_effect=NotImplementedError):
+            second = session_service.create_session("agent-b", duration_hours=1)
+
+        marker = session_service.sessions_dir / "active"
+        assert not marker.is_symlink()
+        assert marker.read_text(encoding="utf-8") == "agent-b"
+        assert session_service.get_active_session().session_id == second.session_id
+        for session in (first, second):
+            assert (
+                session_service.validate_session(session.session_token).session_id
+                == session.session_id
+            )
+        if os.name != "nt":
+            assert stat.S_IMODE(marker.stat().st_mode) == 0o600
+        assert not list(session_service.sessions_dir.glob(".active.*.tmp"))
+
+    def test_active_marker_replace_failure_keeps_previous_marker(
+        self, session_service, monkeypatch
+    ):
+        """Failed publication must leave the current selection and clean staging."""
+        first = session_service.create_session("agent-a", duration_hours=1)
+        marker = session_service.sessions_dir / "active"
+        original_replace = os.replace
+
+        def fail_marker_replace(source, destination):
+            if Path(destination) == marker:
+                raise OSError("simulated marker replacement failure")
+            return original_replace(source, destination)
+
+        monkeypatch.setattr(os, "replace", fail_marker_replace)
+        with pytest.raises(OSError, match="simulated marker replacement failure"):
+            session_service.create_session("agent-b", duration_hours=1)
+
+        assert session_service.get_active_session().session_id == first.session_id
+        assert (
+            session_service.validate_session(first.session_token).session_id
+            == first.session_id
+        )
+        assert not list(session_service.sessions_dir.glob(".active.*.tmp"))
+
     @pytest.mark.parametrize("separate_instance", [False, True])
     def test_end_session_revokes_concurrent_auto_renewal(
         self, session_service, monkeypatch, separate_instance

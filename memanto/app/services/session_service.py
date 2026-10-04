@@ -31,6 +31,7 @@ from memanto.app.models.session import (
     SessionSummary,
     SessionToken,
 )
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     InvalidSessionTokenError,
     SessionExpiredError,
@@ -922,19 +923,21 @@ class SessionService:
         with self._active_marker_lock:
             self._harden_session_storage()
             active_link = self.sessions_dir / "active"
-
-            # Remove existing active link
-            active_link.unlink(missing_ok=True)
+            staged_link = self.sessions_dir / f".active.{secrets.token_hex(8)}.tmp"
 
             # Create new active marker
             # On Windows, write agent_id to file instead of symlink
             try:
-                active_link.symlink_to(f"{agent_id}.json")
+                staged_link.symlink_to(f"{agent_id}.json")
             except (OSError, NotImplementedError):
                 # Fallback for Windows or systems without symlink support
-                flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-                with self._open_private_text(active_link, flags, "w") as f:
-                    f.write(agent_id)
+                atomic_write_text(active_link, agent_id, mode=self._PRIVATE_FILE_MODE)
+            else:
+                try:
+                    # Replace the entry without following another process's link.
+                    os.replace(staged_link, active_link)
+                finally:
+                    staged_link.unlink(missing_ok=True)
 
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
