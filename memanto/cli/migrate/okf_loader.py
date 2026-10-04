@@ -23,7 +23,7 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.services.okf_export_service import ENTRY_DELIMITER, ENTRY_FRAMING
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
@@ -32,6 +32,7 @@ from memanto.app.utils.atomic_write import okf_bundle_lock
 logger = logging.getLogger(__name__)
 
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
+_FRONTMATTER_HEADER_RE = re.compile(r"---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 
 _SKIP_FILENAMES = {"index.md", "log.md"}
 # OKF baseline fields + Memanto's namespaced extension block. Anything else in
@@ -373,6 +374,10 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
 
     memories: list[dict[str, Any]] = []
     for file_path, text in documents:
+        framed = _load_framed_entries(text, file_path, rel_base)
+        if framed is not None:
+            memories.extend(framed)
+            continue
         for chunk in text.split(ENTRY_DELIMITER):
             chunk = chunk.strip()
             if not chunk:
@@ -384,20 +389,82 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
     return {"memories": memories}
 
 
+def _read_frontmatter(raw: str) -> dict[str, Any]:
+    try:
+        frontmatter = yaml.safe_load(raw) or {}
+    except yaml.YAMLError:
+        return {}
+    return frontmatter if isinstance(frontmatter, dict) else {}
+
+
+def _load_framed_entries(
+    text: str, file_path: Path, rel_base: Path
+) -> list[dict[str, Any]] | None:
+    """Read generated records by length; return None for unmarked legacy files.
+
+    Parse metadata before looking for separators: both YAML values and bodies
+    may contain literal entry sentinels. Each header is parsed once, and a cursor
+    advances through the original string without repeatedly copying its tail.
+    """
+    start = 0
+    while start < len(text) and text[start].isspace():
+        start += 1
+    header = _FRONTMATTER_HEADER_RE.match(text, start)
+    if header is None:
+        return None
+    frontmatter = _read_frontmatter(header.group(1))
+    extension = frontmatter.get("x_memanto")
+    if not isinstance(extension, dict) or not (
+        "framing" in extension or "body_chars" in extension
+    ):
+        return None
+
+    entries: list[dict[str, Any]] = []
+    separator = f"\n{ENTRY_DELIMITER}\n"
+    while True:
+        if not isinstance(extension, dict):
+            raise ValueError(f"Invalid OKF record framing: {file_path}")
+        body_chars = extension.get("body_chars")
+        if (
+            extension.get("framing") != ENTRY_FRAMING
+            or type(body_chars) is not int
+            or body_chars < 0
+            or body_chars > len(text) - header.end()
+        ):
+            raise ValueError(f"Invalid OKF record framing: {file_path}")
+        end = header.end() + body_chars
+        entry = _entry_from_parts(
+            frontmatter, text[header.end() : end], file_path, rel_base
+        )
+        if entry is not None:
+            entries.append(entry)
+        if end == len(text):
+            return entries
+        if not text.startswith(separator, end):
+            raise ValueError(f"Invalid OKF record framing: {file_path}")
+        start = end + len(separator)
+        header = _FRONTMATTER_HEADER_RE.match(text, start)
+        if header is None:
+            raise ValueError(f"Invalid OKF record framing: {file_path}")
+        frontmatter = _read_frontmatter(header.group(1))
+        extension = frontmatter.get("x_memanto")
+
+
 def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] | None:
     """Parse one OKF document (frontmatter + body) into an entry dict."""
     match = _FRONTMATTER_RE.match(chunk)
     if match:
         raw_frontmatter, body = match.group(1), match.group(2)
-        try:
-            frontmatter = yaml.safe_load(raw_frontmatter) or {}
-        except yaml.YAMLError:
-            frontmatter = {}
-        if not isinstance(frontmatter, dict):
-            frontmatter = {}
+        frontmatter = _read_frontmatter(raw_frontmatter)
     else:
         frontmatter, body = {}, chunk
+    return _entry_from_parts(frontmatter, body, file_path, rel_base)
 
+
+def _entry_from_parts(
+    frontmatter: dict[str, Any], body: str, file_path: Path, rel_base: Path
+) -> dict[str, Any] | None:
+    """Map already separated metadata and body without reinterpreting content."""
     body = body.strip()
 
     # Skip navigation index documents.

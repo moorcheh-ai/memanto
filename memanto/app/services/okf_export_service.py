@@ -35,10 +35,10 @@ from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 from memanto.app.utils.atomic_write import okf_bundle_lock
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
-# Stacked files hold multiple OKF documents. This sentinel separates them so
-# the loader can split them back apart without colliding with ``---`` that may
-# appear inside a document body (e.g. the migrate ``[Supporting data]`` footer).
+# Stacked files hold multiple OKF documents. New exports also declare the exact
+# body length so this sentinel remains ordinary data inside metadata or content.
 ENTRY_DELIMITER = "<!-- okf-entry -->"
+ENTRY_FRAMING = "body-length-v1"
 
 # Default: collapse a type into a single stacked file once it exceeds this many
 # memories (see the ``auto`` split mode).
@@ -369,6 +369,10 @@ class OkfExportService:
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:
         """Render a single memory dict as one OKF markdown document."""
         content = (mem.get("content") or "").strip()
+        # The loader's text reads already normalize newlines. Count that same
+        # representation so CRLF and lone CR cannot shift a record boundary.
+        content = content.replace("\r\n", "\n").replace("\r", "\n")
+        body = f"\n{content}\n"
         title = mem.get("title") or "Untitled"
 
         frontmatter: dict[str, Any] = {"type": mem_type, "title": title}
@@ -423,6 +427,8 @@ class OkfExportService:
             if val not in (None, ""):
                 x_memanto[key] = val
         x_memanto["type"] = mem_type
+        x_memanto["framing"] = ENTRY_FRAMING
+        x_memanto["body_chars"] = len(body)
         frontmatter["x_memanto"] = x_memanto
 
         front = yaml.safe_dump(
@@ -431,7 +437,7 @@ class OkfExportService:
             allow_unicode=True,
             default_flow_style=False,
         ).strip()
-        return f"---\n{front}\n---\n\n{content}\n"
+        return f"---\n{front}\n---\n{body}"
 
     def _first_line(self, content: str) -> str:
         """First non-empty line of content (heading marks stripped), for the
