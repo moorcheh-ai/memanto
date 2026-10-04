@@ -161,3 +161,66 @@ def test_cached_session_honors_persisted_revocation(
     assert client._cached_session is None
     assert client.session_token == target.session_token
     assert other_service.get_session("target-agent") == persisted
+
+
+@pytest.mark.parametrize("warm_cache", [False, True], ids=["cold", "warm"])
+@pytest.mark.parametrize(
+    ("auto_renew", "replacement_hours"),
+    [(True, 0.01), (True, 1), (False, 0.01)],
+    ids=["renewal-due", "renewal-not-due", "renewal-disabled"],
+)
+def test_replacement_after_validation_cannot_be_adopted(
+    client, monkeypatch, warm_cache, auto_renew, replacement_hours
+):
+    target = client._session_service.create_session("target-agent", duration_hours=1)
+    client.session_token = target.session_token
+    if warm_cache:
+        assert recall(client)["count"] == 1
+    client._read_service.search_memories.reset_mock()
+
+    other_service = SessionService(
+        secret_key=client._session_service.secret_key,
+        sessions_dir=client._session_service.sessions_dir,
+    )
+    original_validate = client._session_service.validate_session
+    replacement = None
+
+    def replace_after_validation(session_token):
+        nonlocal replacement
+        payload = original_validate(session_token)
+        # A second real service activates after the old token passes its JWT
+        # and persisted-session checks, before the caller reaches renewal.
+        if replacement is None:
+            replacement = other_service.create_session(
+                "target-agent", duration_hours=replacement_hours
+            )
+        return payload
+
+    monkeypatch.setattr(
+        client._session_service, "validate_session", replace_after_validation
+    )
+    monkeypatch.setattr(settings, "SESSION_AUTO_RENEW_ENABLED", auto_renew)
+
+    rejected = False
+    try:
+        recall(client)
+    except InvalidSessionTokenError:
+        rejected = True
+
+    assert replacement is not None
+    observed = {
+        "rejected": rejected,
+        "memory_calls": client._read_service.search_memories.call_count,
+        "cache_cleared": client._cached_session is None,
+        "presented_token_retained": client.session_token == target.session_token,
+        "replacement_preserved": (
+            other_service.get_session("target-agent") == replacement
+        ),
+    }
+    assert observed == {
+        "rejected": True,
+        "memory_calls": 0,
+        "cache_cleared": True,
+        "presented_token_retained": True,
+        "replacement_preserved": True,
+    }

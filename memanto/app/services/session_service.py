@@ -606,6 +606,8 @@ class SessionService:
     def check_and_auto_renew(
         self,
         agent_id: str,
+        *,
+        expected_session_token: str | None = None,
     ) -> Session | None:
         """
         Check if the current session is near expiry and auto-renew if enabled.
@@ -616,10 +618,13 @@ class SessionService:
 
         Args:
             agent_id: Agent identifier
+            expected_session_token: Already validated caller token. When given,
+                reject a replaced or inactive session before deciding whether
+                renewal applies, including when automatic renewal is disabled.
         Returns:
             New Session if renewed, None if no renewal was needed
         """
-        if not settings.SESSION_AUTO_RENEW_ENABLED:
+        if not settings.SESSION_AUTO_RENEW_ENABLED and expected_session_token is None:
             return None
 
         # Validation and renewal must be one operation. Without the per-agent
@@ -629,7 +634,19 @@ class SessionService:
         # lock also makes logout authoritative over an in-flight renewal.
         with self._lock_for_agent(agent_id):
             session = self.get_session(agent_id)
-            if not session or not session.is_active():
+            if expected_session_token is not None and (
+                not session
+                or session.session_token != expected_session_token
+                or not session.is_active()
+            ):
+                raise InvalidSessionTokenError(
+                    f"Session for agent {agent_id} is no longer active"
+                )
+            if (
+                not settings.SESSION_AUTO_RENEW_ENABLED
+                or not session
+                or not session.is_active()
+            ):
                 return None
 
             remaining = session.time_remaining()

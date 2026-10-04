@@ -215,10 +215,13 @@ class SdkClient:
                 session_service = self._get_session_service()
                 try:
                     session_service.validate_session(self.session_token)
+                    renewed = session_service.check_and_auto_renew(
+                        agent_id=agent_id,
+                        expected_session_token=self.session_token,
+                    )
                 except (InvalidSessionTokenError, SessionExpiredError):
                     self._cached_session = None
                     raise
-                renewed = session_service.check_and_auto_renew(agent_id=agent_id)
                 if renewed:
                     self._cached_session = renewed
                     self.session_token = renewed.session_token
@@ -284,6 +287,7 @@ class SdkClient:
         # refreshes the active marker, so no extra persistence is needed here.
         renewed = session_service.check_and_auto_renew(
             agent_id=token_payload.agent_id,
+            expected_session_token=self.session_token,
         )
         if renewed:
             session = renewed

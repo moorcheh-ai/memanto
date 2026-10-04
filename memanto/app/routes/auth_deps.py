@@ -412,6 +412,7 @@ def get_current_session(
         # Auto-renew session if near expiry
         renewed = session_service.check_and_auto_renew(
             agent_id=token_payload.agent_id,
+            expected_session_token=session_token,
         )
         if renewed:
             session = renewed
