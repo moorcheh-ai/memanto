@@ -8,7 +8,11 @@ import pytest
 
 from memanto.app.config import settings
 from memanto.app.services.session_service import SessionService
-from memanto.app.utils.errors import SessionError, SessionExpiredError
+from memanto.app.utils.errors import (
+    InvalidSessionTokenError,
+    SessionError,
+    SessionExpiredError,
+)
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.client.sdk_client import SdkClient
 
@@ -121,3 +125,39 @@ def test_matching_cached_token_still_renews(client, monkeypatch):
     )
     assert recall(client)["count"] == 1
     assert client.session_token == renewed_token
+
+
+@pytest.mark.parametrize("revocation", ["logout", "delete", "replace"])
+@pytest.mark.parametrize("auto_renew", [False, True])
+def test_cached_session_honors_persisted_revocation(
+    client, monkeypatch, revocation, auto_renew
+):
+    target = client._session_service.create_session("target-agent", duration_hours=1)
+    client.session_token = target.session_token
+    assert recall(client)["count"] == 1
+    client._read_service.search_memories.reset_mock()
+
+    # Model an independent CLI/server instance sharing the same session files.
+    other_service = SessionService(
+        secret_key=client._session_service.secret_key,
+        sessions_dir=client._session_service.sessions_dir,
+    )
+    if revocation == "logout":
+        other_service.end_session("target-agent")
+    elif revocation == "delete":
+        other_service.delete_session("target-agent")
+    else:
+        # A revoked cache must not renew or take over the replacement session.
+        other_service.create_session("target-agent", duration_hours=0.01)
+    persisted = other_service.get_session("target-agent")
+    monkeypatch.setattr(settings, "SESSION_AUTO_RENEW_ENABLED", auto_renew)
+
+    with pytest.raises(InvalidSessionTokenError):
+        other_service.validate_session(target.session_token)
+    with pytest.raises(InvalidSessionTokenError):
+        recall(client)
+
+    client._read_service.search_memories.assert_not_called()
+    assert client._cached_session is None
+    assert client.session_token == target.session_token
+    assert other_service.get_session("target-agent") == persisted

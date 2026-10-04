@@ -198,10 +198,9 @@ class SdkClient:
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
         """
-        # Cache hit: avoid redundant JWT decodes while the session remains
-        # active. Still runs the same near-expiry auto-renew check as the
-        # cold path below, so long-lived clients keep renewing instead of
-        # eventually hitting SessionExpiredError.
+        # A cached object cannot prove that the persisted session is still
+        # active: another client or process may have logged out, deleted it,
+        # or activated a replacement. Revalidate before renewal or memory I/O.
         if self._cached_session:
             if (
                 self.agent_id == agent_id
@@ -214,6 +213,11 @@ class SdkClient:
                         f"Cached session for agent {agent_id} is no longer active"
                     )
                 session_service = self._get_session_service()
+                try:
+                    session_service.validate_session(self.session_token)
+                except (InvalidSessionTokenError, SessionExpiredError):
+                    self._cached_session = None
+                    raise
                 renewed = session_service.check_and_auto_renew(agent_id=agent_id)
                 if renewed:
                     self._cached_session = renewed
