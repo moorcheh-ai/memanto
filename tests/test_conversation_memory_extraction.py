@@ -382,3 +382,61 @@ def test_extract_bounds_work_for_unclosed_private_key_headers():
     )
     assert candidates[0]["source"] == "system"
     assert candidates[0]["provenance"] == "inferred"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (
+            "HTTP://alice:secret@example.test/path and ssh://bob:pw@host",
+            "HTTP://alice:[REDACTED_PASSWORD]@example.test/path and "
+            "ssh://bob:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            "012.+-http://alice:secret@host",
+            "012.+-http://alice:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            " ".join(f"{letter}ttp://u:pw@host" for letter in "İıſK"),
+            " ".join(
+                f"{letter}ttp://u:[REDACTED_PASSWORD]@host" for letter in "İıſK"
+            ),
+        ),
+        (
+            "éhttp://u:pw@host _9.http://u:pw@host",
+            "éhttp://u:[REDACTED_PASSWORD]@host "
+            "_9.http://u:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            "http://u:bad/pass@host http://u:good@host",
+            "http://u:bad/pass@host http://u:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            "123...://host barehttp://user:pass@host",
+            "123...://host barehttp://user:[REDACTED_PASSWORD]@host",
+        ),
+    ],
+)
+def test_redact_url_credentials_preserves_scheme_boundaries(value, expected):
+    from memanto.app.services.conversation_memory_extraction_service import (
+        redact_sensitive_data,
+    )
+
+    assert redact_sensitive_data(value) == expected
+
+
+@pytest.mark.timeout(5)
+def test_extract_bounds_work_for_malformed_credential_url():
+    """Text without URL credentials must not restart the scheme scan."""
+    content = "a" * 120_000 + "://host"
+    client = FakeClient(json.dumps([{"type": "fact", "content": content}]))
+    service = ConversationMemoryExtractionService(client)
+
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the supplied text."}],
+    )
+
+    assert candidates[0]["content"] == (
+        content[: service.MAX_MEMORY_CONTENT_CHARS - 3] + "..."
+    )

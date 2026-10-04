@@ -27,7 +27,10 @@ API_KEY_PATTERNS = [
 BEARER_PATTERN = re.compile(
     r"(?i)\bBearer\s+[A-Za-z0-9_\-\.~+/]+={0,2}(?=[^\w\-\.~+/=]|$)"
 )
-URL_CREDENTIAL_PATTERN = re.compile(r"(?i)([a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)")
+# Search once per scheme-character run, preserving any non-letter prefix.
+URL_CREDENTIAL_PATTERN = re.compile(
+    r"(?i)(?<![a-z0-9+.-])([0-9+.-]*[a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)"
+)
 KV_CREDENTIAL_QUOTED = re.compile(
     r"""(?i)\b((?:(?:moorcheh[_-])?api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|(?:auth|access|refresh|id|session)[_-]?token)['"]?\s*[:=]\s*)(['"])(?:\\.|(?!\2)[^\\\n])+\2"""
 )
