@@ -84,10 +84,30 @@ Automatic sync passes an explicit, private cache destination to the existing exp
 
 Successful sync followed by an outage remains usable by a new client with the same backend identity. Explicit user exports retain their paths and contents. Old agent-only exports are left in place but never adopted as automatic fallback because they have no ownership evidence; one successful sync establishes the new cache. Project publication continues using the existing atomic copy helper, preserving the earlier symlink and hard-link destination repair.
 
+## 6. Nested sync markers preserve recalled instructions after clearing
+
+Repair: `b19384b9176a632bb6187d619223fe23c68fe9bc`.
+
+Dynamic sync previously removed each sentinel with an empty-string replacement. A closing sentinel embedded inside another closing sentinel survived that operation: removing the inner marker joined the remaining fragments into a new valid closing marker. The injected text then ended the managed section early. A subsequent sync with no memories reported an update but left the recalled text outside that section in the project's instruction file.
+
+**Reproduction:** On source `1931dbc050ba048ba5685551af6895a95ee6f988`, use an isolated home and temporary project, call the real `install_agent("github-copilot", project, is_global=False)`, and format one `instruction` memory with `explicit_statement` provenance. Let `end` be `MEMANTO_DYNAMIC_SENTINEL_END`; set its content to `end[:8] + end + end[8:] + "\nPERSISTENCE_MARKER_447F"`. Pass the formatted result to `inject_dynamic_memories(project, content, connection="github-copilot", scope="local")`, then call the same function with empty content. In the actual filesystem run, the instruction file's closing-marker count changed from one to two, and `PERSISTENCE_MARKER_447F` remained after the first closing marker following the empty sync.
+
+**Fix:** Replace removed markers with a newline. Neither sentinel contains a newline, so separated fragments cannot form another sentinel. The implementation retains two bounded string-replacement passes and leaves content without sentinels unchanged. Existing local/global scope selection and descriptor-based atomic file replacement remain intact.
+
+**Focused validation:** Four parametrized cases were added to the existing `tests/test_dynamic_memory_injection.py`. They exercise both start/end marker nesting through the production formatter and local sync writer, require one intact marker pair after injection, and verify that empty sync restores the exact surrounding instruction text with no retained memory. The original updater gives three failures and one pass for these cases. With the repair, the complete focused file passes **25 tests in 1.22 seconds** on Python 3.12.14; Ruff checks and formatting pass for both changed files.
+
+```bash
+env -u MOORCHEH_API_KEY PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. \
+  python -m pytest -p no:cacheprovider --import-mode=importlib \
+  tests/test_dynamic_memory_injection.py -o addopts=-ra
+```
+
+**Scope:** The demonstrated memory already satisfies the existing trusted-provenance rule. This repairs local instruction persistence after clearing recalled memory; hosted backend or cross-tenant impact was not exercised. The change belongs to the existing single #1852 submission and its BountyHub claim.
+
 ## Patch map
 
 - `memanto/cli/connect/path_scope.py` — shared project-local path check.
-- `memanto/cli/connect/updater.py` — canonical project-local write-scope enforcement plus no-follow descriptor I/O for dynamic sync.
+- `memanto/cli/connect/updater.py` — canonical project-local write-scope enforcement, no-follow descriptor I/O, and nested-marker separation for dynamic sync.
 - `memanto/cli/connect/engine.py` — upstream's local-scope guard for connect-time instruction, skill, extension, hooks, and permissions writes; unchanged from upstream main after reconciliation.
 - `integrations/hermes-agents/hermes_memanto/provider.py` — collision-resistant identity/profile mapping with legacy continuity handling.
 - `memanto/app/services/memory_read_service.py` and `memory_write_service.py` — fail-closed provenance preservation.
