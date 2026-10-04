@@ -639,6 +639,105 @@ class TestSessionService:
         assert (session_service.sessions_dir / "active").exists()
         session_service.validate_session(active.session_token)
 
+    def test_get_active_session_preserves_newer_activation_before_recreate(
+        self, session_service, monkeypatch
+    ):
+        """A stale expiry check must not overwrite a newer explicit activation."""
+        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        original = session_service.create_session(
+            agent_id="expired-agent",
+            pattern=AgentPattern.SUPPORT,
+            duration_hours=0,
+        )
+        time.sleep(0.01)
+
+        peer = SessionService(
+            secret_key=session_service.secret_key,
+            sessions_dir=session_service.sessions_dir,
+        )
+        original_recreate = session_service.check_and_auto_recreate
+        newer: Session | None = None
+
+        def activate_newer_then_recreate(session_token: str, **kwargs):
+            nonlocal newer
+            newer = peer.create_session("newer-agent", duration_hours=1)
+            return original_recreate(session_token, **kwargs)
+
+        monkeypatch.setattr(
+            session_service,
+            "check_and_auto_recreate",
+            activate_newer_then_recreate,
+        )
+
+        active = session_service.get_active_session()
+
+        assert newer is not None
+        assert active is not None
+        assert active.session_id == newer.session_id
+        assert active.agent_id == "newer-agent"
+        assert session_service.get_session("expired-agent") == original
+        assert peer.get_active_session() == newer
+
+    def test_active_marker_publication_is_serialized_across_services(
+        self, session_service, monkeypatch
+    ):
+        """Concurrent explicit activation must publish after stale recreation."""
+        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        original = session_service.create_session(
+            agent_id="expired-agent",
+            pattern=AgentPattern.SUPPORT,
+            duration_hours=0,
+        )
+        time.sleep(0.01)
+
+        peer = SessionService(
+            secret_key=session_service.secret_key,
+            sessions_dir=session_service.sessions_dir,
+        )
+        recreate_saved = threading.Event()
+        release_recreate = threading.Event()
+        peer_marker_attempted = threading.Event()
+        original_save = session_service._save_session
+        original_peer_set_active = peer._set_active_session
+
+        def pause_recreate_after_save(session: Session):
+            original_save(session)
+            if (
+                session.agent_id == "expired-agent"
+                and session.session_id != original.session_id
+            ):
+                recreate_saved.set()
+                assert release_recreate.wait(timeout=2)
+
+        def signal_peer_marker_attempt(agent_id: str):
+            peer_marker_attempted.set()
+            original_peer_set_active(agent_id)
+
+        monkeypatch.setattr(session_service, "_save_session", pause_recreate_after_save)
+        monkeypatch.setattr(peer, "_set_active_session", signal_peer_marker_attempt)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            recreating = pool.submit(session_service.get_active_session)
+            assert recreate_saved.wait(timeout=2)
+
+            activating = pool.submit(
+                peer.create_session,
+                "newer-agent",
+                AgentPattern.SUPPORT,
+                1,
+            )
+            assert peer_marker_attempted.wait(timeout=2)
+            time.sleep(0.05)
+            assert not activating.done()
+
+            release_recreate.set()
+            recreated = recreating.result(timeout=2)
+            newer = activating.result(timeout=2)
+
+        assert recreated is not None
+        assert recreated.agent_id == "expired-agent"
+        assert peer.get_active_session() == newer
+
     def test_get_active_session_clears_marker_when_recreate_disabled(
         self, session_service, monkeypatch
     ):
