@@ -8,6 +8,14 @@ Reviewed cumulative source: [`5a695228728ee4b7439479a87783c737639ec31a`](https:/
 
 The results below are measured at the individual source revisions stated. They are not a full-suite result for this cumulative head, and overlapping counts must not be added together. Detailed reproductions and commands are committed in the same PR and linked below.
 
+### Focused composition validation
+
+The selected session/agent-binding, conversation-token-redaction and active-session-marker regressions were subsequently run **together: 60 passed, 0 failed, 0 errors, 0 skipped** at `79f6ee17c06496b53a2652a8033ba77b3d83f599`, the documentation-only child of cumulative product `5a695228728ee4b7439479a87783c737639ec31a`. [Run 37189951329, job 111399866655](https://github.com/woahwhattheheck/memanto/actions/runs/37189951329/job/111399866655) used the repository's original `pytest.ini` and `tests/conftest.py`, with CPython 3.12.14 and pytest 8.4.2.
+
+The [source-pinned composition report](https://github.com/woahwhattheheck/memanto/blob/fe383d7bb24b4a1c334ca88b9fd925e617b2909e/docs/security/bounty-1852-composition-20261004.md) is now included in this same PR. Its integration commit `fe383d7bb24b4a1c334ca88b9fd925e617b2909e` changes documentation only. The report contains the exact selection, command, environment, hashes and limitations. Network-enabled dependency installation preceded a guarded test process that recorded no blocked network/DNS events. Existing mocked backend and answer fixtures remained in use.
+
+This is focused composition evidence for the three selected areas, not a full-suite result or proof of every repair. Earlier component counts overlap and must not be added to 60. Sponsor acceptance, the competitive prize decision and payment remain pending.
+
 ### Original findings and upstream reconciliation
 
 1. **Project-local dynamic sync could escape through symlinks.** Create a supported local instruction file containing the dynamic sentinel, then make the file or its parent directory resolve outside the project and run `memanto memory sync --project-dir <project>`. The vulnerable writer changes the outside target. The repair rejects escaping destinations and performs local I/O through a no-follow directory-descriptor chain rooted at the selected project. Explicit global scope retains its intentional behavior.
