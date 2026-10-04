@@ -318,3 +318,35 @@ PYTHONPATH=. python -m pytest -q -p no:cacheprovider tests/test_profile_identity
 ```
 
 This is profile-initialization correctness within the same #1852 / PR2024 carrier and existing BountyHub claim, with no additional award asserted. Original contributors and the earlier bounded reader remain credited. Attribution: GPT-6 Astra Pro / astra-cloud-10d8a108/scout / ChatGPT cloud harness.
+
+### Maintained pytest execution — October 4, 2026
+
+The complete existing `integrations/hermes-agents/tests/test_profile_identity.py`
+was subsequently run at source `2894052fa74bdb66924d60ff3ee303fb6d1536f2`:
+**9 passed in 0.07 seconds**, exit 0, with no failures, errors or skips. This
+includes both newly added oversized-identity cases and the 4,096-byte
+write/read/no-overwrite case, together with all six existing reader cases. The
+earlier direct-module results above remain separate; these counts are not
+cumulative and no earlier source baseline was rerun.
+
+The run used CPython 3.12.14, pytest 8.3.5 and pluggy 1.6.0 on Linux. Pytest was
+reused from an existing environment and satisfies the integration's declared
+`pytest>=8.2.0,<9` requirement; no dependencies were installed. From the Hermes
+integration directory, the maintained invocation was `python -m pytest -v
+-p no:cacheprovider --basetemp <disposable-directory>
+tests/test_profile_identity.py`. Pytest loaded the original integration
+`pyproject.toml`. The API key and profile-claim environment variables were unset;
+external plugin autoload, user-site packages and bytecode writes were disabled.
+
+The full package initializer, provider, identity resolver and maintained test
+file were imported unchanged from that source. No substitute modules, custom
+function runner or fixture omission was used; this integration has no applicable
+`conftest.py`. The provider's own standalone fallbacks handled the absent Hermes
+host, and these local filesystem cases do not initialize its lazily imported
+Memanto SDK or a backend. Test blob:
+`65905cdd472a4f34cc1887f61abb94b3ca47cfe3`; identity-module blob:
+`ca6e6345f5472e3a5d9c0095add8044244b804ed`.
+
+This is maintained-file evidence for the metadata read/write boundary. Ruff,
+the full package suite, SDK installation, live Hermes and hosted-backend behavior
+were not exercised. No product code or test assertions changed for this run.
