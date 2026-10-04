@@ -4,7 +4,7 @@ Refs #1852.
 
 This single PR repairs package-side boundaries around project-local writes, agent/session identity, memory provenance, exports, and recalled content. Reproductions use controlled local files and synthetic credentials. The findings do not establish a hosted-backend or cross-tenant compromise.
 
-Reviewed cumulative source: [`5a695228728ee4b7439479a87783c737639ec31a`](https://github.com/woahwhattheheck/memanto/commit/5a695228728ee4b7439479a87783c737639ec31a). The branch incorporates upstream main `c421ab8bb27f7dc4fca9abe938dc693d2998638d`, including #2010's connect-time symlink containment fix. That upstream fix is preserved; subsequent local-connect hard-link protection changes `engine.py`, so it is no longer identical to that upstream revision.
+Earlier cumulative product source: [`5a695228728ee4b7439479a87783c737639ec31a`](https://github.com/woahwhattheheck/memanto/commit/5a695228728ee4b7439479a87783c737639ec31a). The branch incorporates upstream main `c421ab8bb27f7dc4fca9abe938dc693d2998638d`, including #2010's connect-time symlink containment fix. That upstream fix is preserved; subsequent local-connect hard-link protection changes `engine.py`, so it is no longer identical to that upstream revision.
 
 The results below are measured at the individual source revisions stated. They are not a full-suite result for this cumulative head, and overlapping counts must not be added together. Detailed reproductions and commands are committed in the same PR and linked below.
 
@@ -15,6 +15,12 @@ The selected session/agent-binding, conversation-token-redaction and active-sess
 The [source-pinned composition report](https://github.com/woahwhattheheck/memanto/blob/fe383d7bb24b4a1c334ca88b9fd925e617b2909e/docs/security/bounty-1852-composition-20261004.md) is now included in this same PR. Its integration commit `fe383d7bb24b4a1c334ca88b9fd925e617b2909e` changes documentation only. The report contains the exact selection, command, environment, hashes and limitations. Network-enabled dependency installation preceded a guarded test process that recorded no blocked network/DNS events. Existing mocked backend and answer fixtures remained in use.
 
 This is focused composition evidence for the three selected areas, not a full-suite result or proof of every repair. Earlier component counts overlap and must not be added to 60. Sponsor acceptance, the competitive prize decision and payment remain pending.
+
+### Subsequent transport-policy repair
+
+Product commit [`8136b954ec0fb60addb7506add12f3db86604d69`](https://github.com/woahwhattheheck/memanto/commit/8136b954ec0fb60addb7506add12f3db86604d69) subsequently restricts the optional plaintext exception to direct loopback requests without forwarding indicators. When `MEMANTO_REQUIRE_SECURE=true`, a plaintext request forwarded by a loopback proxy no longer inherits that exception. Trusted-proxy HTTPS, direct loopback HTTP without forwarding fields, and disabled-policy behavior are preserved.
+
+The [source-pinned report](https://github.com/woahwhattheheck/memanto/blob/8136b954ec0fb60addb7506add12f3db86604d69/docs/security/bounty-1852-proxied-http.md) contains the preconditions, maintained reproduction and compatibility limits. The complete production ASGI middleware and loopback helper recorded **6 failed / 6 passed before the repair, then 12 passed after it**. Configuration loading was isolated; these in-process results do not establish full FastAPI startup, an actual reverse proxy, browser behavior or TLS negotiation. The earlier 60-case composition run predates this change and does not validate it; the counts are not cumulative.
 
 ### Original findings and upstream reconciliation
 
