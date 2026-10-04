@@ -120,3 +120,55 @@ class TestMemoryExportOutputPath:
         with pytest.raises(HTTPException) as exc:
             svc.write_memory_md("agent1", "# content", output_path="/etc/passwd")
         assert exc.value.status_code == 400
+
+    @pytest.mark.parametrize("link_kind", ["symlink", "hardlink"])
+    def test_default_export_replaces_leaf_link_without_changing_target(
+        self, tmp_path, link_kind
+    ):
+        from memanto.app.services.memory_export_service import MemoryExportService
+
+        exports_dir = tmp_path / ".memanto" / "exports"
+        exports_dir.mkdir(parents=True)
+        outside = tmp_path / "outside.md"
+        sentinel = b"Keep the other file unchanged.\n"
+        outside.write_bytes(sentinel)
+        destination = exports_dir / "agent1_memory.md"
+        try:
+            if link_kind == "symlink":
+                destination.symlink_to(outside)
+            else:
+                os.link(outside, destination)
+        except (NotImplementedError, OSError) as exc:
+            pytest.skip(f"{link_kind} is unavailable on this filesystem: {exc}")
+
+        service = MemoryExportService(exports_dir=exports_dir)
+        written_path = service.write_memory_md(
+            "agent1",
+            {"fact": [{"title": "Exported fact", "content": "Current memory."}]},
+        )
+
+        assert outside.read_bytes() == sentinel
+        assert written_path == destination
+        assert not destination.is_symlink()
+        assert not destination.samefile(outside)
+        assert "> Current memory." in destination.read_text(encoding="utf-8")
+
+    def test_default_export_updates_the_same_path_on_repeat(self, tmp_path):
+        from memanto.app.services.memory_export_service import MemoryExportService
+
+        exports_dir = tmp_path / ".memanto" / "exports"
+        service = MemoryExportService(exports_dir=exports_dir)
+        first_path = service.write_memory_md(
+            "agent1", {"fact": [{"title": "First", "content": "Original memory."}]}
+        )
+        assert "> Original memory." in first_path.read_text(encoding="utf-8")
+
+        second_path = service.write_memory_md(
+            "agent1", {"fact": [{"title": "Second", "content": "Updated memory."}]}
+        )
+
+        assert second_path == first_path == exports_dir / "agent1_memory.md"
+        updated = second_path.read_text(encoding="utf-8")
+        assert "> Updated memory." in updated
+        assert "Original memory." not in updated
+        assert list(exports_dir.iterdir()) == [second_path]
