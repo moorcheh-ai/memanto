@@ -34,6 +34,60 @@ Resolve the destination before instruction-file I/O, reject local destinations t
 
 Upstream `_assert_local_write_scope` rejects local connect destinations that resolve outside the project root before mkdir/write for instructions, skills, extensions, hooks, and permissions. The upstream scope guard remains, together with the existing local-connect regression coverage. The later [connect hard-link repair](https://github.com/woahwhattheheck/memanto/commit/2cdb0fd552741f1f7e222462e187c497c31e39cf) also replaces existing project-local entries atomically, preserving their modes without writing through an outside hard-link alias. Global installs remain intentional. The separate `assert_project_local_path` helper remains on the dynamic-sync path described in section 1.
 
+
+### Follow-up: local connect hard-link aliases
+
+A hard link can pass a resolved-path containment check while sharing its inode with a file outside the project. The previous connect writer used in-place `Path.write_text`, so a local install or removal also rewrote that outside alias.
+
+**Reproduction.** On source `1931dbc050ba048ba5685551af6895a95ee6f988`, create a disposable project and a real `ConfigManager(config_dir=...)` under a separate temporary directory. Make `.github/copilot-instructions.md` a hard link to a sibling outside file using `os.link`, replace the engine's `ConfigManager` factory with that isolated manager, and call `install_agent("github-copilot", project, is_global=False)`. To reproduce removal independently, install first, hard-link the generated instruction file to an outside sibling, record its bytes, and call `remove_agent("github-copilot", project, is_global=False)`.
+
+The recorded vulnerable install succeeded without errors and changed its outside fixture from **49 to 5,601 bytes**, adding the managed instructions. A subsequent removal succeeded and rewrote the same outside inode to **74 bytes**. With the repair, the separate public-operation checks succeeded and preserved their outside fixtures byte-for-byte: **34 → 34 bytes** for installation and **5,586 → 5,586 bytes** for removal. The intended local content changed, the two paths had distinct inodes, and local mode `0640` remained intact. These operations used only disposable local files and made zero DNS/network attempts.
+
+The repair covers existing local instruction, skill, extension, hook and permission destinations. It atomically replaces the resolved local entry instead of writing the linked inode. Allowed symlinks to in-project targets retain their aliases. New local entries use exclusive creation, preserving normal umask permissions and refusing a raced-in alias. The shared atomic writer's default `0600` remains unchanged for other callers.
+
+**Focused validation.** Python 3.12.14 and pytest 8.4.2: **30 passed**, comprising 17 local-scope cases, 12 existing connect-engine cases and one existing interrupted atomic-state replacement case. Eleven added cases cover the affected public operations and preservation behavior. Ruff, targeted mypy on both changed source files, and whitespace checks passed. The tests ran against the prepared three-file repair over `1931dbc0`; publication then composed those unchanged files over the newer client-session work in commit `2cdb0fd552741f1f7e222462e187c497c31e39cf`. This documentation adds no new execution claim.
+
+The original focused command, from the repository root with the development environment installed, was:
+
+```bash
+.venv/bin/python - <<'PY'
+import os
+import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+os.environ.pop("MOORCHEH_API_KEY", None)
+network = []
+
+def audit(event, args):
+    if event in {"socket.connect", "socket.getaddrinfo"}:
+        network.append(event)
+        raise RuntimeError("Network disabled for isolated local-connect verification")
+
+sys.addaudithook(audit)
+
+with tempfile.TemporaryDirectory(prefix="memanto-connect-tests-") as td:
+    with patch.object(Path, "home", classmethod(lambda cls: Path(td))):
+        code = pytest.main([
+            "-q",
+            "-p", "no:cacheprovider",
+            "tests/test_connect_local_symlink_scope.py",
+            "tests/test_connect_engine.py",
+            "tests/test_unit.py::test_onprem_state_survives_interrupted_replace",
+        ])
+
+print("PYTEST_VERSION", pytest.__version__)
+print("NETWORK_EVENTS", len(network))
+sys.exit(code)
+PY
+```
+
+The recorded command exited 0 with `NETWORK_EVENTS 0`. This establishes a project-local filesystem repair. Replacement requires write permission on the parent directory and preserves Unix mode bits; arbitrary concurrent relocation of parent directories, ownership and ACL preservation, and hosted or cross-tenant impact are outside the demonstrated guarantee.
+
+
 ## 3. Hermes identity normalization aliases distinct identities
 
 **Impact.** The legacy sanitizer replaces every character outside `[A-Za-z0-9_-]` with `_`. Distinct identities can therefore collapse onto the same Hermes profile and Memanto memory namespace.
