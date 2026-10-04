@@ -14,12 +14,13 @@ from pathlib import Path
 from typing import BinaryIO
 
 
-def atomic_write_text(path: Path, content: str) -> None:
+def atomic_write_text(path: Path, content: str, *, mode: int = 0o600) -> None:
     """Replace *path* only after a complete same-directory write.
 
     Writing the temporary file next to the destination keeps ``os.replace``
-    atomic on the same filesystem. Restrictive permissions are applied before
-    the file becomes visible at its final path.
+    atomic on the same filesystem. Owner-only permissions are the default;
+    callers preserving an existing file's mode can supply it explicitly.
+    Permissions are applied before the file becomes visible at its final path.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path: Path | None = None
@@ -38,7 +39,7 @@ def atomic_write_text(path: Path, content: str) -> None:
             os.fsync(tmp.fileno())
 
         try:
-            tmp_path.chmod(0o600)
+            tmp_path.chmod(mode)
         except OSError:
             pass  # Windows may not support POSIX permission bits
         os.replace(tmp_path, path)

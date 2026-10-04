@@ -7,12 +7,15 @@ Handles instruction injection, skill deployment, and hook configuration.
 
 import json
 import re
+import stat
 import sys
 from pathlib import Path
 from typing import Any
 
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, AgentDef
+from memanto.cli.connect.path_scope import assert_project_local_path
 from memanto.cli.connect.templates import (
     MEMANTO_DYNAMIC_SENTINEL,
     MEMANTO_DYNAMIC_SENTINEL_END,
@@ -41,6 +44,28 @@ def _assert_local_write_scope(
         raise ValueError(
             f"Refusing local integration path outside project: {target} -> {resolved}"
         ) from exc
+
+
+def _write_integration_text(
+    path: Path, content: str, *, project_path: Path | None = None
+) -> None:
+    """Replace existing local entries without writing through hard-link aliases."""
+    if project_path is None:
+        path.write_text(content, encoding="utf-8")
+        return
+
+    target = assert_project_local_path(
+        project_path, path, action="local integration write"
+    )
+    try:
+        mode = stat.S_IMODE(target.stat().st_mode)
+    except FileNotFoundError:
+        # Preserve normal creation permissions, and reject a raced-in alias.
+        with target.open("x", encoding="utf-8") as handle:
+            handle.write(content)
+    else:
+        # Resolve allowed in-project symlinks, retaining the alias itself.
+        atomic_write_text(target, content, mode=mode)
 
 
 def install_agent(
@@ -208,21 +233,26 @@ def _install_instructions(
     _assert_local_write_scope(project_path, instr_path, is_global)
 
     content = get_instruction_content(agent.name)
+    local_project = None if is_global else project_path
 
     # For agents with directory-based instruction files (cline, roo, continue, augment)
     if agent.instruction_is_dir:
-        return _write_dedicated_file(instr_path, content)
+        return _write_dedicated_file(instr_path, content, project_path=local_project)
 
     # For MDC format (Cursor)
     if agent.instruction_format == "mdc":
-        return _write_dedicated_file(instr_path, content)
+        return _write_dedicated_file(instr_path, content, project_path=local_project)
 
     # For agents that use append-style (Windsurf .windsurfrules)
     if agent.instruction_format == "append":
-        return _inject_into_file(instr_path, content, create_if_missing=True)
+        return _inject_into_file(
+            instr_path, content, create_if_missing=True, project_path=local_project
+        )
 
     # For standard markdown files (CLAUDE.md, AGENTS.md, GEMINI.md, copilot-instructions.md)
-    return _inject_into_file(instr_path, content, create_if_missing=True)
+    return _inject_into_file(
+        instr_path, content, create_if_missing=True, project_path=local_project
+    )
 
 
 def _strip_dynamic_block(text: str) -> str:
@@ -237,7 +267,9 @@ def _strip_dynamic_block(text: str) -> str:
     ).strip()
 
 
-def _write_dedicated_file(file_path: Path, content: str) -> str:
+def _write_dedicated_file(
+    file_path: Path, content: str, *, project_path: Path | None = None
+) -> str:
     """Write content to a dedicated file (creates parent dirs)."""
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -261,15 +293,21 @@ def _write_dedicated_file(file_path: Path, content: str) -> str:
                 existing,
                 flags=re.DOTALL,
             )
-            file_path.write_text(updated, encoding="utf-8")
+            _write_integration_text(file_path, updated, project_path=project_path)
             return f"Updated {file_path.name}"
 
-    file_path.write_text(content.strip() + "\n", encoding="utf-8")
+    _write_integration_text(
+        file_path, content.strip() + "\n", project_path=project_path
+    )
     return f"Created {file_path.name}"
 
 
 def _inject_into_file(
-    file_path: Path, section: str, create_if_missing: bool = True
+    file_path: Path,
+    section: str,
+    create_if_missing: bool = True,
+    *,
+    project_path: Path | None = None,
 ) -> str | None:
     """Inject MEMANTO section into an existing file, or create it."""
     if file_path.exists():
@@ -305,7 +343,7 @@ def _inject_into_file(
                 existing,
                 flags=re.DOTALL,
             )
-            file_path.write_text(updated, encoding="utf-8")
+            _write_integration_text(file_path, updated, project_path=project_path)
             return f"Updated MEMANTO section in {file_path.name}"
         else:
             # Insert before first ## heading, or append
@@ -321,11 +359,13 @@ def _inject_into_file(
                 )
             else:
                 updated = existing.rstrip() + "\n\n" + section.strip() + "\n"
-            file_path.write_text(updated, encoding="utf-8")
+            _write_integration_text(file_path, updated, project_path=project_path)
             return f"Added MEMANTO section to {file_path.name}"
     elif create_if_missing:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(section.strip() + "\n", encoding="utf-8")
+        _write_integration_text(
+            file_path, section.strip() + "\n", project_path=project_path
+        )
         return f"Created {file_path.name}"
 
     return None
@@ -381,7 +421,9 @@ def _remove_instructions(
         # Clean up extra whitespace
         updated = re.sub(r"\n{3,}", "\n\n", existing).strip() + "\n"
         if updated.strip():
-            instr_path.write_text(updated, encoding="utf-8")
+            _write_integration_text(
+                instr_path, updated, project_path=None if is_global else project_path
+            )
             return f"Removed MEMANTO sections from {instr_path.name}"
         else:
             instr_path.unlink()
@@ -406,7 +448,9 @@ def _install_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str:
 
     content = get_skill_content(agent.name)
 
-    skill_path.write_text(content, encoding="utf-8")
+    _write_integration_text(
+        skill_path, content, project_path=None if is_global else project_path
+    )
 
     rel = _display_path(skill_path, is_global)
     return f"Deployed skill to {rel}"
@@ -450,7 +494,11 @@ def _install_extension(
     _assert_local_write_scope(project_path, ext_path, is_global)
 
     ext_path.parent.mkdir(parents=True, exist_ok=True)
-    ext_path.write_text(get_extension_content(), encoding="utf-8")
+    _write_integration_text(
+        ext_path,
+        get_extension_content(),
+        project_path=None if is_global else project_path,
+    )
 
     return f"Deployed extension to {_display_path(ext_path, is_global)}"
 
@@ -596,8 +644,10 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
             changed = True
 
         if changed:
-            settings_path.write_text(
-                json.dumps(settings, indent=2) + "\n", encoding="utf-8"
+            _write_integration_text(
+                settings_path,
+                json.dumps(settings, indent=2) + "\n",
+                project_path=None if is_global else project_path,
             )
             return "Installed Memanto hooks"
         return None
@@ -654,7 +704,9 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
         settings.pop("hooks", None)
 
     if changed:
-        _write_or_remove_json(settings_path, settings)
+        _write_or_remove_json(
+            settings_path, settings, project_path=None if is_global else project_path
+        )
         return "Removed Memanto hooks"
 
     return None
@@ -703,7 +755,11 @@ def _install_permissions(
                     changed = True
 
     if changed:
-        perm_path.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+        _write_integration_text(
+            perm_path,
+            json.dumps(existing, indent=2) + "\n",
+            project_path=None if is_global else project_path,
+        )
         return "Added permissions"
 
     return None  # Already configured
@@ -756,7 +812,9 @@ def _remove_permissions(
     if isinstance(permissions, dict) and not permissions:
         existing.pop("permissions", None)
 
-    _write_or_remove_json(perm_path, existing)
+    _write_or_remove_json(
+        perm_path, existing, project_path=None if is_global else project_path
+    )
     return "Removed permissions"
 
 
@@ -773,10 +831,14 @@ def _display_path(path: Path, is_global: bool) -> str:
         return str(path)
 
 
-def _write_or_remove_json(path: Path, data: dict[str, Any]) -> None:
+def _write_or_remove_json(
+    path: Path, data: dict[str, Any], *, project_path: Path | None = None
+) -> None:
     """Persist JSON data, or remove the file when the managed data was all it had."""
     if data:
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        _write_integration_text(
+            path, json.dumps(data, indent=2) + "\n", project_path=project_path
+        )
         return
 
     path.unlink()
