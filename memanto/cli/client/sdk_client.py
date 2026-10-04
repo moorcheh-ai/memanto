@@ -1857,15 +1857,21 @@ class SdkClient:
         """Sync agent memories to a project directory as an OKF bundle (``<project>/okf``).
 
         Runs a fresh export into the cache, then copies the bundle into the
-        project. Falls back to the previous cached bundle when the backend is
-        unreachable (``source="stale-cache"``).
+        project. Falls back to a previous sync from the same credential and
+        backend when unreachable (``source="stale-cache"``). User exports are
+        never reused automatically because their ownership is unknown.
         """
         target = Path(project_dir) / "okf"
-        cache = Path.home() / ".memanto" / "exports" / f"{agent_id}_okf"
+        cache = memory_sync_cache_path(
+            agent_id, self.api_key, backend_client=self._moorcheh
+        ).with_name(f"{agent_id}_okf")
 
         try:
             result = self.export_okf_bundle(
-                agent_id=agent_id, split=split, limit_per_type=limit_per_type
+                agent_id=agent_id,
+                output_dir=str(cache),
+                split=split,
+                limit_per_type=limit_per_type,
             )
             src = Path(result["output_path"])
             total = result["total_memories"]
