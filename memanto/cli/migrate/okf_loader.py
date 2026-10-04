@@ -31,6 +31,9 @@ from memanto.app.utils.atomic_write import okf_bundle_lock
 # contains its own ``---`` rules.
 logger = logging.getLogger(__name__)
 
+# LibYAML keeps safe constructors while avoiding Python parsing for every record.
+_SAFE_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 _FRONTMATTER_HEADER_RE = re.compile(r"---\n(.*?)\n---(?:\n|$)", re.DOTALL)
 
@@ -391,7 +394,7 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
 
 def _read_frontmatter(raw: str) -> dict[str, Any]:
     try:
-        frontmatter = yaml.safe_load(raw) or {}
+        frontmatter = yaml.load(raw, Loader=_SAFE_YAML_LOADER) or {}
     except yaml.YAMLError:
         return {}
     return frontmatter if isinstance(frontmatter, dict) else {}
