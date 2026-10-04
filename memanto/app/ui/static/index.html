@@ -3673,7 +3673,7 @@
                     <td style="font-size:12px">${escHtml(trunc(a.description || '—', 60))}</td>
                     <td>${a.memory_count ?? '—'}</td>
                     <td>${a.session_count ?? 0}</td>
-                    <td style="white-space:nowrap">${fmtDate(a.created_at)}</td>
+                    <td style="white-space:nowrap">${escHtml(fmtDate(a.created_at))}</td>
                     <td>${statusBadge}</td>
                     <td style="text-align:right;white-space:nowrap">${actions} ${deleteBtn}</td>
                 </tr>`;
@@ -4143,7 +4143,7 @@
                 <tr><td>Pattern</td><td><span class="badge badge-accent">${escHtml(agent.pattern || '—')}</span></td></tr>
                 <tr><td>Description</td><td>${escHtml(agent.description || '—')}</td></tr>
                 <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(agent.namespace || '—')}</code></td></tr>
-                <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
+                <tr><td>Created</td><td>${escHtml(fmtDate(agent.created_at))}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
                 }).catch(e => {
@@ -4163,8 +4163,8 @@
                 <tr><td>Status</td><td><span class="badge badge-success">${escHtml(sess.status || 'active')}</span></td></tr>
                 <tr><td>Pattern</td><td>${escHtml(sess.pattern || '—')}</td></tr>
                 <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(sess.namespace || '—')}</code></td></tr>
-                <tr><td>Started</td><td>${fmtDate(sess.started_at)}</td></tr>
-                <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
+                <tr><td>Started</td><td>${escHtml(fmtDate(sess.started_at))}</td></tr>
+                <tr><td>Expires</td><td>${escHtml(fmtDate(sess.expires_at))}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
                 }).catch(e => {
@@ -4606,7 +4606,7 @@
             <td>${confBadge(m.confidence)}</td>
             <td>${statusBadge}</td>
             <td>${provBadge}</td>
-            <td style="white-space:nowrap">${fmtDate(m.created_at)}</td>
+            <td style="white-space:nowrap">${escHtml(fmtDate(m.created_at))}</td>
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
         </tr>`;
                 if (expandable) {
@@ -5145,7 +5145,7 @@
                 if (staleCount > 0) {
                     const scan = (S.conflictScans || {})[filter];
                     const reason = scan
-                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${fmtDate(scan.scanned_at)})`
+                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${escHtml(fmtDate(scan.scanned_at))})`
                         : `${staleCount} ${staleCount === 1 ? 'memory has' : 'memories have'} never been scanned`;
                     html += `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <span>⚠ ${reason} for <strong>${filter}</strong>. Run conflict detection to review.</span>
@@ -7104,7 +7104,7 @@
             const sample = (preview.sample || []).map(s => `
                 <div class="mig-sample-row">
                     <div class="ttl">${escHtml(s.title || '')}</div>
-                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + fmtDate(s.created_at) : ''}</div>
+                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + escHtml(fmtDate(s.created_at)) : ''}</div>
                 </div>
             `).join('') || '<p style="color:var(--text-dim);font-size:13px">No mapped rows.</p>';
 
@@ -7447,7 +7447,7 @@
                 const rows = events.map(e => {
                     const detail = e.op === 'remember' ? `wrote ${e.n || 1}` : `returned ${e.n || 0}`;
                     return `<div class="evt-row">
-                        <span>${fmtDate(e.ts)}</span>
+                        <span>${escHtml(fmtDate(e.ts))}</span>
                         <span class="evt-op ${escHtml(e.op)}">${escHtml(e.op)}</span>
                         <span>${escHtml(toolDisplay(e.tool))} · ${detail}</span>
                     </div>`;
@@ -7456,7 +7456,7 @@
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">
                         Agent ${escHtml(s.agent_id || '—')} · ${escHtml(s.status || '')} ·
                         ${s.memories_written || 0} written / ${s.memories_read || 0} read ·
-                        started ${fmtDate(s.started_at)}${s.expires_at ? ' · expires ' + fmtDate(s.expires_at) : ''}
+                        started ${escHtml(fmtDate(s.started_at))}${s.expires_at ? ' · expires ' + escHtml(fmtDate(s.expires_at)) : ''}
                     </div>
                     <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-dim);word-break:break-all;margin-bottom:14px">
                         ${escHtml(s.project_dir || '')}
