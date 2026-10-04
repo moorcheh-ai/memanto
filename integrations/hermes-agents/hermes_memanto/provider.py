@@ -31,6 +31,8 @@ import json
 import logging
 import os
 import re
+import stat
+import tempfile
 import threading
 import time
 from collections.abc import Callable
@@ -405,28 +407,57 @@ class _MemantoClient:
     def save_token(self, token: str) -> None:
         """Persist ``token`` to the profile's token file with owner-only permissions.
 
-        Failures are logged at debug level and otherwise ignored.
+        Replace the entry atomically so aliases cannot receive the token through
+        an existing inode. Failures leave the old entry intact and are logged.
         """
         if self._token_file:
+            staged_path: Path | None = None
             try:
                 self._token_file.parent.mkdir(parents=True, exist_ok=True)
-                fd = os.open(
-                    str(self._token_file),
-                    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-                    0o600,
+                fd, staged_name = tempfile.mkstemp(
+                    prefix=f".{self._token_file.name}.",
+                    dir=self._token_file.parent,
                 )
+                staged_path = Path(staged_name)
                 with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                    if os.name != "nt":
+                        os.fchmod(handle.fileno(), 0o600)
                     handle.write(token)
-                if os.name != "nt":
-                    os.chmod(self._token_file, 0o600)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(staged_path, self._token_file)
+                staged_path = None
             except Exception:
                 logger.debug("Failed to save token to file", exc_info=True)
+            finally:
+                if staged_path is not None:
+                    try:
+                        staged_path.unlink(missing_ok=True)
+                    except OSError:
+                        logger.debug("Failed to remove staged token", exc_info=True)
 
     def load_token(self) -> str | None:
-        """Return the persisted session token, or ``None`` when none is readable."""
-        if self._token_file and self._token_file.exists():
+        """Return a regular, unaliased token file or ``None`` if it is unsafe."""
+        if self._token_file:
             try:
-                return self._token_file.read_text(encoding="utf-8").strip()
+                expected = self._token_file.lstat()
+                if not stat.S_ISREG(expected.st_mode) or expected.st_nlink != 1:
+                    return None
+                flags = (
+                    os.O_RDONLY
+                    | getattr(os, "O_NOFOLLOW", 0)
+                    | getattr(os, "O_NONBLOCK", 0)
+                )
+                fd = os.open(self._token_file, flags)
+                with os.fdopen(fd, "r", encoding="utf-8") as handle:
+                    opened = os.fstat(handle.fileno())
+                    if (
+                        not stat.S_ISREG(opened.st_mode)
+                        or opened.st_nlink != 1
+                        or not os.path.samestat(expected, opened)
+                    ):
+                        return None
+                    return handle.read().strip()
             except Exception:
                 logger.debug("Failed to load token from file", exc_info=True)
         return None

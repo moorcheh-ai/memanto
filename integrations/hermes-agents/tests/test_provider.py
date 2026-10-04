@@ -6,6 +6,8 @@ monkeypatched with an in-memory fake.
 """
 
 import json
+import os
+import stat
 from unittest.mock import MagicMock
 
 import pytest
@@ -696,6 +698,79 @@ def test_memanto_client_token_persistence(tmp_path):
     client2.set_profile_path(str(tmp_path))
     assert client2._ready is True
     assert client2._client.session_token == "token-abc"
+
+
+@pytest.mark.parametrize("link_type", ["symlink", "hardlink"])
+def test_memanto_client_token_save_does_not_write_through_links(tmp_path, link_type):
+    from hermes_memanto.provider import _MemantoClient
+
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    outside = tmp_path / "outside-token"
+    outside.write_text("outside-before", encoding="utf-8")
+    outside.chmod(0o640)
+    outside_mode = stat.S_IMODE(outside.stat().st_mode)
+    token_file = profile / ".memanto_session_token"
+    if link_type == "symlink":
+        token_file.symlink_to(outside)
+    else:
+        os.link(outside, token_file)
+
+    client = _MemantoClient("api-key", "agent-1")
+    client._client = MagicMock()
+    client.set_profile_path(str(profile))
+    client.save_token("synthetic-new-token")
+
+    assert outside.read_text(encoding="utf-8") == "outside-before"
+    assert stat.S_IMODE(outside.stat().st_mode) == outside_mode
+    assert not token_file.is_symlink()
+    assert not token_file.samefile(outside)
+    assert token_file.read_text(encoding="utf-8") == "synthetic-new-token"
+    assert client.load_token() == "synthetic-new-token"
+    if os.name != "nt":
+        assert stat.S_IMODE(token_file.stat().st_mode) == 0o600
+
+
+@pytest.mark.parametrize("link_type", ["symlink", "hardlink"])
+def test_memanto_client_token_load_refuses_links(tmp_path, link_type):
+    from hermes_memanto.provider import _MemantoClient
+
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    outside = tmp_path / "outside-token"
+    outside.write_text("synthetic-other-profile-token", encoding="utf-8")
+    token_file = profile / ".memanto_session_token"
+    if link_type == "symlink":
+        token_file.symlink_to(outside)
+    else:
+        os.link(outside, token_file)
+
+    client = _MemantoClient("api-key", "agent-1")
+    client._client = MagicMock()
+    client.set_profile_path(str(profile))
+
+    assert client.load_token() is None
+    assert client._ready is False
+    assert "session_token" not in vars(client._client)
+
+
+def test_memanto_client_failed_token_replacement_keeps_original(monkeypatch, tmp_path):
+    import hermes_memanto.provider as mod
+
+    client = mod._MemantoClient("api-key", "agent-1")
+    client._client = MagicMock()
+    client.set_profile_path(str(tmp_path))
+    client.save_token("synthetic-original-token")
+    entries_before = set(tmp_path.iterdir())
+
+    def reject_replace(*args, **kwargs):
+        raise PermissionError("synthetic replacement failure")
+
+    monkeypatch.setattr(mod.os, "replace", reject_replace)
+    client.save_token("synthetic-new-token")
+
+    assert client.load_token() == "synthetic-original-token"
+    assert set(tmp_path.iterdir()) == entries_before
 
 
 def test_memanto_client_auto_refresh_on_expiration(tmp_path):
