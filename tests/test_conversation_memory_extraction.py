@@ -251,6 +251,49 @@ def test_extract_redacts_moorcheh_api_key_assignments(quote):
     )
 
 
+@pytest.mark.parametrize(
+    ("key", "key_quote", "value_quote", "value"),
+    [
+        ("MOORCHEH_API_KEY", '"', '"', "mk_json_marker"),
+        ("password", '"', '"', "pw_json_marker"),
+        ("password", '"', '"', r"pw_head\"pw_tail\\pw_end"),
+        ("password", '"', '"', r"pw_trailing\\"),
+        ("password", '"', "'", r"pw_head\'pw_tail\\pw_end"),
+        ("password", "'", "'", "pw_literal_marker"),
+        ("password", '"', "", "123456789"),
+    ],
+)
+def test_extract_redacts_quoted_credential_keys(key, key_quote, value_quote, value):
+    """Quoted field names and escaped values must not bypass extraction redaction."""
+    assignment = f"{key_quote}{key}{key_quote}: {value_quote}{value}{value_quote}"
+    redacted = (
+        f"{key_quote}{key}{key_quote}: {value_quote}[REDACTED_CREDENTIAL]{value_quote}"
+    )
+    config = "{" + assignment + ', "mode": "safe"}'
+    redacted_config = "{" + redacted + ', "mode": "safe"}'
+    client = FakeClient(
+        json.dumps(
+            [
+                {
+                    "type": "fact",
+                    "title": f"Config: {config}",
+                    "content": f"Configured {config}; keep release notes.",
+                }
+            ]
+        )
+    )
+
+    candidates = ConversationMemoryExtractionService(client).extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the configuration."}],
+    )
+
+    assert candidates[0]["title"] == f"Config: {redacted_config}"
+    assert candidates[0]["content"] == (
+        f"Configured {redacted_config}; keep release notes."
+    )
+
+
 def test_redact_sensitive_data_helper():
     from memanto.app.services.conversation_memory_extraction_service import (
         redact_sensitive_data,
