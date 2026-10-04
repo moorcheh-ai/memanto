@@ -10,6 +10,7 @@ from pathlib import Path
 _METADATA_FILE = ".memanto_identity.json"
 _CLAIM_ENV = "MEMANTO_HERMES_PROFILE_CLAIM"
 _SCHEMA = 1
+_METADATA_MAX_BYTES = 4096
 
 
 def _present(path: Path) -> bool:
@@ -68,8 +69,8 @@ def _read_metadata(profile: Path) -> dict[str, object] | None:
         raise _error(profile, "the metadata path is not a regular file")
     try:
         with path.open("rb") as handle:
-            raw = handle.read(4097)
-        if len(raw) > 4096:
+            raw = handle.read(_METADATA_MAX_BYTES + 1)
+        if len(raw) > _METADATA_MAX_BYTES:
             raise ValueError("metadata is too large")
         value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
@@ -99,12 +100,17 @@ def _write_once(profile: Path, value: dict[str, object]) -> bool:
     """Create the metadata file for ``profile`` exclusively.
 
     Returns ``False`` when another writer created the file first, so callers
-    re-read and validate it instead of overwriting it.
+    re-read and validate it instead of overwriting it. Records exceeding the
+    reader's byte limit are rejected before the metadata file is created.
     """
     path = profile / _METADATA_FILE
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
+    payload = (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode(
+        "utf-8"
+    )
+    if len(payload) > _METADATA_MAX_BYTES:
+        raise _error(profile, "the metadata record exceeds the 4 KiB limit")
     try:
-        with path.open("x", encoding="utf-8", newline="\n") as handle:
+        with path.open("xb") as handle:
             handle.write(payload)
         try:
             path.chmod(0o600)

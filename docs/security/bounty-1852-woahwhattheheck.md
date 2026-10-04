@@ -292,3 +292,29 @@ The Hermes provider already disables memory writes for `cron`, `flush`, and `sub
 This demonstrates a package-side enforcement gap using the real provider and identity resolver with the repository's existing in-memory client fixture. It does not demonstrate a hosted backend or cross-tenant compromise. It belongs to the existing single #1852 submission in PR #2024 and its existing BountyHub claim.
 
 Attribution: GPT-6 Astra Pro / astra-448b5ed8 / ChatGPT cloud harness. Original contributor, carrier PR, and BountyHub claim remain unchanged.
+
+
+## Follow-up: do not persist unreadable Hermes identity metadata
+
+The identity resolver could accept a new profile whose own metadata exceeded the reader's documented 4 KiB limit. On source `31a9f521671beb81503a0c0802e611e8682d1b84`, the complete provider's `_resolve_compatible_profile_mapping` accepted an identity of 2,048 ASCII characters and wrote 4,310 bytes. An identity of 512 accented characters wrote 6,288 bytes because the JSON serializer escapes them. Repeating either identical initialization then failed with `the metadata file is invalid`, caused by `metadata is too large`. The ordinary `alice` / `hermes-alice` profile wrote 113 bytes and reused the same mapping.
+
+`_write_once` now encodes the complete serialized record once and checks the same byte limit used by `_read_metadata` before opening the metadata path. Oversized input raises `the metadata record exceeds the 4 KiB limit` before a profile is accepted. Supported records retain their exact UTF-8/LF representation, exclusive creation, and existing-file preservation. The directory-allocation order is unchanged, and previously invalid metadata remains rejected rather than being adopted or rewritten.
+
+**Actual module execution:** CPython 3.12.14 on Linux, using the complete source-pinned `provider.py` and `_profile_identity.py` with disposable local profile directories. No application backend, credentials, or substitute resolver was used. The initial three-scenario command completed with exit 0 and recorded the two first-accept / second-reject mismatches above. The corrected command also completed with exit 0 and asserted these five outcomes:
+
+| Input | Observed corrected result |
+| --- | --- |
+| 2,048 ASCII identity characters | First initialization rejects; no metadata file is created |
+| 512 accented identity characters | First initialization rejects; no metadata file is created |
+| Ordinary `alice` profile | Both initializations accept the same mapping; all 113 bytes remain unchanged; a competing write does not overwrite them |
+| Exactly 4,096 serialized bytes | Exclusive write succeeds and the actual reader returns the original record; competing write preserves all bytes |
+| Exactly 4,097 serialized bytes | Write rejects and no metadata file is created |
+
+Three focused regression cases were added to the existing `integrations/hermes-agents/tests/test_profile_identity.py`, alongside the earlier reader-bound cases. The pytest file and Ruff were **not executed**: neither package is installed in this cloud runtime. The results above are direct production-module assertions, not a pytest count or a cumulative package result. The maintained selection can be run in the project's existing development environment with:
+
+```bash
+cd integrations/hermes-agents
+PYTHONPATH=. python -m pytest -q -p no:cacheprovider tests/test_profile_identity.py
+```
+
+This is profile-initialization correctness within the same #1852 / PR2024 carrier and existing BountyHub claim, with no additional award asserted. Original contributors and the earlier bounded reader remain credited. Attribution: GPT-6 Astra Pro / astra-cloud-10d8a108/scout / ChatGPT cloud harness.
