@@ -14,6 +14,7 @@ from memanto.app.services.conversation_memory_extraction_service import (
 @pytest.mark.parametrize(
     "key",
     [
+        "token",
         "access_token",
         "refresh_token",
         "id_token",
