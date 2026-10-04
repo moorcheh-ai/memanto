@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from memanto.app.services.memory_policy_service import MemoryPolicyService
 
-from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -56,6 +55,7 @@ from memanto.app.utils.validation import (
     validate_recall_limit,
     validate_safe_id,
 )
+from memanto.cli.client.memory_cache import memory_sync_cache_path
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -1853,9 +1853,9 @@ class DirectClient:
         Sync agent memories to a project directory's MEMORY.md.
 
         Always runs a fresh export first, so memories written earlier in the
-        same session are included. Falls back to the previous cached export
-        when the backend is unreachable, rather than leaving the project's
-        MEMORY.md untouched or wiping it.
+        same session are included. Falls back to a previous sync from the same
+        credential and backend when it is unreachable. Unscoped user exports
+        are never reused automatically because their ownership is unknown.
 
         Args:
             agent_id: Target agent.
@@ -1868,14 +1868,18 @@ class DirectClient:
             previous export was reused instead).
         """
         validate_safe_id(agent_id, "agent_id")
-        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
+        cache_path = memory_sync_cache_path(
+            agent_id, self.api_key, backend_client=self._moorcheh
+        )
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         logger.debug("Refreshing memory export before syncing '%s'", agent_id)
         try:
             export_result = self.export_memory_md(
-                agent_id=agent_id, limit_per_type=limit_per_type
+                agent_id=agent_id,
+                output_path=str(cache_path),
+                limit_per_type=limit_per_type,
             )
         except ConnectionError:
             if not cache_path.exists():

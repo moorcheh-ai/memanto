@@ -63,6 +63,27 @@ Already-safe short identifiers remain unchanged. Unsafe, truncated, or reserved-
 
 Missing provenance now reads as the non-authoritative `unknown` sentinel. Unrelated updates preserve missing or non-standard stored provenance instead of laundering it. Dynamic sync injects only exact trusted provenance values: `explicit_statement`, `corrected`, and `validated`.
 
+## 5. Automatic sync can reuse another credential's or deployment's export
+
+**Impact.** Both `DirectClient.sync_memory_to_project` and `SdkClient.sync_memory_to_project` used a cache identified only by the caller-selected agent name. A later client using a different Moorcheh credential, or a different backend endpoint, could copy the earlier client's private memory into its project's `MEMORY.md` when its own refresh failed. The copied content came from local cache; this does not demonstrate a breach of the hosted backend's tenant authorization.
+
+### Reproduction on the vulnerable implementation
+
+The local reproduction used `ed7f6d9fa02f639a8831d3c3af20debf2fe5abac`. The affected cache code is unchanged through `1931dbc050ba048ba5685551af6895a95ee6f988`.
+
+1. Use one disposable home directory and two clients of either class, with distinct synthetic API-key strings and the same agent name.
+2. Control only session validation and recall at the service boundary. For client A, return one fact with a unique private marker. Run the real `sync_memory_to_project` method into project A, including its export formatter and filesystem writes.
+3. For client B, make recall raise `ConnectionError` and sync into project B. On the parent code, the result is `source="stale-cache"` and project B's `MEMORY.md` contains A's marker.
+4. The same boundary is crossed when the cloud API endpoint or on-prem deployment changes while the agent name stays the same. No live account, real credential, operating-system compromise, or network request is needed for this package-side reproduction.
+
+The focused regressions are in `tests/test_export_resilience.py`: `test_cache_is_not_reused_across_credentials` and `test_cache_is_not_reused_after_endpoint_switch` exercise both production client implementations with disposable files. On the repaired code the failed refresh raises and the destination is left intact.
+
+### Fix and compatibility
+
+Automatic sync passes an explicit, private cache destination to the existing exporter. Its directory is keyed by a SHA-256 digest of structured backend context: API endpoint and credential for cloud, and deployment endpoint for on-prem, whose transport ignores the API key. An already-created transport's configuration takes precedence over changed environment values. Credentials and endpoint strings are never embedded in cache paths or metadata.
+
+Successful sync followed by an outage remains usable by a new client with the same backend identity. Explicit user exports retain their paths and contents. Old agent-only exports are left in place but never adopted as automatic fallback because they have no ownership evidence; one successful sync establishes the new cache. Project publication continues using the existing atomic copy helper, preserving the earlier symlink and hard-link destination repair.
+
 ## Patch map
 
 - `memanto/cli/connect/path_scope.py` — shared project-local path check.
@@ -72,5 +93,6 @@ Missing provenance now reads as the non-authoritative `unknown` sentinel. Unrela
 - `memanto/app/services/memory_read_service.py` and `memory_write_service.py` — fail-closed provenance preservation.
 - `memanto/cli/commands/memory_mgmt.py` — exact trusted-provenance gate before dynamic instruction injection.
 - `memanto/app/utils/atomic_write.py` — MEMORY.md cache restore replaces the destination entry instead of writing through a symlink.
+- `memanto/cli/client/memory_cache.py`, `direct_client.py`, and `sdk_client.py` — automatic sync cache isolation by credential and backend endpoint, without changing explicit user exports.
 
 This document is part of the existing single bounty carrier; it does not create a second submission.

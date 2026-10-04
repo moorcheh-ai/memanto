@@ -2661,11 +2661,14 @@ def test_direct_sync_exports_fresh_before_copying(tmp_path, monkeypatch):
     cache_path = cache_dir / "agent-1_memory.md"
     cache_path.write_text("# MEMORY\n\n### stale memory\n", encoding="utf-8")
 
-    client = DirectClient.__new__(DirectClient)
+    client = DirectClient(api_key="test-key")
     export_calls = []
 
-    def fresh_export(*, agent_id, limit_per_type):
+    def fresh_export(*, agent_id, output_path, limit_per_type):
         export_calls.append((agent_id, limit_per_type))
+        nonlocal cache_path
+        cache_path = Path(output_path)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(
             "# MEMORY\n\n### current memory\n\n### newer memory\n",
             encoding="utf-8",
