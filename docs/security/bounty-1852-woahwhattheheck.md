@@ -116,3 +116,35 @@ env -u MOORCHEH_API_KEY PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. \
 - `memanto/cli/client/memory_cache.py`, `direct_client.py`, and `sdk_client.py` — automatic sync cache isolation by credential and backend endpoint, without changing explicit user exports.
 
 This document is part of the existing single bounty carrier; it does not create a second submission.
+
+## Follow-up: OKF export includes other agents' local context
+
+Both `DirectClient.export_okf_bundle` and `SdkClient.export_okf_bundle` selected daily summaries and session logs using only an agent-name prefix. Consequently, `memanto memory export --okf` for `team` could include the local private context of `team_private`. A valid session for the requested agent did not prevent this: the remote memory lookup was scoped correctly, but the later local file selection copied the other agent's documents into the bundle. Fresh `memory sync --okf` uses the same export path.
+
+### Reproduction
+
+On branch source `5fc148fbfa769b0dd5972bd6839f6b9715599870`, create disposable session state for `team`, `team_private`, and `team_2026-10-03`. Use the real `SessionService.create_session` and `log_memory_to_session_summary` methods to generate their logs, with a different synthetic content marker for the other agents. Add their canonical daily-summary files. Bind a client to `team`'s real signed token and let its remote search boundary return an empty result. Call the real `export_okf_bundle` operation.
+
+Before the repair, both clients copied the other agents' context into the export. Four regression variants, covering both clients and the target names `team` and `team_2026-10-03`, failed on the other-agent marker. This uses only disposable local files and synthetic credentials; no hosted account or tenant was accessed.
+
+### Fix
+
+Both clients now use one local-context selector. Daily-summary filenames must match the complete requested agent name followed by the canonical date suffix. Session filenames must match the supported generated form, and a bounded first-line read must identify the exact requested agent. The second check matters because both agent names and session IDs can contain underscores and dates, making filenames alone ambiguous.
+
+The selector preserves deterministic order and existing safe session IDs, including historical IDs containing underscores and dates. It accepts the generated session header with LF, CRLF, or end-of-file. It omits symlinks, noncanonical custom filenames, and session files with absent, unreadable, or mismatched owner headers. Explicit caller-supplied context lists in `OkfExportService` keep their existing behavior.
+
+### Focused validation
+
+Python 3.12; the four new cases failed on the baseline in 0.50 seconds. With the patch, the following selection passed **5 tests in 0.44 seconds**:
+
+```bash
+python -m pytest -c /dev/null -q -p no:cacheprovider --import-mode=importlib \
+  tests/test_okf_context_scope.py \
+  tests/test_okf.py::test_context_sections_and_import_scope
+```
+
+The fifth case is the existing context-section export/import compatibility check. The new cases exercise real JWT/session validation, session-summary writing, client recall/gathering, OKF rendering and bundle publication; only the remote search response is controlled. The run used isolated home and temporary paths, disabled bytecode writes, and rejected network/DNS access with a Python audit hook. Recorded network events: `[]`. Ruff check and formatting passed for all four changed files. No additional environment was installed.
+
+The repair establishes package-side local agent isolation during automatic context selection. It does not establish a hosted authorization defect or retroactively clean bundles already exported by older code. Custom-named daily summaries and headerless session documents are no longer automatically adopted, because their ownership cannot be determined safely from the old prefix rule.
+
+This is an additive fix on the existing #1852 / PR2024 submission and its bound BountyHub claim. Attribution: GPT-6 Astra Pro, Astra-e9dcc1eb, ChatGPT cloud harness.

@@ -1828,12 +1828,11 @@ class SdkClient:
 
         from memanto.app.config import get_data_dir
         from memanto.app.services.okf_export_service import OkfExportService
+        from memanto.app.utils.agent_context_files import get_agent_context_files
 
         memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
 
-        data_dir = get_data_dir()
-        summaries = sorted((data_dir / "summaries").glob(f"{agent_id}_*.md"))
-        sessions = sorted((data_dir / "sessions").glob(f"{agent_id}_*_summary.md"))
+        summaries, sessions = get_agent_context_files(get_data_dir(), agent_id)
 
         return OkfExportService().write_okf_bundle(
             agent_id=agent_id,
