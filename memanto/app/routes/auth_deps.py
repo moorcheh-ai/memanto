@@ -233,30 +233,41 @@ def _forwarded_node_is_loopback(value: str) -> bool:
 def _has_forwarded_non_loopback(request: Request) -> bool:
     # Starlette preserves repeated physical fields in items(); get() reads only
     # the first. Every forwarding field must agree before granting local trust.
+    # Forwarding without usable client identity is not evidence of a local client.
+    has_forwarding = False
+    has_client = False
     for name, value in request.headers.items():
         name = name.lower()
+        if name.startswith("x-forwarded-") or name in {"x-real-ip", "forwarded"}:
+            has_forwarding = True
         if name == "x-forwarded-for":
             for ip in value.split(","):
                 cleaned = ip.strip()
-                if cleaned and not is_loopback_host(cleaned):
+                if not cleaned or not is_loopback_host(cleaned):
                     return True
+            has_client = True
         elif name == "x-real-ip":
             cleaned = value.strip()
-            if cleaned and not is_loopback_host(cleaned):
+            if not cleaned or not is_loopback_host(cleaned):
                 return True
-        elif name == "forwarded" and value:
+            has_client = True
+        elif name == "forwarded":
+            found_client = False
             try:
                 for item in _split_forwarded_parameters(value):
                     parameter, separator, node = item.partition("=")
-                    if parameter.strip().lower() == "for" and (
-                        not separator or not _forwarded_node_is_loopback(node.strip())
-                    ):
-                        return True
+                    if parameter.strip().lower() == "for":
+                        found_client = True
+                        if not separator or not _forwarded_node_is_loopback(node.strip()):
+                            return True
             except ValueError:
                 # An incomplete quoted string could conceal a later remote hop.
                 return True
+            if not found_client:
+                return True
+            has_client = True
 
-    return False
+    return has_forwarding and not has_client
 
 
 def require_management_access(
