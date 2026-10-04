@@ -203,7 +203,11 @@ class SdkClient:
         # cold path below, so long-lived clients keep renewing instead of
         # eventually hitting SessionExpiredError.
         if self._cached_session:
-            if self.agent_id == agent_id and self._cached_session.agent_id == agent_id:
+            if (
+                self.agent_id == agent_id
+                and self._cached_session.agent_id == agent_id
+                and self.session_token == self._cached_session.session_token
+            ):
                 if not self._cached_session.is_active():
                     self._cached_session = None
                     raise SessionExpiredError(
@@ -239,6 +243,15 @@ class SdkClient:
             # The stored session fully lapsed (e.g. the process was idle past
             # its expiry). With auto-recreate enabled, transparently issue a
             # fresh session on this first operation instead of failing.
+            # Bind the expired token to the requested agent before recreation
+            # can replace any persisted session state.
+            expired_session = session_service.get_session(agent_id)
+            if (
+                expired_session is None
+                or expired_session.agent_id != agent_id
+                or expired_session.session_token != self.session_token
+            ):
+                raise
             recreated = session_service.check_and_auto_recreate(self.session_token)
             if recreated is None:
                 raise
@@ -248,6 +261,12 @@ class SdkClient:
         except InvalidSessionTokenError:
             # Surface the same specific session errors as the service
             raise
+
+        if token_payload.agent_id != agent_id:
+            raise SessionError(
+                f"Session token is for agent '{token_payload.agent_id}', "
+                f"cannot access '{agent_id}'"
+            )
 
         # Load the persisted session record
         session = session_service.get_session(token_payload.agent_id)
