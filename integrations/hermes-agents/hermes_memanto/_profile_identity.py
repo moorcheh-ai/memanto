@@ -67,10 +67,11 @@ def _read_metadata(profile: Path) -> dict[str, object] | None:
     if path.is_symlink() or not path.is_file():
         raise _error(profile, "the metadata path is not a regular file")
     try:
-        raw = path.read_text(encoding="utf-8")
-        if len(raw.encode("utf-8")) > 4096:
+        with path.open("rb") as handle:
+            raw = handle.read(4097)
+        if len(raw) > 4096:
             raise ValueError("metadata is too large")
-        value = json.loads(raw)
+        value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
         raise _error(profile, "the metadata file is invalid") from exc
     if not isinstance(value, dict):
