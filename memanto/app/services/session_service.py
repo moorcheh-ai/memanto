@@ -14,7 +14,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -92,6 +92,7 @@ class SessionService:
         # agents can create, renew, and terminate sessions concurrently.
         self._agent_locks: dict[str, threading.RLock] = {}
         self._agent_locks_guard = threading.Lock()
+        self._held_agent_file_locks = threading.local()
         self._active_marker_lock = threading.RLock()
         self._summary_lock = threading.Lock()
 
@@ -102,15 +103,43 @@ class SessionService:
             self._secret_key = self._generate_secure_secret_key()
         return self._secret_key
 
-    def _lock_for_agent(self, agent_id: str) -> threading.RLock:
-        """Return the stable lifecycle lock for one agent."""
+    def _lock_for_agent(self, agent_id: str) -> AbstractContextManager[None]:
+        """Validate eagerly and return the shared lifecycle lock for one agent."""
         validate_safe_id(agent_id, "agent_id")
         with self._agent_locks_guard:
             lock = self._agent_locks.get(agent_id)
             if lock is None:
                 lock = threading.RLock()
                 self._agent_locks[agent_id] = lock
-            return lock
+        return self._hold_agent_lifecycle_lock(agent_id, lock)
+
+    @contextmanager
+    def _hold_agent_lifecycle_lock(
+        self, agent_id: str, thread_lock: threading.RLock
+    ) -> Iterator[None]:
+        """Serialize lifecycle writes across CLI/server processes sharing files."""
+        with thread_lock:
+            held = getattr(self._held_agent_file_locks, "agent_ids", None)
+            if held is None:
+                held = set()
+                self._held_agent_file_locks.agent_ids = held
+
+            if agent_id in held:
+                # Renewal/recreation calls create_session while already holding
+                # this lock. A second file descriptor would deadlock on flock.
+                yield
+                return
+
+            self._harden_session_storage()
+            lock_file = self.sessions_dir / f"{agent_id}.lock"
+            # Keep this inode across release and session deletion: waiters must
+            # never split onto a replacement lock file for the same agent.
+            with self._exclusive_file_lock(lock_file):
+                held.add(agent_id)
+                try:
+                    yield
+                finally:
+                    held.remove(agent_id)
 
     @staticmethod
     def _set_private_permissions(path: Path, mode: int) -> None:

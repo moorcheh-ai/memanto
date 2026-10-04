@@ -270,10 +270,21 @@ class TestSessionService:
         # Just verify the logic exists
         print("✅ Session expiration logic exists")
 
-    def test_auto_renew_is_single_flight_per_agent(self, session_service, monkeypatch):
+    @pytest.mark.parametrize("separate_instance", [False, True])
+    def test_auto_renew_is_single_flight_per_agent(
+        self, session_service, monkeypatch, separate_instance
+    ):
         """Parallel near-expiry requests must not mint competing tokens."""
         session_service.create_session(agent_id="test-agent", duration_hours=1)
         monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+        second_service = (
+            SessionService(
+                secret_key=session_service.secret_key,
+                sessions_dir=session_service.sessions_dir,
+            )
+            if separate_instance
+            else session_service
+        )
 
         original_renew = session_service.renew_session
         first_entered = threading.Event()
@@ -299,7 +310,7 @@ class TestSessionService:
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(session_service.check_and_auto_renew, "test-agent")
             assert first_entered.wait(timeout=2)
-            second = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            second = pool.submit(second_service.check_and_auto_renew, "test-agent")
             second_entered.wait(timeout=0.25)
             release_first.set()
             results = [first.result(timeout=2), second.result(timeout=2)]
@@ -357,20 +368,29 @@ class TestSessionService:
         assert active_session is not None
         assert active_session.session_id == session.session_id
 
+    @pytest.mark.parametrize("separate_instance", [False, True])
     def test_end_session_revokes_concurrent_auto_renewal(
-        self, session_service, monkeypatch
+        self, session_service, monkeypatch, separate_instance
     ):
         """Logout must terminate a renewal that was already in flight."""
         original = session_service.create_session(
             agent_id="test-agent", duration_hours=1
         )
         monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+        ending_service = (
+            SessionService(
+                secret_key=session_service.secret_key,
+                sessions_dir=session_service.sessions_dir,
+            )
+            if separate_instance
+            else session_service
+        )
 
         original_renew = session_service.renew_session
         renewal_entered = threading.Event()
         release_renewal = threading.Event()
         termination_saved = threading.Event()
-        original_save = session_service._save_session
+        original_save = ending_service._save_session
 
         def controlled_renew(agent_id, pattern=None):
             renewal_entered.set()
@@ -383,12 +403,12 @@ class TestSessionService:
                 termination_saved.set()
 
         monkeypatch.setattr(session_service, "renew_session", controlled_renew)
-        monkeypatch.setattr(session_service, "_save_session", observed_save)
+        monkeypatch.setattr(ending_service, "_save_session", observed_save)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             renewing = pool.submit(session_service.check_and_auto_renew, "test-agent")
             assert renewal_entered.wait(timeout=2)
-            ending = pool.submit(session_service.end_session, "test-agent")
+            ending = pool.submit(ending_service.end_session, "test-agent")
 
             # Logout cannot persist a stale termination while renewal owns the
             # lifecycle. It proceeds immediately after the fresh token exists.
