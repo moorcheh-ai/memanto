@@ -27,6 +27,11 @@ API_KEY_PATTERNS = [
 BEARER_PATTERN = re.compile(
     r"(?i)\bBearer\s+[A-Za-z0-9_\-\.~+/]+={0,2}(?=[^\w\-\.~+/=]|$)"
 )
+# Keep the field and scheme while removing the complete opaque credential.
+BASIC_AUTH_PATTERN = re.compile(
+    r"""(?<![\w-])((?ai:(?:proxy-)?authorization)['"]?[ \t]*[:=]"""
+    r"""[ \t]*(?:['"][ \t]*)?(?ai:Basic)[ \t]+)[^\s'",;{}\[\]]+"""
+)
 # Search once per scheme-character run, preserving any non-letter prefix.
 URL_CREDENTIAL_PATTERN = re.compile(
     r"(?i)(?<![a-z0-9+.-])([0-9+.-]*[a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)"
@@ -100,6 +105,7 @@ def redact_sensitive_data(text: str) -> str:
 
     text = _redact_private_keys(text)
     text = BEARER_PATTERN.sub("Bearer [REDACTED_TOKEN]", text)
+    text = BASIC_AUTH_PATTERN.sub(r"\1[REDACTED_CREDENTIAL]", text)
     for pat in API_KEY_PATTERNS:
         text = pat.sub("[REDACTED_API_KEY]", text)
     text = URL_CREDENTIAL_PATTERN.sub(r"\g<1>[REDACTED_PASSWORD]\g<2>", text)

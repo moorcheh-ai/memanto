@@ -92,3 +92,57 @@ def test_existing_credential_fields_remain_redacted(key):
 )
 def test_noncredential_token_metadata_is_unchanged(text):
     assert redact_sensitive_data(text) == text
+
+
+def test_extract_redacts_basic_authentication_in_title_and_content():
+    token = "dXNlcjpzeW50aGV0aWMtcGFzc3dvcmQ="
+    cases = [
+        ("Authorization: Basic " + token, token),
+        (json.dumps({"Authorization": "Basic " + token, "scope": "read"}), token),
+        ("Proxy-Authorization = 'bAsIc abc-def._~+/===é'; scope=read", "abc-def._~+/===é"),
+    ]
+    for text, credential in cases:
+        calls = []
+
+        def generate(**kwargs):
+            calls.append(kwargs)
+            return {
+                "answer": json.dumps(
+                    [{"type": "fact", "title": text, "content": text, "confidence": 0.9}]
+                )
+            }
+
+        service = ConversationMemoryExtractionService(
+            SimpleNamespace(answer=SimpleNamespace(generate=generate))
+        )
+        candidates = service.extract(
+            namespace="memanto_agent_test",
+            messages=[{"role": "user", "content": "Remember the authentication setup."}],
+            ai_model="synthetic-model",
+        )
+
+        assert len(calls) == 1
+        assert len(candidates) == 1
+        candidate = candidates[0]
+        expected = text.replace(credential, "[REDACTED_CREDENTIAL]")
+        assert candidate["title"] == expected
+        assert candidate["content"] == expected
+        assert redact_sensitive_data(expected) == expected
+        assert candidate["source"] == "system"
+        assert candidate["provenance"] == "inferred"
+        assert candidate["confidence"] == 0.9
+        if text.startswith("{"):
+            assert json.loads(candidate["content"]) == {
+                "Authorization": "Basic [REDACTED_CREDENTIAL]",
+                "scope": "read",
+            }
+
+
+def test_basic_auth_redaction_preserves_noncredential_text():
+    for text in (
+        "WWW-Authenticate: Basic realm=\"private\"",
+        "X-Authorization: Basic example",
+        "Authorization: Basic\nNext-Header: value",
+        "Learn the Basic principles of authorization.",
+    ):
+        assert redact_sensitive_data(text) == text
