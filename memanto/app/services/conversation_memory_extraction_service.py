@@ -37,10 +37,10 @@ URL_CREDENTIAL_PATTERN = re.compile(
     r"(?i)(?<![a-z0-9+.-])([0-9+.-]*[a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)"
 )
 KV_CREDENTIAL_QUOTED = re.compile(
-    r"""(?i)\b((?:(?:moorcheh[_-])?api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|(?:(?:auth|access|refresh|id|session)[_-]?)?token)['"]?\s*[:=]\s*)(['"])(?:\\.|(?!\2)[^\\\n])+\2"""
+    r"""(?i)\b((?:(?:moorcheh[_-])?api[_-]?key|private[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|(?:(?:auth|access|refresh|id|session)[_-]?)?token)['"]?\s*[:=]\s*)(['"])(?:\\.|(?!\2)[^\\\n])+\2"""
 )
 KV_CREDENTIAL_UNQUOTED = re.compile(
-    r"""(?i)\b((?:(?:moorcheh[_-])?api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|(?:(?:auth|access|refresh|id|session)[_-]?)?token)['"]?\s*[:=]\s*)[^\s,;'"}\]]{1,}"""
+    r"""(?i)\b((?:(?:moorcheh[_-])?api[_-]?key|private[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|(?:(?:auth|access|refresh|id|session)[_-]?)?token)['"]?\s*[:=]\s*)[^\s,;'"}\]]{1,}"""
 )
 
 
