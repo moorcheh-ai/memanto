@@ -51,6 +51,22 @@ def recall(client):
     return client.recall(agent_id="target-agent", query="private marker", limit=1)
 
 
+def test_deactivating_other_agent_preserves_active_client_state(client):
+    target = client._session_service.create_session("target-agent", duration_hours=1)
+    client.session_token = target.session_token
+    client._cached_session = target
+    other = client._session_service.create_session("other-agent", duration_hours=1)
+
+    client.deactivate_agent("other-agent")
+
+    assert client.agent_id == "target-agent"
+    assert client.session_token == target.session_token
+    assert client._cached_session == target
+    with pytest.raises(InvalidSessionTokenError):
+        client._session_service.validate_session(other.session_token)
+    assert recall(client)["count"] == 1
+
+
 def test_recall_rejects_another_agents_valid_token(client):
     other = client._session_service.create_session("other-agent", duration_hours=1)
     client.session_token = other.session_token
