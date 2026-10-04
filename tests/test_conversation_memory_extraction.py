@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from memanto.app.services.conversation_memory_extraction_service import (
@@ -218,6 +220,34 @@ def test_extract_redacts_sensitive_credentials():
     assert (
         "Database url is postgresql://usr:[REDACTED_PASSWORD]@db.internal:5432/prod"
         == candidates[1]["content"]
+    )
+
+
+@pytest.mark.parametrize("quote", ["", "'", '"'])
+def test_extract_redacts_moorcheh_api_key_assignments(quote):
+    """The documented provider setting must not survive candidate extraction."""
+    assignment = f"MOORCHEH_API_KEY={quote}mk_your_api_key_here{quote}"
+    redacted = f"MOORCHEH_API_KEY={quote}[REDACTED_CREDENTIAL]{quote}"
+    client = FakeClient(
+        json.dumps(
+            [
+                {
+                    "type": "fact",
+                    "title": f"Configuration: {assignment}",
+                    "content": f"Configured {assignment}; keep concise release notes.",
+                }
+            ]
+        )
+    )
+
+    candidates = ConversationMemoryExtractionService(client).extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the configuration."}],
+    )
+
+    assert candidates[0]["title"] == f"Configuration: {redacted}"
+    assert candidates[0]["content"] == (
+        f"Configured {redacted}; keep concise release notes."
     )
 
 
