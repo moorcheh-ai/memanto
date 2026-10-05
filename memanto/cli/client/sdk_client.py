@@ -1681,6 +1681,8 @@ class SdkClient:
         agent_id: str,
         output_path: str | None = None,
         limit_per_type: int = 25,
+        *,
+        _project_sync: bool = False,
     ) -> dict[str, Any]:
         """
         Export all memories for an agent into a structured memory.md.
@@ -1699,6 +1701,12 @@ class SdkClient:
         self._get_validated_session_for_agent(agent_id)
 
         memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
+        if _project_sync:
+            from memanto.app.services.memory_export_service import (
+                filter_project_sync_memories,
+            )
+
+            memories_by_type = filter_project_sync_memories(memories_by_type)
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
@@ -1753,6 +1761,7 @@ class SdkClient:
                 agent_id=agent_id,
                 output_path=str(cache_path),
                 limit_per_type=limit_per_type,
+                _project_sync=True,
             )
         except ConnectionError:
             if not cache_path.exists():
