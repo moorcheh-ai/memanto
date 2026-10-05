@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -379,6 +380,10 @@ class TestSessionService:
         )
         original_symlink = Path.symlink_to
         observed = {}
+
+        # Cooperative peers are serialized by active.lock. Bypass the peer's
+        # lock only to retain coverage for the staged-link publication race.
+        monkeypatch.setattr(other, "_hold_active_marker_lock", lambda: nullcontext())
 
         def interleaved_symlink(path, target, *args, **kwargs):
             if (
@@ -2866,7 +2871,8 @@ def test_direct_sync_exports_fresh_before_copying(tmp_path, monkeypatch):
     client = DirectClient(api_key="test-key")
     export_calls = []
 
-    def fresh_export(*, agent_id, output_path, limit_per_type):
+    def fresh_export(*, agent_id, output_path, limit_per_type, _project_sync=False):
+        assert _project_sync is True
         export_calls.append((agent_id, limit_per_type))
         nonlocal cache_path
         cache_path = Path(output_path)

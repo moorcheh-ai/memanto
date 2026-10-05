@@ -320,7 +320,8 @@ def test_okf_round_trip_preserves_literal_record_sentinels(tmp_path, split):
     assert rows["Imported checklist"]["provenance"] == "imported"
     assert rows["Imported checklist"]["source"] == "web"
     assert rows["Imported checklist"]["confidence"] == 0.8
-    assert rows["Other fact"]["provenance"] == "validated"
+    # Unsigned OKF input cannot preserve a trust-bearing label.
+    assert rows["Other fact"]["provenance"] == "imported"
 
 
 @pytest.mark.parametrize("field", ["title", "tags", "source_ref", "source", "id"])

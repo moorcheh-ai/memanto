@@ -323,7 +323,8 @@ class TestProjectSyncTrustBoundary:
 
         monkeypatch.setattr(client, "recall", MagicMock(side_effect=recall))
 
-        raw_path = tmp_path / "raw-memory.md"
+        # Explicit exports remain confined to the active data root.
+        raw_path = tmp_path / ".memanto" / "exports" / "raw-memory.md"
         client.export_memory_md("test-agent", output_path=str(raw_path))
         raw = raw_path.read_text(encoding="utf-8")
         assert "legacy rule marker" in raw
