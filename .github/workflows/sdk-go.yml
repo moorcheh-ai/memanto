@@ -19,6 +19,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The minimum version users need (go.mod), and the latest.
+        go: ["go.mod", "stable"]
     defaults:
       run:
         working-directory: sdks/go
@@ -28,10 +32,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: sdks/go/go.mod
+          go-version-file: ${{ matrix.go == 'go.mod' && 'sdks/go/go.mod' || '' }}
+          go-version: ${{ matrix.go == 'stable' && 'stable' || '' }}
           cache-dependency-path: sdks/go/go.sum
 
+      # oapi-codegen itself needs a newer Go than the SDK does.
       - name: Check generated models match the spec
+        if: matrix.go == 'stable'
         run: |
           go generate ./...
           git diff --exit-code -- . \

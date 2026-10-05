@@ -57,7 +57,9 @@ func main() {
 		log.Fatal(err)
 	}
 	for _, m := range recalled.Memories {
-		fmt.Println(*m.Content)
+		if m.Content != nil { // optional fields in api types are pointers
+			fmt.Println(*m.Content)
+		}
 	}
 
 	answer, err := client.Answer(ctx, memanto.AnswerInput{Question: "Does Alex drink dairy?"})

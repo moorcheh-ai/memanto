@@ -113,10 +113,18 @@ func TestSpawnReportsEarlyExit(t *testing.T) {
 }
 
 func TestSpawnReportsMissingUvx(t *testing.T) {
-	c, _ := New(Options{AgentID: "a", UvxPath: filepath.Join(t.TempDir(), "no-such-uvx")})
-	_, err := c.Recall(context.Background(), RecallInput{Query: "q"})
-	if err == nil || !strings.Contains(err.Error(), "install uv") {
-		t.Fatalf("want install hint, got %v", err)
+	for name, uvxPath := range map[string]string{
+		"not on PATH":  "",
+		"missing path": filepath.Join(t.TempDir(), "no-such-uvx"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("PATH", "")
+			c, _ := New(Options{AgentID: "a", UvxPath: uvxPath})
+			_, err := c.Recall(context.Background(), RecallInput{Query: "q"})
+			if err == nil || !strings.Contains(err.Error(), "install uv") {
+				t.Fatalf("want install hint, got %v", err)
+			}
+		})
 	}
 }
 

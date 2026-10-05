@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -74,7 +75,7 @@ func (s *server) start(ctx context.Context) (string, error) {
 		cmd.Stderr = os.Stderr
 	}
 	if err := cmd.Start(); err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
+		if errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("memanto: could not find %q: %s", uvx, uvxInstallHint)
 		}
 		return "", fmt.Errorf("memanto: start server: %w", err)

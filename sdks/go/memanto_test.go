@@ -309,3 +309,40 @@ func TestErrorDetail(t *testing.T) {
 	equal(t, errorDetail([]byte(`{"detail":{"details":{},"error":"AgentNotFound","message":"Agent 'a' not found"}}`)), "Agent 'a' not found")
 	equal(t, errorDetail([]byte("plain")), "plain")
 }
+
+func TestMapResultsAreReturned(t *testing.T) {
+	f := &fakeAPI{t: t, agentID: "a", agentExists: true}
+	c := newTestClient(t, f, Options{})
+	ctx := context.Background()
+	calls := map[string]func() (map[string]any, error){
+		"ExtractMemories": func() (map[string]any, error) {
+			return c.ExtractMemories(ctx, ExtractMemoriesInput{Messages: []ConversationMessage{{Role: "user", Content: "hi"}}})
+		},
+		"DeleteMemory":      func() (map[string]any, error) { return c.DeleteMemory(ctx, "mem-1") },
+		"DailySummary":      func() (map[string]any, error) { return c.DailySummary(ctx, DailySummaryInput{}) },
+		"GenerateConflicts": func() (map[string]any, error) { return c.GenerateConflicts(ctx, ConflictDateInput{}) },
+		"ListConflicts":     func() (map[string]any, error) { return c.ListConflicts(ctx, ConflictDateInput{Date: "2026-10-01"}) },
+		"ResolveConflict": func() (map[string]any, error) {
+			return c.ResolveConflict(ctx, ResolveConflictInput{ConflictIndex: 0, Action: "keep_new"})
+		},
+	}
+	for name, call := range calls {
+		got, err := call()
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got["ok"] != true {
+			t.Errorf("%s returned %v, want the response body", name, got)
+		}
+	}
+	equal(t, f.last("/api/v2/agents/a/conflicts").Query, "date=2026-10-01")
+}
+
+func TestErrorsReturnNilResult(t *testing.T) {
+	f := &fakeAPI{t: t, agentID: "a", agentExists: true, rejectAll: true}
+	c := newTestClient(t, f, Options{})
+	res, err := c.Recall(context.Background(), RecallInput{Query: "q"})
+	if err == nil || res != nil {
+		t.Fatalf("want nil result and an error, got %v, %v", res, err)
+	}
+}

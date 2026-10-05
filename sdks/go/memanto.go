@@ -159,8 +159,7 @@ func (in RememberInput) withDefaults() RememberInput {
 
 // Remember stores one memory.
 func (c *Client) Remember(ctx context.Context, in RememberInput) (*api.RememberResponse, error) {
-	var out api.RememberResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/remember", in.withDefaults(), true, &out)
+	return request[api.RememberResponse](ctx, c, http.MethodPost, c.agentPath+"/remember", in.withDefaults(), true)
 }
 
 // BatchRemember stores several memories in one request.
@@ -170,8 +169,7 @@ func (c *Client) BatchRemember(ctx context.Context, items []RememberInput) (*api
 		memories[i] = m.withDefaults()
 	}
 	body := map[string]any{"memories": memories}
-	var out api.BatchRememberResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/batch-remember", body, true, &out)
+	return request[api.BatchRememberResponse](ctx, c, http.MethodPost, c.agentPath+"/batch-remember", body, true)
 }
 
 // ConversationMessage is one turn passed to ExtractMemories.
@@ -192,14 +190,12 @@ type ExtractMemoriesInput struct {
 
 // ExtractMemories asks the server's LLM to pull memories out of a conversation.
 func (c *Client) ExtractMemories(ctx context.Context, in ExtractMemoriesInput) (map[string]any, error) {
-	var out map[string]any
-	return out, c.do(ctx, http.MethodPost, c.agentPath+"/remember/extract", in, true, &out)
+	return requestMap(ctx, c, http.MethodPost, c.agentPath+"/remember/extract", in, true)
 }
 
 // DeleteMemory deletes one memory by id.
 func (c *Client) DeleteMemory(ctx context.Context, memoryID string) (map[string]any, error) {
-	var out map[string]any
-	return out, c.do(ctx, http.MethodDelete, c.agentPath+"/memories/"+url.PathEscape(memoryID), nil, true, &out)
+	return requestMap(ctx, c, http.MethodDelete, c.agentPath+"/memories/"+url.PathEscape(memoryID), nil, true)
 }
 
 // UploadFileInput is a local file to upload as memories.
@@ -233,7 +229,10 @@ func (c *Client) UploadFile(ctx context.Context, in UploadFileInput) (*api.Uploa
 		return nil, err
 	}
 	var out api.UploadFileResponse
-	return &out, c.send(ctx, http.MethodPost, c.agentPath+"/upload-file", buf.Bytes(), mw.FormDataContentType(), true, &out)
+	if err := c.send(ctx, http.MethodPost, c.agentPath+"/upload-file", buf.Bytes(), mw.FormDataContentType(), true, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -255,8 +254,7 @@ type RecallInput struct {
 
 // Recall returns the memories most relevant to a query.
 func (c *Client) Recall(ctx context.Context, in RecallInput) (*api.RecallResponse, error) {
-	var out api.RecallResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/recall", in, true, &out)
+	return request[api.RecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall", in, true)
 }
 
 // RecallAsOfInput selects memories as they were at a point in time.
@@ -269,8 +267,7 @@ type RecallAsOfInput struct {
 
 // RecallAsOf returns memories as they existed at AsOf.
 func (c *Client) RecallAsOf(ctx context.Context, in RecallAsOfInput) (*api.TemporalRecallResponse, error) {
-	var out api.TemporalRecallResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/recall/as-of", in, true, &out)
+	return request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/as-of", in, true)
 }
 
 // RecallChangedSinceInput selects memories changed after a point in time.
@@ -283,8 +280,7 @@ type RecallChangedSinceInput struct {
 
 // RecallChangedSince returns memories created or changed since Since.
 func (c *Client) RecallChangedSince(ctx context.Context, in RecallChangedSinceInput) (*api.TemporalRecallResponse, error) {
-	var out api.TemporalRecallResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/recall/changed-since", in, true, &out)
+	return request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/changed-since", in, true)
 }
 
 // RecallRecentInput selects the newest memories.
@@ -295,8 +291,7 @@ type RecallRecentInput struct {
 
 // RecallRecent returns the most recently created memories.
 func (c *Client) RecallRecent(ctx context.Context, in RecallRecentInput) (*api.TemporalRecallResponse, error) {
-	var out api.TemporalRecallResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/recall/recent", in, true, &out)
+	return request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/recent", in, true)
 }
 
 // AnswerInput is a question answered from the agent's memories.
@@ -313,8 +308,7 @@ type AnswerInput struct {
 
 // Answer generates an answer grounded in the agent's memories.
 func (c *Client) Answer(ctx context.Context, in AnswerInput) (*api.AnswerResponse, error) {
-	var out api.AnswerResponse
-	return &out, c.do(ctx, http.MethodPost, c.agentPath+"/answer", in, true, &out)
+	return request[api.AnswerResponse](ctx, c, http.MethodPost, c.agentPath+"/answer", in, true)
 }
 
 // ---------------------------------------------------------------------------
@@ -330,8 +324,7 @@ type DailySummaryInput struct {
 
 // DailySummary summarizes one day of memories.
 func (c *Client) DailySummary(ctx context.Context, in DailySummaryInput) (map[string]any, error) {
-	var out map[string]any
-	return out, c.do(ctx, http.MethodPost, c.agentPath+"/daily-summary", in, true, &out)
+	return requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", in, true)
 }
 
 // ConflictDateInput selects the day of a conflict report.
@@ -342,8 +335,7 @@ type ConflictDateInput struct {
 
 // GenerateConflicts detects conflicting memories for a day.
 func (c *Client) GenerateConflicts(ctx context.Context, in ConflictDateInput) (map[string]any, error) {
-	var out map[string]any
-	return out, c.do(ctx, http.MethodPost, c.agentPath+"/conflicts/generate", in, true, &out)
+	return requestMap(ctx, c, http.MethodPost, c.agentPath+"/conflicts/generate", in, true)
 }
 
 // ListConflicts returns the conflict report for a day.
@@ -352,8 +344,7 @@ func (c *Client) ListConflicts(ctx context.Context, in ConflictDateInput) (map[s
 	if in.Date != "" {
 		path += "?date=" + url.QueryEscape(in.Date)
 	}
-	var out map[string]any
-	return out, c.do(ctx, http.MethodGet, path, nil, true, &out)
+	return requestMap(ctx, c, http.MethodGet, path, nil, true)
 }
 
 // ResolveConflictInput resolves one entry of a conflict report.
@@ -368,8 +359,7 @@ type ResolveConflictInput struct {
 
 // ResolveConflict applies a resolution to one conflict.
 func (c *Client) ResolveConflict(ctx context.Context, in ResolveConflictInput) (map[string]any, error) {
-	var out map[string]any
-	return out, c.do(ctx, http.MethodPost, c.agentPath+"/conflicts/resolve", in, true, &out)
+	return requestMap(ctx, c, http.MethodPost, c.agentPath+"/conflicts/resolve", in, true)
 }
 
 // ---------------------------------------------------------------------------
@@ -378,14 +368,12 @@ func (c *Client) ResolveConflict(ctx context.Context, in ResolveConflictInput) (
 
 // ListAgents returns every agent on the server.
 func (c *Client) ListAgents(ctx context.Context) (*api.AgentList, error) {
-	var out api.AgentList
-	return &out, c.do(ctx, http.MethodGet, "/api/v2/agents", nil, false, &out)
+	return request[api.AgentList](ctx, c, http.MethodGet, "/api/v2/agents", nil, false)
 }
 
 // GetAgent returns the bound agent.
 func (c *Client) GetAgent(ctx context.Context) (*api.AgentInfo, error) {
-	var out api.AgentInfo
-	return &out, c.do(ctx, http.MethodGet, c.agentPath, nil, false, &out)
+	return request[api.AgentInfo](ctx, c, http.MethodGet, c.agentPath, nil, false)
 }
 
 // CreateAgentInput configures CreateAgent.
@@ -403,8 +391,7 @@ func (c *Client) CreateAgent(ctx context.Context, in CreateAgentInput) (*api.Age
 		Pattern     string `json:"pattern,omitempty"`
 		Description string `json:"description,omitempty"`
 	}{c.agentID, in.Pattern, in.Description}
-	var out api.AgentInfo
-	return &out, c.do(ctx, http.MethodPost, "/api/v2/agents", body, false, &out)
+	return request[api.AgentInfo](ctx, c, http.MethodPost, "/api/v2/agents", body, false)
 }
 
 // DeleteAgentInput configures DeleteAgent.
@@ -442,8 +429,7 @@ func (c *Client) Deactivate(ctx context.Context) (*api.SessionSummary, error) {
 // Status returns the server's currently active session, whichever agent
 // it belongs to.
 func (c *Client) Status(ctx context.Context) (*api.SessionInfo, error) {
-	var out api.SessionInfo
-	return &out, c.do(ctx, http.MethodGet, "/api/v2/status", nil, false, &out)
+	return request[api.SessionInfo](ctx, c, http.MethodGet, "/api/v2/status", nil, false)
 }
 
 // ---------------------------------------------------------------------------
@@ -504,6 +490,25 @@ func (c *Client) createAgentIfMissing(ctx context.Context) error {
 		return nil // created concurrently by someone else
 	}
 	return err
+}
+
+// request sends a JSON request and decodes the response into a new T.
+// It returns nil when the request fails.
+func request[T any](ctx context.Context, c *Client, method, path string, body any, withSession bool) (*T, error) {
+	var out T
+	if err := c.do(ctx, method, path, body, withSession, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// requestMap is request for endpoints without a response schema.
+func requestMap(ctx context.Context, c *Client, method, path string, body any, withSession bool) (map[string]any, error) {
+	out, err := request[map[string]any](ctx, c, method, path, body, withSession)
+	if err != nil {
+		return nil, err
+	}
+	return *out, nil
 }
 
 // do sends a JSON request (body may be nil) and decodes the response into
