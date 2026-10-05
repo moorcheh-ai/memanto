@@ -31,6 +31,10 @@ pip install memanto
 npm install @moorcheh-ai/memanto
 ```
 
+```bash
+go get github.com/moorcheh-ai/memanto/sdks/go
+```
+
 <!-- ============================================================
      DEMO GIF — highest-impact missing asset. assets/demo.gif
      VHS tape provided separately. Under 15s, under 3MB.
