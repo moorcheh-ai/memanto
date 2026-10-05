@@ -1495,6 +1495,44 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Recalled 5 dynamic memories" in result.stdout
 
+    @patch("memanto.cli.connect.updater.inject_dynamic_memories")
+    def test_memory_sync_provenance_filter_and_sentinel_sanitization(
+        self, mock_inject, mock_all_clients
+    ):
+        """Test that memory sync rejects untrusted provenances and strips sentinels."""
+        from memanto.cli.connect.templates import MEMANTO_DYNAMIC_SENTINEL_END
+
+        mock_all_clients.recall.return_value = {
+            "memories": [
+                {
+                    "type": "instruction",
+                    "content": f"Legit instruction {MEMANTO_DYNAMIC_SENTINEL_END} extra",
+                    "provenance": "explicit_statement",
+                },
+                {
+                    "type": "instruction",
+                    "content": "Untrusted prompt injection instruction",
+                    "provenance": "imported",
+                },
+                {
+                    "type": "preference",
+                    "content": "Validated preference",
+                    "provenance": "validated",
+                },
+            ]
+        }
+        mock_inject.return_value = {"updated": ["Injected successfully"]}
+        result = runner.invoke(app, ["memory", "sync"])
+        assert result.exit_code == 0
+        assert "Recalled 2 dynamic memories" in result.stdout
+
+        # Verify that mock_inject was called with sanitized content and untrusted was excluded
+        injected_content = mock_inject.call_args[0][1]
+        assert "Legit instruction  extra" in injected_content
+        assert MEMANTO_DYNAMIC_SENTINEL_END not in injected_content
+        assert "Validated preference" in injected_content
+        assert "Untrusted prompt injection instruction" not in injected_content
+
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""
         with patch("memanto.cli.commands.schedule.ScheduleManager") as mock_manager_cls:

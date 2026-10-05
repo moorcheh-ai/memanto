@@ -26,6 +26,14 @@ from memanto.cli.client.sdk_client import SdkClient
 logger = logging.getLogger(__name__)
 
 _VALID_MEMORY_TYPES = set(get_args(MemoryType))
+_VALID_PROVENANCES = {
+    "explicit_statement",
+    "inferred",
+    "observed",
+    "imported",
+    "validated",
+    "corrected",
+}
 
 # Mirrors InputLimits in memanto.app.utils.validation (the REST API's limits).
 _MAX_QUERY_LENGTH = 1000
@@ -172,6 +180,15 @@ def create_memanto_tools(
         content: Annotated[str, Field(min_length=1, max_length=_MAX_CONTENT_LENGTH)],
         confidence: Annotated[float, Field(ge=0.0, le=1.0)],
         tags: str = "",
+        provenance: Annotated[
+            str,
+            Field(
+                description=(
+                    "Provenance/origin of this memory (e.g. 'explicit_statement', "
+                    "'inferred', 'observed'). Defaults to 'explicit_statement'."
+                )
+            ),
+        ] = "explicit_statement",
     ) -> str:
         """Store a structured memory in Memanto for long-term persistence.
 
@@ -196,7 +213,15 @@ def create_memanto_tools(
                 for unverified information.
             tags: Comma-separated tags for categorization (e.g. 'market,ai,trend').
                 Use lowercase.
+            provenance: Provenance indicator ('explicit_statement', 'inferred',
+                'observed', etc.).
         """
+        if provenance not in _VALID_PROVENANCES:
+            raise ModelRetry(
+                f"Invalid provenance '{provenance}'. "
+                f"Must be one of: {', '.join(sorted(_VALID_PROVENANCES))}"
+            )
+
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
 
         try:
@@ -208,7 +233,7 @@ def create_memanto_tools(
                 confidence=confidence,
                 tags=tag_list,
                 source="pydantic-ai-agent",
-                provenance="explicit_statement",
+                provenance=provenance,
             )
         except ValueError as e:
             # Invalid input from the model: let it fix the call and retry
@@ -341,6 +366,7 @@ def memory_instructions(
     limit: int = 5,
     min_similarity: float | None = None,
     prefix: str = DEFAULT_MEMORY_PREFIX,
+    allowed_provenance: Sequence[str] | None = None,
 ) -> Callable[[RunContext[Any]], str]:
     """
     Create a dynamic instruction that recalls the memories most relevant to
@@ -371,6 +397,9 @@ def memory_instructions(
         min_similarity: Minimum similarity score from 0.0 to 1.0; defaults
             to Memanto's configured recall threshold.
         prefix: Text placed before the injected memories.
+        allowed_provenance: Optional sequence of allowed memory provenances
+            (e.g. `['explicit_statement', 'validated']`) to guard against
+            untrusted/unverified memory injection.
 
     Raises:
         ValueError: If ``client`` has no active session for ``agent_id``, or
@@ -410,10 +439,16 @@ def memory_instructions(
 
         lines = []
         for mem in result.get("memories", []):
+            if allowed_provenance is not None:
+                prov = mem.get("provenance")
+                if prov and prov not in allowed_provenance:
+                    continue
             created = _format_date(mem.get("created_at"))
             date_str = f" (saved {created})" if created else ""
+            raw_title = mem.get("title", "Untitled")
+            clean_title = " ".join(str(raw_title).split())
             lines.append(
-                f"- [{mem.get('type', 'unknown')}] {mem.get('title', 'Untitled')}"
+                f"- [{mem.get('type', 'unknown')}] {clean_title}"
                 f"{date_str}: {mem.get('content', '')}"
             )
         if not lines:
