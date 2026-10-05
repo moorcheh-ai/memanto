@@ -16,9 +16,9 @@ Layout is controlled by ``split``:
     - ``type``: always one stacked file per type.
 
 Memanto-only fields (id, confidence, provenance, source, status, and temporal
-metadata) are preserved under a namespaced ``x_memanto`` frontmatter block so that
-Memanto -> OKF -> Memanto round-trips keep them. OKF consumers ignore unknown
-frontmatter keys.
+metadata) are serialized under a namespaced ``x_memanto`` frontmatter block.
+Imports normalize provenance metadata before storage; other descriptive extension
+fields continue to round-trip. OKF consumers ignore unknown frontmatter keys.
 """
 
 import re
