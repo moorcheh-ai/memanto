@@ -13,7 +13,7 @@ MEMANTO_SENTINEL_END = "<!-- /MEMANTO-MANAGED-SECTION -->"
 MEMANTO_DYNAMIC_SENTINEL = "<!-- MEMANTO-DYNAMIC-MEMORIES -->"
 MEMANTO_DYNAMIC_SENTINEL_END = "<!-- /MEMANTO-DYNAMIC-MEMORIES -->"
 
-TEMPLATE_VERSION = "1.0.1"
+TEMPLATE_VERSION = "1.1.0"
 MEMANTO_VERSION_TAG = f"<!-- memanto-template-version: {TEMPLATE_VERSION} -->"
 
 
@@ -49,8 +49,9 @@ memanto recall --changed-since "last 7 days" --tool <agent_name>  # memories cre
 # Grounded RAG answer (Synthesizes memory into a direct answer)
 memanto answer "Question about past decisions or commitments" --tool <agent_name>
 
-# Edit existing memory
-memanto edit MEMORY_ID --content "Updated content" --type TYPE --confidence 0.95
+# Edit existing memory (partial update: pass ONLY the fields that changed;
+# omitted flags keep their current values)
+memanto edit MEMORY_ID --content "Updated content"
 
 # Delete memory
 memanto forget MEMORY_ID
@@ -172,6 +173,30 @@ memanto remember "Next.js standalone build requires output: 'standalone' in next
 # Store user-defined rule immediately
 memanto remember "Use UUID v4 for all primary keys across all PostgreSQL tables" --type instruction --tags "database,postgresql,schema" --confidence 1.0 --provenance explicit_statement --source <agent_name>
 ```
+
+### Workflow 4: A Stored Fact Became Stale (Update In Place)
+```bash
+# 1. Find the memory that is now outdated
+memanto recall "database stack and ORM" --limit 5 --tool <agent_name>
+# 2. Edit it by ID — do NOT store a second, contradictory copy.
+#    edit is a partial update: pass ONLY the fields that changed. Omitted
+#    flags keep their existing values, so don't resend metadata you aren't
+#    changing (that would overwrite good tags/confidence with guesses).
+memanto edit MEMORY_ID --content "Database stack is PostgreSQL 16 with Prisma ORM"
+```
+
+### Workflow 5: A Memory Became Obsolete (Prune It)
+```bash
+# User dropped a feature / reversed a decision — the memory will never apply again
+memanto recall "legacy pages-router routing rule" --limit 5 --tool <agent_name>
+memanto forget MEMORY_ID
+```
+
+## Choosing Between `edit` and `forget`
+
+- Use `edit` when the memory's **subject still matters** but a detail changed (version bump, moved path, refined rule). The ID and its history are preserved.
+- Use `forget` when the memory is **permanently irrelevant or was retracted** (dropped feature, abandoned approach, superseded-and-not-worth-keeping). A stale memory that silently contradicts reality is worse than no memory, so prune decisively.
+- Before any new `remember` of a major rule or decision, `recall` first: if a near-duplicate exists, `edit` it instead of adding a competing copy.
 """
 
 
@@ -217,6 +242,11 @@ You must actively evaluate:
 8. REMEMBER (learning / error): Did we extract a `learning` or log an `error` from a failure, tool, or test? (e.g., a bug fix workaround, error post-mortem, or test failure insight) (Provenance: `corrected`, `observed`)
 9. REMEMBER (decision / observation): Did we make an architectural `decision` or record an `observation`? (e.g., a technical constraint, API quirk, or dependency behavior) (Provenance: `inferred`, `observed`)
 10. REMEMBER (fact): Was a key `fact` verified? (e.g., OS behavior, path layout, or tool version requirement) (Provenance: `validated`, `observed`, `imported`)
+11. EDIT (STALE / SUPERSEDED FACT): Did something you already stored just become wrong or outdated? (e.g., a dependency was upgraded, a decision was reversed, a path moved) Then `recall` the existing memory and `edit` it by ID — never store a second, contradictory copy.
+12. FORGET (OBSOLETE / RETRACTED MEMORY): Did a stored memory become permanently irrelevant or get explicitly retracted by the user? (e.g., a dropped feature, an abandoned approach, a one-off that will never recur) Then `recall` to find its ID and `forget` it. Prune aggressively; a wrong memory is worse than a missing one.
+
+> **EDIT vs FORGET vs REMEMBER**: If the underlying principle still holds but a detail changed, `edit`. If the principle no longer applies at all, `forget`. If it is genuinely new, `remember`. When in doubt between a new `remember` and an `edit`, `recall` first — a near-duplicate means you should `edit`, not add.
+
 ### 2. THE ABSTRACTION RULE (HOW TO THINK ABOUT MEMORY)
 Users speak naturally and implicitly. When you store a memory, **ELEVATE IT TO A PRINCIPLE**.
 - **WRONG (Activity Log)**: "User told me to use functional components."
@@ -233,14 +263,17 @@ For all command syntax, required flags, memory types, tagging best practices, an
 > **CRITICAL**: Always pass `--tool {agent_id}` on `memanto recall` and `memanto answer` reads: they carry no `--source`, and that flag is how Memanto identifies you as the calling agent.
 
 **Schema Rules**:
-1. **Types**: MUST be one of: `fact`, `decision`, `instruction`, `preference`, `learning`, `goal`, `commitment`, `artifact`, `event`, `relationship`, `observation`, `error`, `context`.
-2. **Provenance**: MUST be one of: `explicit_statement`, `inferred`, `observed`, `corrected`, `validated`, `imported`.
-3. **Confidence**: MUST be a float between `0.0` and `1.0`.
-4. **Content**: Pass the memory content as a positional argument in quotes.
+1. **Types**: MUST be one of: `fact`, `decision`, `instruction`, `preference`, `learning`, `goal`, `commitment`, `artifact`, `event`, `relationship`, `observation`, `error`, `context`. NEVER invent a type.
+2. **Provenance**: MUST be one of: `explicit_statement`, `inferred`, `observed`, `corrected`, `validated`, `imported`. Pick the one that reflects HOW you learned it, not how confident you are.
+3. **Confidence**: MUST be a float between `0.0` and `1.0`. Do NOT default everything to `1.0` — reserve it for explicit user statements and verified facts. If you would score it below `0.6`, do NOT store it.
+4. **Tags**: MUST pass 2–5 lowercase, specific tags; hyphenate multi-word concepts (`jwt-auth`, not `jwtAuth` or `jwt auth`). Single-word tags like `postgresql` are fine. Generic tags like `important`, `code`, `stuff` are forbidden.
+5. **Content**: Pass the memory content as a positional argument in quotes, phrased as a durable principle — never a chat log ("User asked...", "We decided...").
 
 **Examples**:
 - **Remember**: `memanto remember "Use UUID v4 for all primary keys across all PostgreSQL tables" --type instruction --tags "database,postgresql,schema" --confidence 1.0 --provenance explicit_statement --source {agent_id}`
 - **Recall**: `memanto recall "Skill hardening brainstorming" --limit 5 --tool {agent_id}`
+- **Edit** (partial update — pass ONLY the fields that changed; omitted flags keep their current values): `memanto edit MEMORY_ID --content "Database stack is PostgreSQL 16 with Prisma ORM"`
+- **Forget** (prune an obsolete memory): `memanto forget MEMORY_ID`
 - **Sync**: `memanto memory sync`
 
 {MEMANTO_SENTINEL_END}
