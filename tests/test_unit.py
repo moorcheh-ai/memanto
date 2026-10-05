@@ -1473,7 +1473,13 @@ class TestMemoryReadServiceFormatting:
 
         assert formatted["title"] == "Plain uploaded document content"
         assert formatted["content"] == "Plain uploaded document content"
-        assert formatted["text"] == "Plain uploaded document content"
+
+    def test_sanitize_query_text_neutralizes_filter_tags(self):
+        from memanto.app.services.memory_read_service import _sanitize_query_text
+        assert _sanitize_query_text("#status:expired") == "status:expired"
+        assert _sanitize_query_text("deployment notes #status:expired #source:admin") == "deployment notes status:expired source:admin"
+        assert _sanitize_query_text("C# F#") == "C# F#"
+        assert _sanitize_query_text("  #  #  ") == ""
 
     def test_typed_memory_formatting_stays_unchanged(self):
         from unittest.mock import MagicMock
@@ -1825,6 +1831,21 @@ class TestMemoryReadServiceVersionSelection:
         assert result["results"][0]["title"] == "New title"
         assert result["results"][0]["content"] == "fresh content"
         assert result["results"][0]["change_type"] == "updated"
+
+
+class TestDirectClientConfiguration:
+    def test_direct_client_init_onprem_without_api_key(self, monkeypatch):
+        from memanto.cli.client.direct_client import DirectClient
+        monkeypatch.setattr("memanto.app.config.settings.MEMANTO_BACKEND", "on-prem")
+        assert DirectClient().api_key == ""
+        assert DirectClient("on-prem").api_key == "on-prem"
+
+    def test_direct_client_init_cloud_requires_api_key(self, monkeypatch):
+        from memanto.cli.client.direct_client import DirectClient
+        monkeypatch.setattr("memanto.app.config.settings.MEMANTO_BACKEND", "cloud")
+        monkeypatch.setattr("memanto.app.config.settings.MOORCHEH_API_KEY", "")
+        with pytest.raises(ValueError):
+            DirectClient("")
 
 
 class TestClientApiKeyDispatch:
