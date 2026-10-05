@@ -18,7 +18,8 @@ import hmac
 import json
 import logging
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import Any, Literal, TypeVar
 
 from memanto.app.constants import VALID_MEMORY_TYPES
@@ -147,6 +148,8 @@ class VapiMemory:
         self._extract_max_memories = extract_max_memories
         self._ready = False
         self._ready_lock = threading.Lock()
+        self._retention_locks_guard = threading.Lock()
+        self._retention_locks: dict[str, tuple[threading.Lock, int]] = {}
 
     # ------------------------------------------------------------------ #
     # Identity
@@ -348,7 +351,34 @@ class VapiMemory:
         await asyncio.to_thread(self._retain_call, message)
 
     def _retain_call(self, message: dict[str, Any]) -> None:
+        """Retain extracted details; keep Vapi's raw call summary caller-private."""
         call_id = (message.get("call") or {}).get("id")
+        with self._retention_lock(call_id):
+            self._retain_call_once(message, call_id)
+
+    @contextmanager
+    def _retention_lock(self, call_id: str | None) -> Iterator[None]:
+        """Serialize overlapping deliveries for one call without leaking locks."""
+        if not call_id:
+            yield
+            return
+
+        with self._retention_locks_guard:
+            lock, users = self._retention_locks.get(call_id, (threading.Lock(), 0))
+            self._retention_locks[call_id] = (lock, users + 1)
+        try:
+            with lock:
+                yield
+        finally:
+            with self._retention_locks_guard:
+                current_lock, users = self._retention_locks[call_id]
+                if users == 1:
+                    del self._retention_locks[call_id]
+                else:
+                    self._retention_locks[call_id] = (current_lock, users - 1)
+
+    def _retain_call_once(self, message: dict[str, Any], call_id: str | None) -> None:
+        """Retain one report while its call-specific critical section is held."""
         if call_id and self._already_retained(call_id):
             logger.info("Call %s was already retained; skipping retry", call_id)
             return
@@ -378,27 +408,39 @@ class VapiMemory:
                 {"role": "system", "content": "\n".join(n for n in notes if n)}
             )
 
-        items = self._extract(conversation, SHARED_EXTRACTION_FOCUS, None, call_id)
-
         tag = self._caller_tag_for(message)
-        if self.scope == "caller" and tag is None:
-            logger.info(
-                "Call %s has no caller identity; caller memory skipped", call_id
-            )
-        if tag:
-            items += self._extract(conversation, CALLER_EXTRACTION_FOCUS, tag, call_id)
-            if summary:
-                items.append(
-                    {
-                        "type": "event",
-                        "title": f"Call summary {str(message.get('endedAt') or '')[:10]}".strip(),
-                        "content": summary,
-                        "confidence": 0.8,
-                        "tags": _retention_tags(tag, call_id),
-                        "source": SOURCE,
-                        "provenance": "inferred",
-                    }
+        if self.scope == "caller":
+            # Caller speech is untrusted input. Never promote memories inferred
+            # from one caller's transcript into the shared namespace: prompt
+            # instructions are not an authorization boundary. Fail closed when
+            # the caller cannot be identified, otherwise keep every automatic
+            # end-of-call memory private to that caller.
+            if tag is None:
+                logger.info(
+                    "Call %s has no caller identity; automatic retention skipped",
+                    call_id,
                 )
+                return
+            items = self._extract(conversation, CALLER_EXTRACTION_FOCUS, tag, call_id)
+        else:
+            items = self._extract(conversation, SHARED_EXTRACTION_FOCUS, None, call_id)
+
+        # Vapi's raw summary is written from the caller's transcript and can
+        # name the caller or repeat their details. It never passes the shared
+        # extraction focus, so, as on main, it is kept only as caller-private
+        # memory; shared scope keeps only the filtered lessons above.
+        if tag and summary:
+            items.append(
+                {
+                    "type": "event",
+                    "title": f"Call summary {str(message.get('endedAt') or '')[:10]}".strip(),
+                    "content": summary,
+                    "confidence": 0.8,
+                    "tags": _retention_tags(tag, call_id),
+                    "source": SOURCE,
+                    "provenance": "inferred",
+                }
+            )
 
         if not items:
             logger.info("Call %s produced no memories", call_id)
