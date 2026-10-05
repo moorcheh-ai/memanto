@@ -1861,6 +1861,105 @@ class TestClientApiKeyDispatch:
         assert client._get_moorcheh() is fake_backend
         assert calls == ["mk_instance_specific_key"]
 
+    @pytest.mark.parametrize(
+        "client_cls_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    def test_agent_lifecycle_uses_the_instance_backend(
+        self, monkeypatch, tmp_path, client_cls_path
+    ):
+        """An explicit client key must not create or purge another account."""
+        from memanto.app.clients import moorcheh as moorcheh_mod
+        from memanto.app.services import agent_service as agent_service_mod
+
+        instance_backend = MagicMock()
+        process_backend = MagicMock()
+
+        class Recorder:
+            def get_client(self, api_key=None):
+                assert api_key == "mk_instance_specific_key"
+                return instance_backend
+
+        monkeypatch.setattr(moorcheh_mod, "moorcheh_client", Recorder())
+        monkeypatch.setattr(
+            agent_service_mod, "get_moorcheh_client", lambda: process_backend
+        )
+        monkeypatch.setattr(agent_service_mod, "get_data_dir", lambda: tmp_path)
+
+        module_name, class_name = client_cls_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client = getattr(module, class_name)(api_key="mk_instance_specific_key")
+        client._session_service = MagicMock()
+
+        client.create_agent("scoped-agent")
+        client.delete_agent("scoped-agent", delete_memories=True)
+
+        instance_backend.namespaces.create.assert_called_once_with(
+            "memanto_agent_scoped-agent", type="text"
+        )
+        instance_backend.namespaces.delete.assert_called_once_with(
+            namespace_name="memanto_agent_scoped-agent"
+        )
+        process_backend.namespaces.create.assert_not_called()
+        process_backend.namespaces.delete.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "client_cls_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    def test_daily_analysis_uses_the_instance_backend(
+        self, monkeypatch, tmp_path, client_cls_path
+    ):
+        """Summaries must not consume another account's memories or quota."""
+        from memanto.app.clients import moorcheh as moorcheh_mod
+        from memanto.app.services import daily_analysis_service as analysis_mod
+
+        instance_backend = MagicMock()
+        instance_backend.answer.generate.return_value = {"answer": "safe summary"}
+        process_backend = MagicMock()
+        process_backend.answer.generate.side_effect = AssertionError(
+            "process-global backend must not be used"
+        )
+
+        class Recorder:
+            def get_client(self, api_key=None):
+                assert api_key == "mk_instance_specific_key"
+                return instance_backend
+
+        sessions_dir = tmp_path / "sessions"
+        sessions_dir.mkdir()
+        (sessions_dir / "scoped-agent_2026-10-03_s1_summary.md").write_text(
+            "# Session\n\nA private account-specific memory.", encoding="utf-8"
+        )
+        session_service = MagicMock(sessions_dir=sessions_dir)
+
+        monkeypatch.setattr(moorcheh_mod, "moorcheh_client", Recorder())
+        monkeypatch.setattr(
+            analysis_mod, "get_moorcheh_client", lambda: process_backend
+        )
+        monkeypatch.setattr(
+            analysis_mod, "get_session_service", lambda: session_service
+        )
+        monkeypatch.setattr(analysis_mod, "get_data_dir", lambda: tmp_path)
+
+        module_name, class_name = client_cls_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client = getattr(module, class_name)(api_key="mk_instance_specific_key")
+
+        result = client._get_daily_analysis_service().generate_summary(
+            "scoped-agent", "2026-10-03"
+        )
+
+        assert result["status"] == "success"
+        instance_backend.answer.generate.assert_called_once()
+        process_backend.answer.generate.assert_not_called()
+
 
 class TestSummaryVisualizationService:
     """Daily summary visualizations should keep per-memory metadata aligned."""
@@ -2828,6 +2927,10 @@ def test_ui_static_xss_escapes():
     assert "${escHtml(m.provenance)}" in ui_html
     assert "${escHtml(e.message)}" in ui_html
     assert 'data-memory-id="${attrEsc(memId)}"' in ui_html
+    assert "sel.replaceChildren(new Option('All Sources', ''))" in ui_html
+    assert "sel.add(new Option(value, value))" in ui_html
+    assert "title=\"${attrEsc(m.id || '')}\"" in ui_html
+    assert "${escHtml(fmtDate(m.created_at))}" in ui_html
     assert 'data-connection-name="${attrEsc(conn.name)}"' in ui_html
     assert 'data-project-path="${attrEsc(p.path)}"' in ui_html
     assert (
@@ -2852,6 +2955,9 @@ def test_ui_static_xss_escapes():
         "${m.source ||",
         ">${m.source}</span>",
         "Source: ${m.source ||",
+        'sources.map(s => `<option value="${escHtml(s)}"',
+        "title=\"${escHtml(m.id || '')}\"",
+        "${fmtDate(m.created_at)}",
         "${m.content || m.text",
         "ID: ${memId ||",
         "Score: ${m.score",

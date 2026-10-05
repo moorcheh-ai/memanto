@@ -1,6 +1,7 @@
 """Tests for expiry policies: duration parsing, evaluation, sweeps, purge."""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,8 +14,23 @@ from memanto.app.services.memory_policy_service import (
     parse_duration,
 )
 from memanto.app.services.policy_presets import PRESETS, list_presets, load_preset
+from memanto.app.utils.errors import SessionError
 
 NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+
+CLIENT_CLASSES = (
+    pytest.param(
+        "memanto.cli.client.direct_client",
+        "DirectClient",
+        id="direct-client",
+    ),
+    pytest.param(
+        "memanto.cli.client.sdk_client",
+        "SdkClient",
+        id="sdk-client",
+    ),
+)
 
 
 def memory(
@@ -39,6 +55,36 @@ def memory(
         "tags": [],
         **extra,
     }
+
+
+@pytest.mark.parametrize(("module_name", "class_name"), CLIENT_CLASSES)
+@pytest.mark.parametrize(
+    ("method_name", "args"),
+    [
+        ("get_policy", ("other-agent",)),
+        ("set_policy", ("other-agent", {})),
+        ("apply_policy_preset", ("other-agent", "balanced")),
+    ],
+)
+def test_policy_access_requires_validated_agent_session(
+    module_name: str,
+    class_name: str,
+    method_name: str,
+    args: tuple[object, ...],
+) -> None:
+    """Policy reads and writes must not bypass the agent session boundary."""
+    module = __import__(module_name, fromlist=[class_name])
+    client = getattr(module, class_name)(api_key="test-key")
+    client._get_validated_session_for_agent = MagicMock(  # type: ignore[method-assign]
+        side_effect=SessionError("session scope mismatch")
+    )
+    client._get_policy_service = MagicMock()  # type: ignore[method-assign]
+
+    with pytest.raises(SessionError, match="session scope mismatch"):
+        getattr(client, method_name)(*args)
+
+    client._get_validated_session_for_agent.assert_called_once_with("other-agent")
+    client._get_policy_service.assert_not_called()
 
 
 class TestParseDuration:

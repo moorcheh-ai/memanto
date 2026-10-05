@@ -57,6 +57,35 @@ def get_agent_service():
     return agent_service
 
 
+def _delete_agent_locally(agent_id: str) -> None:
+    """Delete agent metadata and session state under one lifecycle lock."""
+    session_service = get_session_service()
+    with session_service.lock_agent_lifecycle(agent_id):
+        agent_service.delete_agent(agent_id)
+        session_service.delete_session(agent_id)
+
+
+def _activate_agent_locked(agent_id: str, duration_hours: int) -> Session:
+    """Create a session only while its agent still exists under the lock."""
+    session_service = get_session_service()
+    with session_service.lock_agent_lifecycle(agent_id):
+        agent = agent_service.get_agent(agent_id)
+        if not agent:
+            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+
+        session = session_service.create_session(
+            agent_id=agent_id,
+            pattern=agent.pattern,
+            duration_hours=duration_hours,
+        )
+        agent_service.update_agent_stats(
+            agent_id=agent_id,
+            last_session=session.started_at,
+            increment_session_count=True,
+        )
+        return session
+
+
 _namespace_counts_state: dict[str, Any] = {
     "data": dict[str, int](),
     "time": float("-inf"),
@@ -219,11 +248,7 @@ def delete_agent(
             # Delete remote namespace only when explicitly requested.
             agent_service.delete_agent_memories(agent_id, moorcheh_api_key)
 
-        # Revoke the persisted token before removing agent metadata. If local
-        # session cleanup fails, abort the deletion so an apparently deleted
-        # agent cannot keep authorizing requests with its old token.
-        get_session_service().delete_session(agent_id)
-        agent_service.delete_agent(agent_id)
+        _delete_agent_locally(agent_id)
         return {
             "message": (
                 f"Agent '{agent_id}' successfully deleted"
@@ -260,31 +285,14 @@ async def activate_agent(
 
     Returns session token for use in memory operations.
     """
-    # Check if agent exists
-    agent = agent_service.get_agent(agent_id)
-    if not agent:
-        raise map_error_to_http_exception(
-            AgentNotFoundError(f"Agent '{agent_id}' not found")
-        )
-
     # Session duration is controlled by server defaults.
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
     try:
-        session = get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
+        session = await asyncio.to_thread(
+            _activate_agent_locked, agent_id, duration_hours
         )
         set_session_cookie(response, session.session_token, request)
-
-        # Update agent stats
-        agent_service.update_agent_stats(
-            agent_id=agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
-
         return session
 
     except Exception as e:

@@ -8,6 +8,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from filelock import FileLock, Timeout
 from moorcheh_sdk.exceptions import ConflictError, NamespaceNotFound
@@ -33,14 +34,23 @@ logger = logging.getLogger(__name__)
 class AgentService:
     """Service for managing agents"""
 
-    def __init__(self, agents_dir: Path | None = None):
+    def __init__(self, agents_dir: Path | None = None, client: Any | None = None):
         """
         Initialize agent service
 
         Args:
             agents_dir: Directory for agent metadata storage (defaults to ~/.memanto/agents/)
+            client: Backend client already bound to the caller's authority. The
+                server omits this and keeps using its configured credential.
         """
         self.agents_dir = agents_dir or get_data_dir() / "agents"
+        self._client = client
+
+    def _get_moorcheh(self) -> Any:
+        """Use an injected client without weakening the server credential gate."""
+        if self._client is not None:
+            return self._client
+        return get_moorcheh_client()
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
@@ -63,9 +73,9 @@ class AgentService:
 
         Args:
             agent_create: Agent creation request
-            moorcheh_api_key: DEPRECATED — ignored. The server-configured
-                MOORCHEH_API_KEY is always used (MEM-02 / CodeRabbit: caller
-                credentials must never drive backend operations).
+            moorcheh_api_key: DEPRECATED — ignored. Backend authority is bound
+                when the service is constructed; server routes therefore keep
+                using the server-configured MOORCHEH_API_KEY (MEM-02).
 
         Returns:
             AgentInfo object
@@ -98,10 +108,10 @@ class AgentService:
                 )
 
             namespace = self._generate_namespace(agent_create.agent_id)
-            # CodeRabbit review: always use the server-configured credential —
-            # never a caller-supplied key (the parameter was removed from the
-            # dependency wrapper to prevent ?api_key= overrides).
-            client = get_moorcheh_client()
+            # Authority is fixed when the service is constructed. Server routes
+            # omit the client and therefore retain the configured credential;
+            # in-process clients inject their already-authorized backend.
+            client = self._get_moorcheh()
 
             try:
                 client.namespaces.create(namespace, type="text")
@@ -291,7 +301,7 @@ class AgentService:
         """
         validate_safe_id(agent_id, "agent_id")
         namespace = self._generate_namespace(agent_id)
-        client = get_moorcheh_client()
+        client = self._get_moorcheh()
         try:
             client.namespaces.delete(namespace_name=namespace)
             logger.info("Namespace deleted in Moorcheh: %s", namespace)
