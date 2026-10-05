@@ -13,6 +13,10 @@ from memanto.app.config import get_data_dir, settings
 from memanto.app.utils.validation import validate_safe_id
 
 
+# Bump the automatic-sync cache namespace when the rendered sync format changes.
+_SYNC_CACHE_VERSION = 2
+
+
 def memory_sync_cache_path(
     agent_id: str, api_key: str, *, backend_client: Any = None
 ) -> Path:
@@ -47,7 +51,7 @@ def memory_sync_cache_path(
 
     context = json.dumps(
         {
-            "version": 1,
+            "version": _SYNC_CACHE_VERSION,
             "backend": backend.value,
             "endpoint": endpoint.rstrip("/"),
             "credential": credential,
