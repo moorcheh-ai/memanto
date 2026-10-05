@@ -279,3 +279,67 @@ class TestSyncFallsBackToCache:
             )
 
         mock_get_data_dir.assert_not_called()
+
+
+class TestProjectSyncTrustBoundary:
+    @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
+    def test_project_sync_keeps_only_trusted_sensitive_rows(
+        self, client_cls, monkeypatch, tmp_path
+    ):
+        client = _build_client(client_cls, monkeypatch, tmp_path)
+        by_type = {
+            "instruction": [
+                {"title": "Legacy rule", "content": "legacy rule marker", "provenance": "unknown"}
+            ],
+            "preference": [
+                {"title": "Imported preference", "content": "imported preference marker", "provenance": "imported"}
+            ],
+            "goal": [
+                {"title": "Validated goal", "content": "validated goal marker", "provenance": "validated"}
+            ],
+            "fact": [
+                {"title": "Ordinary fact", "content": "ordinary fact marker", "provenance": "unknown"}
+            ],
+        }
+
+        def recall(agent_id, query, limit, type):
+            return {"memories": by_type.get(type[0], [])}
+
+        monkeypatch.setattr(client, "recall", MagicMock(side_effect=recall))
+
+        raw_path = tmp_path / "raw-memory.md"
+        client.export_memory_md("test-agent", output_path=str(raw_path))
+        raw = raw_path.read_text(encoding="utf-8")
+        assert "legacy rule marker" in raw
+        assert "imported preference marker" in raw
+
+        project_dir = tmp_path / "project"
+        result = client.sync_memory_to_project("test-agent", str(project_dir))
+        synced = (project_dir / "MEMORY.md").read_text(encoding="utf-8")
+        assert "legacy rule marker" not in synced
+        assert "imported preference marker" not in synced
+        assert "validated goal marker" in synced
+        assert "ordinary fact marker" in synced
+        assert result["total_memories"] == 2
+
+    @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
+    def test_previous_sync_cache_version_is_not_reused(
+        self, client_cls, monkeypatch, tmp_path
+    ):
+        import memanto.cli.client.memory_cache as cache_mod
+
+        current_version = cache_mod._SYNC_CACHE_VERSION
+        monkeypatch.setattr(cache_mod, "_SYNC_CACHE_VERSION", 1)
+        first = _build_client(client_cls, monkeypatch, tmp_path)
+        _seed_sync_cache(first, monkeypatch, tmp_path, "previous cache marker")
+
+        monkeypatch.setattr(cache_mod, "_SYNC_CACHE_VERSION", current_version)
+        second = _build_client(client_cls, monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            second, "recall", MagicMock(side_effect=ConnectionError("backend down"))
+        )
+
+        project_dir = tmp_path / "project"
+        with pytest.raises(ConnectionError):
+            second.sync_memory_to_project("test-agent", str(project_dir))
+        assert not (project_dir / "MEMORY.md").exists()
