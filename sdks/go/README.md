@@ -165,7 +165,7 @@ if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
 Each Memanto release `vX.Y.Z` also tags the Go SDK as `sdks/go/vX.Y.Z`, so the Go SDK version matches the `memanto` release on PyPI:
 
 ```bash
-go get github.com/moorcheh-ai/memanto/sdks/go@v0.2.27
+go get github.com/moorcheh-ai/memanto/sdks/go@latest   # or @vX.Y.Z for a specific release
 ```
 
 To pin the server a spawned client runs, set `PackageSpec: "memanto==<version>"`.
