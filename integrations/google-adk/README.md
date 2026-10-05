@@ -85,7 +85,7 @@ A `services.py` in the wrong folder fails at startup with `Unsupported memory se
 
 ## How memory is scoped
 
-- **One Memanto agent per ADK app**, named `adk-<app_name>` (Memanto agent IDs allow only letters, digits, `-` and `_`). Pass `agent_id=` to share one Memanto agent across several apps.
+- **One Memanto agent per ADK app**, named `adk2-<app_name>` for short app names containing only letters, digits, `-` and `_`. Other names use an `adk2-h-<sha256>` ID. This new prefix avoids the legacy `adk-` namespace; after upgrading, no memories under the old default IDs are loaded automatically because their app ownership may be ambiguous. Pass `agent_id=` to share one Memanto agent across several apps.
 - **Each ADK user's memories are private.** Every memory is tagged `user-<sha256 of user_id>`, and recall filters by that tag. The service takes the user from ADK's session, never from the model, and checks every result against the tag again before returning it, so one user never sees another's memories.
 - **Sessions are saved incrementally.** Stored memories carry a marker for the last event they covered. The next save extracts only later events, even from a different process, and a retried save stores nothing.
 
