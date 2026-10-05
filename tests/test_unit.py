@@ -1476,8 +1476,12 @@ class TestMemoryReadServiceFormatting:
 
     def test_sanitize_query_text_neutralizes_filter_tags(self):
         from memanto.app.services.memory_read_service import _sanitize_query_text
+
         assert _sanitize_query_text("#status:expired") == "status:expired"
-        assert _sanitize_query_text("deployment notes #status:expired #source:admin") == "deployment notes status:expired source:admin"
+        assert (
+            _sanitize_query_text("deployment notes #status:expired #source:admin")
+            == "deployment notes status:expired source:admin"
+        )
         assert _sanitize_query_text("C# F#") == "C# F#"
         assert _sanitize_query_text("  #  #  ") == ""
 
@@ -1836,12 +1840,14 @@ class TestMemoryReadServiceVersionSelection:
 class TestDirectClientConfiguration:
     def test_direct_client_init_onprem_without_api_key(self, monkeypatch):
         from memanto.cli.client.direct_client import DirectClient
+
         monkeypatch.setattr("memanto.app.config.settings.MEMANTO_BACKEND", "on-prem")
         assert DirectClient().api_key == ""
         assert DirectClient("on-prem").api_key == "on-prem"
 
     def test_direct_client_init_cloud_requires_api_key(self, monkeypatch):
         from memanto.cli.client.direct_client import DirectClient
+
         monkeypatch.setattr("memanto.app.config.settings.MEMANTO_BACKEND", "cloud")
         monkeypatch.setattr("memanto.app.config.settings.MOORCHEH_API_KEY", "")
         with pytest.raises(ValueError):

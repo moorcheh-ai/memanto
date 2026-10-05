@@ -163,7 +163,7 @@ class OkfExportService:
             )
             assert validated is not None
             base = validated
-            if base == self.exports_dir:
+            if base.resolve() == self.exports_dir.resolve():
                 raise HTTPException(
                     status_code=400,
                     detail="output_path cannot target reserved internal path 'exports'.",

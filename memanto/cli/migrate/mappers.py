@@ -79,23 +79,25 @@ def _bounded_tags(tags: list[str]) -> tuple[list[str], list[str]]:
     extra: list[str] = []
     for tag in tags:
         text = tag.strip()
-        if not text or text in kept:
+        if not text:
             continue
-        # Replace '=' with ':' for tag compatibility, as '=' is not allowed
-        text_for_match = text
-        if "=" in text:
-            text_for_match = text.replace("=", "-")
+
+        # We must fix the tag itself to pass pydantic validation
+        normalized = text.replace("=", "-") if "=" in text else text
+
+        # Prevent adding duplicate normalized tags to kept
+        if normalized in kept:
+            continue
 
         if (
             len(text) > _MAX_TAG_CHARS
             or "," in text
-            or not TAG_PATTERN.match(text_for_match)
+            or not TAG_PATTERN.match(normalized)
             or len(kept) >= _MAX_TAGS
         ):
             extra.append(text)
         else:
-            # We must fix the tag itself to pass pydantic validation
-            kept.append(text.replace("=", "-") if "=" in text else text)
+            kept.append(normalized)
     return kept, extra
 
 

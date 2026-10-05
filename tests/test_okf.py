@@ -460,6 +460,7 @@ def test_okf_export_preserves_list_tags(tmp_path):
     fm = yaml.safe_load(fact_md.read_text(encoding="utf-8").split("---", 2)[1])
     assert set(fm["tags"]) == {"infra", "db"}
 
+
 def test_okf_security_core_tests(tmp_path: Path):
     """Consolidated OKF security checks."""
     from fastapi import HTTPException
