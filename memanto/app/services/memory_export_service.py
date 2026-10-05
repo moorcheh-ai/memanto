@@ -86,6 +86,39 @@ MEMORY_TYPE_ORDER = [
     "error",
 ]
 
+# Project sync writes agent-consumed context. Keep this policy aligned with the
+# dynamic instruction-sync boundary: legacy/imported/inferred provenance must
+# not silently become durable instructions, preferences, or goals.
+TRUSTED_PROJECT_MEMORY_PROVENANCE = frozenset(
+    {"explicit_statement", "corrected", "validated"}
+)
+TRUST_SENSITIVE_PROJECT_MEMORY_TYPES = frozenset(
+    {"instruction", "preference", "goal"}
+)
+
+
+def filter_project_sync_memories(
+    memories_by_type: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Filter trust-sensitive rows before writing an agent-consumed MEMORY.md.
+
+    Explicit raw exports remain lossless. This filter is only for automatic
+    project sync, where an untrusted instruction-like row would otherwise be
+    rendered without provenance and promoted into a higher-trust surface.
+    """
+    filtered: dict[str, list[dict[str, Any]]] = {}
+    for mem_type, memories in memories_by_type.items():
+        if mem_type not in TRUST_SENSITIVE_PROJECT_MEMORY_TYPES:
+            filtered[mem_type] = memories
+            continue
+        filtered[mem_type] = [
+            memory
+            for memory in memories
+            if isinstance(memory.get("provenance"), str)
+            and memory["provenance"] in TRUSTED_PROJECT_MEMORY_PROVENANCE
+        ]
+    return filtered
+
 
 def _one_line(value: Any, default: str = "") -> str:
     """Collapse untrusted Markdown metadata into a single display line."""
