@@ -289,16 +289,32 @@ class TestProjectSyncTrustBoundary:
         client = _build_client(client_cls, monkeypatch, tmp_path)
         by_type = {
             "instruction": [
-                {"title": "Legacy rule", "content": "legacy rule marker", "provenance": "unknown"}
+                {
+                    "title": "Legacy rule",
+                    "content": "legacy rule marker",
+                    "provenance": "unknown",
+                }
             ],
             "preference": [
-                {"title": "Imported preference", "content": "imported preference marker", "provenance": "imported"}
+                {
+                    "title": "Imported preference",
+                    "content": "imported preference marker",
+                    "provenance": "imported",
+                }
             ],
             "goal": [
-                {"title": "Validated goal", "content": "validated goal marker", "provenance": "validated"}
+                {
+                    "title": "Validated goal",
+                    "content": "validated goal marker",
+                    "provenance": "validated",
+                }
             ],
             "fact": [
-                {"title": "Ordinary fact", "content": "ordinary fact marker", "provenance": "unknown"}
+                {
+                    "title": "Ordinary fact",
+                    "content": "ordinary fact marker",
+                    "provenance": "unknown",
+                }
             ],
         }
 
