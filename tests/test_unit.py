@@ -585,6 +585,25 @@ class TestSessionService:
 
         assert Settings(_env_file=None).MEMANTO_SECRET_KEY == ""
 
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "https://a.com,https://b.com",
+            " https://a.com , https://b.com ",
+            '["https://a.com", "https://b.com"]',
+        ],
+    )
+    def test_list_settings_accept_comma_or_json(self, monkeypatch, raw):
+        """List settings parse the documented comma form as well as JSON."""
+        from memanto.app.config import Settings
+
+        monkeypatch.setenv("ALLOWED_ORIGINS", raw)
+        monkeypatch.setenv("MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5")
+
+        settings = Settings(_env_file=None)
+        assert settings.ALLOWED_ORIGINS == ["https://a.com", "https://b.com"]
+        assert settings.MEMANTO_PROXY_ALLOWED_IPS == ["10.0.0.5"]
+
     def test_missing_session_secret_generates_persisted_fallback(
         self, temp_dir, monkeypatch
     ):
