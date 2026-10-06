@@ -33,11 +33,13 @@ count helper in ``runner.py``.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
 from memanto.app.constants import VALID_MEMORY_TYPES, VALID_PROVENANCE_TYPES
+from memanto.app.core import TAG_PATTERN
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -62,42 +64,31 @@ _MAX_CONTENT_CHARS = 10000  # MemoryRecord.content max_length
 _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 _MAX_TAGS = 20  # MemoryRecord.tags max_length
 _MAX_TAG_CHARS = 64  # MemoryTag max_length
+_TAG_RE = re.compile(TAG_PATTERN)
 
 
 def _bounded_tags(tags: list[str]) -> tuple[list[str], list[str]]:
     """Split tags into ``(kept, extra)`` so every kept tag is storable as-is.
 
     One out-of-bounds tag list fails validation for the whole write batch,
-    so tags that are too long, contain invalid characters, or exceed the per-memory
-    cap are returned as ``extra`` for the supporting-data footer instead of being altered.
+    so tags that are too long, fail ``TAG_PATTERN`` (e.g. contain a comma,
+    since tags are stored comma-joined), or exceed the per-memory cap are
+    returned as ``extra`` for the supporting-data footer instead of being altered.
     """
-    import re
-
-    TAG_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
-
     kept: list[str] = []
     extra: list[str] = []
     for tag in tags:
         text = tag.strip()
-        if not text:
+        if not text or text in kept:
             continue
-
-        # We must fix the tag itself to pass pydantic validation
-        normalized = text.replace("=", "-") if "=" in text else text
-
-        # Prevent adding duplicate normalized tags to kept
-        if normalized in kept:
-            continue
-
         if (
             len(text) > _MAX_TAG_CHARS
-            or "," in text
-            or not TAG_PATTERN.match(normalized)
+            or not _TAG_RE.match(text)
             or len(kept) >= _MAX_TAGS
         ):
             extra.append(text)
         else:
-            kept.append(normalized)
+            kept.append(text)
     return kept, extra
 
 

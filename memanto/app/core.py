@@ -15,14 +15,17 @@ from memanto.app.constants import (
     StatusType,
 )
 
-TAG_PATTERN = r"^[A-Za-z0-9._-]+$"
+# Tags are stored comma-joined and appended to the document text, so a comma
+# would split a tag and a line break or control character could forge
+# document structure. Everything else (e.g. ``lg:key:<key>``) is allowed.
+TAG_PATTERN = r"^[^,\x00-\x1f\x7f\x85\u2028\u2029]+$"
 MemoryTag = Annotated[
     str,
     StringConstraints(
         strip_whitespace=True,
         min_length=1,
         max_length=64,
-        pattern=r"^[A-Za-z0-9._-]+$",
+        pattern=TAG_PATTERN,
     ),
 ]
 BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]

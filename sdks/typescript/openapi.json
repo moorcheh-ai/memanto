@@ -4998,7 +4998,7 @@
                   "type": "string",
                   "maxLength": 64,
                   "minLength": 1,
-                  "pattern": "^[A-Za-z0-9._-]+$"
+                  "pattern": "^[^,\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$"
                 },
                 "type": "array",
                 "maxItems": 20
@@ -5476,7 +5476,7 @@
                   "type": "string",
                   "maxLength": 64,
                   "minLength": 1,
-                  "pattern": "^[A-Za-z0-9._-]+$"
+                  "pattern": "^[^,\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$"
                 },
                 "type": "array",
                 "maxItems": 20
@@ -6332,7 +6332,7 @@
                   "type": "string",
                   "maxLength": 64,
                   "minLength": 1,
-                  "pattern": "^[A-Za-z0-9._-]+$"
+                  "pattern": "^[^,\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$"
                 },
                 "type": "array",
                 "maxItems": 20

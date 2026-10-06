@@ -2586,6 +2586,23 @@ def test_memory_edit_strips_valid_tags():
     assert request.tags == ["project", "important"]
 
 
+@pytest.mark.parametrize(
+    "tag", ["lg:key:my key", "project:apollo", "user=alice", "lg:key:v1:a%2Cb"]
+)
+def test_memory_tag_accepts_structured_tags(tag):
+    from memanto.app.routes.memory import MemoryEditRequest
+
+    assert MemoryEditRequest(tags=[tag]).tags == [tag]
+
+
+@pytest.mark.parametrize("tag", ["a,b", "a\nb", "a\rb", "a\u2028b", "a\x85b", "a\x00b"])
+def test_memory_tag_rejects_delimiters_and_line_breaks(tag):
+    from memanto.app.routes.memory import MemoryEditRequest
+
+    with pytest.raises(ValidationError):
+        MemoryEditRequest(tags=[tag])
+
+
 def test_format_memory_item_tag_stripping():
     from unittest.mock import MagicMock
 
