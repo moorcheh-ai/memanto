@@ -16,16 +16,28 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
 </p>
 
+<p align="center">
+  <sub><a href="../README.md">English</a> · <a href="README_es.md">Español</a> · <a href="README_zh-CN.md">简体中文</a> · <a href="README_ja.md">日本語</a></sub>
+</p>
+
 ```bash
 pip install memanto
+```
+
+```bash
+npm install @moorcheh-ai/memanto
+```
+
+```bash
+go get github.com/moorcheh-ai/memanto/sdks/go
 ```
 <!-- ============================================================
      デモ GIF — 最も重要な未追加アセット。assets/demo.gif
      VHS テープは別途提供。15 秒未満、3 MB 未満。
      ============================================================ -->
-<p align="center">
+<!-- <p align="center">
   <img alt="15 秒でわかる Memanto" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/demo.gif" width="900">
-</p>
+</p> -->
 
 ---
 > **すべてのプラットフォームはエージェントの記憶を保存します。管理はしません。** プラットフォーム横断で管理することは彼らの利益に反します。それがメモリエージェントの仕事です。
@@ -75,7 +87,7 @@ macOS、Linux、Windows に対応。`memanto ui` は資産全体を閲覧、検�
 ## エージェントの記憶を所有する
 **資産はファイルです。** `memanto memory export --okf` は[Open Knowledge Format](https://docs.memanto.ai/integrations/okf)を提供します。これは可読、diff、commit、grep が可能なプレーン Markdown で、名目だけの専有エクスポートではなく実際の作業形式です。
 
-**移動します。** `memanto migrate` は Mem0、Letta、Supermemory、任意の OKF バンドルからインポートし、逆方向にも動作します。OKF は競合他社を含む誰もが実装できるオープンな交換形式です。
+**移動します。** `memanto migrate` は Mem0、Letta、Supermemory、Zep、Hindsight、または任意の OKF バンドルからインポートし、逆方向にも動作します。OKF は競合他社を含む誰もが実装できるオープンな交換形式です。
 
 **自分のマシンで動きます。** ローカル Docker + Ollama ならアカウントも API キーも不要で、インフラ外へ出ません。無料クラウドや自前ホストも選べ、`memanto config backend` で切り替え、資産を持ち運べます。
 
@@ -177,7 +189,7 @@ memanto memory restore mem-123      # 戻す
 | 日次インテリジェンス | `memanto daily-summary`, `memanto conflicts` | 要約、矛盾検出、対話的解決。 |
 | セッションと自動化 | `memanto session ...`, `memanto schedule ...` | セッション確認、日次実行を有効化。 |
 | 資産のエクスポートと同期 | `memanto memory export`, `memanto memory sync` | 構造化 Markdown を出力し `MEMORY.md` を同期。`--okf` は可搬 [OKF](https://docs.memanto.ai/integrations/okf) バンドル。 |
-| インポートと移行 | `memanto migrate` | Mem0、Letta、Supermemory、OKF からインポート。 |
+| インポートと移行 | `memanto migrate` | Mem0、Letta、Supermemory、Zep、Hindsight、OKF からインポート。 |
 | 設定 | `memanto config show` | API キー、アクティブなエージェント/セッション、サーバー、予定時刻。 |
 | フリート統合 | `memanto connect ...` | Claude Code、Codex、Cursor、Windsurf、Antigravity、Gemini CLI、Cline、Continue、OpenCode、Goose、Roo、GitHub Copilot、Augment。 |
 
@@ -225,7 +237,23 @@ memanto           # "Cloud" を選択。無料 API キーを貼り付け
 
 <details><summary><strong>SDK と REST API</strong></summary>
 <br>
+
+**Python** — `memanto` パッケージにはインプロセスクライアントが同梱されており、サーバーを起動する必要はありません：
+
+```python
+from memanto import Memanto
+
+memanto = Memanto(agent_id="my-agent")   # 初回使用時にエージェントを作成
+memanto.remember("Alex prefers oat milk.", type="preference")
+memanto.recall("what does Alex drink?")
+memanto.answer("Does Alex drink dairy?")
+```
+
+リファレンス: [docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python)。
+
 **TypeScript / Node.js** — [`@moorcheh-ai/memanto`](../sdks/typescript) は `uvx` でローカル Memanto サーバーを起動し、使いやすいクライアント（`remember` / `recall` / `answer`）を公開します。
+
+**Go** — [`github.com/moorcheh-ai/memanto/sdks/go`](../sdks/go) は実行中の Memanto サーバーに接続するか、`uvx` 経由で起動します。
 
 **REST API** — `memanto serve` で開始。エンドポイントは [docs.memanto.ai/api](https://docs.memanto.ai/api) と、実行中の `http://localhost:8000/docs` にあります。
 </details>
@@ -276,6 +304,5 @@ memanto           # "Cloud" を選択。無料 API キーを貼り付け
 
 ---
 <p align="center">
-  <strong>MIT License</strong><br>
-  <sub><a href="../README.md">English</a> · <a href="README_es.md">Español</a> · <a href="README_zh-CN.md">简体中文</a> · <a href="README_ja.md">日本語</a></sub>
+  <strong>MIT License</strong>
 </p>
