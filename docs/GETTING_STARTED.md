@@ -311,6 +311,21 @@ memanto.remember("User prefers concise answers", type="preference")
 memanto.recall("how should I answer?")
 ```
 
+**Go, against the server you deployed:** the [Go SDK](../sdks/go) handles agent creation and sessions. Pass your Moorcheh key as `APIKey` when the server is reachable beyond localhost:
+
+```go
+client, err := memanto.New(memanto.Options{
+	AgentID: "my-agent",
+	BaseURL: "http://localhost:8000",
+	APIKey:  os.Getenv("MOORCHEH_API_KEY"),
+})
+if err != nil {
+	log.Fatal(err)
+}
+client.Remember(ctx, memanto.RememberInput{Content: "User prefers concise answers", Type: "preference"})
+client.Recall(ctx, memanto.RecallInput{Query: "how should I answer?"})
+```
+
 **Over HTTP, using the simplified agent API:**
 
 ```python

@@ -31,6 +31,10 @@ pip install memanto
 npm install @moorcheh-ai/memanto
 ```
 
+```bash
+go get github.com/moorcheh-ai/memanto/sdks/go
+```
+
 <!-- ============================================================
      DEMO GIF — highest-impact missing asset. assets/demo.gif
      VHS tape provided separately. Under 15s, under 3MB.
@@ -302,6 +306,8 @@ memanto.answer("Does Alex drink dairy?")
 Reference: [docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python).
 
 **TypeScript / Node.js** — [`@moorcheh-ai/memanto`](sdks/typescript) boots a local Memanto server via `uvx` and exposes an ergonomic client (`remember` / `recall` / `answer`).
+
+**Go** — [`github.com/moorcheh-ai/memanto/sdks/go`](sdks/go) connects to a running Memanto server or starts one via `uvx`.
 
 **REST API** — start with `memanto serve`. Endpoint reference at [docs.memanto.ai/api](https://docs.memanto.ai/api) and `http://localhost:8000/docs` while running.
 

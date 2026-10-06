@@ -315,6 +315,26 @@ memory.remember('User prefers npm over yarn', 'preference');
 const prefs = memory.recall('package manager');
 ```
 
+### Go
+
+The [Go SDK](../sdks/go) creates the agent on first use and manages the session for you. With no `BaseURL`, it starts `uvx memanto serve` itself (requires [uv](https://docs.astral.sh/uv/)) and stops it on `Close`:
+
+```go
+import memanto "github.com/moorcheh-ai/memanto/sdks/go"
+
+client, err := memanto.New(memanto.Options{AgentID: "my-bot"})
+if err != nil {
+	log.Fatal(err)
+}
+defer client.Close()
+
+ctx := context.Background()
+client.Remember(ctx, memanto.RememberInput{Content: "User prefers npm over yarn", Type: "preference"})
+prefs, err := client.Recall(ctx, memanto.RecallInput{Query: "package manager", Limit: 5})
+```
+
+Set `BaseURL` to use a server you already run with `memanto serve`. Full reference: [sdks/go/README.md](../sdks/go/README.md).
+
 ### Shell Scripts
 
 ```bash
