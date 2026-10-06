@@ -49,11 +49,14 @@ async def main() -> None:
     if not api_key:
         print("Error: MOORCHEH_API_KEY not set. Copy .env.example to .env.")
         sys.exit(1)
-    if not os.environ.get("OPENROUTER_API_KEY") and not os.environ.get(
-        "OPENAI_API_KEY"
+    if (
+        not os.environ.get("OPENROUTER_API_KEY")
+        and not os.environ.get("OPENAI_API_KEY")
+        and not os.environ.get("ORCAROUTER_API_KEY")
     ):
         print(
-            "Error: OPENROUTER_API_KEY or OPENAI_API_KEY not set. Get one at https://openrouter.ai/keys."
+            "Error: OPENROUTER_API_KEY, OPENAI_API_KEY, or ORCAROUTER_API_KEY not set. "
+            "Get one at https://openrouter.ai/keys or https://www.orcarouter.ai."
         )
         sys.exit(1)
 
