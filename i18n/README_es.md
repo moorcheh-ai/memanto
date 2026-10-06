@@ -16,20 +16,33 @@
   <a href="https://pepy.tech/projects/memanto"><img alt="Descargas" src="https://static.pepy.tech/personalized-badge/memanto?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
   <a href="https://arxiv.org/abs/2604.22085"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.22085-b31b1b.svg"></a>
   <a href="https://pypi.org/project/memanto/"><img alt="PyPI" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
+  <a href="https://mcptoplist.com/server/io.github.moorcheh-ai%2Fmemanto"><img alt="MCP Toplist" src="https://mcptoplist.com/badge/io.github.moorcheh-ai%2Fmemanto.svg"></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="Licencia MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
+</p>
+
+<p align="center">
+  <sub><a href="../README.md">English</a> · <a href="README_es.md">Español</a> · <a href="README_zh-CN.md">简体中文</a> · <a href="README_ja.md">日本語</a></sub>
 </p>
 
 ```bash
 pip install memanto
 ```
 
+```bash
+npm install @moorcheh-ai/memanto
+```
+
+```bash
+go get github.com/moorcheh-ai/memanto/sdks/go
+```
+
 <!-- ============================================================
      GIF DE DEMOSTRACIÓN — recurso pendiente de mayor impacto. assets/demo.gif
      Cinta VHS proporcionada por separado. Menos de 15 s y de 3 MB.
      ============================================================ -->
-<p align="center">
+<!-- <p align="center">
   <img alt="Memanto en 15 segundos" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/demo.gif" width="900">
-</p>
+</p> -->
 
 ---
 
@@ -91,7 +104,7 @@ Esta es la parte que importará dentro de dos años, y la que todas las funcione
 
 **Tu patrimonio es un archivo.** `memanto memory export --okf` te da el [Open Knowledge Format](https://docs.memanto.ai/integrations/okf): Markdown plano, legible, comparable con diff, apto para commits y búsquedas con grep. No un volcado propietario: el formato de trabajo real.
 
-**Se mueve.** `memanto migrate` importa desde Mem0, Letta, Supermemory o cualquier paquete OKF, y el mismo comando funciona a la inversa. OKF es un formato abierto que cualquier framework o proveedor puede implementar, incluidos nuestros competidores.
+**Se mueve.** `memanto migrate` importa desde Mem0, Letta, Supermemory, Zep, Hindsight o cualquier paquete OKF, y el mismo comando funciona a la inversa. OKF es un formato abierto que cualquier framework o proveedor puede implementar, incluidos nuestros competidores.
 
 **Se ejecuta en tu máquina.** Docker local + Ollama, sin cuenta, sin clave de API, sin que nada salga de tu infraestructura. O nube gratuita, o tu propio alojamiento. `memanto config backend` cambia entre ellos y el patrimonio viaja contigo.
 
@@ -212,7 +225,7 @@ Los sustratos de almacenamiento están *debajo* de Memanto: almacenes vectoriale
 | Inteligencia diaria | `memanto daily-summary`, `memanto conflicts` | Resúmenes, contradicciones y resolución interactiva. |
 | Sesiones y automatización | `memanto session ...`, `memanto schedule ...` | Inspecciona sesiones y habilita ejecuciones diarias. |
 | Exportación y sincronización | `memanto memory export`, `memanto memory sync` | Exporta Markdown y sincroniza `MEMORY.md`; `--okf` crea un paquete [OKF](https://docs.memanto.ai/integrations/okf). |
-| Importación y migración | `memanto migrate` | Importa desde Mem0, Letta, Supermemory o OKF. |
+| Importación y migración | `memanto migrate` | Importa desde Mem0, Letta, Supermemory, Zep, Hindsight o un paquete OKF. |
 | Configuración | `memanto config show` | Estado de clave API, agente/sesión activa, servidor y horario. |
 | Integración de la flota | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment. |
 
@@ -278,7 +291,22 @@ La recuperación usa un motor semántico de teoría de la información incluido,
 
 <br>
 
+**Python** — el paquete `memanto` incluye un cliente en proceso; no hay servidor que iniciar:
+
+```python
+from memanto import Memanto
+
+memanto = Memanto(agent_id="my-agent")   # crea el agente en su primer uso
+memanto.remember("Alex prefers oat milk.", type="preference")
+memanto.recall("what does Alex drink?")
+memanto.answer("Does Alex drink dairy?")
+```
+
+Referencia: [docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python).
+
 **TypeScript / Node.js**: [`@moorcheh-ai/memanto`](../sdks/typescript) inicia un servidor local de Memanto mediante `uvx` y expone un cliente ergonómico (`remember` / `recall` / `answer`).
+
+**Go** — [`github.com/moorcheh-ai/memanto/sdks/go`](../sdks/go) se conecta a un servidor Memanto en ejecución o inicia uno a través de `uvx`.
 
 **API REST**: inicia con `memanto serve`. Referencia en [docs.memanto.ai/api](https://docs.memanto.ai/api) y `http://localhost:8000/docs` mientras se ejecuta.
 
@@ -336,6 +364,5 @@ Preguntas: [support@moorcheh.ai](mailto:support@moorcheh.ai) · [@moorcheh_ai](h
 ---
 
 <p align="center">
-  <strong>Licencia MIT</strong><br>
-  <sub><a href="../README.md">English</a> · <a href="README_es.md">Español</a> · <a href="README_zh-CN.md">简体中文</a> · <a href="README_ja.md">日本語</a></sub>
+  <strong>Licencia MIT</strong>
 </p>
