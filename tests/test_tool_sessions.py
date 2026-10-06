@@ -379,7 +379,11 @@ def _identity_probe_app():
     @app.get("/probe")
     def probe():
         identity = detect_client()
-        return {"tool": identity.tool, "project_dir": identity.project_dir}
+        return {
+            "tool": identity.tool,
+            "display": identity.display,
+            "project_dir": identity.project_dir,
+        }
 
     return app
 
@@ -393,7 +397,37 @@ def test_http_caller_is_named_by_its_headers():
         headers={"X-Memanto-Client": "Cursor", "X-Memanto-Project": "/repo"},
     )
 
-    assert resp.json() == {"tool": "cursor", "project_dir": "/repo"}
+    assert resp.json() == {
+        "tool": "cursor",
+        "display": "Cursor",
+        "project_dir": "/repo",
+    }
+
+
+@pytest.mark.parametrize(
+    "header,tool,display",
+    [
+        ("claude-ai", "claude-code", "Claude Code"),
+        ("My Custom Client", "my-custom-client", "My Custom Client"),
+        (
+            'x" data-probe="1"><b>marker</b>',
+            "x-data-probe-1-b-marker-b",
+            "X Data Probe 1 B Marker B",
+        ),
+    ],
+)
+def test_http_client_header_uses_normalized_display(header, tool, display):
+    """HTTP attribution uses the same labels as explicit CLI attribution."""
+    from fastapi.testclient import TestClient
+
+    client = TestClient(_identity_probe_app())
+    resp = client.get(
+        "/probe",
+        headers={"X-Memanto-Client": header},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"tool": tool, "display": display, "project_dir": None}
 
 
 def test_anonymous_http_caller_is_never_attributed_to_the_server_env(monkeypatch):
