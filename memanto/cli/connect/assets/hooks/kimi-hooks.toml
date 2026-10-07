@@ -1,0 +1,20 @@
+[[hooks]]
+event = "SessionStart"
+matcher = "startup|resume"
+command = "\"${SYS_EXECUTABLE}\" \"${HOOKS_DIR}/session_start.py\" --host kimi-code"
+timeout = 30
+
+[[hooks]]
+event = "PreCompact"
+command = "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir ."
+timeout = 30
+
+[[hooks]]
+event = "PostToolUse"
+matcher = "Bash"
+command = "\"${SYS_EXECUTABLE}\" \"${HOOKS_DIR}/notify.py\" --host kimi-code"
+timeout = 10
+
+[[permission.rules]]
+decision = "allow"
+pattern = "Bash(memanto *)"
