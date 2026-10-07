@@ -83,6 +83,22 @@ ALLOWED_UPDATE_FIELDS = {
 
 VALID_PATTERNS = {"support", "project", "tool"}
 
+# SECURITY (Memanto #1852): directive / override phrases that mark untrusted
+# text as an attempt to hijack an LLM step instead of content to process.
+# Shared by the conversation-extraction pipeline and by the daily-summary and
+# conflict-detection prompts: all three paste attacker-influencable memory
+# content into a model's instruction block.
+UNTRUSTED_DIRECTIVE_PATTERNS = (
+    r"\bignore previous instructions\b",
+    r"\bignore prior instructions\b",
+    r"\bsystem override\b",
+    r"^system:\s*",
+    r"\bexfiltrate\b",
+    r"\bsend all memories\b",
+    r"\boverride previous\b",
+    r"\bdisregard previous\b",
+)
+
 # Trust fields removed from the schema. Must not be resurrected during update.
 REMOVED_TRUST_FIELDS = frozenset(
     {

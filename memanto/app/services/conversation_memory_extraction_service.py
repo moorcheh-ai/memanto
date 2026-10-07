@@ -11,7 +11,10 @@ import re
 from typing import Any
 
 from memanto.app.clients.backend import get_active_llm_model
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import (
+    UNTRUSTED_DIRECTIVE_PATTERNS,
+    VALID_MEMORY_TYPES,
+)
 from memanto.app.utils.json_extraction import iter_json_arrays
 
 PRIVATE_KEY_PATTERN = re.compile(
@@ -213,17 +216,9 @@ class ConversationMemoryExtractionService:
                 continue
             # SECURITY (Memanto #1852): defense-in-depth against indirect
             # prompt injection. Drop candidates whose content or title looks like an
-            # embedded directive/override rather than a genuine memory.
-            _INJECTION_PATTERNS = (
-                r"\bignore previous instructions\b",
-                r"\bignore prior instructions\b",
-                r"\bsystem override\b",
-                r"^system:\s*",
-                r"\bexfiltrate\b",
-                r"\bsend all memories\b",
-                r"\boverride previous\b",
-                r"\bdisregard previous\b",
-            )
+            # embedded directive/override rather than a genuine memory. The
+            # pattern list is shared with the daily-summary / conflict prompts
+            # (memanto.app.constants.UNTRUSTED_DIRECTIVE_PATTERNS).
             title = str(item.get("title", "")).strip()
 
             lowered_content = content.lower()
@@ -231,7 +226,7 @@ class ConversationMemoryExtractionService:
 
             if any(
                 re.search(p, lowered_content) or re.search(p, lowered_title)
-                for p in _INJECTION_PATTERNS
+                for p in UNTRUSTED_DIRECTIVE_PATTERNS
             ):
                 # Skip attacker-controlled directives; do not persist them.
                 continue
