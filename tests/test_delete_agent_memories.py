@@ -3,8 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from moorcheh_sdk.exceptions import NamespaceNotFound
+from moorcheh_sdk.exceptions import ConflictError, NamespaceNotFound
 
+from memanto.app.models.session import AgentCreate
 from memanto.app.services.agent_service import AgentService
 from memanto.app.utils.errors import AgentNotFoundError, NamespaceError
 from memanto.cli.client.direct_client import DirectClient
@@ -49,6 +50,43 @@ def test_delete_agent_memories_rejects_unsafe_id(tmp_path, moorcheh):
     with pytest.raises(ValueError):
         AgentService(agents_dir=tmp_path).delete_agent_memories("../x")
     moorcheh.namespaces.delete.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ConflictError("exists"),
+        Exception("Namespace 'memanto_agent_bot' already exists"),
+    ],
+)
+def test_create_agent_reuses_kept_namespace(tmp_path, moorcheh, error):
+    moorcheh.namespaces.create.side_effect = error
+    service = AgentService(agents_dir=tmp_path)
+
+    agent = service.create_agent(AgentCreate(agent_id="bot"))
+
+    assert agent.namespace == "memanto_agent_bot"
+    assert service.get_agent("bot") is not None
+    moorcheh.namespaces.delete.assert_not_called()
+
+
+def test_create_agent_save_failure_keeps_reused_namespace(tmp_path, moorcheh):
+    moorcheh.namespaces.create.side_effect = ConflictError("exists")
+    service = AgentService(agents_dir=tmp_path)
+    with patch.object(service, "_save_agent", side_effect=OSError("disk full")):
+        with pytest.raises(OSError):
+            service.create_agent(AgentCreate(agent_id="bot"))
+    moorcheh.namespaces.delete.assert_not_called()
+
+
+def test_create_agent_save_failure_rolls_back_new_namespace(tmp_path, moorcheh):
+    service = AgentService(agents_dir=tmp_path)
+    with patch.object(service, "_save_agent", side_effect=OSError("disk full")):
+        with pytest.raises(OSError):
+            service.create_agent(AgentCreate(agent_id="bot"))
+    moorcheh.namespaces.delete.assert_called_once_with(
+        namespace_name="memanto_agent_bot"
+    )
 
 
 @pytest.fixture(params=[SdkClient, DirectClient])

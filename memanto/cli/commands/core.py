@@ -54,6 +54,16 @@ def _notify_exposed_deployment(host: str) -> None:
     )
 
 
+def _uvicorn_proxy_headers() -> bool:
+    """Leave forwarded headers to Memanto when trusted proxies are configured.
+
+    uvicorn's proxy handling rewrites the client address to the
+    ``X-Forwarded-For`` value before the app runs, so the trusted-proxy check
+    would never see the proxy's own IP.
+    """
+    return not settings.MEMANTO_PROXY_ALLOWED_IPS
+
+
 def _first_run_setup() -> None:
     """Interactive first-run setup: pick backend, then configure it."""
 
@@ -1044,6 +1054,7 @@ def serve(
             port=port,
             reload=reload,
             log_level="info",
+            proxy_headers=_uvicorn_proxy_headers(),
         )
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Server stopped.[/yellow]")
@@ -1162,6 +1173,7 @@ def ui(
             host=host,
             port=port,
             log_level="info",
+            proxy_headers=_uvicorn_proxy_headers(),
         )
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Dashboard stopped.[/yellow]")

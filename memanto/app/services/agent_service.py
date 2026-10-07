@@ -20,7 +20,6 @@ from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
-    AgentNamespaceConflictError,
     AgentNotFoundError,
     NamespaceError,
 )
@@ -103,33 +102,23 @@ class AgentService:
             # dependency wrapper to prevent ?api_key= overrides).
             client = get_moorcheh_client()
 
+            created_namespace = False
             try:
                 client.namespaces.create(namespace, type="text")
+                created_namespace = True
                 logger.info("Namespace created in Moorcheh: %s", namespace)
-            except ConflictError:
-                # MEM-03: a deterministic namespace (memanto_agent_{id}) can be
-                # pre-created by another tenant on a globally-addressable backend.
-                # Per CodeRabbit review (round 2): reject EVERY pre-existing
-                # namespace — an emptiness check cannot establish ownership
-                # (TOCTOU: another tenant can write between the check and
-                # adoption). Fail closed unconditionally unless Moorcheh
-                # provides an atomic namespace-claim/ownership operation.
-                raise AgentNamespaceConflictError(
-                    f"Namespace '{namespace}' already exists; refusing to adopt a "
-                    "pre-existing namespace (possible cross-tenant memory poisoning)"
-                )
             except Exception as exc:
                 message = str(exc).lower()
                 if "limit" in message or "tier" in message or "quota" in message:
                     raise NamespaceError(f"Moorcheh namespace limit reached: {exc}")
-                if (
+                if isinstance(exc, ConflictError) or (
                     "namespace" in message and "already exists" in message
-                ) or "conflict" in message:
-                    # Same unconditional rejection as ConflictError above.
-                    raise AgentNamespaceConflictError(
-                        f"Namespace '{namespace}' already exists; refusing to adopt a "
-                        "pre-existing namespace (possible cross-tenant memory poisoning)"
-                    )
+                ):
+                    # Namespaces are scoped to the server's own Moorcheh
+                    # credential, so an existing one holds this agent's memories
+                    # kept from an earlier delete (or another machine using the
+                    # same key). Reuse it so those memories come back.
+                    logger.info("Namespace already exists in Moorcheh: %s", namespace)
                 else:
                     raise NamespaceError(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {exc}"
@@ -148,7 +137,10 @@ class AgentService:
             try:
                 self._save_agent(agent)
             except Exception as e:
-                # Rollback namespace creation if metadata save fails
+                # Roll back only a namespace this call created; a reused one
+                # holds existing memories that must not be deleted.
+                if not created_namespace:
+                    raise
                 try:
                     client.namespaces.delete(namespace_name=namespace)
                 except Exception as del_exc:

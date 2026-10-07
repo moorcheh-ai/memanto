@@ -49,10 +49,13 @@ class TrustedProxySchemeMiddleware:
                     scope["scheme"] = proto
             elif proto:
                 scope["scheme"] = _HTTP
+            # Only a direct loopback caller is exempt. A forwarded request's
+            # peer is the proxy, which may itself be on loopback.
+            direct_loopback = is_loopback_host(peer) and not proto
             if (
                 self.require_secure
                 and scope.get("scheme") == _HTTP
-                and not is_loopback_host(peer)
+                and not direct_loopback
             ):
                 await self._reject_plain_http(send)
                 return

@@ -80,7 +80,7 @@ def test_map_zep_keeps_provenance_and_tags_user():
     assert row["source_ref"] == "e1"
     assert row["provenance"] == "imported"
     assert row["type"] is None  # auto-classified by the parser
-    assert row["tags"] == ["user-alice", "works_at"]
+    assert row["tags"] == ["user=alice", "works_at"]
     # valid_at (when the fact became true) beats ingest time.
     assert row["created_at"] == datetime(2025, 5, 1, tzinfo=timezone.utc)
     assert "- From: Alice" in row["content"]
@@ -125,7 +125,7 @@ def test_map_hindsight_maps_fact_types_and_skips_invalidated():
     # occurred_start (when it happened) beats mentioned_at.
     assert rows[1]["created_at"] == datetime(2025, 1, 1, tzinfo=timezone.utc)
     assert rows[0]["created_at"] == datetime(2025, 7, 1, 9, tzinfo=timezone.utc)
-    assert rows[0]["tags"] == ["bank-bank-a", "ui"]
+    assert rows[0]["tags"] == ["bank=bank-a", "ui"]
     # Titles drop Hindsight's " | When: ... | Involving: ..." suffix; content keeps it.
     [row] = map_hindsight(
         {
@@ -165,7 +165,7 @@ def test_unstorable_tags_move_to_footer_instead_of_failing_the_batch():
     # write batch, so every mapped row must stay within the tag limits.
     long_tag = "x" * 80
     unit = hindsight_unit(
-        tags=["project,billing", long_tag, *(f"t{i}" for i in range(25))]
+        tags=["project,billing", "two\nlines", long_tag, *(f"t{i}" for i in range(25))]
     )
     edge = zep_edge(export_user_id="u" * 70)
 
@@ -173,8 +173,9 @@ def test_unstorable_tags_move_to_footer_instead_of_failing_the_batch():
     [z_row] = map_zep({"memories": [edge]})
 
     assert len(h_row["tags"]) == 20
-    assert h_row["tags"][:2] == ["bank-bank-a", "t0"]
+    assert h_row["tags"][:2] == ["bank=bank-a", "t0"]
     assert "project,billing" not in h_row["tags"] and long_tag not in h_row["tags"]
+    assert "two\nlines" not in h_row["tags"]
     assert "- Extra tags: project,billing, " in h_row["content"]
     assert z_row["tags"] == ["works_at"]
     assert f"- Extra tags: user={'u' * 70}" in z_row["content"]

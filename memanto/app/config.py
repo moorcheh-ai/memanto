@@ -6,14 +6,16 @@ CLI config models have been moved to cli/config/manager.py.
 """
 
 import ipaddress
+import json
 import logging
 import os
 from pathlib import Path
+from typing import Annotated, Any
 
 import yaml  # type: ignore[import-untyped]
 from dotenv import load_dotenv
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +154,7 @@ class Settings(BaseSettings):
     # reflect any request Origin back, allowing any site to make credentialed
     # cross-origin requests.  Default to False; set to True only when ALLOWED_ORIGINS
     # lists explicit trusted domains (never with "*").
-    ALLOWED_ORIGINS: list[str] = []
+    ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = []
 
     CORS_ORIGIN_REGEX: str | None = r"^http://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
 
@@ -197,7 +199,18 @@ class Settings(BaseSettings):
     MEMANTO_ENABLE_DOCS: bool = False
 
     MEMANTO_REQUIRE_SECURE: bool = False
-    MEMANTO_PROXY_ALLOWED_IPS: list[str] = []
+    MEMANTO_PROXY_ALLOWED_IPS: Annotated[list[str], NoDecode] = []
+
+    @field_validator("ALLOWED_ORIGINS", "MEMANTO_PROXY_ALLOWED_IPS", mode="before")
+    @classmethod
+    def _parse_list(cls, value: Any) -> Any:
+        """Accept a JSON list or a comma-separated string from the environment."""
+        if not isinstance(value, str):
+            return value
+        text = value.strip()
+        if text.startswith("["):
+            return json.loads(text)
+        return [item.strip() for item in text.split(",") if item.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"

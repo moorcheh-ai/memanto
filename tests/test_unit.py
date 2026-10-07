@@ -585,6 +585,25 @@ class TestSessionService:
 
         assert Settings(_env_file=None).MEMANTO_SECRET_KEY == ""
 
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "https://a.com,https://b.com",
+            " https://a.com , https://b.com ",
+            '["https://a.com", "https://b.com"]',
+        ],
+    )
+    def test_list_settings_accept_comma_or_json(self, monkeypatch, raw):
+        """List settings parse the documented comma form as well as JSON."""
+        from memanto.app.config import Settings
+
+        monkeypatch.setenv("ALLOWED_ORIGINS", raw)
+        monkeypatch.setenv("MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5")
+
+        settings = Settings(_env_file=None)
+        assert settings.ALLOWED_ORIGINS == ["https://a.com", "https://b.com"]
+        assert settings.MEMANTO_PROXY_ALLOWED_IPS == ["10.0.0.5"]
+
     def test_missing_session_secret_generates_persisted_fallback(
         self, temp_dir, monkeypatch
     ):
@@ -2584,6 +2603,23 @@ def test_memory_edit_strips_valid_tags():
     request = MemoryEditRequest(tags=[" project ", "important"])
 
     assert request.tags == ["project", "important"]
+
+
+@pytest.mark.parametrize(
+    "tag", ["lg:key:my key", "project:apollo", "user=alice", "lg:key:v1:a%2Cb"]
+)
+def test_memory_tag_accepts_structured_tags(tag):
+    from memanto.app.routes.memory import MemoryEditRequest
+
+    assert MemoryEditRequest(tags=[tag]).tags == [tag]
+
+
+@pytest.mark.parametrize("tag", ["a,b", "a\nb", "a\rb", "a\u2028b", "a\x85b", "a\x00b"])
+def test_memory_tag_rejects_delimiters_and_line_breaks(tag):
+    from memanto.app.routes.memory import MemoryEditRequest
+
+    with pytest.raises(ValidationError):
+        MemoryEditRequest(tags=[tag])
 
 
 def test_format_memory_item_tag_stripping():
