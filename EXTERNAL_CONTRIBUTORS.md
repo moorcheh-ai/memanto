@@ -123,3 +123,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @uknwplayer
 - @Gangrade-Raghav
 - @notkainoa
+- @WinAlphaBeta
