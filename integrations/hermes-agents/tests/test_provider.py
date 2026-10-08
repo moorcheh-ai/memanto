@@ -6,6 +6,8 @@ monkeypatched with an in-memory fake.
 """
 
 import json
+import os
+import stat
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,6 +19,7 @@ from hermes_memanto.provider import (
     _detect_memory_type,
     _format_recall_block,
     _load_memanto_config,
+    _sanitize_agent_id,
     _save_memanto_config,
 )
 
@@ -134,6 +137,53 @@ def test_detect_memory_type():
     assert _detect_memory_type("User prefers dark mode") == "preference"
     assert _detect_memory_type("We decided to use Postgres") == "decision"
     assert _detect_memory_type("The API is rate limited") == "fact"
+
+
+def test_sanitize_agent_id_differentiates_unsafe_spellings():
+    at_name = _sanitize_agent_id("alice@example.com")
+    hash_name = _sanitize_agent_id("alice#example.com")
+
+    assert at_name != hash_name
+    assert len(at_name) <= 64
+    assert len(hash_name) <= 64
+    assert "@" not in at_name
+    assert "#" not in hash_name
+
+
+def test_sanitize_agent_id_does_not_alias_literal_normalized_output():
+    unsafe_name = _sanitize_agent_id("alice@example.com")
+
+    assert _sanitize_agent_id(unsafe_name) != unsafe_name
+
+
+def test_distinct_unsafe_profiles_do_not_share_agent_or_token_path(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+
+    email_profile = MemantoMemoryProvider()
+    hash_profile = MemantoMemoryProvider()
+    email_profile.initialize(
+        "s1",
+        hermes_home=str(tmp_path),
+        platform="cli",
+        agent_identity="alice@example.com",
+    )
+    hash_profile.initialize(
+        "s2",
+        hermes_home=str(tmp_path),
+        platform="cli",
+        agent_identity="alice#example.com",
+    )
+    if email_profile._warmup_thread:
+        email_profile._warmup_thread.join(timeout=1)
+    if hash_profile._warmup_thread:
+        hash_profile._warmup_thread.join(timeout=1)
+
+    assert email_profile._agent_id != hash_profile._agent_id
+    assert email_profile._client.profile_path != hash_profile._client.profile_path
 
 
 def test_load_and_save_config_round_trip(tmp_path):
@@ -274,6 +324,57 @@ def test_agent_id_env_override(monkeypatch, tmp_path):
 
 
 # -- Session lifecycle --------------------------------------------------------
+
+
+def test_failed_reinitialization_drops_previous_identity_client(provider, tmp_path):
+    previous_client = provider._client
+    previous_client.recall_results = [
+        {"type": "fact", "content": "Previous identity's private memory"}
+    ]
+    profile = tmp_path / "profiles" / "coder"
+    profile.mkdir()
+    (profile / ".memanto_identity.json").write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "identity": "someone-else",
+                "raw_agent_id": "hermes-coder",
+                "profile": "coder",
+                "agent_namespace": "hermes-coder",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="metadata does not match 'identity'"):
+        provider.initialize(
+            "session-2", hermes_home=str(tmp_path), agent_identity="coder"
+        )
+
+    assert provider.prefetch("private memory", session_id="session-2") == ""
+    assert provider.system_prompt_block() == ""
+    for tool, arguments in (
+        ("memanto_recall", {"query": "private memory"}),
+        ("memanto_remember", {"content": "New identity's private memory"}),
+        ("memanto_answer", {"question": "What do you remember?"}),
+    ):
+        result = json.loads(provider.handle_tool_call(tool, arguments))
+        assert "error" in result
+    provider.sync_turn("New identity's private request", "A sufficiently long response")
+    provider.on_memory_write("add", "memory", "New identity's private memory")
+    assert previous_client.remember_calls == []
+    assert previous_client.answer_calls == []
+    assert provider._active is False
+    assert provider._client is None
+
+    provider.initialize(
+        "session-3", hermes_home=str(tmp_path), agent_identity="valid-coder"
+    )
+    provider._warmup_thread.join(timeout=1)
+    assert provider._active is True
+    assert provider._client is not previous_client
+    assert provider._client.agent_id == "hermes-valid-coder"
+    assert provider.prefetch("private memory", session_id="session-3") == ""
 
 
 def test_ensure_session_backs_off_then_allows_retry():
@@ -466,6 +567,67 @@ def test_get_tool_schemas_names(provider):
     assert names == {"memanto_remember", "memanto_recall", "memanto_answer"}
 
 
+@pytest.mark.parametrize("agent_context", ["cron", "flush", "subagent"])
+def test_restricted_context_rejects_named_remember_tool(
+    monkeypatch, tmp_path, agent_context
+):
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+    p = MemantoMemoryProvider()
+    p.initialize("session-1", hermes_home=str(tmp_path), agent_context=agent_context)
+    try:
+        if p._warmup_thread:
+            p._warmup_thread.join(timeout=1)
+        # Dispatch by name even when the tool is absent from the advertised set.
+        result = json.loads(
+            p.handle_tool_call(
+                "memanto_remember",
+                {"content": "Restricted-context instruction", "type": "instruction"},
+            )
+        )
+        assert result == {"error": "Memory writes are disabled in this context"}
+        assert p._client.remember_calls == []
+        assert [schema["name"] for schema in p.get_tool_schemas()] == [
+            "memanto_recall",
+            "memanto_answer",
+        ]
+        assert "memanto_remember" not in p.system_prompt_block()
+
+        p._client.recall_results = [{"id": "m1", "type": "fact", "content": "Read me"}]
+        recalled = json.loads(p.handle_tool_call("memanto_recall", {"query": "read"}))
+        assert recalled["results"][0]["content"] == "Read me"
+        p._client.answer_response = {
+            "answer": "Still readable",
+            "sources": [{"id": "m1"}],
+        }
+        answered = json.loads(
+            p.handle_tool_call("memanto_answer", {"question": "read?"})
+        )
+        assert answered["answer"] == "Still readable"
+        assert p._client.remember_calls == []
+
+        # Reinitializing normally restores the existing interactive behavior.
+        p.initialize(
+            "session-2", hermes_home=str(tmp_path), agent_context="interactive"
+        )
+        if p._warmup_thread:
+            p._warmup_thread.join(timeout=1)
+        saved = json.loads(
+            p.handle_tool_call("memanto_remember", {"content": "Interactive fact"})
+        )
+        assert saved["saved"] is True
+        assert len(p._client.remember_calls) == 1
+        assert [schema["name"] for schema in p.get_tool_schemas()] == [
+            "memanto_remember",
+            "memanto_recall",
+            "memanto_answer",
+        ]
+        assert "memanto_remember" in p.system_prompt_block()
+    finally:
+        p.shutdown()
+
+
 def test_remember_tool(provider):
     result = json.loads(
         provider.handle_tool_call(
@@ -597,6 +759,79 @@ def test_memanto_client_token_persistence(tmp_path):
     client2.set_profile_path(str(tmp_path))
     assert client2._ready is True
     assert client2._client.session_token == "token-abc"
+
+
+@pytest.mark.parametrize("link_type", ["symlink", "hardlink"])
+def test_memanto_client_token_save_does_not_write_through_links(tmp_path, link_type):
+    from hermes_memanto.provider import _MemantoClient
+
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    outside = tmp_path / "outside-token"
+    outside.write_text("outside-before", encoding="utf-8")
+    outside.chmod(0o640)
+    outside_mode = stat.S_IMODE(outside.stat().st_mode)
+    token_file = profile / ".memanto_session_token"
+    if link_type == "symlink":
+        token_file.symlink_to(outside)
+    else:
+        os.link(outside, token_file)
+
+    client = _MemantoClient("api-key", "agent-1")
+    client._client = MagicMock()
+    client.set_profile_path(str(profile))
+    client.save_token("synthetic-new-token")
+
+    assert outside.read_text(encoding="utf-8") == "outside-before"
+    assert stat.S_IMODE(outside.stat().st_mode) == outside_mode
+    assert not token_file.is_symlink()
+    assert not token_file.samefile(outside)
+    assert token_file.read_text(encoding="utf-8") == "synthetic-new-token"
+    assert client.load_token() == "synthetic-new-token"
+    if os.name != "nt":
+        assert stat.S_IMODE(token_file.stat().st_mode) == 0o600
+
+
+@pytest.mark.parametrize("link_type", ["symlink", "hardlink"])
+def test_memanto_client_token_load_refuses_links(tmp_path, link_type):
+    from hermes_memanto.provider import _MemantoClient
+
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    outside = tmp_path / "outside-token"
+    outside.write_text("synthetic-other-profile-token", encoding="utf-8")
+    token_file = profile / ".memanto_session_token"
+    if link_type == "symlink":
+        token_file.symlink_to(outside)
+    else:
+        os.link(outside, token_file)
+
+    client = _MemantoClient("api-key", "agent-1")
+    client._client = MagicMock()
+    client.set_profile_path(str(profile))
+
+    assert client.load_token() is None
+    assert client._ready is False
+    assert "session_token" not in vars(client._client)
+
+
+def test_memanto_client_failed_token_replacement_keeps_original(monkeypatch, tmp_path):
+    import hermes_memanto.provider as mod
+
+    client = mod._MemantoClient("api-key", "agent-1")
+    client._client = MagicMock()
+    client.set_profile_path(str(tmp_path))
+    client.save_token("synthetic-original-token")
+    entries_before = set(tmp_path.iterdir())
+
+    def reject_replace(*args, **kwargs):
+        raise PermissionError("synthetic replacement failure")
+
+    monkeypatch.setattr(mod.os, "replace", reject_replace)
+    client.save_token("synthetic-new-token")
+
+    assert client.load_token() == "synthetic-original-token"
+    assert set(tmp_path.iterdir()) == entries_before
 
 
 def test_memanto_client_auto_refresh_on_expiration(tmp_path):

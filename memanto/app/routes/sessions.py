@@ -10,9 +10,10 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 
 from memanto.app.clients import moorcheh as moorcheh_clients
-from memanto.app.config import settings
+from memanto.app.config import is_loopback_host, settings
 from memanto.app.models.session import (
     AgentCreate,
     AgentInfo,
@@ -39,6 +40,9 @@ router = APIRouter()
 # Commented to avoid triggering ruff linter
 from memanto.app.routes import memory  # noqa: E402
 from memanto.app.routes.auth_deps import (  # noqa: E402
+    _has_forwarded_non_loopback,
+    _is_cross_site_browser_request,
+    _is_loopback_host_header,
     clear_session_cookie,
     get_current_session,
     get_session_service,
@@ -50,6 +54,23 @@ router.include_router(memory.router, prefix="/agents", tags=["Memory Operations"
 
 # Service instances
 agent_service = AgentService()
+
+
+def _uses_browser_cookie_handoff(request: Request) -> bool:
+    """Return whether activation should expose the token only through its HttpOnly cookie."""
+    origin = request.headers.get("origin")
+    fetch_site = request.headers.get("sec-fetch-site")
+    browser_signaled = bool(origin) or (
+        isinstance(fetch_site, str) and bool(fetch_site.strip())
+    )
+    client_host = request.client.host if request.client else None
+    return (
+        browser_signaled
+        and is_loopback_host(client_host)
+        and _is_loopback_host_header(request.headers.get("host"))
+        and not _is_cross_site_browser_request(request)
+        and not _has_forwarded_non_loopback(request)
+    )
 
 
 def get_agent_service():
@@ -258,7 +279,8 @@ async def activate_agent(
     - Session file in ~/.memanto/sessions/
     - Active session marker
 
-    Returns session token for use in memory operations.
+    API clients receive the session token in JSON. The loopback browser UI
+    receives it only in the HttpOnly session cookie, outside JavaScript state.
     """
     # Check if agent exists
     agent = agent_service.get_agent(agent_id)
@@ -276,8 +298,6 @@ async def activate_agent(
             pattern=agent.pattern,
             duration_hours=duration_hours,
         )
-        set_session_cookie(response, session.session_token, request)
-
         # Update agent stats
         agent_service.update_agent_stats(
             agent_id=agent_id,
@@ -285,6 +305,14 @@ async def activate_agent(
             increment_session_count=True,
         )
 
+        if _uses_browser_cookie_handoff(request):
+            browser_response = JSONResponse(
+                content=session.model_dump(mode="json", exclude={"session_token"})
+            )
+            set_session_cookie(browser_response, session.session_token, request)
+            return browser_response
+
+        set_session_cookie(response, session.session_token, request)
         return session
 
     except Exception as e:

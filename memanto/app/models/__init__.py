@@ -51,8 +51,18 @@ class BatchRememberItem(BaseModel):
     )
     provenance: str = Field(
         "explicit_statement",
-        description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
+        description=(
+            "How memory was obtained. When omitted, user-authored memories default "
+            "to explicit_statement; non-user sources default to inferred."
+        ),
     )
+
+    @model_validator(mode="after")
+    def default_non_user_provenance(self) -> "BatchRememberItem":
+        """Choose a conservative provenance default for non-user HTTP writes."""
+        if "provenance" not in self.model_fields_set and self.source != "user":
+            self.provenance = "inferred"
+        return self
 
     @field_validator("content")
     @classmethod

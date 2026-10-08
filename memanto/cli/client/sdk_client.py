@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from memanto.app.services.memory_policy_service import MemoryPolicyService
 
-from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -36,6 +35,7 @@ from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
 from memanto.app.services.activity_service import log_memory_activity
+from memanto.app.utils.atomic_write import atomic_copy_file
 from memanto.app.utils.client_identity import set_memanto_session
 from memanto.app.utils.errors import (
     AgentNotFoundError,
@@ -52,6 +52,7 @@ from memanto.app.utils.validation import (
     validate_recall_limit,
     validate_safe_id,
 )
+from memanto.cli.client.memory_cache import memory_sync_cache_path
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -197,19 +198,30 @@ class SdkClient:
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
         """
-        # Cache hit: avoid redundant JWT decodes while the session remains
-        # active. Still runs the same near-expiry auto-renew check as the
-        # cold path below, so long-lived clients keep renewing instead of
-        # eventually hitting SessionExpiredError.
+        # A cached object cannot prove that the persisted session is still
+        # active: another client or process may have logged out, deleted it,
+        # or activated a replacement. Revalidate before renewal or memory I/O.
         if self._cached_session:
-            if self.agent_id == agent_id and self._cached_session.agent_id == agent_id:
+            if (
+                self.agent_id == agent_id
+                and self._cached_session.agent_id == agent_id
+                and self.session_token == self._cached_session.session_token
+            ):
                 if not self._cached_session.is_active():
                     self._cached_session = None
                     raise SessionExpiredError(
                         f"Cached session for agent {agent_id} is no longer active"
                     )
                 session_service = self._get_session_service()
-                renewed = session_service.check_and_auto_renew(agent_id=agent_id)
+                try:
+                    session_service.validate_session(self.session_token)
+                    renewed = session_service.check_and_auto_renew(
+                        agent_id=agent_id,
+                        expected_session_token=self.session_token,
+                    )
+                except (InvalidSessionTokenError, SessionExpiredError):
+                    self._cached_session = None
+                    raise
                 if renewed:
                     self._cached_session = renewed
                     self.session_token = renewed.session_token
@@ -238,6 +250,15 @@ class SdkClient:
             # The stored session fully lapsed (e.g. the process was idle past
             # its expiry). With auto-recreate enabled, transparently issue a
             # fresh session on this first operation instead of failing.
+            # Bind the expired token to the requested agent before recreation
+            # can replace any persisted session state.
+            expired_session = session_service.get_session(agent_id)
+            if (
+                expired_session is None
+                or expired_session.agent_id != agent_id
+                or expired_session.session_token != self.session_token
+            ):
+                raise
             recreated = session_service.check_and_auto_recreate(self.session_token)
             if recreated is None:
                 raise
@@ -247,6 +268,12 @@ class SdkClient:
         except InvalidSessionTokenError:
             # Surface the same specific session errors as the service
             raise
+
+        if token_payload.agent_id != agent_id:
+            raise SessionError(
+                f"Session token is for agent '{token_payload.agent_id}', "
+                f"cannot access '{agent_id}'"
+            )
 
         # Load the persisted session record
         session = session_service.get_session(token_payload.agent_id)
@@ -260,6 +287,7 @@ class SdkClient:
         # refreshes the active marker, so no extra persistence is needed here.
         renewed = session_service.check_and_auto_renew(
             agent_id=token_payload.agent_id,
+            expected_session_token=self.session_token,
         )
         if renewed:
             session = renewed
@@ -443,9 +471,10 @@ class SdkClient:
         """
         logger.debug("Deactivating agent '%s'", agent_id)
         summary = self._get_session_service().end_session(agent_id)
-        self.session_token = None
-        self.agent_id = None
-        self._cached_session = None
+        if self.agent_id == agent_id:
+            self.session_token = None
+            self.agent_id = None
+            self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
@@ -1652,6 +1681,8 @@ class SdkClient:
         agent_id: str,
         output_path: str | None = None,
         limit_per_type: int = 25,
+        *,
+        _project_sync: bool = False,
     ) -> dict[str, Any]:
         """
         Export all memories for an agent into a structured memory.md.
@@ -1670,6 +1701,12 @@ class SdkClient:
         self._get_validated_session_for_agent(agent_id)
 
         memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
+        if _project_sync:
+            from memanto.app.services.memory_export_service import (
+                filter_project_sync_memories,
+            )
+
+            memories_by_type = filter_project_sync_memories(memories_by_type)
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
@@ -1698,9 +1735,9 @@ class SdkClient:
         Sync agent memories to a project directory's MEMORY.md.
 
         Always runs a fresh export first, so memories written earlier in the
-        same session are included. Falls back to the previous cached export
-        when the backend is unreachable, rather than leaving the project's
-        MEMORY.md untouched or wiping it.
+        same session are included. Falls back to a previous sync from the same
+        credential and backend when it is unreachable. Unscoped user exports
+        are never reused automatically because their ownership is unknown.
 
         Args:
             agent_id: Target agent.
@@ -1713,20 +1750,25 @@ class SdkClient:
             previous export was reused instead).
         """
         validate_safe_id(agent_id, "agent_id")
-        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
+        cache_path = memory_sync_cache_path(
+            agent_id, self.api_key, backend_client=self._moorcheh
+        )
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             export_result = self.export_memory_md(
-                agent_id=agent_id, limit_per_type=limit_per_type
+                agent_id=agent_id,
+                output_path=str(cache_path),
+                limit_per_type=limit_per_type,
+                _project_sync=True,
             )
         except ConnectionError:
             if not cache_path.exists():
                 raise
             # Backend unreachable, but we have a previously good export —
             # serve that instead of wiping the project's MEMORY.md.
-            shutil.copy2(str(cache_path), str(target_path))
+            atomic_copy_file(cache_path, target_path)
             content = cache_path.read_text(encoding="utf-8")
             return {
                 "output_path": str(target_path.resolve()),
@@ -1736,7 +1778,7 @@ class SdkClient:
 
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
-            shutil.copy2(str(exported_path), str(target_path))
+            atomic_copy_file(exported_path, target_path)
 
         return {
             "output_path": str(target_path.resolve()),
@@ -1804,12 +1846,11 @@ class SdkClient:
 
         from memanto.app.config import get_data_dir
         from memanto.app.services.okf_export_service import OkfExportService
+        from memanto.app.utils.agent_context_files import get_agent_context_files
 
         memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
 
-        data_dir = get_data_dir()
-        summaries = sorted((data_dir / "summaries").glob(f"{agent_id}_*.md"))
-        sessions = sorted((data_dir / "sessions").glob(f"{agent_id}_*_summary.md"))
+        summaries, sessions = get_agent_context_files(get_data_dir(), agent_id)
 
         return OkfExportService().write_okf_bundle(
             agent_id=agent_id,
@@ -1830,15 +1871,21 @@ class SdkClient:
         """Sync agent memories to a project directory as an OKF bundle (``<project>/okf``).
 
         Runs a fresh export into the cache, then copies the bundle into the
-        project. Falls back to the previous cached bundle when the backend is
-        unreachable (``source="stale-cache"``).
+        project. Falls back to a previous sync from the same credential and
+        backend when unreachable (``source="stale-cache"``). User exports are
+        never reused automatically because their ownership is unknown.
         """
         target = Path(project_dir) / "okf"
-        cache = Path.home() / ".memanto" / "exports" / f"{agent_id}_okf"
+        cache = memory_sync_cache_path(
+            agent_id, self.api_key, backend_client=self._moorcheh
+        ).with_name(f"{agent_id}_okf")
 
         try:
             result = self.export_okf_bundle(
-                agent_id=agent_id, split=split, limit_per_type=limit_per_type
+                agent_id=agent_id,
+                output_dir=str(cache),
+                split=split,
+                limit_per_type=limit_per_type,
             )
             src = Path(result["output_path"])
             total = result["total_memories"]

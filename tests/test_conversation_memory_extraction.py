@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from memanto.app.services.conversation_memory_extraction_service import (
@@ -221,6 +223,77 @@ def test_extract_redacts_sensitive_credentials():
     )
 
 
+@pytest.mark.parametrize("quote", ["", "'", '"'])
+def test_extract_redacts_moorcheh_api_key_assignments(quote):
+    """The documented provider setting must not survive candidate extraction."""
+    assignment = f"MOORCHEH_API_KEY={quote}mk_your_api_key_here{quote}"
+    redacted = f"MOORCHEH_API_KEY={quote}[REDACTED_CREDENTIAL]{quote}"
+    client = FakeClient(
+        json.dumps(
+            [
+                {
+                    "type": "fact",
+                    "title": f"Configuration: {assignment}",
+                    "content": f"Configured {assignment}; keep concise release notes.",
+                }
+            ]
+        )
+    )
+
+    candidates = ConversationMemoryExtractionService(client).extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the configuration."}],
+    )
+
+    assert candidates[0]["title"] == f"Configuration: {redacted}"
+    assert candidates[0]["content"] == (
+        f"Configured {redacted}; keep concise release notes."
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "key_quote", "value_quote", "value"),
+    [
+        ("MOORCHEH_API_KEY", '"', '"', "mk_json_marker"),
+        ("password", '"', '"', "pw_json_marker"),
+        ("password", '"', '"', r"pw_head\"pw_tail\\pw_end"),
+        ("password", '"', '"', r"pw_trailing\\"),
+        ("password", '"', "'", r"pw_head\'pw_tail\\pw_end"),
+        ("password", "'", "'", "pw_literal_marker"),
+        ("password", '"', "", "123456789"),
+    ],
+)
+def test_extract_redacts_quoted_credential_keys(key, key_quote, value_quote, value):
+    """Quoted field names and escaped values must not bypass extraction redaction."""
+    assignment = f"{key_quote}{key}{key_quote}: {value_quote}{value}{value_quote}"
+    redacted = (
+        f"{key_quote}{key}{key_quote}: {value_quote}[REDACTED_CREDENTIAL]{value_quote}"
+    )
+    config = "{" + assignment + ', "mode": "safe"}'
+    redacted_config = "{" + redacted + ', "mode": "safe"}'
+    client = FakeClient(
+        json.dumps(
+            [
+                {
+                    "type": "fact",
+                    "title": f"Config: {config}",
+                    "content": f"Configured {config}; keep release notes.",
+                }
+            ]
+        )
+    )
+
+    candidates = ConversationMemoryExtractionService(client).extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the configuration."}],
+    )
+
+    assert candidates[0]["title"] == f"Config: {redacted_config}"
+    assert candidates[0]["content"] == (
+        f"Configured {redacted_config}; keep release notes."
+    )
+
+
 def test_redact_sensitive_data_helper():
     from memanto.app.services.conversation_memory_extraction_service import (
         redact_sensitive_data,
@@ -248,4 +321,122 @@ def test_redact_sensitive_data_helper():
     assert (
         redact_sensitive_data(aws_secret_unquoted)
         == "AWS_SECRET_ACCESS_KEY=[REDACTED_CREDENTIAL]"
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (
+            "before -----BEGIN RSA PRIVATE KEY-----\r\nABC123\r\n"
+            "-----END RSA PRIVATE KEY----- after",
+            "before [REDACTED_PRIVATE_KEY] after",
+        ),
+        (
+            "before -----BEGIN PRIVATE KEY----- ABC -----END PRIVATE KEY----- after",
+            "before [REDACTED_PRIVATE_KEY] after",
+        ),
+        (
+            "-----BEGIN PRIVATE KEY----- ABC -----END PRIVATE KEY----- "
+            "-----BEGIN PRIVATE KEY----- DEF -----END PRIVATE KEY-----",
+            "[REDACTED_PRIVATE_KEY]",
+        ),
+        (
+            "-----BEGIN PRIVATE KEY-----\n-----BEGIN RSA PRIVATE KEY-----\n"
+            "ABC123\n-----END RSA PRIVATE KEY-----",
+            "[REDACTED_PRIVATE_KEY]",
+        ),
+        (
+            "-----BEGIN PRIVATE KEY-----\nABC123\n-----END PRIVATE KEY-----\n"
+            "-----BEGIN PRIVATE KEY-----\n",
+            "[REDACTED_PRIVATE_KEY]\n-----BEGIN PRIVATE KEY-----\n",
+        ),
+        (
+            "-----BEGIN rsa PRIVATE KEY-----\nABC123\n-----END rsa PRIVATE KEY-----",
+            "-----BEGIN rsa PRIVATE KEY-----\nABC123\n-----END rsa PRIVATE KEY-----",
+        ),
+    ],
+)
+def test_redact_private_keys_preserves_header_boundaries(value, expected):
+    from memanto.app.services.conversation_memory_extraction_service import (
+        redact_sensitive_data,
+    )
+
+    assert redact_sensitive_data(value) == expected
+
+
+@pytest.mark.timeout(5)
+def test_extract_bounds_work_for_unclosed_private_key_headers():
+    """An incomplete footer must not rescan every preceding PEM prefix."""
+    content = "-----BEGIN PRIVATE KEY-----\n" * 16_000 + "-----END "
+    client = FakeClient(json.dumps([{"type": "fact", "content": content}]))
+    service = ConversationMemoryExtractionService(client)
+
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the supplied text."}],
+    )
+
+    assert candidates[0]["content"] == (
+        content[: service.MAX_MEMORY_CONTENT_CHARS - 3].rstrip() + "..."
+    )
+    assert candidates[0]["source"] == "system"
+    assert candidates[0]["provenance"] == "inferred"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (
+            "HTTP://alice:secret@example.test/path and ssh://bob:pw@host",
+            "HTTP://alice:[REDACTED_PASSWORD]@example.test/path and "
+            "ssh://bob:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            "012.+-http://alice:secret@host",
+            "012.+-http://alice:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            " ".join(f"{letter}ttp://u:pw@host" for letter in "İıſK"),
+            " ".join(
+                f"{letter}ttp://u:[REDACTED_PASSWORD]@host" for letter in "İıſK"
+            ),
+        ),
+        (
+            "éhttp://u:pw@host _9.http://u:pw@host",
+            "éhttp://u:[REDACTED_PASSWORD]@host "
+            "_9.http://u:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            "http://u:bad/pass@host http://u:good@host",
+            "http://u:bad/pass@host http://u:[REDACTED_PASSWORD]@host",
+        ),
+        (
+            "123...://host barehttp://user:pass@host",
+            "123...://host barehttp://user:[REDACTED_PASSWORD]@host",
+        ),
+    ],
+)
+def test_redact_url_credentials_preserves_scheme_boundaries(value, expected):
+    from memanto.app.services.conversation_memory_extraction_service import (
+        redact_sensitive_data,
+    )
+
+    assert redact_sensitive_data(value) == expected
+
+
+@pytest.mark.timeout(5)
+def test_extract_bounds_work_for_malformed_credential_url():
+    """Text without URL credentials must not restart the scheme scan."""
+    content = "a" * 120_000 + "://host"
+    client = FakeClient(json.dumps([{"type": "fact", "content": content}]))
+    service = ConversationMemoryExtractionService(client)
+
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the supplied text."}],
+    )
+
+    assert candidates[0]["content"] == (
+        content[: service.MAX_MEMORY_CONTENT_CHARS - 3] + "..."
     )

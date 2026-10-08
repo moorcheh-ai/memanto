@@ -99,11 +99,28 @@ def _coerce_type(raw: str | None) -> str | None:
     return t if t in VALID_MEMORY_TYPES else None
 
 
+_TRUSTED_DYNAMIC_PROVENANCE = frozenset(
+    {"explicit_statement", "corrected", "validated"}
+)
+
+
 def _coerce_provenance(raw: Any) -> str:
+    """Normalize untrusted OKF provenance without granting dynamic trust.
+
+    OKF frontmatter is import data and carries no authenticity proof. Preserve
+    valid non-trusted provenance labels for fidelity, but never let an imported
+    document self-assert one of the provenance values accepted by dynamic
+    instruction sync.
+    """
     if not isinstance(raw, str):
         return "imported"
+
     provenance = raw.strip().lower()
-    return provenance if provenance in VALID_PROVENANCE_TYPES else "imported"
+    if provenance not in VALID_PROVENANCE_TYPES:
+        return "imported"
+    if provenance in _TRUSTED_DYNAMIC_PROVENANCE:
+        return "imported"
+    return provenance
 
 
 def _normalize_mem0_categories(raw: Any) -> list[str]:

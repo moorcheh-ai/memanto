@@ -372,6 +372,7 @@ class TestExportDataDirRouting:
         from memanto.app import config as app_config
         from memanto.app.services.memory_export_service import MemoryExportService
         from memanto.cli.client.direct_client import DirectClient
+        from memanto.cli.client.memory_cache import memory_sync_cache_path
         from memanto.cli.client.sdk_client import SdkClient
 
         monkeypatch.setattr(app_config.settings, "MEMANTO_BACKEND", "on-prem")
@@ -381,13 +382,13 @@ class TestExportDataDirRouting:
         cloud_cache.parent.mkdir(parents=True)
         cloud_cache.write_text("# cloud export", encoding="utf-8")
 
-        on_prem_cache = (
-            tmp_path / ".memanto" / "on-prem" / "exports" / "agent-1_memory.md"
-        )
+        on_prem_cache = memory_sync_cache_path("agent-1", "dummy-key")
         on_prem_cache.parent.mkdir(parents=True)
         on_prem_cache.write_text("# on-prem export", encoding="utf-8")
 
-        assert MemoryExportService().exports_dir == on_prem_cache.parent
+        assert MemoryExportService().exports_dir == (
+            tmp_path / ".memanto" / "on-prem" / "exports"
+        )
 
         for client_cls in (DirectClient, SdkClient):
             client = client_cls(api_key="dummy-key")

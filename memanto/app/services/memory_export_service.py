@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from memanto.app.config import get_data_dir
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
 # Memory type metadata: (label, emoji, description)
@@ -84,6 +85,39 @@ MEMORY_TYPE_ORDER = [
     "artifact",
     "error",
 ]
+
+# Project sync writes agent-consumed context. Keep this policy aligned with the
+# dynamic instruction-sync boundary: legacy/imported/inferred provenance must
+# not silently become durable instructions, preferences, or goals.
+TRUSTED_PROJECT_MEMORY_PROVENANCE = frozenset(
+    {"explicit_statement", "corrected", "validated"}
+)
+TRUST_SENSITIVE_PROJECT_MEMORY_TYPES = frozenset(
+    {"instruction", "preference", "goal"}
+)
+
+
+def filter_project_sync_memories(
+    memories_by_type: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Filter trust-sensitive rows before writing an agent-consumed MEMORY.md.
+
+    Explicit raw exports remain lossless. This filter is only for automatic
+    project sync, where an untrusted instruction-like row would otherwise be
+    rendered without provenance and promoted into a higher-trust surface.
+    """
+    filtered: dict[str, list[dict[str, Any]]] = {}
+    for mem_type, memories in memories_by_type.items():
+        if mem_type not in TRUST_SENSITIVE_PROJECT_MEMORY_TYPES:
+            filtered[mem_type] = memories
+            continue
+        filtered[mem_type] = [
+            memory
+            for memory in memories
+            if isinstance(memory.get("provenance"), str)
+            and memory["provenance"] in TRUSTED_PROJECT_MEMORY_PROVENANCE
+        ]
+    return filtered
 
 
 def _one_line(value: Any, default: str = "") -> str:
@@ -251,5 +285,5 @@ class MemoryExportService:
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
         content = self.format_memory_md(agent_id, memories_by_type)
-        output_path.write_text(content, encoding="utf-8")
+        atomic_write_text(output_path, content)
         return output_path.resolve()

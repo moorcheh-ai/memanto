@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -270,10 +271,21 @@ class TestSessionService:
         # Just verify the logic exists
         print("✅ Session expiration logic exists")
 
-    def test_auto_renew_is_single_flight_per_agent(self, session_service, monkeypatch):
+    @pytest.mark.parametrize("separate_instance", [False, True])
+    def test_auto_renew_is_single_flight_per_agent(
+        self, session_service, monkeypatch, separate_instance
+    ):
         """Parallel near-expiry requests must not mint competing tokens."""
         session_service.create_session(agent_id="test-agent", duration_hours=1)
         monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+        second_service = (
+            SessionService(
+                secret_key=session_service.secret_key,
+                sessions_dir=session_service.sessions_dir,
+            )
+            if separate_instance
+            else session_service
+        )
 
         original_renew = session_service.renew_session
         first_entered = threading.Event()
@@ -299,7 +311,7 @@ class TestSessionService:
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(session_service.check_and_auto_renew, "test-agent")
             assert first_entered.wait(timeout=2)
-            second = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            second = pool.submit(second_service.check_and_auto_renew, "test-agent")
             second_entered.wait(timeout=0.25)
             release_first.set()
             results = [first.result(timeout=2), second.result(timeout=2)]
@@ -357,20 +369,116 @@ class TestSessionService:
         assert active_session is not None
         assert active_session.session_id == session.session_id
 
-    def test_end_session_revokes_concurrent_auto_renewal(
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX symlink interleaving required")
+    def test_active_marker_interleaving_preserves_other_agent_session(
         self, session_service, monkeypatch
+    ):
+        """Independent activations must never write through another session's link."""
+        sessions_dir = session_service.sessions_dir
+        other = SessionService(
+            secret_key=session_service.secret_key, sessions_dir=sessions_dir
+        )
+        original_symlink = Path.symlink_to
+        observed = {}
+
+        # Cooperative peers are serialized by active.lock. Bypass the peer's
+        # lock only to retain coverage for the staged-link publication race.
+        monkeypatch.setattr(other, "_hold_active_marker_lock", lambda: nullcontext())
+
+        def interleaved_symlink(path, target, *args, **kwargs):
+            if (
+                path.parent == sessions_dir
+                and target == "agent-a.json"
+                and not observed
+            ):
+                observed["session"] = other.create_session("agent-b", duration_hours=1)
+                observed["bytes"] = (sessions_dir / "agent-b.json").read_bytes()
+            return original_symlink(path, target, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "symlink_to", interleaved_symlink)
+        first = session_service.create_session("agent-a", duration_hours=1)
+        second = observed["session"]
+
+        assert (sessions_dir / "agent-b.json").read_bytes() == observed["bytes"]
+        for session in (first, second):
+            saved = Session.model_validate_json(
+                (sessions_dir / f"{session.agent_id}.json").read_text(encoding="utf-8")
+            )
+            assert saved.session_id == session.session_id
+            assert (
+                other.validate_session(session.session_token).session_id
+                == session.session_id
+            )
+        assert (sessions_dir / "active").readlink() == Path("agent-a.json")
+        assert session_service.get_active_session().session_id == first.session_id
+        assert not list(sessions_dir.glob(".active.*.tmp"))
+
+    def test_active_marker_text_fallback_preserves_sessions(self, session_service):
+        """Unsupported symlinks retain the existing private plain-text format."""
+        first = session_service.create_session("agent-a", duration_hours=1)
+        with patch.object(Path, "symlink_to", side_effect=NotImplementedError):
+            second = session_service.create_session("agent-b", duration_hours=1)
+
+        marker = session_service.sessions_dir / "active"
+        assert not marker.is_symlink()
+        assert marker.read_text(encoding="utf-8") == "agent-b"
+        assert session_service.get_active_session().session_id == second.session_id
+        for session in (first, second):
+            assert (
+                session_service.validate_session(session.session_token).session_id
+                == session.session_id
+            )
+        if os.name != "nt":
+            assert stat.S_IMODE(marker.stat().st_mode) == 0o600
+        assert not list(session_service.sessions_dir.glob(".active.*.tmp"))
+
+    def test_active_marker_replace_failure_keeps_previous_marker(
+        self, session_service, monkeypatch
+    ):
+        """Failed publication must leave the current selection and clean staging."""
+        first = session_service.create_session("agent-a", duration_hours=1)
+        marker = session_service.sessions_dir / "active"
+        original_replace = os.replace
+
+        def fail_marker_replace(source, destination):
+            if Path(destination) == marker:
+                raise OSError("simulated marker replacement failure")
+            return original_replace(source, destination)
+
+        monkeypatch.setattr(os, "replace", fail_marker_replace)
+        with pytest.raises(OSError, match="simulated marker replacement failure"):
+            session_service.create_session("agent-b", duration_hours=1)
+
+        assert session_service.get_active_session().session_id == first.session_id
+        assert (
+            session_service.validate_session(first.session_token).session_id
+            == first.session_id
+        )
+        assert not list(session_service.sessions_dir.glob(".active.*.tmp"))
+
+    @pytest.mark.parametrize("separate_instance", [False, True])
+    def test_end_session_revokes_concurrent_auto_renewal(
+        self, session_service, monkeypatch, separate_instance
     ):
         """Logout must terminate a renewal that was already in flight."""
         original = session_service.create_session(
             agent_id="test-agent", duration_hours=1
         )
         monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+        ending_service = (
+            SessionService(
+                secret_key=session_service.secret_key,
+                sessions_dir=session_service.sessions_dir,
+            )
+            if separate_instance
+            else session_service
+        )
 
         original_renew = session_service.renew_session
         renewal_entered = threading.Event()
         release_renewal = threading.Event()
         termination_saved = threading.Event()
-        original_save = session_service._save_session
+        original_save = ending_service._save_session
 
         def controlled_renew(agent_id, pattern=None):
             renewal_entered.set()
@@ -383,12 +491,12 @@ class TestSessionService:
                 termination_saved.set()
 
         monkeypatch.setattr(session_service, "renew_session", controlled_renew)
-        monkeypatch.setattr(session_service, "_save_session", observed_save)
+        monkeypatch.setattr(ending_service, "_save_session", observed_save)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             renewing = pool.submit(session_service.check_and_auto_renew, "test-agent")
             assert renewal_entered.wait(timeout=2)
-            ending = pool.submit(session_service.end_session, "test-agent")
+            ending = pool.submit(ending_service.end_session, "test-agent")
 
             # Logout cannot persist a stale termination while renewal owns the
             # lifecycle. It proceeds immediately after the fresh token exists.
@@ -535,6 +643,105 @@ class TestSessionService:
         # The marker now points at the replacement, so the next process sees it.
         assert (session_service.sessions_dir / "active").exists()
         session_service.validate_session(active.session_token)
+
+    def test_get_active_session_preserves_newer_activation_before_recreate(
+        self, session_service, monkeypatch
+    ):
+        """A stale expiry check must not overwrite a newer explicit activation."""
+        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        original = session_service.create_session(
+            agent_id="expired-agent",
+            pattern=AgentPattern.SUPPORT,
+            duration_hours=0,
+        )
+        time.sleep(0.01)
+
+        peer = SessionService(
+            secret_key=session_service.secret_key,
+            sessions_dir=session_service.sessions_dir,
+        )
+        original_recreate = session_service.check_and_auto_recreate
+        newer: Session | None = None
+
+        def activate_newer_then_recreate(session_token: str, **kwargs):
+            nonlocal newer
+            newer = peer.create_session("newer-agent", duration_hours=1)
+            return original_recreate(session_token, **kwargs)
+
+        monkeypatch.setattr(
+            session_service,
+            "check_and_auto_recreate",
+            activate_newer_then_recreate,
+        )
+
+        active = session_service.get_active_session()
+
+        assert newer is not None
+        assert active is not None
+        assert active.session_id == newer.session_id
+        assert active.agent_id == "newer-agent"
+        assert session_service.get_session("expired-agent") == original
+        assert peer.get_active_session() == newer
+
+    def test_active_marker_publication_is_serialized_across_services(
+        self, session_service, monkeypatch
+    ):
+        """Concurrent explicit activation must publish after stale recreation."""
+        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        original = session_service.create_session(
+            agent_id="expired-agent",
+            pattern=AgentPattern.SUPPORT,
+            duration_hours=0,
+        )
+        time.sleep(0.01)
+
+        peer = SessionService(
+            secret_key=session_service.secret_key,
+            sessions_dir=session_service.sessions_dir,
+        )
+        recreate_saved = threading.Event()
+        release_recreate = threading.Event()
+        peer_marker_attempted = threading.Event()
+        original_save = session_service._save_session
+        original_peer_set_active = peer._set_active_session
+
+        def pause_recreate_after_save(session: Session):
+            original_save(session)
+            if (
+                session.agent_id == "expired-agent"
+                and session.session_id != original.session_id
+            ):
+                recreate_saved.set()
+                assert release_recreate.wait(timeout=2)
+
+        def signal_peer_marker_attempt(agent_id: str):
+            peer_marker_attempted.set()
+            original_peer_set_active(agent_id)
+
+        monkeypatch.setattr(session_service, "_save_session", pause_recreate_after_save)
+        monkeypatch.setattr(peer, "_set_active_session", signal_peer_marker_attempt)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            recreating = pool.submit(session_service.get_active_session)
+            assert recreate_saved.wait(timeout=2)
+
+            activating = pool.submit(
+                peer.create_session,
+                "newer-agent",
+                AgentPattern.SUPPORT,
+                1,
+            )
+            assert peer_marker_attempted.wait(timeout=2)
+            time.sleep(0.05)
+            assert not activating.done()
+
+            release_recreate.set()
+            recreated = recreating.result(timeout=2)
+            newer = activating.result(timeout=2)
+
+        assert recreated is not None
+        assert recreated.agent_id == "expired-agent"
+        assert peer.get_active_session() == newer
 
     def test_get_active_session_clears_marker_when_recreate_disabled(
         self, session_service, monkeypatch
@@ -2661,11 +2868,15 @@ def test_direct_sync_exports_fresh_before_copying(tmp_path, monkeypatch):
     cache_path = cache_dir / "agent-1_memory.md"
     cache_path.write_text("# MEMORY\n\n### stale memory\n", encoding="utf-8")
 
-    client = DirectClient.__new__(DirectClient)
+    client = DirectClient(api_key="test-key")
     export_calls = []
 
-    def fresh_export(*, agent_id, limit_per_type):
+    def fresh_export(*, agent_id, output_path, limit_per_type, _project_sync=False):
+        assert _project_sync is True
         export_calls.append((agent_id, limit_per_type))
+        nonlocal cache_path
+        cache_path = Path(output_path)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(
             "# MEMORY\n\n### current memory\n\n### newer memory\n",
             encoding="utf-8",
