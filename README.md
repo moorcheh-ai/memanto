@@ -4,7 +4,6 @@
   </a>
 </p>
 
-<h3 align="center">Memory that AI Agents Love!</h3>
 
 <p align="center">
   Memanto is a <strong>Memory Agent</strong>; a companion agent that manages the memories of your other agents:<br>
