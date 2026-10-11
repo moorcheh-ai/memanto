@@ -125,3 +125,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @notkainoa
 - @WinAlphaBeta
 - @Ratanlavate
+- @abdalmoutyhossam-coder
