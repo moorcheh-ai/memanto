@@ -126,3 +126,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @WinAlphaBeta
 - @Ratanlavate
 - @abdalmoutyhossam-coder
+- @jmass-ggg
