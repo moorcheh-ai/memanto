@@ -10,6 +10,8 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+from memanto.app.utils.session_summaries import read_session_summaries
+
 
 class SummaryVisualizationService:
     """Generates ASCII-art visualizations for daily summaries"""
@@ -124,19 +126,9 @@ class SummaryVisualizationService:
         Returns a list of dicts:
             {"timestamp": datetime, "type": str, "title": str, "confidence": float}
         """
-        pattern = f"{agent_id}_{date}_*_summary.md"
-        session_files = list(sessions_dir.glob(pattern))
-        if not session_files:
-            return []
-
         memories: list[dict] = []
 
-        for file_path in session_files:
-            try:
-                text = file_path.read_text(encoding="utf-8")
-            except Exception:
-                continue
-
+        for text in read_session_summaries(sessions_dir, agent_id, date):
             headings = list(self._HEADING_RE.finditer(text))
 
             for i, match in enumerate(headings):

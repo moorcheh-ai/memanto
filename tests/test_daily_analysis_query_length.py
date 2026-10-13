@@ -12,7 +12,7 @@ def _make_summary_service(tmp_path, monkeypatch, session_content: str):
     summaries_dir = tmp_path / "summaries"
     sessions_dir.mkdir()
     (sessions_dir / "agent-1_2026-06-28_001_summary.md").write_text(
-        session_content,
+        "# Session Summary for agent-1\n" + session_content,
         encoding="utf-8",
     )
 
@@ -112,7 +112,7 @@ def test_short_day_summary_preserves_session_text_as_retrieval_query(
     service.generate_summary("agent-1", "2026-06-28")
 
     call_kwargs = client.answer.generate.call_args.kwargs
-    assert call_kwargs["query"] == short_content
+    assert call_kwargs["query"] == "# Session Summary for agent-1\n" + short_content
     assert call_kwargs["ai_model"] == "test-model"
 
 

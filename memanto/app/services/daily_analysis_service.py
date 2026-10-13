@@ -23,6 +23,7 @@ from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryOperationError
+from memanto.app.utils.session_summaries import read_session_summaries
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
@@ -139,23 +140,9 @@ class DailyAnalysisService:
             output_path,
             base_dir=self.summaries_dir.parent,
         )
-        # Find all relevant session MD files
-        pattern = f"{agent_id}_{date}_*_summary.md"
-        session_files = list(self.sessions_dir.glob(pattern))
-
-        if not session_files:
-            return {"status": "no_sessions"}
-
-        combined_content = []
-        for file_path in session_files:
-            try:
-                with open(file_path, encoding="utf-8") as f:
-                    combined_content.append(f.read())
-            except Exception as e:
-                print(f"Error reading {file_path}: {e}")
-
+        combined_content = read_session_summaries(self.sessions_dir, agent_id, date)
         if not combined_content:
-            return {"status": "empty_sessions"}
+            return {"status": "no_sessions"}
 
         full_text = "\n\n---\n\n".join(combined_content)
 
@@ -229,7 +216,7 @@ Format the output as a Markdown report:
         return {
             "status": "success",
             "summary_path": str(summary_path),
-            "sessions_count": len(session_files),
+            "sessions_count": len(combined_content),
             "agent_id": agent_id,
             "date": date,
         }
@@ -518,16 +505,9 @@ Example response format:
                 cancel_event=cancel_event,
             )
 
-        pattern = f"{agent_id}_{date}_*_summary.md"
-        session_files = list(self.sessions_dir.glob(pattern))
-
-        if not session_files:
+        combined_content = read_session_summaries(self.sessions_dir, agent_id, date)
+        if not combined_content:
             return {"status": "no_sessions"}
-
-        combined_content = []
-        for file_path in session_files:
-            with open(file_path, encoding="utf-8") as f:
-                combined_content.append(f.read())
         full_text = "\n\n---\n\n".join(combined_content)
         return self._generate_conflict_report_legacy(
             agent_id, date, namespace, client, full_text

@@ -2258,7 +2258,7 @@ def test_daily_summary_omits_unset_active_ai_model(tmp_path, monkeypatch):
     summaries_dir = tmp_path / "summaries"
     sessions_dir.mkdir()
     (sessions_dir / "agent-1_2026-06-28_001_summary.md").write_text(
-        "# Session\n\nRemembered a project milestone.",
+        "# Session Summary for agent-1\n\nRemembered a project milestone.",
         encoding="utf-8",
     )
 
