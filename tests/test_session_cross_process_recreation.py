@@ -109,3 +109,75 @@ def test_logout_revokes_inflight_auto_recreation_across_processes(tmp_path):
                 process.terminate()
                 process.join(timeout=5)
         results.close()
+
+
+def _renew_worker(sessions_dir, entered, release, results):
+    """Pause a real worker during near-expiry session renewal."""
+    settings.SESSION_AUTO_RENEW_ENABLED = True
+    settings.SESSION_EXTEND_THRESHOLD_MINUTES = 120
+    service = SessionService(secret_key=_SECRET, sessions_dir=Path(sessions_dir))
+    original_renew = service.renew_session
+
+    def paused_renew(agent_id, pattern=None):
+        entered.set()
+        if not release.wait(timeout=10):
+            raise TimeoutError("Parent did not release renewal")
+        return original_renew(agent_id, pattern)
+
+    service.renew_session = paused_renew
+    try:
+        renewed = service.check_and_auto_renew(_AGENT_ID)
+        if renewed is None:
+            results.put(("renew_error", "near-expiry session not renewed"))
+        else:
+            results.put(("renewed", renewed.session_id, renewed.session_token))
+    except Exception as exc:
+        results.put(("renew_error", repr(exc)))
+
+
+def test_logout_revokes_inflight_renewal_across_real_processes(tmp_path):
+    """An independent logout process must revoke the in-flight new token."""
+    sessions_dir = tmp_path / "sessions"
+    service = SessionService(secret_key=_SECRET, sessions_dir=sessions_dir)
+    original = service.create_session(agent_id=_AGENT_ID, duration_hours=1)
+
+    context = multiprocessing.get_context("spawn")
+    entered, release = context.Event(), context.Event()
+    called, body_entered = context.Event(), context.Event()
+    results = context.Queue()
+    renewing = context.Process(
+        target=_renew_worker, args=(str(sessions_dir), entered, release, results)
+    )
+    logging_out = context.Process(
+        target=_logout_worker,
+        args=(str(sessions_dir), called, body_entered, results),
+    )
+
+    try:
+        renewing.start()
+        assert entered.wait(timeout=10), "renewal never reached its pause"
+        logging_out.start()
+        assert called.wait(timeout=10), "logout process did not start"
+        assert not body_entered.wait(timeout=0.4), (
+            "logout mutated persisted state during in-flight renewal"
+        )
+        release.set()
+        renewing.join(timeout=15)
+        logging_out.join(timeout=15)
+        assert renewing.exitcode == 0
+        assert logging_out.exitcode == 0
+        outcomes = [results.get(timeout=5) for _ in range(2)]
+        by_type = {entry[0]: entry for entry in outcomes}
+        assert set(by_type) == {"renewed", "logged_out"}, outcomes
+        renewed_id, renewed_token = by_type["renewed"][1:]
+        assert renewed_id != original.session_id
+        assert by_type["logged_out"][1] == renewed_id
+        with pytest.raises(InvalidSessionTokenError):
+            service.validate_session(renewed_token)
+    finally:
+        release.set()
+        for process in (renewing, logging_out):
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=5)
+        results.close()
