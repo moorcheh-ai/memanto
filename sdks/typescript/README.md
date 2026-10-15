@@ -91,9 +91,10 @@ The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and 
 | `healthTimeoutMs` | `number` | `60000` | Health-check timeout. |
 | `verbose` | `boolean` | `false` | Stream server logs to the parent process. |
 
-When `baseUrl` points to an existing server, `apiKey` is sent as `X-Api-Key`
-on agent-management and activation requests. Session-scoped memory requests
-continue to use the server-issued session token.
+When `apiKey` is set it is sent as `X-Api-Key` on every request. A server
+reachable beyond loopback requires it for agent management, activation, and
+session renewal. Memory requests are still authorized by the server-issued
+session token.
 
 ### Methods
 
@@ -107,7 +108,7 @@ continue to use the server-issued session token.
 
 **Memory reads**
 
-- `recall({ query, limit?, minSimilarity?, type? })`
+- `recall({ query, limit?, minSimilarity?, type?, tags? })` — `tags` returns only memories carrying all of them.
 - `recallAsOf({ asOf, limit?, type? })` — point-in-time recall. `asOf` is `YYYY-MM-DD` or ISO 8601.
 - `recallChangedSince({ since, limit?, type? })` — what changed after `since`.
 - `recallRecent({ limit?, type? })` — newest-first.
@@ -125,7 +126,7 @@ continue to use the server-issued session token.
 - `listAgents()`
 - `getAgent()`
 - `createAgent({ pattern?, description? })` — explicit create (only needed when `autoCreate: false`).
-- `deleteAgent()`
+- `deleteAgent({ deleteMemories? })` — memories are kept in Moorcheh unless `deleteMemories: true`
 - `deactivate()` — end the current session (the next call rebootstraps).
 - `status()` — current session info.
 - `close()` — stop the spawned server.
@@ -140,6 +141,51 @@ if (!result.uvxAvailable) {
   console.error(result.hint);
 }
 ```
+
+## eve
+
+`@moorcheh-ai/memanto/eve` gives [eve](https://github.com/vercel/eve) agents long-term memory. Requires Node.js 24 and eve 0.60 or later.
+
+### Memory provider
+
+Add a memory slot:
+
+```ts
+// agent/memory/memanto.ts
+import { memantoMemory } from "@moorcheh-ai/memanto/eve";
+import { defineMemory } from "eve/memory";
+import { byPrincipal } from "eve/memory/scope";
+
+export default defineMemory({
+  description: "Recall and manage durable context for the current user.",
+  provider: memantoMemory({
+    apiKey: process.env.MOORCHEH_API_KEY,
+    baseUrl: process.env.MEMANTO_BASE_URL,
+  }),
+  scope: byPrincipal,
+});
+```
+
+- **Recall.** Before each turn, the memories most relevant to the user's message are added to the model's context as one user-role message marked as data, not instructions. It supersedes the previous turn's recall.
+- **Tools.** The model gets `memanto__remember` and `memanto__recall` (eve names them after the slot file). Each call shows an activity label such as `Recalling "coffee order"` → `Found 2 memories`.
+- **Capture** (`capture: true`, off by default). After each completed turn, durable memories are extracted from the user's words and saved. This makes one server-side LLM call per turn.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `apiKey` | — | Moorcheh API key. Sent as `X-Api-Key` to authorize a remote server. |
+| `baseUrl` | — | A running Memanto server. Omit it in `eve dev` to start one locally with `uvx`. |
+| `agentId` | `"eve"` | Memanto agent that stores the slot's memories. |
+| `recallLimit` | `5` | Memories recalled before each turn (1–50). |
+| `capture` | `false` | Extract and save memories from each completed turn. |
+| `client` | — | An existing `Memanto` client to use. |
+
+**Isolation.** Every eve scope (with `byPrincipal`, each authenticated user) shares one Memanto agent. Each scope's memories carry a tag derived from eve's opaque scope key. Recall filters on that tag inside the search query, so one user's memories are never candidates for another's. Tools are bound to the turn's scope, so the model cannot address another user's memories.
+
+**Deploying.** eve deployments (for example, on Vercel) cannot start a local server. Run `memanto serve` somewhere the agent can reach, set `MEMANTO_BASE_URL` to its URL, and set `MOORCHEH_API_KEY` to the key that server uses. The server only allows agent activation for callers presenting that key. Treat recalled memories as user-provided data. Tell the model in `agent/instructions.md` not to save secrets or credentials.
+
+### Tools only
+
+To add tools without a memory slot, use `createMemantoEveTools(memanto)`. It returns `recallMemory`, `rememberMemory`, and `answerMemory`; re-export each one from its own file under `agent/tools/`. These tools share one agent across every caller, so use the memory provider when different users must not see each other's memories.
 
 ## Versioning
 

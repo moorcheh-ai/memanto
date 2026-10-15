@@ -1,0 +1,9 @@
+[project]
+name = "memanto-antigravity-brain-migration-showcase"
+version = "1.0.0"
+description = "Privacy-safe Google Antigravity brain archive to Memanto OKF migration"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -196,6 +196,49 @@ class ConfigManager:
         """Save Letta API key to ~/.memanto/.env."""
         self._set_env_var("LETTA_API_KEY", _normalize_duplicated_api_key(api_key))
 
+    def get_zep_api_key(self) -> str | None:
+        """Get Zep API key from ~/.memanto/.env."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        key = (
+            os.environ.get("ZEP_API_KEY") or os.environ.get("zep_api_key") or ""
+        ).strip()
+        if not key:
+            return None
+        return _normalize_duplicated_api_key(key)
+
+    def set_zep_api_key(self, api_key: str) -> None:
+        """Save Zep API key to ~/.memanto/.env."""
+        self._set_env_var("ZEP_API_KEY", _normalize_duplicated_api_key(api_key))
+
+    def get_hindsight_api_key(self) -> str | None:
+        """Get Hindsight API key from ~/.memanto/.env."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        key = (
+            os.environ.get("HINDSIGHT_API_KEY")
+            or os.environ.get("hindsight_api_key")
+            or ""
+        ).strip()
+        if not key:
+            return None
+        return _normalize_duplicated_api_key(key)
+
+    def set_hindsight_api_key(self, api_key: str) -> None:
+        """Save Hindsight API key to ~/.memanto/.env."""
+        self._set_env_var("HINDSIGHT_API_KEY", _normalize_duplicated_api_key(api_key))
+
+    def get_hindsight_base_url(self) -> str | None:
+        """Get the Hindsight base URL (Hindsight Cloud or self-hosted)."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        url = (os.environ.get("HINDSIGHT_BASE_URL") or "").strip()
+        return url or None
+
+    def set_hindsight_base_url(self, base_url: str) -> None:
+        """Save the Hindsight base URL to ~/.memanto/.env."""
+        self._set_env_var("HINDSIGHT_BASE_URL", base_url.strip().rstrip("/"))
+
     def get_langfuse_api_key(self) -> str | None:
         """Get the Langfuse credential from ~/.memanto/.env.
 

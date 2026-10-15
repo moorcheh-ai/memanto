@@ -11,8 +11,11 @@ from pathlib import Path
 from typing import cast
 
 import typer
+from rich.live import Live
 from rich.panel import Panel
+from rich.text import Text
 
+from memanto.app.clients.agent_conflict import describe_conflict_progress
 from memanto.app.constants import SourceType
 from memanto.app.core import is_valid_source
 from memanto.app.utils.client_identity import (
@@ -1060,17 +1063,48 @@ def detect_conflicts(
     client = get_client()
 
     try:
-        with console.status(
-            f"[cyan]Detecting conflicts for '{agent_id}' on {date}...",
-            spinner="dots",
-        ):
-            result = client.generate_conflict_report(agent_id=agent_id, date=date)
+        progress_state = {
+            "message": f"Detecting conflicts for '{agent_id}' on {date}…",
+            "run_id": None,
+        }
+
+        def on_progress(event_name: str, data: dict) -> None:
+            if event_name == "run_started" and data.get("run_id"):
+                progress_state["run_id"] = data["run_id"]
+            message = describe_conflict_progress(event_name, data)
+            if message:
+                progress_state["message"] = message
+            elif progress_state.get("run_id"):
+                progress_state["message"] = (
+                    f"Conflict detection in progress (run {progress_state['run_id']})…"
+                )
+
+        progress_message = progress_state["message"] or ""
+        with Live(
+            Text(progress_message, style="cyan"),
+            console=console,
+            refresh_per_second=4,
+            transient=True,
+        ) as live:
+
+            def _tick_progress() -> None:
+                live.update(Text(progress_state["message"] or "", style="cyan"))
+
+            def _on_progress(event_name: str, data: dict) -> None:
+                on_progress(event_name, data)
+                _tick_progress()
+
+            result = client.generate_conflict_report(
+                agent_id=agent_id, date=date, on_progress=_on_progress
+            )
         elapsed = time.perf_counter() - start
 
         conflicts = result.get("conflicts", {})
 
         if conflicts.get("status") == "success":
             count = conflicts.get("conflict_count", 0)
+            if progress_state.get("run_id"):
+                console.print(f"[dim]Moorche run:[/dim] {progress_state['run_id']}")
             console.print(
                 f"[green]Conflict report generated:[/green] {conflicts.get('json_path')}"
             )

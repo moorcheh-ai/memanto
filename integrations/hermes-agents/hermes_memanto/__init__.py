@@ -9,7 +9,7 @@ Then point Hermes at it::
     hermes config set memory.provider memanto
 """
 
-from hermes_memanto.provider import MemantoMemoryProvider, register
+from .provider import MemantoMemoryProvider, register
 
 __all__ = ["MemantoMemoryProvider", "register"]
-__version__ = "0.1.0"
+__version__ = "0.1.1"

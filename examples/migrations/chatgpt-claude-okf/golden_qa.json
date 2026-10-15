@@ -1,0 +1,38 @@
+[
+  {
+    "id": "qa-01",
+    "question": "Which ArgoCD approach did I settle on for the dev EKS shutdown system, and why that one rather than the alternative?",
+    "source_answer": "You went with Option 1, disabling and re-enabling ArgoCD Auto Sync, because it needs no changes to your Git repo and works purely from Lambda. The alternative was configuring ignoreDifferences on /spec/replicas, which you could layer on later if you wanted Auto Sync to stay on permanently.",
+    "note": "Answer taken from the original Claude conversation of 2026-08-06, before migration."
+  },
+  {
+    "id": "qa-02",
+    "question": "When my automation waits for infrastructure to come back up, do I prefer fixed timers or something else?",
+    "source_answer": "Real readiness polling rather than fixed timers. The Step Functions state machine was built to wait until resources are actually ready, matching your stated preference.",
+    "note": "From the same 2026-08-06 conversation."
+  },
+  {
+    "id": "qa-03",
+    "question": "What was wrong with the DISTINCT in my Snowflake grants query?",
+    "source_answer": "DISTINCT was a band-aid rather than a fix. It usually signals a fan-out somewhere in the joins that is being papered over instead of resolved, so the join itself should be corrected instead.",
+    "note": "From the 2026-07-31 Snowflake conversation."
+  },
+  {
+    "id": "qa-04",
+    "question": "Can I expect real-time results from Snowflake ACCOUNT_USAGE views if I tune the query well enough?",
+    "source_answer": "No. ACCOUNT_USAGE views carry inherent latency of roughly 45 minutes to 3 hours depending on the view, so real-time results are not achievable regardless of query tuning.",
+    "note": "From the 2026-07-31 Snowflake conversation."
+  },
+  {
+    "id": "qa-05",
+    "question": "What kind of answers do I want when I ask for technical analysis?",
+    "source_answer": "Deep, multi-source analysis with the reasoning shown, not simple or surface-level answers. You explicitly asked for a research pass across vendor docs, engineering blogs and practitioner write-ups before any synthesis.",
+    "note": "From the 2026-08-21 MLOps conversation."
+  },
+  {
+    "id": "qa-06",
+    "question": "What is my professional role?",
+    "source_answer": "A Senior Data Platform Engineer, working with Snowflake among other tools.",
+    "note": "Stated by the user in the 2026-07-31 conversation."
+  }
+]

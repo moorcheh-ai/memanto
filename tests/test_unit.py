@@ -585,6 +585,25 @@ class TestSessionService:
 
         assert Settings(_env_file=None).MEMANTO_SECRET_KEY == ""
 
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "https://a.com,https://b.com",
+            " https://a.com , https://b.com ",
+            '["https://a.com", "https://b.com"]',
+        ],
+    )
+    def test_list_settings_accept_comma_or_json(self, monkeypatch, raw):
+        """List settings parse the documented comma form as well as JSON."""
+        from memanto.app.config import Settings
+
+        monkeypatch.setenv("ALLOWED_ORIGINS", raw)
+        monkeypatch.setenv("MEMANTO_PROXY_ALLOWED_IPS", "10.0.0.5")
+
+        settings = Settings(_env_file=None)
+        assert settings.ALLOWED_ORIGINS == ["https://a.com", "https://b.com"]
+        assert settings.MEMANTO_PROXY_ALLOWED_IPS == ["10.0.0.5"]
+
     def test_missing_session_secret_generates_persisted_fallback(
         self, temp_dir, monkeypatch
     ):
@@ -1473,7 +1492,17 @@ class TestMemoryReadServiceFormatting:
 
         assert formatted["title"] == "Plain uploaded document content"
         assert formatted["content"] == "Plain uploaded document content"
-        assert formatted["text"] == "Plain uploaded document content"
+
+    def test_sanitize_query_text_neutralizes_filter_tags(self):
+        from memanto.app.services.memory_read_service import _sanitize_query_text
+
+        assert _sanitize_query_text("#status:expired") == "status:expired"
+        assert (
+            _sanitize_query_text("deployment notes #status:expired #source:admin")
+            == "deployment notes status:expired source:admin"
+        )
+        assert _sanitize_query_text("C# F#") == "C# F#"
+        assert _sanitize_query_text("  #  #  ") == ""
 
     def test_typed_memory_formatting_stays_unchanged(self):
         from unittest.mock import MagicMock
@@ -1827,6 +1856,23 @@ class TestMemoryReadServiceVersionSelection:
         assert result["results"][0]["change_type"] == "updated"
 
 
+class TestDirectClientConfiguration:
+    def test_direct_client_init_onprem_without_api_key(self, monkeypatch):
+        from memanto.cli.client.direct_client import DirectClient
+
+        monkeypatch.setattr("memanto.app.config.settings.MEMANTO_BACKEND", "on-prem")
+        assert DirectClient().api_key == ""
+        assert DirectClient("on-prem").api_key == "on-prem"
+
+    def test_direct_client_init_cloud_requires_api_key(self, monkeypatch):
+        from memanto.cli.client.direct_client import DirectClient
+
+        monkeypatch.setattr("memanto.app.config.settings.MEMANTO_BACKEND", "cloud")
+        monkeypatch.setattr("memanto.app.config.settings.MOORCHEH_API_KEY", "")
+        with pytest.raises(ValueError):
+            DirectClient("")
+
+
 class TestClientApiKeyDispatch:
     """CLI clients must honor the api_key supplied to the client instance."""
 
@@ -1860,6 +1906,105 @@ class TestClientApiKeyDispatch:
 
         assert client._get_moorcheh() is fake_backend
         assert calls == ["mk_instance_specific_key"]
+
+    @pytest.mark.parametrize(
+        "client_cls_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    def test_agent_lifecycle_uses_the_instance_backend(
+        self, monkeypatch, tmp_path, client_cls_path
+    ):
+        """An explicit client key must not create or purge another account."""
+        from memanto.app.clients import moorcheh as moorcheh_mod
+        from memanto.app.services import agent_service as agent_service_mod
+
+        instance_backend = MagicMock()
+        process_backend = MagicMock()
+
+        class Recorder:
+            def get_client(self, api_key=None):
+                assert api_key == "mk_instance_specific_key"
+                return instance_backend
+
+        monkeypatch.setattr(moorcheh_mod, "moorcheh_client", Recorder())
+        monkeypatch.setattr(
+            agent_service_mod, "get_moorcheh_client", lambda: process_backend
+        )
+        monkeypatch.setattr(agent_service_mod, "get_data_dir", lambda: tmp_path)
+
+        module_name, class_name = client_cls_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client = getattr(module, class_name)(api_key="mk_instance_specific_key")
+        client._session_service = MagicMock()
+
+        client.create_agent("scoped-agent")
+        client.delete_agent("scoped-agent", delete_memories=True)
+
+        instance_backend.namespaces.create.assert_called_once_with(
+            "memanto_agent_scoped-agent", type="text"
+        )
+        instance_backend.namespaces.delete.assert_called_once_with(
+            namespace_name="memanto_agent_scoped-agent"
+        )
+        process_backend.namespaces.create.assert_not_called()
+        process_backend.namespaces.delete.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "client_cls_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    def test_daily_analysis_uses_the_instance_backend(
+        self, monkeypatch, tmp_path, client_cls_path
+    ):
+        """Summaries must not consume another account's memories or quota."""
+        from memanto.app.clients import moorcheh as moorcheh_mod
+        from memanto.app.services import daily_analysis_service as analysis_mod
+
+        instance_backend = MagicMock()
+        instance_backend.answer.generate.return_value = {"answer": "safe summary"}
+        process_backend = MagicMock()
+        process_backend.answer.generate.side_effect = AssertionError(
+            "process-global backend must not be used"
+        )
+
+        class Recorder:
+            def get_client(self, api_key=None):
+                assert api_key == "mk_instance_specific_key"
+                return instance_backend
+
+        sessions_dir = tmp_path / "sessions"
+        sessions_dir.mkdir()
+        (sessions_dir / "scoped-agent_2026-10-03_s1_summary.md").write_text(
+            "# Session\n\nA private account-specific memory.", encoding="utf-8"
+        )
+        session_service = MagicMock(sessions_dir=sessions_dir)
+
+        monkeypatch.setattr(moorcheh_mod, "moorcheh_client", Recorder())
+        monkeypatch.setattr(
+            analysis_mod, "get_moorcheh_client", lambda: process_backend
+        )
+        monkeypatch.setattr(
+            analysis_mod, "get_session_service", lambda: session_service
+        )
+        monkeypatch.setattr(analysis_mod, "get_data_dir", lambda: tmp_path)
+
+        module_name, class_name = client_cls_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client = getattr(module, class_name)(api_key="mk_instance_specific_key")
+
+        result = client._get_daily_analysis_service().generate_summary(
+            "scoped-agent", "2026-10-03"
+        )
+
+        assert result["status"] == "success"
+        instance_backend.answer.generate.assert_called_once()
+        process_backend.answer.generate.assert_not_called()
 
 
 class TestSummaryVisualizationService:
@@ -2154,7 +2299,7 @@ class TestMEMANTOArchitecture:
 
 
 def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
-    """Malformed conflict-item schemas should be preserved instead of crashing."""
+    """Malformed agent conflict payloads should degrade to an empty report."""
     import json
     from unittest.mock import MagicMock
 
@@ -2169,10 +2314,21 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
     )
 
     client = MagicMock()
-    client.answer.generate.return_value = {"answer": '["not an object", 1]'}
+    client.base_url = "https://api.moorcheh.ai/v1"
+    client.api_key = "test-key"
     monkeypatch.setattr(module, "get_moorcheh_client", lambda: client)
     monkeypatch.setattr(module, "get_active_llm_model", lambda _: "test-model")
+    monkeypatch.setattr(module, "parse_backend", lambda _: module.Backend.CLOUD)
     monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(
+        module,
+        "detect_conflicts_via_agent",
+        lambda **_: {
+            "date": "2026-06-28",
+            "conflicts": [{"conflict": False, "type": "compatible"}],
+            "count": 0,
+        },
+    )
 
     service = module.DailyAnalysisService(
         sessions_dir=sessions_dir,
@@ -2182,14 +2338,13 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
     result = service.generate_conflict_report("agent-1", "2026-06-28")
 
     assert result["status"] == "success"
-    assert result["conflict_count"] == 1
+    assert result["conflict_count"] == 0
 
     conflicts_path = (
         tmp_path / ".memanto" / "conflicts" / ("agent-1_2026-06-28_conflicts.json")
     )
     conflicts = json.loads(conflicts_path.read_text(encoding="utf-8"))
-    assert conflicts[0]["title"] == "Unparsed conflict report"
-    assert conflicts[0]["description"] == '["not an object", 1]'
+    assert conflicts == []
 
 
 def test_daily_summary_omits_unset_active_ai_model(tmp_path, monkeypatch):
@@ -2223,7 +2378,7 @@ def test_daily_summary_omits_unset_active_ai_model(tmp_path, monkeypatch):
 
 
 def test_conflict_report_omits_unset_active_ai_model(tmp_path, monkeypatch):
-    """On-prem conflict detection should omit ai_model when no active model is set."""
+    """Cloud conflict detection should omit ai_model when no active model is set."""
     from unittest.mock import MagicMock
 
     from memanto.app.services import daily_analysis_service as module
@@ -2237,10 +2392,19 @@ def test_conflict_report_omits_unset_active_ai_model(tmp_path, monkeypatch):
     )
 
     client = MagicMock()
-    client.answer.generate.return_value = {"answer": "[]"}
+    client.base_url = "https://api.moorcheh.ai/v1"
+    client.api_key = "test-key"
+    captured: dict[str, object] = {}
+
+    def fake_detect(**kwargs):
+        captured.update(kwargs)
+        return {"date": "2026-06-28", "conflicts": [], "count": 0}
+
     monkeypatch.setattr(module, "get_moorcheh_client", lambda: client)
     monkeypatch.setattr(module, "get_active_llm_model", lambda _: None)
+    monkeypatch.setattr(module, "parse_backend", lambda _: module.Backend.CLOUD)
     monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(module, "detect_conflicts_via_agent", fake_detect)
 
     service = module.DailyAnalysisService(
         sessions_dir=sessions_dir,
@@ -2249,8 +2413,7 @@ def test_conflict_report_omits_unset_active_ai_model(tmp_path, monkeypatch):
     result = service.generate_conflict_report("agent-1", "2026-06-28")
 
     assert result["status"] == "success"
-    call_kwargs = client.answer.generate.call_args.kwargs
-    assert "ai_model" not in call_kwargs
+    assert "ai_model" not in captured
 
 
 class TestServerConfigUrl:
@@ -2541,6 +2704,23 @@ def test_memory_edit_strips_valid_tags():
     assert request.tags == ["project", "important"]
 
 
+@pytest.mark.parametrize(
+    "tag", ["lg:key:my key", "project:apollo", "user=alice", "lg:key:v1:a%2Cb"]
+)
+def test_memory_tag_accepts_structured_tags(tag):
+    from memanto.app.routes.memory import MemoryEditRequest
+
+    assert MemoryEditRequest(tags=[tag]).tags == [tag]
+
+
+@pytest.mark.parametrize("tag", ["a,b", "a\nb", "a\rb", "a\u2028b", "a\x85b", "a\x00b"])
+def test_memory_tag_rejects_delimiters_and_line_breaks(tag):
+    from memanto.app.routes.memory import MemoryEditRequest
+
+    with pytest.raises(ValidationError):
+        MemoryEditRequest(tags=[tag])
+
+
 def test_format_memory_item_tag_stripping():
     from unittest.mock import MagicMock
 
@@ -2810,6 +2990,17 @@ def test_ui_static_xss_escapes():
     assert "${escHtml(m.provenance)}" in ui_html
     assert "${escHtml(e.message)}" in ui_html
     assert 'data-memory-id="${attrEsc(memId)}"' in ui_html
+    assert "sel.replaceChildren(new Option('All Sources', ''))" in ui_html
+    assert "sel.add(new Option(value, value))" in ui_html
+    assert "title=\"${attrEsc(m.id || '')}\"" in ui_html
+    assert "${escHtml(fmtDate(m.created_at))}" in ui_html
+    assert 'data-connection-name="${attrEsc(conn.name)}"' in ui_html
+    assert 'data-project-path="${attrEsc(p.path)}"' in ui_html
+    assert (
+        "confirmDisconnect(this.dataset.connectionName, "
+        "this.dataset.projectPath, false, this)" in ui_html
+    )
+    assert "confirmDisconnect(this.dataset.connectionName, null, true, this)" in ui_html
 
     forbidden_raw_interpolations = [
         "${agent.agent_id}",
@@ -2827,12 +3018,18 @@ def test_ui_static_xss_escapes():
         "${m.source ||",
         ">${m.source}</span>",
         "Source: ${m.source ||",
+        'sources.map(s => `<option value="${escHtml(s)}"',
+        "title=\"${escHtml(m.id || '')}\"",
+        "${fmtDate(m.created_at)}",
         "${m.content || m.text",
         "ID: ${memId ||",
         "Score: ${m.score",
         "Updated: ${fmtDate(",
         "forgetMemory('${memId}'",
         "forgetMemory('${escHtml(memId)}'",
+        "const safePath = escHtml(p.path)",
+        "confirmDisconnect('${escHtml(conn.name)}', '${safePath}'",
+        "confirmDisconnect('${escHtml(conn.name)}', null, true, this)",
         "Could not load agent: ${e.message}",
         "Session may be expired: ${e.message}",
         "Error loading agents: ${e.message}",

@@ -9,6 +9,7 @@ and would make the spec drift on every run otherwise.
 """
 
 import json
+import sys
 from pathlib import Path
 
 FALLBACK_VERSION = "0.0.0.dev0"
@@ -20,4 +21,4 @@ VERSION_FILE.write_text(f'__version__ = "{FALLBACK_VERSION}"\n')
 
 from memanto.app.main import app  # noqa: E402
 
-print(json.dumps(app.openapi(), indent=2))
+sys.stdout.buffer.write((json.dumps(app.openapi(), indent=2) + "\n").encode("utf-8"))

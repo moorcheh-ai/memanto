@@ -1,0 +1,131 @@
+{
+  "source": "langmem",
+  "namespace": [
+    "memories",
+    "alex"
+  ],
+  "user_id": "alex",
+  "count": 10,
+  "memories": [
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "5c409098-6838-40ee-bce4-40920a79e9f0",
+      "value": {
+        "content": "Alex prefers TypeScript for new frontend work and dislikes untyped JavaScript."
+      },
+      "created_at": "2026-06-02T00:00:00+00:00",
+      "updated_at": "2026-06-02T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "84a87c0c-292b-4fc3-abbb-4da82db7cd4c",
+      "value": {
+        "content": "Alex is a senior backend engineer on the Payments team at Northwind, working primarily in Go and Python."
+      },
+      "created_at": "2026-06-02T00:00:00+00:00",
+      "updated_at": "2026-06-02T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "d3fbaba8-7f52-49e1-a305-e7f440820120",
+      "value": {
+        "content": "Alex uses dark mode in all editors and tools."
+      },
+      "created_at": "2026-06-02T00:00:00+00:00",
+      "updated_at": "2026-06-02T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "1ee9a880-c71d-4153-a6c7-c69f2dbdf028",
+      "value": {
+        "content": "The ledger service is written in Go and backed by Postgres."
+      },
+      "created_at": "2026-06-06T00:00:00+00:00",
+      "updated_at": "2026-06-06T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "580bd5ff-c12e-4c17-b381-8284c10a24f4",
+      "value": {
+        "content": "Alex runs pytest for Python projects and Vitest for all TypeScript repos."
+      },
+      "created_at": "2026-06-11T00:00:00+00:00",
+      "updated_at": "2026-06-11T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "740adbfd-a070-48df-9dc9-050876fdc51f",
+      "value": {
+        "content": "Alex never deploys on Fridays, regardless of how small the change is."
+      },
+      "created_at": "2026-06-16T00:00:00+00:00",
+      "updated_at": "2026-06-16T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "b4ca48b5-2068-483e-8cf7-ee418713204a",
+      "value": {
+        "content": "Decision: the ledger service stores all monetary amounts as decimals, never floats, to avoid rounding errors in audits."
+      },
+      "created_at": "2026-06-16T00:00:00+00:00",
+      "updated_at": "2026-06-16T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "9db581a9-277e-4d97-9286-1cda05cf2de9",
+      "value": {
+        "content": "Alex wants to learn Rust and eventually rewrite the settlement worker in it."
+      },
+      "created_at": "2026-06-20T00:00:00+00:00",
+      "updated_at": "2026-06-20T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "ace9bce2-6357-4b29-a0f6-c74acf15cb42",
+      "value": {
+        "content": "Alex's goal: ship a single-currency (USD) double-entry ledger core to staging by end of Q3 2026; multi-currency is descoped for now."
+      },
+      "created_at": "2026-06-20T00:00:00+00:00",
+      "updated_at": "2026-06-20T00:00:00+00:00"
+    },
+    {
+      "namespace": [
+        "memories",
+        "alex"
+      ],
+      "key": "bab0c21b-7f67-4fb6-883a-3904e9c0892d",
+      "value": {
+        "content": "Priya moved from the ledger service to the Fraud team; Alex is now the sole engineer on the ledger."
+      },
+      "created_at": "2026-06-20T00:00:00+00:00",
+      "updated_at": "2026-06-20T00:00:00+00:00"
+    }
+  ]
+}

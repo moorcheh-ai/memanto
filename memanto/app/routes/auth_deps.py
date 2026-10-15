@@ -4,10 +4,12 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
-from urllib.parse import urlsplit
+import logging
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
+from memanto.app.config import is_loopback_host
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.client_identity import set_memanto_session
@@ -20,23 +22,49 @@ from memanto.app.utils.errors import (
 
 SESSION_COOKIE_NAME = "memanto_session_token"
 
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_log_value(value: object) -> str:
+    return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in str(value))
+
+
+def _redact_and_sanitize_url(url: str) -> str:
+    parts = urlsplit(url)
+    return _sanitize_log_value(
+        urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    )
+
 
 def set_session_cookie(
     response: Response, session_token: str, request: Request
 ) -> None:
-    """Store the browser UI session token outside JavaScript-readable state.
+    """
+    Store the browser UI session token outside JavaScript-readable state.
 
     MEMANTO defaults to binding 0.0.0.0 with no built-in TLS (see docker-compose.yml
     and Settings.HOST), so a hardcoded Secure=True would silently stop browsers from
     ever sending the cookie back over the plain-HTTP deployment this ships with by
     default. Mark it Secure only when the current request actually arrived over HTTPS.
     """
+    secure = request.url.scheme == "https"
+    peer_host = request.client.host if request.client else None
+    if not secure and (
+        not is_loopback_host(peer_host) or _has_forwarded_non_loopback(request)
+    ):
+        logger.warning(
+            "Issuing the browser UI session cookie over plain HTTP from %s. "
+            "Any network peer that can reach this port can intercept it and "
+            "gain full memory read/write for the active agent. Terminate TLS "
+            "in front of Memanto or bind to a loopback address.",
+            _redact_and_sanitize_url(str(request.url)),
+        )
     response.set_cookie(
         SESSION_COOKIE_NAME,
         session_token,
         httponly=True,
         samesite="strict",
-        secure=request.url.scheme == "https",
+        secure=secure,
         path="/",
     )
 
@@ -81,29 +109,42 @@ def _extract_presented_credential(
     x_api_key: str | None,
 ) -> str | None:
     """Extract a client-presented management credential from request headers."""
-    if x_api_key and x_api_key.strip():
+    if isinstance(x_api_key, str) and x_api_key.strip():
         return x_api_key.strip()
-    if authorization:
+    if isinstance(authorization, str):
         parts = authorization.split(None, 1)
         if len(parts) == 2 and parts[0].lower() == "bearer" and parts[1].strip():
             return parts[1].strip()
     return None
 
 
-def _is_loopback_host(host: str | None) -> bool:
-    """Return True when *host* is a loopback address (IPv4/IPv6/mapped)."""
-    if not host:
-        return False
-    import ipaddress
+def _origin_is_allowed(request: Request) -> bool:
+    origin = request.headers.get("origin")
+    if not origin or not isinstance(origin, str):
+        return True  # non-browser caller (CLI, curl, SDK) or mock/test request
+    from memanto.app.config import settings
 
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    if addr.is_loopback:
+    origin_stripped = origin.rstrip("/")
+    allowed = [o.rstrip("/") for o in settings.ALLOWED_ORIGINS]
+
+    if origin_stripped in allowed:
         return True
-    ipv4_mapped = getattr(addr, "ipv4_mapped", None)
-    return ipv4_mapped is not None and ipv4_mapped.is_loopback
+
+    if settings.CORS_ORIGIN_REGEX:
+        import re
+
+        if re.match(settings.CORS_ORIGIN_REGEX, origin_stripped):
+            return True
+
+    return False
+
+
+def _require_allowed_origin(request: Request) -> None:
+    if not _origin_is_allowed(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Origin not allowed for management endpoints",
+        )
 
 
 def _is_loopback_origin(origin: str | None) -> bool:
@@ -116,7 +157,7 @@ def _is_loopback_origin(origin: str | None) -> bool:
         return False
     if parsed.scheme not in {"http", "https"}:
         return False
-    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+    return parsed.hostname == "localhost" or is_loopback_host(parsed.hostname)
 
 
 def _is_loopback_host_header(host: str | None) -> bool:
@@ -127,7 +168,7 @@ def _is_loopback_host_header(host: str | None) -> bool:
         hostname = urlsplit(f"//{host}").hostname
     except ValueError:
         return False
-    return hostname == "localhost" or _is_loopback_host(hostname)
+    return hostname == "localhost" or is_loopback_host(hostname)
 
 
 def _is_cross_site_browser_request(request: Request) -> bool:
@@ -144,12 +185,46 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     return fetch_site in {"cross-site", "same-site"}
 
 
+def _has_forwarded_non_loopback(request: Request) -> bool:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        for ip in xff.split(","):
+            cleaned = ip.strip()
+            if cleaned and not is_loopback_host(cleaned):
+                return True
+
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        cleaned = x_real_ip.strip()
+        if cleaned and not is_loopback_host(cleaned):
+            return True
+
+    forwarded = request.headers.get("forwarded")
+    if forwarded:
+        for item in forwarded.split(";"):
+            item = item.strip()
+            if item.lower().startswith("for="):
+                val = item[4:].strip().strip('"').strip("[]")
+                if ":" in val and not val.startswith(":"):
+                    try:
+                        import ipaddress
+
+                        ipaddress.ip_address(val)
+                    except ValueError:
+                        val = val.rsplit(":", 1)[0].strip()
+                if val and not is_loopback_host(val):
+                    return True
+
+    return False
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
-    """Authorize agent-lifecycle / management endpoints.
+    """
+    Authorize agent-lifecycle / management endpoints.
 
     MEMANTO is a single-tenant companion service. Agent create/list/delete/
     activate endpoints previously only checked that the *server* had a
@@ -190,11 +265,14 @@ def require_management_access(
     if presented and expected and secrets.compare_digest(presented, expected):
         return server_key
 
+    _require_allowed_origin(request)
+
     client_host = request.client.host if request.client else None
     if (
-        _is_loopback_host(client_host)
+        is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
+        and not _has_forwarded_non_loopback(request)
     ):
         return server_key
 
@@ -213,7 +291,8 @@ def verify_moorcheh_api_key(
     authorization: str | None = Header(None),
     x_api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> str:
-    """Authorize management access and return the server Moorcheh credential.
+    """
+    Authorize management access and return the server Moorcheh credential.
 
     Kept as a thin wrapper so existing ``Depends(verify_moorcheh_api_key)``
     call sites pick up the new authorization rules without signature churn
@@ -250,6 +329,22 @@ def get_current_session(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
 
+    if session_cookie and not x_session_token:
+        client_host = request.client.host if request.client else None
+        if (
+            not is_loopback_host(client_host)
+            or not _is_loopback_host_header(request.headers.get("host"))
+            or _is_cross_site_browser_request(request)
+            or _has_forwarded_non_loopback(request)
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Cookie-authenticated session requests must originate "
+                    "from the loopback interface targeting a loopback Host."
+                ),
+            )
+
     session_service = get_session_service()
 
     try:
@@ -273,11 +368,13 @@ def get_current_session(
             # via the HttpOnly cookie (never re-read the token in JS), so
             # without this the cookie goes stale and the very next request
             # fails signature/session_id validation.
+
             if session_cookie:
                 set_session_cookie(response, renewed.session_token, request)
             # API clients authenticate with the request header instead of a
             # cookie. Return the replacement token on the response so they can
             # use it after auto-renewal invalidates the presented token.
+
             if x_session_token:
                 response.headers["X-Session-Token"] = renewed.session_token
 
@@ -319,7 +416,8 @@ def _maybe_auto_recreate_session(
     authorization: str | None,
     x_api_key: str | None,
 ) -> Session | None:
-    """Attempt transparent recreation of an expired session.
+    """
+    Attempt transparent recreation of an expired session.
 
     Returns the fresh Session, or None when recreation does not apply
     (disabled by config, terminated/logout session, superseded token) or is

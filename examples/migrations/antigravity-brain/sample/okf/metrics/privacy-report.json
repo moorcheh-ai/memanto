@@ -1,0 +1,14 @@
+{
+  "prepared_publishable_input": true,
+  "publishable_mode": true,
+  "raw_conversation_contents_published": false,
+  "redactions": {
+    "email": 0,
+    "ip_address": 0,
+    "line_endings_normalized": 97,
+    "unix_home": 0,
+    "url": 5,
+    "uuid": 0,
+    "windows_path": 40
+  }
+}

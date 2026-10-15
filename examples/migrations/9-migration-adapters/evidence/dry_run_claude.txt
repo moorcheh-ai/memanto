@@ -1,0 +1,6 @@
+$ python examples/migrations/scripts/migrate_claude.py --dry-run
+
+Dry run complete
+  Source records : 5
+  Mapped memories: 5  (skipped 0)
+  Type breakdown : auto: 5

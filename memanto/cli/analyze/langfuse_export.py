@@ -21,12 +21,16 @@ provider, so both keys travel as ``"pk-lf-...:sk-lf-..."`` and are split here.
 
 from __future__ import annotations
 
+import ipaddress
 import json
+import socket
+import urllib.parse
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+import httpcore
 import httpx
 
 from memanto.cli.migrate.langfuse_rules import CAPTURE_MODES
@@ -87,24 +91,204 @@ def split_api_key(api_key: str) -> tuple[str, str]:
     return public_key, secret_key
 
 
+# Official Langfuse Cloud regions (allowed as-is).
+_ALLOWED_LANGFUSE_HOSTS = {
+    "https://cloud.langfuse.com",
+    "https://us.cloud.langfuse.com",
+    "https://eu.cloud.langfuse.com",
+}
+
+
+def _extract_hostname(host: str) -> str | None:
+    text = (host or "").strip()
+    if not text:
+        return None
+    if not text.startswith(("http://", "https://")):
+        text = f"https://{text}"
+    try:
+        hostname = urllib.parse.urlsplit(text).hostname
+        return hostname
+    except Exception:
+        return None
+
+
+def _is_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or (ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10"))
+    ):
+        return False
+    return True
+
+
+def _resolve_public_ip(host: str) -> str | None:
+    """Resolve *host* and return a single public IP, or None if unsafe.
+
+    Used to pin the connection target so a DNS rebind between validation and
+    connect time cannot redirect the request at an internal address.
+    """
+    hostname = _extract_hostname(host)
+    if not hostname or hostname in ("localhost", "0.0.0.0", "::1", "127.0.0.1"):
+        return None
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+        for info in infos:
+            raw_addr = info[4][0]
+            if not isinstance(raw_addr, str):
+                continue
+            addr = raw_addr.split("%", 1)[0]
+            ip = ipaddress.ip_address(addr)
+            if not _is_public_ip(ip):
+                continue  # skip internal addresses, but keep looking for a public one
+            return addr
+    except (socket.gaierror, ValueError):
+        return None
+    return None
+
+
 def normalize_host(host: str | None) -> str:
-    """Normalize a Langfuse base URL (cloud EU/US or self-hosted)."""
+    """Normalize a Langfuse base URL (cloud EU/US or self-hosted).
+
+    SECURITY (#1852): the Langfuse secret key is transmitted as HTTP Basic auth,
+    so a host value must never point at internal infrastructure or travel in
+    cleartext. Rules:
+      * empty -> official cloud default
+      * explicit http:// -> rejected (cleartext + Langfuse is HTTPS-only)
+      * official cloud regions -> allowed as-is
+      * any other host -> must resolve to a PUBLIC IP (DNS-rebind guard);
+        private/loopback/link-local/metadata hosts are rejected
+    """
     text = (host or "").strip().rstrip("/")
     if not text:
         return DEFAULT_HOST
-    if not text.startswith(("http://", "https://")):
+    if text.startswith("http://"):
+        raise ValueError("Langfuse host must use HTTPS.")
+    if not text.startswith("https://"):
         text = f"https://{text}"
+    parsed = urllib.parse.urlsplit(text)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ValueError("Langfuse host must be a valid HTTPS URL.")
+    if text in _ALLOWED_LANGFUSE_HOSTS:
+        return text
+    ip = _resolve_public_ip(text)
+    if ip is None:
+        raise ValueError(
+            "Langfuse host must resolve to a public IP address. "
+            "Private, loopback, and unresolvable hosts are not allowed."
+        )
     return text
+
+
+class _PinnedNetworkBackend(httpcore.NetworkBackend):
+    """Network backend that overrides connect_tcp to connect to a pinned IP address."""
+
+    def __init__(self, backend: httpcore.NetworkBackend, pin_host: str, pin_ip: str):
+        self._backend = backend
+        self._pin_host = pin_host
+        self._pin_ip = pin_ip
+
+    def connect_tcp(  # type: ignore[override]
+        self,
+        host: str,
+        port: int,
+        timeout: Any = None,
+        local_address: Any = None,
+        socket_options: Any = None,
+    ) -> httpcore.NetworkStream:
+        if host == self._pin_host:
+            host = self._pin_ip
+        return self._backend.connect_tcp(
+            host,
+            port,
+            timeout=timeout,
+            local_address=local_address,
+            socket_options=socket_options,
+        )
+
+    def connect_unix_socket(  # type: ignore[override]
+        self, path: str, timeout: Any = None, socket_options: Any = None
+    ) -> httpcore.NetworkStream:
+        return self._backend.connect_unix_socket(
+            path, timeout=timeout, socket_options=socket_options
+        )
+
+    def sleep(self, seconds: float) -> None:
+        return self._backend.sleep(seconds)
+
+
+class _PinnedIPTransport(httpx.HTTPTransport):
+    """Transport that pins a hostname to a pre-validated public IP at connect time.
+
+    httpx/httpcore resolve DNS when the connection opens, not when the URL is
+    built. Without a pin, a hostile name server could return a public address at
+    validation time and an internal (metadata/loopback/RFC1918) address at connect
+    time, bypassing the SSRF guard. We use a custom NetworkBackend to rewrite
+    the destination IP for the TCP connection. The original hostname stays in
+    the Host header and TLS SNI (``base_url`` is unchanged).
+    """
+
+    def __init__(self, pin_host: str, pin_ip: str, pin_family: int, **kwargs: Any):
+        super().__init__(**kwargs)
+        if hasattr(self, "_pool") and hasattr(self._pool, "_network_backend"):
+            self._pool._network_backend = _PinnedNetworkBackend(
+                self._pool._network_backend, pin_host, pin_ip
+            )
+
+
+def _pinned_transport(host: str) -> httpx.HTTPTransport:
+    """Build a connection-time IP-pinned transport for *host* (or a plain one).
+
+    The IP is resolved once here (after normalize_host already guaranteed it is
+    public) and forced at connect time. If the host cannot be resolved to a public
+    IP, a default transport is returned.
+    """
+    hostname = _extract_hostname(host)
+    if not hostname or hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        return httpx.HTTPTransport()
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, ValueError) as exc:
+        raise RuntimeError(f"Could not resolve host '{hostname}': {exc}")
+    for info in infos:
+        raw_addr = info[4][0]
+        if not isinstance(raw_addr, str):
+            continue
+        addr = raw_addr.split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            continue
+        if not _is_public_ip(ip):
+            continue
+        return _PinnedIPTransport(pin_host=hostname, pin_ip=addr, pin_family=info[0])
+    raise RuntimeError(
+        f"Host {host} no longer resolves to a public IP (DNS rebind detected)."
+    )
 
 
 def _client(api_key: str, host: str) -> httpx.Client:
     public_key, secret_key = split_api_key(api_key)
-    return httpx.Client(
+
+    # Instantiate the client normally to inherit environment proxy mounts.
+    # The default HTTPX implementation disables env proxies when `transport`
+    # is passed explicitly.
+    client = httpx.Client(
         base_url=host,
         timeout=REQUEST_TIMEOUT_S,
         auth=httpx.BasicAuth(public_key, secret_key),
         headers={"Content-Type": "application/json"},
     )
+
+    # Swap the default direct transport with the pinned SSRF-safe one,
+    # preserving proxy mounts for environments that require HTTPS_PROXY.
+    if hasattr(client, "_transport"):
+        client._transport = _pinned_transport(host)
+
+    return client
 
 
 US_HOST = "https://us.cloud.langfuse.com"

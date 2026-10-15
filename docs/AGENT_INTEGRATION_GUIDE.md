@@ -58,7 +58,23 @@ memanto serve
 
 ## Integration Pattern: Python Agents
 
-### Basic Integration (Copy-Paste Ready)
+### Python Client (Recommended)
+
+`pip install memanto` includes an in-process Python client. It creates the agent on first use and reuses the agent's live session, so there is no `agent create` / `activate` step:
+
+```python
+from memanto import Memanto
+
+memory = Memanto(agent_id="your-agent-id")
+
+memory.remember("User prefers dark mode", type="preference", tags=["ui"])
+memory.recall("dark mode", limit=5)        # {"memories": [...], ...}
+memory.answer("What theme does the user prefer?")  # {"answer": "...", ...}
+```
+
+Full reference: [Python SDK](https://docs.memanto.ai/sdk/python).
+
+### Alternative: Shell Out to the CLI
 
 ```python
 import subprocess
@@ -298,6 +314,26 @@ const memory = new AgentMemory('my-bot');
 memory.remember('User prefers npm over yarn', 'preference');
 const prefs = memory.recall('package manager');
 ```
+
+### Go
+
+The [Go SDK](../sdks/go) creates the agent on first use and manages the session for you. With no `BaseURL`, it starts `uvx memanto serve` itself (requires [uv](https://docs.astral.sh/uv/)) and stops it on `Close`:
+
+```go
+import memanto "github.com/moorcheh-ai/memanto/sdks/go"
+
+client, err := memanto.New(memanto.Options{AgentID: "my-bot"})
+if err != nil {
+	log.Fatal(err)
+}
+defer client.Close()
+
+ctx := context.Background()
+client.Remember(ctx, memanto.RememberInput{Content: "User prefers npm over yarn", Type: "preference"})
+prefs, err := client.Recall(ctx, memanto.RecallInput{Query: "package manager", Limit: 5})
+```
+
+Set `BaseURL` to use a server you already run with `memanto serve`. Full reference: [sdks/go/README.md](../sdks/go/README.md).
 
 ### Shell Scripts
 

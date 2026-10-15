@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memanto-pydantic-ai"
+version = "0.1.0"
+description = "Pydantic AI tools and integration for Memanto's persistent memory"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [{ name = "Memanto", email = "info@memanto.ai" }]
+dependencies = [
+    "memanto>=0.2.21",
+    "pydantic-ai-slim>=2.0.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["memanto_pydantic_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

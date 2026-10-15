@@ -45,6 +45,18 @@ _session_service = None
 logger = logging.getLogger(__name__)
 
 
+def _one_line(value: Any, default: str = "") -> str:
+    """Collapse a value into a single display line.
+
+    Summary entries are Markdown, so anything interpolated into a heading must
+    not carry line breaks. ``str.split()`` splits on every Unicode whitespace
+    code point -- including U+2028, U+2029, U+000B, U+000C and U+0085 -- so
+    this does not depend on the upstream title validator having covered all of
+    them. This mirrors ``memory_export_service._one_line``.
+    """
+    return " ".join(str(value or "").split()) or default
+
+
 def get_session_service() -> "SessionService":
     """
     Shared SessionService singleton.
@@ -75,11 +87,12 @@ class SessionService:
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self._secret_key: str | None = secret_key or settings.MEMANTO_SECRET_KEY or None
         self._storage_hardened = False
-        # Serialize lifecycle operations for the same agent across both threads
-        # and worker processes so renewal cannot publish a fresh bearer token
-        # after logout has completed. FileLock is recursive per instance and
-        # coordinates independent SessionService instances through one lock file.
-        self._agent_locks: dict[str, FileLock] = {}
+        # Serialize lifecycle operations for the same agent so renewal cannot
+        # publish a fresh bearer token after logout has completed. Keep the
+        # process-wide active marker on its own narrower lock so unrelated
+        # agents can create, renew, and terminate sessions concurrently.
+        self._agent_locks: dict[str, threading.RLock] = {}
+        self._agent_file_locks: dict[str, FileLock] = {}
         self._agent_locks_guard = threading.Lock()
         self._active_marker_lock = threading.RLock()
         self._summary_lock = threading.Lock()
@@ -91,27 +104,42 @@ class SessionService:
             self._secret_key = self._generate_secure_secret_key()
         return self._secret_key
 
-    def _lock_for_agent(self, agent_id: str) -> FileLock:
-        """Return a stable cross-process lifecycle lock for one agent.
-
-        Multiple application workers can share the same session directory. A
-        process-local RLock cannot make logout authoritative over renewal in a
-        different worker, so lifecycle mutations coordinate through a private
-        lock file. Reusing one FileLock per service/agent also keeps nested
-        create/renew calls reentrant.
-        """
+    def _lock_for_agent(self, agent_id: str) -> threading.RLock:
+        """Return the stable lifecycle lock for one agent."""
         validate_safe_id(agent_id, "agent_id")
         with self._agent_locks_guard:
             lock = self._agent_locks.get(agent_id)
             if lock is None:
-                self.sessions_dir.mkdir(
-                    parents=True, exist_ok=True, mode=self._PRIVATE_DIR_MODE
-                )
-                self._set_private_permissions(self.sessions_dir, self._PRIVATE_DIR_MODE)
-                lock_path = self.sessions_dir / f".{agent_id}.lifecycle.lock"
-                lock = FileLock(str(lock_path), mode=self._PRIVATE_FILE_MODE)
+                lock = threading.RLock()
                 self._agent_locks[agent_id] = lock
             return lock
+
+    def _file_lock_for_agent(self, agent_id: str) -> FileLock:
+        """Return the stable cross-process lifecycle lock for one agent."""
+        validate_safe_id(agent_id, "agent_id")
+        self._harden_session_storage()
+        with self._agent_locks_guard:
+            lock = self._agent_file_locks.get(agent_id)
+            if lock is None:
+                lock_path = self.sessions_dir / f".{agent_id}.lifecycle.lock"
+                lock = FileLock(
+                    str(lock_path),
+                    timeout=5,
+                    mode=self._PRIVATE_FILE_MODE,
+                )
+                self._agent_file_locks[agent_id] = lock
+            return lock
+
+    @contextmanager
+    def lock_agent_lifecycle(self, agent_id: str) -> Iterator[None]:
+        """Serialize agent/session lifecycle changes across threads and processes.
+
+        Agent metadata and bearer-session state live in separate services. Callers
+        that need to inspect or delete both must hold this shared lock so an
+        activation cannot publish a fresh token after deletion has started.
+        """
+        with self._lock_for_agent(agent_id), self._file_lock_for_agent(agent_id):
+            yield
 
     @staticmethod
     def _set_private_permissions(path: Path, mode: int) -> None:
@@ -310,7 +338,7 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
-        with self._lock_for_agent(agent_id):
+        with self.lock_agent_lifecycle(agent_id):
             return self._create_session(agent_id, pattern, duration_hours)
 
     def _create_session(
@@ -515,7 +543,7 @@ class SessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
-        with self._lock_for_agent(agent_id):
+        with self.lock_agent_lifecycle(agent_id):
             return self._end_session(agent_id)
 
     def _end_session(self, agent_id: str) -> SessionSummary:
@@ -596,10 +624,9 @@ class SessionService:
         # Validation and renewal must be one operation. Without the per-agent
         # lifecycle lock, parallel requests can all observe the same
         # near-expiry session, mint competing tokens, and immediately
-        # invalidate every replacement except the last file write. The lock is
-        # cross-process so logout remains authoritative even when another worker
-        # is already inside renewal.
-        with self._lock_for_agent(agent_id):
+        # invalidate every replacement except the last file write. The same
+        # lock also makes logout authoritative over an in-flight renewal.
+        with self.lock_agent_lifecycle(agent_id):
             session = self.get_session(agent_id)
             if not session or not session.is_active():
                 return None
@@ -648,14 +675,16 @@ class SessionService:
             return None
 
         try:
-            agent_lock = self._lock_for_agent(token.agent_id)
+            validate_safe_id(token.agent_id, "agent_id")
         except ValueError:
             # A token we signed but whose agent_id is no longer a safe id.
             # Leave it to normal validation to reject rather than raising an
             # unhandled 500 out of the auth dependency.
             return None
 
-        with agent_lock:
+        # Hold the same cross-process lifecycle lock as logout until the
+        # expired-session check AND replacement publication both finish.
+        with self.lock_agent_lifecycle(token.agent_id):
             session = self.get_session(token.agent_id)
             if not session or session.session_id != token.session_id:
                 # Unknown agent, or the persisted record was replaced by a
@@ -736,8 +765,10 @@ class SessionService:
         self._harden_session_storage()
 
         # Format the memory into Markdown
-        memory_type = (getattr(memory_record, "type", None) or "unclassified").upper()
-        title = getattr(memory_record, "title", "Untitled")
+        memory_type = _one_line(
+            getattr(memory_record, "type", None), "unclassified"
+        ).upper()
+        title = _one_line(getattr(memory_record, "title", None), "Untitled")
         content = getattr(memory_record, "content", "")
         confidence = getattr(memory_record, "confidence", 1.0)
         # Fall back to the record's own id so the ID is logged on every path
@@ -924,7 +955,7 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        with self._lock_for_agent(agent_id), self._active_marker_lock:
+        with self.lock_agent_lifecycle(agent_id), self._active_marker_lock:
             active_link = self.sessions_dir / "active"
             active_agent_id: str | None = None
 

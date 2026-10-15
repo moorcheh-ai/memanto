@@ -1,0 +1,2450 @@
+=== warm-light-preference ===
+QUERY: What kind of work lights are preferred after sunset?
+
+Found 20 memories (Standard search)
+
+╭──────────────────────────── Memory 1  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers warm work lights after sunset.                 │
+│                                                                              │
+│ The operator prefers warm work lights after sunset.                          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not portable ...                                        │
+│                                                                              │
+│ ID: 835e4733-5ce7-4535-9de1-5afecd8da6d6 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.207                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 2  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers deterministic fixtures over network-dependent  │
+│ fixtures for regression tests.                                               │
+│                                                                              │
+│ The operator prefers deterministic fixtures over network-dependent fixtures  │
+│ for regression tests.                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval ...             │
+│                                                                              │
+│ ID: 0634e01b-5451-4e7d-bce0-13d7cf508133 | Type: preference | Confidence:    │
+│ 0.65 | Score: 0.090                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 3  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers UTC timestamps in portable artifacts and local │
+│ time only in presentation layers                                             │
+│                                                                              │
+│ The operator prefers UTC timestamps in portable artifacts and local time     │
+│ only in presentation layers.                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrie...                 │
+│                                                                              │
+│ ID: c06ba730-26a6-488b-9c58-a10f7554e9ad | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.086                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 4  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas uses a three-stage verification gate before           │
+│ publication: structural, operational, and                                    │
+│                                                                              │
+│ Project Atlas uses a three-stage verification gate before publication:       │
+│ structural, operational, and portability evidence.                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source meta...                                     │
+│                                                                              │
+│ ID: a682eba5-16ac-4eec-aead-b028d9e6f292 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.073                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, verification, portability                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 5  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers explicit stop conditions when a bounty seam is │
+│ already owned by another contrib                                             │
+│                                                                              │
+│ The operator prefers explicit stop conditions when a bounty seam is already  │
+│ owned by another contributor.                                                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived re...                     │
+│                                                                              │
+│ ID: af2edefb-ba06-4885-8c3b-1a705c79a457 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.070                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 6  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers reproducible one-command demos over            │
+│ screenshots without executable evidence.                                     │
+│                                                                              │
+│ The operator prefers reproducible one-command demos over screenshots without │
+│ executable evidence.                                                         │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval ...             │
+│                                                                              │
+│ ID: 5efb4530-7446-40f1-8d96-9dd1c1fd2b90 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.070                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 7  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers source-derived expected values over tests that │
+│ recompute the implementation res                                             │
+│                                                                              │
+│ The operator prefers source-derived expected values over tests that          │
+│ recompute the implementation result.                                         │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: 1ceec647-422b-48a8-8d73-5fb9d23b7154 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.060                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 8  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Cinder has this constraint: never publish an artifact whose │
+│ inputs are unknown.                                                          │
+│                                                                              │
+│ Project Cinder has this constraint: never publish an artifact whose inputs   │
+│ are unknown.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors ar...   │
+│                                                                              │
+│ ID: b1edc1cf-268d-460a-8819-8350b6374b84 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.060                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, constraint                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 9  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Harbor uses forward and backward fixture tests before       │
+│ publication.                                                                 │
+│                                                                              │
+│ Project Harbor uses forward and backward fixture tests before publication.   │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-onl...                                                               │
+│                                                                              │
+│ ID: db06dc64-464e-4c17-baa1-23602ecbf175 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.060                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, verification                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 10  · memory  ────────────────────────────╮
+│ [ACTIVE] Holographic contradiction detection is query-time behavior in the   │
+│ audited public schema, not a durab                                           │
+│                                                                              │
+│ Holographic contradiction detection is query-time behavior in the audited    │
+│ public schema, not a durable contradiction ledger.                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source m...                                        │
+│                                                                              │
+│ ID: df712c56-4431-45ef-9f95-b22261948212 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.060                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 11  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift chose retrieval caps plus explicit relevance          │
+│ thresholds as its working approach.                                          │
+│                                                                              │
+│ Project Drift chose retrieval caps plus explicit relevance thresholds as its │
+│ working approach.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vec...          │
+│                                                                              │
+│ ID: 63486ec6-5fa6-4916-b052-b87bc9567c8f | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.056                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, decision                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 12  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor has this constraint: old configuration files must    │
+│ remain readable.                                                             │
+│                                                                              │
+│ Project Harbor has this constraint: old configuration files must remain      │
+│ readable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: 1a51d673-c9e8-4ecf-9eee-5dc4028bf96a | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.056                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, constraint                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 13  · memory  ────────────────────────────╮
+│ [ACTIVE] A migration result is not accepted until a fresh destination passes │
+│ the same recall probes.                                                      │
+│                                                                              │
+│ A migration result is not accepted until a fresh destination passes the same │
+│ recall probes.                                                               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vector...       │
+│                                                                              │
+│ ID: 69efcbfd-774c-408c-88a4-eb6bdf2b3aa4 | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.056                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 14  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers clean-room verification before calling a       │
+│ migration portable.                                                          │
+│                                                                              │
+│ The operator prefers clean-room verification before calling a migration      │
+│ portable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: f0f60a5d-501a-4aee-bbfc-59028f9db41f | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.053                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 15  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor exists to deliver safe configuration migration.      │
+│                                                                              │
+│ Project Harbor exists to deliver safe configuration migration.               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are no...                                                   │
+│                                                                              │
+│ ID: b7526a7f-3225-421b-b5dc-9a58acdf8aa6 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.053                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, purpose                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 16  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Beacon's rollback rule is to preserve the last signed       │
+│ packet.                                                                      │
+│                                                                              │
+│ Project Beacon's rollback rule is to preserve the last signed packet.        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and...                                                          │
+│                                                                              │
+│ ID: 5882f7fa-6b17-4c91-b5b6-844429850f71 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.046                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Beacon, project, rollback                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 17  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift exists to deliver agent context-budget control.       │
+│                                                                              │
+│ Project Drift exists to deliver agent context-budget control.                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not...                                                  │
+│                                                                              │
+│ ID: 9ac57e7d-7862-4e3a-8f72-39762e3ba283 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.046                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, purpose                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 18  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers preserving raw source metadata whenever a      │
+│ semantic mapping is lossy.                                                   │
+│                                                                              │
+│ The operator prefers preserving raw source metadata whenever a semantic      │
+│ mapping is lossy.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors ...     │
+│                                                                              │
+│ ID: ff949ac8-66aa-4a5d-9eab-1ce323ddb930 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.043                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 19  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Atlas has this constraint: avoid silently serializing       │
+│ derived vector indexes.                                                      │
+│                                                                              │
+│ Project Atlas has this constraint: avoid silently serializing derived vector │
+│ indexes.                                                                     │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are ... │
+│                                                                              │
+│ ID: 1b3f1e64-68c8-4e7e-8d0a-bae6ccb6d33f | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.043                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, constraint                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 20  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift uses token-count and relevance regression checks      │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Drift uses token-count and relevance regression checks before        │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 00f4256c-fd00-4e36-b554-f2b163d7f53d | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.040                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, verification                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Completed in 1.62s
+
+=== source-truth ===
+QUERY: Which parts of Holographic memory are source truth rather than derived retrieval data?
+
+Found 20 memories (Standard search)
+
+╭──────────────────────────── Memory 1  · memory  ─────────────────────────────╮
+│ [ACTIVE] Holographic memory-bank vectors are aggregate retrieval structures  │
+│ rather than independent source fa                                            │
+│                                                                              │
+│ Holographic memory-bank vectors are aggregate retrieval structures rather    │
+│ than independent source facts.                                               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: a7411c3b-3e7f-4e75-9038-bb005e344d8a | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.374                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 2  · memory  ─────────────────────────────╮
+│ [ACTIVE] The local Holographic memory database stores retrieval and helpful  │
+│ feedback counters for each fact.                                             │
+│                                                                              │
+│ The local Holographic memory database stores retrieval and helpful feedback  │
+│ counters for each fact.                                                      │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieva...               │
+│                                                                              │
+│ ID: 6776c018-1f4f-4657-9123-34500c38f9c5 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.347                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 3  · memory  ─────────────────────────────╮
+│ [ACTIVE] Hermes Holographic memory treats fact text and metadata as source   │
+│ truth, not HRR vectors.                                                      │
+│                                                                              │
+│ Hermes Holographic memory treats fact text and metadata as source truth, not │
+│ HRR vectors.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors ...     │
+│                                                                              │
+│ ID: cb001c02-60c4-4e1a-b1f3-daec73e8cdfa | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.340                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 4  · memory  ─────────────────────────────╮
+│ [ACTIVE] The Holographic full-text index is derived from canonical fact      │
+│ content and tags.                                                            │
+│                                                                              │
+│ The Holographic full-text index is derived from canonical fact content and   │
+│ tags.                                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebui...                                                                     │
+│                                                                              │
+│ ID: 3d95616d-4d1e-47c4-9471-5c84f5e772a0 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.285                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 5  · memory  ─────────────────────────────╮
+│ [ACTIVE] Holographic HRR vectors can be rebuilt from canonical content and   │
+│ linked entities.                                                             │
+│                                                                              │
+│ Holographic HRR vectors can be rebuilt from canonical content and linked     │
+│ entities.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 999a8312-ebdf-4862-a492-ee81a16b9e02 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.278                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 6  · memory  ─────────────────────────────╮
+│ [ACTIVE] Unknown OKF fields should not be treated as a substitute for        │
+│ preserving source truth in a bounded re                                      │
+│                                                                              │
+│ Unknown OKF fields should not be treated as a substitute for preserving      │
+│ source truth in a bounded readable form.                                     │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Der...                            │
+│                                                                              │
+│ ID: f09a9ef7-43fe-4dcd-8bcb-c7b5bc7d40c2 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.271                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 7  · memory  ─────────────────────────────╮
+│ [ACTIVE] Holographic contradiction detection is query-time behavior in the   │
+│ audited public schema, not a durab                                           │
+│                                                                              │
+│ Holographic contradiction detection is query-time behavior in the audited    │
+│ public schema, not a durable contradiction ledger.                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source m...                                        │
+│                                                                              │
+│ ID: df712c56-4431-45ef-9f95-b22261948212 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.261                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 8  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers preserving raw source metadata whenever a      │
+│ semantic mapping is lossy.                                                   │
+│                                                                              │
+│ The operator prefers preserving raw source metadata whenever a semantic      │
+│ mapping is lossy.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors ...     │
+│                                                                              │
+│ ID: ff949ac8-66aa-4a5d-9eab-1ce323ddb930 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.257                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 9  · memory  ─────────────────────────────╮
+│ [ACTIVE] Holographic entity associations are represented by fact_entities    │
+│ rather than a first-class relations                                          │
+│                                                                              │
+│ Holographic entity associations are represented by fact_entities rather than │
+│ a first-class relationship-edge table.                                       │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. ...                               │
+│                                                                              │
+│ ID: c84a4924-5f4e-4f8f-912e-cbc1c4a67f5c | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.237                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 10  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers source-derived expected values over tests that │
+│ recompute the implementation res                                             │
+│                                                                              │
+│ The operator prefers source-derived expected values over tests that          │
+│ recompute the implementation result.                                         │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: 1ceec647-422b-48a8-8d73-5fb9d23b7154 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.227                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 11  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers privacy-scrubbed public fixtures rather than   │
+│ redacted copies of a live memory d                                           │
+│                                                                              │
+│ The operator prefers privacy-scrubbed public fixtures rather than redacted   │
+│ copies of a live memory database.                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived...                        │
+│                                                                              │
+│ ID: 819f7a9e-0c53-4b2a-9438-bea197dd5fa6 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.224                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 12  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers narrow pull requests with explicit attribution │
+│ over kitchen-sink changes.                                                   │
+│                                                                              │
+│ The operator prefers narrow pull requests with explicit attribution over     │
+│ kitchen-sink changes.                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vec...          │
+│                                                                              │
+│ ID: 9b7dd2b4-9800-417b-a548-ee7ca7201162 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.224                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 13  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers clean-room verification before calling a       │
+│ migration portable.                                                          │
+│                                                                              │
+│ The operator prefers clean-room verification before calling a migration      │
+│ portable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: f0f60a5d-501a-4aee-bbfc-59028f9db41f | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.224                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 14  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers warm work lights after sunset.                 │
+│                                                                              │
+│ The operator prefers warm work lights after sunset.                          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not portable ...                                        │
+│                                                                              │
+│ ID: 835e4733-5ce7-4535-9de1-5afecd8da6d6 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.210                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 15  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers a small public interface with complex          │
+│ migration logic hidden behind it.                                            │
+│                                                                              │
+│ The operator prefers a small public interface with complex migration logic   │
+│ hidden behind it.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vecto...        │
+│                                                                              │
+│ ID: 2107b3f7-a7fc-4b4f-8fc3-5ecfb932a40c | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.193                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 16  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift chose retrieval caps plus explicit relevance          │
+│ thresholds as its working approach.                                          │
+│                                                                              │
+│ Project Drift chose retrieval caps plus explicit relevance thresholds as its │
+│ working approach.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vec...          │
+│                                                                              │
+│ ID: 63486ec6-5fa6-4916-b052-b87bc9567c8f | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.183                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, decision                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 17  · memory  ────────────────────────────╮
+│ [ACTIVE] The final OKF bundle should remain human-inspectable plain Markdown │
+│ after leaving Memanto.                                                       │
+│                                                                              │
+│ The final OKF bundle should remain human-inspectable plain Markdown after    │
+│ leaving Memanto.                                                             │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors...      │
+│                                                                              │
+│ ID: d43fd071-14d2-44bc-b03d-79706cc4b311 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.180                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 18  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Cinder chose content-addressed artifact manifests as its    │
+│ working approach.                                                            │
+│                                                                              │
+│ Project Cinder chose content-addressed artifact manifests as its working     │
+│ approach.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 7068b2fc-3f8f-4571-810b-e7455a6862c8 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.180                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, decision                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 19  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers plain Markdown evidence that can be reviewed   │
+│ without a proprietary dashboard.                                             │
+│                                                                              │
+│ The operator prefers plain Markdown evidence that can be reviewed without a  │
+│ proprietary dashboard.                                                       │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval...              │
+│                                                                              │
+│ ID: 9bbeabec-c713-4790-8397-ee2438217b72 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.180                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 20  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Cinder's latest verified outcome is that two clean-room     │
+│ rebuilds produced matching manifests                                         │
+│                                                                              │
+│ Project Cinder's latest verified outcome is that two clean-room rebuilds     │
+│ produced matching manifests.                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrie...                 │
+│                                                                              │
+│ ID: 7178726c-e7cc-4804-9fc6-b7815fb94c58 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.176                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, outcome                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Completed in 0.69s
+
+=== fresh-destination-gate ===
+QUERY: What must happen before a migration result is accepted?
+
+Found 20 memories (Standard search)
+
+╭──────────────────────────── Memory 1  · memory  ─────────────────────────────╮
+│ [ACTIVE] A migration result is not accepted until a fresh destination passes │
+│ the same recall probes.                                                      │
+│                                                                              │
+│ A migration result is not accepted until a fresh destination passes the same │
+│ recall probes.                                                               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vector...       │
+│                                                                              │
+│ ID: 69efcbfd-774c-408c-88a4-eb6bdf2b3aa4 | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.343                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 2  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Harbor's rollback rule is to restore the pre-migration      │
+│ configuration file.                                                          │
+│                                                                              │
+│ Project Harbor's rollback rule is to restore the pre-migration configuration │
+│ file.                                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 88922689-f74c-47ca-85a6-8404ac360cad | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.176                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, rollback                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 3  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Harbor exists to deliver safe configuration migration.      │
+│                                                                              │
+│ Project Harbor exists to deliver safe configuration migration.               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are no...                                                   │
+│                                                                              │
+│ ID: b7526a7f-3225-421b-b5dc-9a58acdf8aa6 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.146                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, purpose                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 4  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Harbor uses forward and backward fixture tests before       │
+│ publication.                                                                 │
+│                                                                              │
+│ Project Harbor uses forward and backward fixture tests before publication.   │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-onl...                                                               │
+│                                                                              │
+│ ID: db06dc64-464e-4c17-baa1-23602ecbf175 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.140                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, verification                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 5  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers clean-room verification before calling a       │
+│ migration portable.                                                          │
+│                                                                              │
+│ The operator prefers clean-room verification before calling a migration      │
+│ portable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: f0f60a5d-501a-4aee-bbfc-59028f9db41f | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.136                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 6  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas's rollback rule is to retain the previous readable    │
+│ bundle until the replacement valida                                          │
+│                                                                              │
+│ Project Atlas's rollback rule is to retain the previous readable bundle      │
+│ until the replacement validates.                                             │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: c72105fb-8323-4744-acdf-319b70b1c744 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.133                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, rollback                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 7  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Northstar's latest verified outcome is that release         │
+│ decisions became reproducible from commi                                     │
+│                                                                              │
+│ Project Northstar's latest verified outcome is that release decisions became │
+│ reproducible from committed evidence alone.                                  │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metad...                                    │
+│                                                                              │
+│ ID: 0a9958d3-8844-421b-a9f9-cc771b4fa845 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.126                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Northstar, project, outcome                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 8  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Harbor's latest verified outcome is that all supported      │
+│ fixtures loaded without implicit fiel                                        │
+│                                                                              │
+│ Project Harbor's latest verified outcome is that all supported fixtures      │
+│ loaded without implicit field loss.                                          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ...                       │
+│                                                                              │
+│ ID: cf15a3f3-a647-4a3f-b0b0-fd19f1f2d791 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.123                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, outcome                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 9  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas uses a three-stage verification gate before           │
+│ publication: structural, operational, and                                    │
+│                                                                              │
+│ Project Atlas uses a three-stage verification gate before publication:       │
+│ structural, operational, and portability evidence.                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source meta...                                     │
+│                                                                              │
+│ ID: a682eba5-16ac-4eec-aead-b028d9e6f292 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.120                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, verification, portability                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 10  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Cinder's rollback rule is to keep the previous release      │
+│ candidate available.                                                         │
+│                                                                              │
+│ Project Cinder's rollback rule is to keep the previous release candidate     │
+│ available.                                                                   │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ re...                                                                        │
+│                                                                              │
+│ ID: 4451306e-0981-4a8e-b636-8831100fda08 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.116                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, rollback                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 11  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift's rollback rule is to fall back to an empty optional  │
+│ context block.                                                               │
+│                                                                              │
+│ Project Drift's rollback rule is to fall back to an empty optional context   │
+│ block.                                                                       │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: da33e0da-3ea4-4eaa-b141-ff8b41887e1b | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.110                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, rollback                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 12  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Beacon's rollback rule is to preserve the last signed       │
+│ packet.                                                                      │
+│                                                                              │
+│ Project Beacon's rollback rule is to preserve the last signed packet.        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and...                                                          │
+│                                                                              │
+│ ID: 5882f7fa-6b17-4c91-b5b6-844429850f71 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.106                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Beacon, project, rollback                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 13  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift uses token-count and relevance regression checks      │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Drift uses token-count and relevance regression checks before        │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 00f4256c-fd00-4e36-b554-f2b163d7f53d | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.103                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, verification                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 14  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Atlas exists to deliver portable knowledge migration.       │
+│                                                                              │
+│ Project Atlas exists to deliver portable knowledge migration.                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not...                                                  │
+│                                                                              │
+│ ID: 545fa77d-b866-4a75-9fa6-b6dea8587395 | Type: fact | Confidence: 0.70 |   │
+│ Score: 0.103                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, purpose                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 15  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Atlas's latest verified outcome is that a fresh destination │
+│ reproduced the canonical facts.                                              │
+│                                                                              │
+│ Project Atlas's latest verified outcome is that a fresh destination          │
+│ reproduced the canonical facts.                                              │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieva...               │
+│                                                                              │
+│ ID: 162cfb64-aac7-4dd4-89aa-23ea9c296e59 | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.103                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, outcome                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 16  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Northstar's rollback rule is to stop publication when any   │
+│ required evidence layer fails.                                               │
+│                                                                              │
+│ Project Northstar's rollback rule is to stop publication when any required   │
+│ evidence layer fails.                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval v...            │
+│                                                                              │
+│ ID: 4140809b-77c8-4dea-ba85-2a94edbbf1c1 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.100                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Northstar, project, rollback                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 17  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Beacon's latest verified outcome is that the next operator  │
+│ reproduced the incident state wit                                            │
+│                                                                              │
+│ Project Beacon's latest verified outcome is that the next operator           │
+│ reproduced the incident state without hidden context.                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metad...                                    │
+│                                                                              │
+│ ID: 20be4f1e-80f6-47d4-952e-b206662e8f38 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.096                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Beacon, project, outcome                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 18  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor has this constraint: old configuration files must    │
+│ remain readable.                                                             │
+│                                                                              │
+│ Project Harbor has this constraint: old configuration files must remain      │
+│ readable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: 1a51d673-c9e8-4ecf-9eee-5dc4028bf96a | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.093                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, constraint                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 19  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers a small public interface with complex          │
+│ migration logic hidden behind it.                                            │
+│                                                                              │
+│ The operator prefers a small public interface with complex migration logic   │
+│ hidden behind it.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vecto...        │
+│                                                                              │
+│ ID: 2107b3f7-a7fc-4b4f-8fc3-5ecfb932a40c | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.093                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 20  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor chose versioned configuration with explicit defaults │
+│ as its working approach.                                                     │
+│                                                                              │
+│ Project Harbor chose versioned configuration with explicit defaults as its   │
+│ working approach.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vecto...        │
+│                                                                              │
+│ ID: e3c6cd14-58bb-44c7-9f4c-6ef42fbef260 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.093                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, decision                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Completed in 0.52s
+
+=== verification-update ===
+QUERY: What verification stages does Project Atlas use before publication?
+
+Found 20 memories (Standard search)
+
+╭──────────────────────────── Memory 1  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas uses a three-stage verification gate before           │
+│ publication: structural, operational, and                                    │
+│                                                                              │
+│ Project Atlas uses a three-stage verification gate before publication:       │
+│ structural, operational, and portability evidence.                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source meta...                                     │
+│                                                                              │
+│ ID: a682eba5-16ac-4eec-aead-b028d9e6f292 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.525                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, verification, portability                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 2  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Cinder uses manifest, archive, and checksum verification    │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Cinder uses manifest, archive, and checksum verification before      │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ r...                                                                         │
+│                                                                              │
+│ ID: 108e605d-37a4-441e-a4f7-274fa748640c | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.305                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, verification                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 3  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Beacon uses hash and schema validation before handoff       │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Beacon uses hash and schema validation before handoff before         │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: 321ef2aa-39bc-453e-8094-38f58c425e9e | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.295                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Beacon, project, verification                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 4  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas's latest verified outcome is that a fresh destination │
+│ reproduced the canonical facts.                                              │
+│                                                                              │
+│ Project Atlas's latest verified outcome is that a fresh destination          │
+│ reproduced the canonical facts.                                              │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieva...               │
+│                                                                              │
+│ ID: 162cfb64-aac7-4dd4-89aa-23ea9c296e59 | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.278                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, outcome                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 5  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Drift uses token-count and relevance regression checks      │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Drift uses token-count and relevance regression checks before        │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 00f4256c-fd00-4e36-b554-f2b163d7f53d | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.268                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, verification                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 6  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas chose OKF-first interchange as its working approach.  │
+│                                                                              │
+│ Project Atlas chose OKF-first interchange as its working approach.           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and ar...                                                       │
+│                                                                              │
+│ ID: 06c46ab2-189f-438e-a0ce-3b44c234af34 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.257                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, decision                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 7  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Harbor uses forward and backward fixture tests before       │
+│ publication.                                                                 │
+│                                                                              │
+│ Project Harbor uses forward and backward fixture tests before publication.   │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-onl...                                                               │
+│                                                                              │
+│ ID: db06dc64-464e-4c17-baa1-23602ecbf175 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.251                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, verification                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 8  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas exists to deliver portable knowledge migration.       │
+│                                                                              │
+│ Project Atlas exists to deliver portable knowledge migration.                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not...                                                  │
+│                                                                              │
+│ ID: 545fa77d-b866-4a75-9fa6-b6dea8587395 | Type: fact | Confidence: 0.70 |   │
+│ Score: 0.244                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, purpose                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 9  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Kestrel uses diff-level provenance review before            │
+│ publication.                                                                 │
+│                                                                              │
+│ Project Kestrel uses diff-level provenance review before publication.        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and...                                                          │
+│                                                                              │
+│ ID: bc7e5798-fe2a-4514-93c7-5b6237b62e5d | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.237                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Kestrel, project, verification                                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 10  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Atlas's rollback rule is to retain the previous readable    │
+│ bundle until the replacement valida                                          │
+│                                                                              │
+│ Project Atlas's rollback rule is to retain the previous readable bundle      │
+│ until the replacement validates.                                             │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: c72105fb-8323-4744-acdf-319b70b1c744 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.237                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, rollback                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 11  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Atlas has this constraint: avoid silently serializing       │
+│ derived vector indexes.                                                      │
+│                                                                              │
+│ Project Atlas has this constraint: avoid silently serializing derived vector │
+│ indexes.                                                                     │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are ... │
+│                                                                              │
+│ ID: 1b3f1e64-68c8-4e7e-8d0a-bae6ccb6d33f | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.230                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, constraint                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 12  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Northstar uses structural, operational, and portability     │
+│ evidence before publication.                                                 │
+│                                                                              │
+│ Project Northstar uses structural, operational, and portability evidence     │
+│ before publication.                                                          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vecto...        │
+│                                                                              │
+│ ID: b1afd86f-6575-4360-83bf-f01d410f2c5c | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.224                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Northstar, project, verification                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 13  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Kestrel's latest verified outcome is that reviewers could   │
+│ identify the new delta and its pri                                           │
+│                                                                              │
+│ Project Kestrel's latest verified outcome is that reviewers could identify   │
+│ the new delta and its prior art independently.                               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source meta...                                     │
+│                                                                              │
+│ ID: bfc5cc27-d364-4ddd-aa3f-282172fbaf99 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.224                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Kestrel, project, outcome                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 14  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Northstar's rollback rule is to stop publication when any   │
+│ required evidence layer fails.                                               │
+│                                                                              │
+│ Project Northstar's rollback rule is to stop publication when any required   │
+│ evidence layer fails.                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval v...            │
+│                                                                              │
+│ ID: 4140809b-77c8-4dea-ba85-2a94edbbf1c1 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.207                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Northstar, project, rollback                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 15  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Meridian uses Linux and case-folded filename simulations    │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Meridian uses Linux and case-folded filename simulations before      │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ r...                                                                         │
+│                                                                              │
+│ ID: 9ade5994-d6c1-4936-a51a-a2b56847dcaa | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.180                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Meridian, project, verification                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 16  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Meridian's rollback rule is to emit a collision report      │
+│ instead of overwriting.                                                      │
+│                                                                              │
+│ Project Meridian's rollback rule is to emit a collision report instead of    │
+│ overwriting.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are...  │
+│                                                                              │
+│ ID: 7fe2d55e-9e41-4c54-b4dd-93cba3ffa2e7 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.170                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Meridian, project, rollback                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 17  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Kestrel chose a per-change source and lineage ledger as its │
+│ working approach.                                                            │
+│                                                                              │
+│ Project Kestrel chose a per-change source and lineage ledger as its working  │
+│ approach.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are ... │
+│                                                                              │
+│ ID: b26a9907-fcd6-4385-b187-5652754a773a | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.166                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Kestrel, project, decision                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 18  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Northstar's latest verified outcome is that release         │
+│ decisions became reproducible from commi                                     │
+│                                                                              │
+│ Project Northstar's latest verified outcome is that release decisions became │
+│ reproducible from committed evidence alone.                                  │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metad...                                    │
+│                                                                              │
+│ ID: 0a9958d3-8844-421b-a9f9-cc771b4fa845 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.166                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Northstar, project, outcome                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 19  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Northstar exists to deliver acceptance-evidence automation. │
+│                                                                              │
+│ Project Northstar exists to deliver acceptance-evidence automation.          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and a...                                                        │
+│                                                                              │
+│ ID: 0f950b7f-fc65-40c8-9b78-3b365a5e9985 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.163                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Northstar, project, purpose                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 20  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Kestrel exists to deliver contributor attribution tracking. │
+│                                                                              │
+│ Project Kestrel exists to deliver contributor attribution tracking.          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and a...                                                        │
+│                                                                              │
+│ ID: 2a522895-e2b5-4c14-9904-1d9f06156e0a | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.156                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Kestrel, project, purpose                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Completed in 0.80s
+
+=== derived-index-policy ===
+QUERY: Which derived Holographic indexes are rebuilt from canonical content during migration?
+
+Found 20 memories (Standard search)
+
+╭──────────────────────────── Memory 1  · memory  ─────────────────────────────╮
+│ [ACTIVE] The Holographic full-text index is derived from canonical fact      │
+│ content and tags.                                                            │
+│                                                                              │
+│ The Holographic full-text index is derived from canonical fact content and   │
+│ tags.                                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebui...                                                                     │
+│                                                                              │
+│ ID: 3d95616d-4d1e-47c4-9471-5c84f5e772a0 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.305                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 2  · memory  ─────────────────────────────╮
+│ [ACTIVE] Holographic HRR vectors can be rebuilt from canonical content and   │
+│ linked entities.                                                             │
+│                                                                              │
+│ Holographic HRR vectors can be rebuilt from canonical content and linked     │
+│ entities.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 999a8312-ebdf-4862-a492-ee81a16b9e02 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.274                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 3  · memory  ─────────────────────────────╮
+│ [ACTIVE] Holographic memory-bank vectors are aggregate retrieval structures  │
+│ rather than independent source fa                                            │
+│                                                                              │
+│ Holographic memory-bank vectors are aggregate retrieval structures rather    │
+│ than independent source facts.                                               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: a7411c3b-3e7f-4e75-9038-bb005e344d8a | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.240                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 4  · memory  ─────────────────────────────╮
+│ [ACTIVE] The local Holographic memory database stores retrieval and helpful  │
+│ feedback counters for each fact.                                             │
+│                                                                              │
+│ The local Holographic memory database stores retrieval and helpful feedback  │
+│ counters for each fact.                                                      │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieva...               │
+│                                                                              │
+│ ID: 6776c018-1f4f-4657-9123-34500c38f9c5 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.217                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 5  · memory  ─────────────────────────────╮
+│ [ACTIVE] A migration result is not accepted until a fresh destination passes │
+│ the same recall probes.                                                      │
+│                                                                              │
+│ A migration result is not accepted until a fresh destination passes the same │
+│ recall probes.                                                               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vector...       │
+│                                                                              │
+│ ID: 69efcbfd-774c-408c-88a4-eb6bdf2b3aa4 | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.217                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 6  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Drift chose retrieval caps plus explicit relevance          │
+│ thresholds as its working approach.                                          │
+│                                                                              │
+│ Project Drift chose retrieval caps plus explicit relevance thresholds as its │
+│ working approach.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vec...          │
+│                                                                              │
+│ ID: 63486ec6-5fa6-4916-b052-b87bc9567c8f | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.193                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, decision                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 7  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas exists to deliver portable knowledge migration.       │
+│                                                                              │
+│ Project Atlas exists to deliver portable knowledge migration.                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not...                                                  │
+│                                                                              │
+│ ID: 545fa77d-b866-4a75-9fa6-b6dea8587395 | Type: fact | Confidence: 0.70 |   │
+│ Score: 0.187                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, purpose                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 8  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Kestrel chose a per-change source and lineage ledger as its │
+│ working approach.                                                            │
+│                                                                              │
+│ Project Kestrel chose a per-change source and lineage ledger as its working  │
+│ approach.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are ... │
+│                                                                              │
+│ ID: b26a9907-fcd6-4385-b187-5652754a773a | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.187                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Kestrel, project, decision                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 9  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas's latest verified outcome is that a fresh destination │
+│ reproduced the canonical facts.                                              │
+│                                                                              │
+│ Project Atlas's latest verified outcome is that a fresh destination          │
+│ reproduced the canonical facts.                                              │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieva...               │
+│                                                                              │
+│ ID: 162cfb64-aac7-4dd4-89aa-23ea9c296e59 | Type: fact | Confidence: 0.50 |   │
+│ Score: 0.187                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, outcome                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 10  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor exists to deliver safe configuration migration.      │
+│                                                                              │
+│ Project Harbor exists to deliver safe configuration migration.               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are no...                                                   │
+│                                                                              │
+│ ID: b7526a7f-3225-421b-b5dc-9a58acdf8aa6 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.187                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, purpose                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 11  · memory  ────────────────────────────╮
+│ [ACTIVE] Holographic contradiction detection is query-time behavior in the   │
+│ audited public schema, not a durab                                           │
+│                                                                              │
+│ Holographic contradiction detection is query-time behavior in the audited    │
+│ public schema, not a durable contradiction ledger.                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source m...                                        │
+│                                                                              │
+│ ID: df712c56-4431-45ef-9f95-b22261948212 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.176                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 12  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Cinder's latest verified outcome is that two clean-room     │
+│ rebuilds produced matching manifests                                         │
+│                                                                              │
+│ Project Cinder's latest verified outcome is that two clean-room rebuilds     │
+│ produced matching manifests.                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrie...                 │
+│                                                                              │
+│ ID: 7178726c-e7cc-4804-9fc6-b7815fb94c58 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.173                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, outcome                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 13  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor's rollback rule is to restore the pre-migration      │
+│ configuration file.                                                          │
+│                                                                              │
+│ Project Harbor's rollback rule is to restore the pre-migration configuration │
+│ file.                                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 88922689-f74c-47ca-85a6-8404ac360cad | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.173                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, rollback                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 14  · memory  ────────────────────────────╮
+│ [ACTIVE] Hermes Holographic memory treats fact text and metadata as source   │
+│ truth, not HRR vectors.                                                      │
+│                                                                              │
+│ Hermes Holographic memory treats fact text and metadata as source truth, not │
+│ HRR vectors.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors ...     │
+│                                                                              │
+│ ID: cb001c02-60c4-4e1a-b1f3-daec73e8cdfa | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.173                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 15  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers warm work lights after sunset.                 │
+│                                                                              │
+│ The operator prefers warm work lights after sunset.                          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not portable ...                                        │
+│                                                                              │
+│ ID: 835e4733-5ce7-4535-9de1-5afecd8da6d6 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.173                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 16  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers clean-room verification before calling a       │
+│ migration portable.                                                          │
+│                                                                              │
+│ The operator prefers clean-room verification before calling a migration      │
+│ portable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: f0f60a5d-501a-4aee-bbfc-59028f9db41f | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.170                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 17  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Atlas has this constraint: avoid silently serializing       │
+│ derived vector indexes.                                                      │
+│                                                                              │
+│ Project Atlas has this constraint: avoid silently serializing derived vector │
+│ indexes.                                                                     │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are ... │
+│                                                                              │
+│ ID: 1b3f1e64-68c8-4e7e-8d0a-bae6ccb6d33f | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.160                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, constraint                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 18  · memory  ────────────────────────────╮
+│ [ACTIVE] Unknown OKF fields should not be treated as a substitute for        │
+│ preserving source truth in a bounded re                                      │
+│                                                                              │
+│ Unknown OKF fields should not be treated as a substitute for preserving      │
+│ source truth in a bounded readable form.                                     │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Der...                            │
+│                                                                              │
+│ ID: f09a9ef7-43fe-4dcd-8bcb-c7b5bc7d40c2 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.160                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 19  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers preserving raw source metadata whenever a      │
+│ semantic mapping is lossy.                                                   │
+│                                                                              │
+│ The operator prefers preserving raw source metadata whenever a semantic      │
+│ mapping is lossy.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors ...     │
+│                                                                              │
+│ ID: ff949ac8-66aa-4a5d-9eab-1ce323ddb930 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.153                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 20  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers a small public interface with complex          │
+│ migration logic hidden behind it.                                            │
+│                                                                              │
+│ The operator prefers a small public interface with complex migration logic   │
+│ hidden behind it.                                                            │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vecto...        │
+│                                                                              │
+│ ID: 2107b3f7-a7fc-4b4f-8fc3-5ecfb932a40c | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.153                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Completed in 0.69s
+
+=== okf-portability ===
+QUERY: What should the final OKF bundle look like after leaving Memanto?
+
+Found 20 memories (Standard search)
+
+╭──────────────────────────── Memory 1  · memory  ─────────────────────────────╮
+│ [ACTIVE] The final OKF bundle should remain human-inspectable plain Markdown │
+│ after leaving Memanto.                                                       │
+│                                                                              │
+│ The final OKF bundle should remain human-inspectable plain Markdown after    │
+│ leaving Memanto.                                                             │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors...      │
+│                                                                              │
+│ ID: d43fd071-14d2-44bc-b03d-79706cc4b311 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.361                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 2  · memory  ─────────────────────────────╮
+│ [ACTIVE] Memanto OKF import accepts Markdown with YAML frontmatter and       │
+│ preserves memory content through the m                                       │
+│                                                                              │
+│ Memanto OKF import accepts Markdown with YAML frontmatter and preserves      │
+│ memory content through the migration path.                                   │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. D...                              │
+│                                                                              │
+│ ID: 81dc7a0e-4f6d-43e7-ac72-8c0bd8f1dd97 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.285                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 3  · memory  ─────────────────────────────╮
+│ [ACTIVE] Memanto uses a fixed memory-type vocabulary while OKF permits       │
+│ free-form domain vocabulary.                                                 │
+│                                                                              │
+│ Memanto uses a fixed memory-type vocabulary while OKF permits free-form      │
+│ domain vocabulary.                                                           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors...      │
+│                                                                              │
+│ ID: 8152092d-8df9-4896-b2b9-59d24f0c615c | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.264                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 4  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas chose OKF-first interchange as its working approach.  │
+│                                                                              │
+│ Project Atlas chose OKF-first interchange as its working approach.           │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and ar...                                                       │
+│                                                                              │
+│ ID: 06c46ab2-189f-438e-a0ce-3b44c234af34 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.187                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, decision                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 5  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Meridian's latest verified outcome is that the same bundle  │
+│ inventory survived both filesyste                                            │
+│                                                                              │
+│ Project Meridian's latest verified outcome is that the same bundle inventory │
+│ survived both filesystem models.                                             │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derive...                         │
+│                                                                              │
+│ ID: 4cd4e968-5756-4b6b-a672-41791190f5c8 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.187                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Meridian, project, outcome                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 6  · memory  ─────────────────────────────╮
+│ [ACTIVE] The operator prefers warm work lights after sunset.                 │
+│                                                                              │
+│ The operator prefers warm work lights after sunset.                          │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not portable ...                                        │
+│                                                                              │
+│ ID: 835e4733-5ce7-4535-9de1-5afecd8da6d6 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.166                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 7  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas's rollback rule is to retain the previous readable    │
+│ bundle until the replacement valida                                          │
+│                                                                              │
+│ Project Atlas's rollback rule is to retain the previous readable bundle      │
+│ until the replacement validates.                                             │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived ret...                    │
+│                                                                              │
+│ ID: c72105fb-8323-4744-acdf-319b70b1c744 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.160                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, rollback                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 8  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Atlas exists to deliver portable knowledge migration.       │
+│                                                                              │
+│ Project Atlas exists to deliver portable knowledge migration.                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are not...                                                  │
+│                                                                              │
+│ ID: 545fa77d-b866-4a75-9fa6-b6dea8587395 | Type: fact | Confidence: 0.70 |   │
+│ Score: 0.133                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Atlas, project, purpose                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 9  · memory  ─────────────────────────────╮
+│ [ACTIVE] Project Cinder's latest verified outcome is that two clean-room     │
+│ rebuilds produced matching manifests                                         │
+│                                                                              │
+│ Project Cinder's latest verified outcome is that two clean-room rebuilds     │
+│ produced matching manifests.                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrie...                 │
+│                                                                              │
+│ ID: 7178726c-e7cc-4804-9fc6-b7815fb94c58 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.130                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Cinder, project, outcome                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 10  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers explicit stop conditions when a bounty seam is │
+│ already owned by another contrib                                             │
+│                                                                              │
+│ The operator prefers explicit stop conditions when a bounty seam is already  │
+│ owned by another contributor.                                                │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived re...                     │
+│                                                                              │
+│ ID: af2edefb-ba06-4885-8c3b-1a705c79a457 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.126                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 11  · memory  ────────────────────────────╮
+│ [ACTIVE] Unknown OKF fields should not be treated as a substitute for        │
+│ preserving source truth in a bounded re                                      │
+│                                                                              │
+│ Unknown OKF fields should not be treated as a substitute for preserving      │
+│ source truth in a bounded readable form.                                     │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Der...                            │
+│                                                                              │
+│ ID: f09a9ef7-43fe-4dcd-8bcb-c7b5bc7d40c2 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.123                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Hermes, Holographic, tool                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 12  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Harbor exists to deliver safe configuration migration.      │
+│                                                                              │
+│ Project Harbor exists to deliver safe configuration migration.               │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and are no...                                                   │
+│                                                                              │
+│ ID: b7526a7f-3225-421b-b5dc-9a58acdf8aa6 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.116                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Harbor, project, purpose                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 13  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift's rollback rule is to fall back to an empty optional  │
+│ context block.                                                               │
+│                                                                              │
+│ Project Drift's rollback rule is to fall back to an empty optional context   │
+│ block.                                                                       │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: da33e0da-3ea4-4eaa-b141-ff8b41887e1b | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.113                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, rollback                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 14  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers narrow pull requests with explicit attribution │
+│ over kitchen-sink changes.                                                   │
+│                                                                              │
+│ The operator prefers narrow pull requests with explicit attribution over     │
+│ kitchen-sink changes.                                                        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vec...          │
+│                                                                              │
+│ ID: 9b7dd2b4-9800-417b-a548-ee7ca7201162 | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.110                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 15  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers clean-room verification before calling a       │
+│ migration portable.                                                          │
+│                                                                              │
+│ The operator prefers clean-room verification before calling a migration      │
+│ portable.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebu...                                                                      │
+│                                                                              │
+│ ID: f0f60a5d-501a-4aee-bbfc-59028f9db41f | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.110                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 16  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift uses token-count and relevance regression checks      │
+│ before publication.                                                          │
+│                                                                              │
+│ Project Drift uses token-count and relevance regression checks before        │
+│ publication.                                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ reb...                                                                       │
+│                                                                              │
+│ ID: 00f4256c-fd00-4e36-b554-f2b163d7f53d | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.106                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, verification                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 17  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Drift's latest verified outcome is that median injected     │
+│ context dropped while golden recall                                          │
+│                                                                              │
+│ Project Drift's latest verified outcome is that median injected context      │
+│ dropped while golden recall remained stable.                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata....                                │
+│                                                                              │
+│ ID: 04bab19c-3aeb-4f8f-992a-9c1bf3bb73e0 | Type: fact | Confidence: 0.65 |   │
+│ Score: 0.106                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Drift, project, outcome                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 18  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Beacon's rollback rule is to preserve the last signed       │
+│ packet.                                                                      │
+│                                                                              │
+│ Project Beacon's rollback rule is to preserve the last signed packet.        │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ rebuild-only and...                                                          │
+│                                                                              │
+│ ID: 5882f7fa-6b17-4c91-b5b6-844429850f71 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.103                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Beacon, project, rollback                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 19  · memory  ────────────────────────────╮
+│ [ACTIVE] Project Beacon chose append-only Markdown evidence packets as its   │
+│ working approach.                                                            │
+│                                                                              │
+│ Project Beacon chose append-only Markdown evidence packets as its working    │
+│ approach.                                                                    │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrieval vectors are     │
+│ re...                                                                        │
+│                                                                              │
+│ ID: 96e0b7f3-71c2-4d99-80c8-6294ca2cf964 | Type: fact | Confidence: 0.60 |   │
+│ Score: 0.103                                                                 │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: Project Beacon, project, decision                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────── Memory 20  · memory  ────────────────────────────╮
+│ [ACTIVE] The operator prefers UTC timestamps in portable artifacts and local │
+│ time only in presentation layers                                             │
+│                                                                              │
+│ The operator prefers UTC timestamps in portable artifacts and local time     │
+│ only in presentation layers.                                                 │
+│                                                                              │
+│ ---                                                                          │
+│                                                                              │
+│ ## Hermes Holographic source data                                            │
+│                                                                              │
+│ The block below preserves source metadata. Derived retrie...                 │
+│                                                                              │
+│ ID: c06ba730-26a6-488b-9c58-a10f7554e9ad | Type: preference | Confidence:    │
+│ 0.60 | Score: 0.103                                                          │
+│ Created: Sep 10, 2026 02:01 PM                                               │
+│ Source: hermes-holographic | Provenance: imported                            │
+│ Tags: preference, operator                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Completed in 0.55s
+

@@ -176,7 +176,7 @@ class MemoryParsingService:
                     r"\b(?:insight|key point|root cause|what worked|what did not work)\b",
                     4,
                 ),
-                (r"\b(?:next time|in hindsight)\b", 3),
+                (r"\b(?:next time|in retrospect|looking back|going forward)\b", 3),
             ]
         ],
         "error": [

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memanto-google-adk"
+version = "0.1.0"
+description = "Persistent long-term memory for Google ADK agents, backed by Memanto"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [{ name = "Memanto", email = "info@memanto.ai" }]
+dependencies = [
+    "memanto>=0.2.21",
+    "google-adk>=2.0,<3",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["memanto_google_adk"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
