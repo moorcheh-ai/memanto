@@ -11,7 +11,6 @@ from memanto.app.config import settings
 from memanto.app.services.session_service import SessionService
 from memanto.app.utils.errors import InvalidSessionTokenError
 
-
 _SECRET = "cross-process-recreation-test-secret-key-123456"
 _AGENT_ID = "recreation-race-agent"
 
