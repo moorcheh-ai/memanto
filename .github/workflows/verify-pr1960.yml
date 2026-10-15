@@ -113,3 +113,39 @@ jobs:
         run: npm run build
       - name: Tests
         run: npm test
+
+
+  red-team-negative-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-extras --dev
+      - name: Recreate version fallback
+        run: echo '__version__ = "0.0.0.dev0"' > memanto/app/_version.py
+      - name: Reintroduce vulnerable process-local lock in ephemeral runner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("memanto/app/services/session_service.py")
+          content = path.read_text()
+          fixed = "with self.lock_agent_lifecycle(token.agent_id):"
+          vulnerable = "with self._lock_for_agent(token.agent_id):"
+          assert content.count(fixed) == 1, "Unexpected source, refusing to mutate"
+          path.write_text(content.replace(fixed, vulnerable))
+          PY
+      - name: Confirm cross-process reproduction FAILS on vulnerable variant
+        env:
+          MOORCHEH_API_KEY: test-api-key
+        run: |
+          if uv run pytest -q -x --tb=short tests/test_session_cross_process_recreation.py::test_logout_revokes_inflight_auto_recreation_across_processes > /tmp/vulnerable-repro.log 2>&1; then
+            cat /tmp/vulnerable-repro.log
+            echo "::error::Security regression unexpectedly passed with process-local lock"
+            exit 1
+          fi
+          cat /tmp/vulnerable-repro.log
+          grep -F "logout entered while recreation still held the lifecycle lock" /tmp/vulnerable-repro.log
