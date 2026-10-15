@@ -24,6 +24,8 @@ jobs:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-extras --dev
+      - name: Diagnose Ruff import fix
+        run: uv run ruff check --fix --diff tests/test_session_cross_process_recreation.py || true
       - name: Ruff lint
         run: uv run ruff check .
       - name: Ruff format
@@ -37,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -72,3 +74,42 @@ jobs:
         env:
           MOORCHEH_API_KEY: test-api-key
         run: uv run pytest tests/ -v --tb=short
+
+  openapi-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-extras --dev
+      - name: Compare regenerated OpenAPI
+        run: |
+          uv run python scripts/generate_openapi.py > /tmp/openapi.fresh.json
+          diff -u sdks/typescript/openapi.json /tmp/openapi.fresh.json
+
+  typescript-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: sdks/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: sdks/typescript/package-lock.json
+      - name: Install npm dependencies
+        run: npm ci || npm install
+      - name: Regenerate SDK
+        run: npm run openapi:generate
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: npm test
