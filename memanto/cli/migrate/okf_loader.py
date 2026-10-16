@@ -322,9 +322,16 @@ def _load_documents_portable(
         scan_root = root
 
     documents = []
+    total_bytes = 0
+    max_bundle_bytes = 64 * 1024 * 1024
+    max_bundle_files = 10_000
+
     for file_path in sorted(scan_root.rglob("*.md")):
         if file_path.name.lower() in _SKIP_FILENAMES:
             continue
+
+        if len(documents) >= max_bundle_files:
+            raise ValueError(f"OKF bundle file count exceeds limit ({max_bundle_files})")
 
         current = file_path
         is_unsafe = False
@@ -345,9 +352,16 @@ def _load_documents_portable(
                 f"OKF bundle contains a symbolic-link document or directory: {file_path}"
             )
 
-        if file_path.stat().st_size > 50 * 1024 * 1024:
+        file_size = file_path.stat().st_size
+        if file_size > 50 * 1024 * 1024:
             raise ValueError(f"OKF document exceeds size limit (50MB): {file_path}")
 
+        if total_bytes + file_size > max_bundle_bytes:
+            raise ValueError(
+                f"OKF bundle total size exceeds limit ({max_bundle_bytes // (1024 * 1024)}MB)"
+            )
+
+        total_bytes += file_size
         documents.append((file_path, file_path.read_text(encoding="utf-8")))
 
     return root, documents

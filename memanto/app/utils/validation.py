@@ -266,6 +266,16 @@ def validate_output_path(
             detail=f"output_path cannot target reserved internal path '{rel_parts[0]}'.",
         )
 
+    # Reject symbolic links and directory junctions along the path
+    cursor = resolved
+    while cursor != safe_base and cursor != cursor.parent:
+        if cursor.is_symlink():
+            raise HTTPException(
+                status_code=400,
+                detail="output_path cannot contain symbolic links or junctions.",
+            )
+        cursor = cursor.parent
+
     return resolved
 
 

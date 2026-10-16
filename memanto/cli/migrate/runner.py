@@ -222,7 +222,8 @@ def load_export(file_path: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"Export file not found: {file_path}")
     if file_path.stat().st_size > 200 * 1024 * 1024:
         raise ValueError(f"Export file exceeds size limit (200MB): {file_path}")
-    data = json.loads(file_path.read_text(encoding="utf-8"))
+    with file_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
     if not isinstance(data, dict):
         raise ValueError(f"Export file must be a JSON object: {file_path}")
     return data

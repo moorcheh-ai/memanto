@@ -71,6 +71,18 @@ class TestValidateOutputPath:
         with pytest.raises(HTTPException):
             self.fn("/root/.ssh/authorized_keys", base_dir=self._base(tmp_path))
 
+    def test_symlink_component_rejected(self, tmp_path):
+        from fastapi import HTTPException
+        from unittest.mock import patch
+
+        base = self._base(tmp_path)
+        target = base / "nested" / "report.md"
+        with patch.object(Path, "is_symlink", return_value=True):
+            with pytest.raises(HTTPException) as exc:
+                self.fn(str(target), base_dir=base)
+            assert exc.value.status_code == 400
+            assert "symbolic links" in exc.value.detail
+
 
 class TestDailyAnalysisOutputPath:
     """validate_output_path is called from DailyAnalysisService.generate_summary."""
