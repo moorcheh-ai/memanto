@@ -128,3 +128,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @abdalmoutyhossam-coder
 - @jmass-ggg
 - @agusgarcia3007
+- @zeenat28-ui
