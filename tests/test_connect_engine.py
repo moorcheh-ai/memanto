@@ -286,3 +286,34 @@ def test_installed_skill_carries_the_agents_own_slug(tmp_path, monkeypatch):
     )
     assert "--tool cursor" in skill
     assert "--tool claude-code" not in skill
+
+
+def test_every_agent_instruction_has_edit_and_forget_triggers():
+    """Issue #1948: the trigger protocol must cover the full memory lifecycle.
+
+    Before hardening, the instruction block only prompted the agent to
+    remember/recall/sync — it never told the agent to update a stale fact
+    (`edit`) or prune an obsolete one (`forget`). Both must now appear in
+    every agent's instruction content, regardless of platform.
+    """
+    for name in AGENT_REGISTRY:
+        instruction = get_instruction_content(name)
+        assert "EDIT" in instruction, f"{name}/instruction missing EDIT trigger"
+        assert "FORGET" in instruction, f"{name}/instruction missing FORGET trigger"
+        assert "memanto edit" in instruction, f"{name}/instruction missing edit example"
+        assert "memanto forget" in instruction, (
+            f"{name}/instruction missing forget example"
+        )
+
+
+def test_skill_documents_edit_and_forget_workflows():
+    """The skill reference must teach when to edit vs forget vs remember."""
+    from memanto.cli.connect.templates import get_skill_content
+
+    for name in AGENT_REGISTRY:
+        skill = get_skill_content(name)
+        assert "memanto edit" in skill, f"{name}/skill missing edit command"
+        assert "memanto forget" in skill, f"{name}/skill missing forget command"
+        assert "edit` and `forget" in skill, (
+            f"{name}/skill missing edit-vs-forget guidance"
+        )
