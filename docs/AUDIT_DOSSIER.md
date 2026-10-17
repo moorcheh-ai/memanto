@@ -16,7 +16,7 @@ The symlink test may report `link_creation=unavailable` on Windows when the proc
 
 ### 1. Unbounded file ingestion
 
-`poc_unbounded_ingestion.py` models `load_okf_bundle` in `memanto/cli/migrate/okf_loader.py`: recursive discovery and `read_text()` materialize each complete Markdown file, and later splitting/parsing creates additional objects. The PoC prints fixture size, files loaded, and the process maximum-resident-memory delta. Reproduce with `--size-mib 128 --depth 200` only on a disposable test host.
+`poc_unbounded_ingestion.py` models `load_okf_bundle` in `memanto/cli/migrate/okf_loader.py`: recursive discovery and `read_text()` materialize each complete Markdown file, and later splitting/parsing creates additional objects. The PoC prints fixture size, files loaded, and tracemalloc_peak. Reproduce with `--size-mib 128 --depth 200` only on a disposable test host.
 
 Recommended fix: impose limits on file count, total bytes, per-file bytes, recursion depth, and parsed entry count before materialization; prefer bounded streaming where practical.
 

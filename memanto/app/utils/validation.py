@@ -267,14 +267,15 @@ def validate_output_path(
         )
 
     # Reject symbolic links and directory junctions along the path
-    cursor = resolved
-    while cursor != safe_base and cursor != cursor.parent:
-        if cursor.is_symlink():
-            raise HTTPException(
-                status_code=400,
-                detail="output_path cannot contain symbolic links or junctions.",
-            )
-        cursor = cursor.parent
+    for check_path in (candidate, resolved):
+        cursor = check_path
+        while cursor != safe_base and cursor != cursor.parent:
+            if cursor.is_symlink():
+                raise HTTPException(
+                    status_code=400,
+                    detail="output_path cannot contain symbolic links or junctions.",
+                )
+            cursor = cursor.parent
 
     return resolved
 

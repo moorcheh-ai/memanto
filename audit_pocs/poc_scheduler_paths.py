@@ -13,8 +13,12 @@ def main() -> int:
     parser.add_argument("--path", default=str(Path(temp_dir_name()) / "memanto;marker.py"))
     args = parser.parse_args()
     script = Path(args.path)
+    if script.exists():
+        parser.error(f"Target path already exists: {script}")
     script.parent.mkdir(parents=True, exist_ok=True)
-    script.write_text("print('scheduler fixture')\n", encoding="utf-8")
+    with script.open("x", encoding="utf-8") as handle:
+        handle.write("print('scheduler fixture')\n")
+    created = True
     try:
         argv = [sys.executable, str(script)]
         result = subprocess.run(argv, capture_output=True, text=True, check=True)
@@ -22,11 +26,12 @@ def main() -> int:
         print(f"stdout={result.stdout.strip()}")
         print("observation=argument-vector execution preserves path boundaries")
     finally:
-        script.unlink(missing_ok=True)
-        try:
-            script.parent.rmdir()
-        except OSError:
-            pass
+        if created:
+            script.unlink(missing_ok=True)
+            try:
+                script.parent.rmdir()
+            except OSError:
+                pass
     return 0
 
 

@@ -25,14 +25,15 @@ def main() -> int:
         started = time.monotonic()
         try:
             FileLock(str(lock_path)).acquire(timeout=0)
+            elapsed = time.monotonic() - started
             outcome = "acquired"
         except Timeout:
+            elapsed = time.monotonic() - started
             outcome = "timeout"
             fallback = "unsafe if caller proceeds without protected state"
         finally:
             time.sleep(args.hold_seconds)
             holder.release()
-        elapsed = time.monotonic() - started
         print(f"outcome={outcome}")
         print(f"wait_seconds={elapsed:.3f}")
         print(f"fallback={fallback if outcome == 'timeout' else 'none'}")

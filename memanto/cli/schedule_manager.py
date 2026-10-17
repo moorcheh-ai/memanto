@@ -59,7 +59,8 @@ class ScheduleManager:
         if self.os_type == "Windows":
             return subprocess.list2cmdline(parts)
         import shlex
-        return shlex.join(parts)
+        cmd = shlex.join(parts)
+        return cmd.replace("%", r"\%")
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
         self._remove_legacy_tasks()

@@ -104,10 +104,14 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
 
 
 def _read_directory_documents(
-    directory_fd: int, prefix: Path = Path(), depth: int = 0
+    directory_fd: int, prefix: Path = Path(), depth: int = 0, counters: list[int] | None = None
 ) -> list[tuple[Path, str]]:
     if depth > 32:
         raise ValueError(f"OKF bundle directory too deep (limit 32): {prefix}")
+    if counters is None:
+        counters = [0, 0]
+    max_bundle_files = 10_000
+    max_bundle_bytes = 64 * 1024 * 1024
     try:
         with os.scandir(directory_fd) as entries:
             names = sorted(entry.name for entry in entries)
@@ -159,7 +163,7 @@ def _read_directory_documents(
                         f"OKF bundle contains an unsafe directory: {relative_path}"
                     )
                 documents.extend(
-                    _read_directory_documents(child_fd, relative_path, depth + 1)
+                    _read_directory_documents(child_fd, relative_path, depth + 1, counters)
                 )
             finally:
                 os.close(child_fd)
@@ -168,6 +172,17 @@ def _read_directory_documents(
             continue
         if not stat.S_ISREG(entry_stat.st_mode):
             raise ValueError(f"OKF document is not a regular file: {relative_path}")
+        if counters[0] >= max_bundle_files:
+            raise ValueError(f"OKF bundle file count exceeds limit ({max_bundle_files})")
+        file_size = entry_stat.st_size
+        if file_size > 50 * 1024 * 1024:
+            raise ValueError(f"OKF document exceeds size limit (50MB): {relative_path}")
+        if counters[1] + file_size > max_bundle_bytes:
+            raise ValueError(
+                f"OKF bundle total size exceeds limit ({max_bundle_bytes // (1024 * 1024)}MB)"
+            )
+        counters[0] += 1
+        counters[1] += file_size
         documents.append(
             (
                 relative_path,
@@ -326,13 +341,15 @@ def _load_documents_portable(
     max_bundle_bytes = 64 * 1024 * 1024
     max_bundle_files = 10_000
 
-    for file_path in sorted(scan_root.rglob("*.md")):
+    found_files = []
+    for file_path in scan_root.rglob("*.md"):
         if file_path.name.lower() in _SKIP_FILENAMES:
             continue
-
-        if len(documents) >= max_bundle_files:
+        found_files.append(file_path)
+        if len(found_files) > max_bundle_files:
             raise ValueError(f"OKF bundle file count exceeds limit ({max_bundle_files})")
 
+    for file_path in sorted(found_files):
         current = file_path
         is_unsafe = False
         depth = 0
@@ -408,6 +425,7 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
         rel_base, documents = _load_documents_portable(root, display_path)
 
     memories: list[dict[str, Any]] = []
+    max_bundle_entries = 10_000
     for file_path, text in documents:
         for chunk in text.split(ENTRY_DELIMITER):
             chunk = chunk.strip()
@@ -415,6 +433,10 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
                 continue
             entry = _parse_entry(chunk, file_path, rel_base)
             if entry is not None:
+                if len(memories) >= max_bundle_entries:
+                    raise ValueError(
+                        f"OKF bundle entry count exceeds limit ({max_bundle_entries})"
+                    )
                 memories.append(entry)
 
     return {"memories": memories}
