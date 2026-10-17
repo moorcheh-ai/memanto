@@ -37,6 +37,11 @@
       "types": "./dist/integrations/eve.d.ts",
       "import": "./dist/integrations/eve.js",
       "require": "./dist/integrations/eve.cjs"
+    },
+    "./composio": {
+      "types": "./dist/integrations/composio.d.ts",
+      "import": "./dist/integrations/composio.js",
+      "require": "./dist/integrations/composio.cjs"
     }
   },
   "files": [
@@ -56,6 +61,7 @@
   "devDependencies": {
     "@ai-sdk/openai": "^4.0.11",
     "@ai-sdk/provider-utils": "^4.0.0",
+    "@composio/core": "^0.1.0",
     "@hey-api/openapi-ts": "^0.99.0",
     "@mastra/core": "^1.50.1",
     "@types/node": "^20.0.0",
@@ -70,6 +76,7 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
+    "@composio/core": ">=0.1.0",
     "@mastra/core": ">=1.0.0",
     "ai": ">=5.0.0",
     "eve": ">=0.60.0",
@@ -77,6 +84,9 @@
     "zod": ">=3.23.0"
   },
   "peerDependenciesMeta": {
+    "@composio/core": {
+      "optional": true
+    },
     "@mastra/core": {
       "optional": true
     },
