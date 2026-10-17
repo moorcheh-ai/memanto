@@ -71,6 +71,17 @@ def _get_llm():
     model = os.getenv("LLM_MODEL", "openrouter/openai/gpt-4o-mini")
     provider, _, model_name = model.partition("/")
 
+    # ---- OrcaRouter ----
+    if os.getenv("ORCAROUTER_API_KEY") or provider == "orcarouter":
+        # When the OrcaRouter key is set, route through OrcaRouter. The model
+        # is the user's explicit ``orcarouter/...`` id, a bare name, or the
+        # smart-routing default. OpenRouter-format LLM_MODEL values are
+        # ignored because they are not routable through the gateway.
+        if provider == "orcarouter":
+            return _OrcaRouterLLM(model)
+        if "/" in model and model_name:
+            return _OrcaRouterLLM("orcarouter/auto")
+        return _OrcaRouterLLM(model)
     # ---- OpenRouter (default) ----
     if provider == "openrouter":
         return _OpenRouterLLM(model_name)
@@ -83,6 +94,47 @@ def _get_llm():
 
     # Fallback: raw HTTP with OpenRouter-style API
     return _OpenRouterLLM(model_name)
+
+
+class _OrcaRouterLLM:
+    """Minimal LLM wrapper using OrcaRouter's OpenAI-compatible API.
+
+    Requires ``ORCAROUTER_API_KEY``. Routes through OrcaRouter's smart
+    routing gateway (``orcarouter/auto``) by default.
+    """
+
+    def __init__(self, model: str = "orcarouter/auto"):
+        model = (model or "orcarouter/auto").strip()
+        # Ensure the OrcaRouter namespace prefix is present: bare model ids
+        # (e.g. ``fusion``) are not routable through the gateway. A model id
+        # carrying some other provider's prefix (e.g. ``openai/gpt-4o-mini``)
+        # is not routable either, so fall back to smart routing.
+        if "/" in model and not model.startswith("orcarouter/"):
+            model = "orcarouter/auto"
+        elif not model.startswith("orcarouter/"):
+            model = f"orcarouter/{model}"
+        self.model = model
+        self.api_key = os.getenv("ORCAROUTER_API_KEY", "")
+
+    def invoke(self, messages: list[dict]) -> str:
+        import httpx
+
+        r = httpx.post(
+            os.getenv("ORCAROUTER_API_BASE", "https://api.orcarouter.ai/v1")
+            + "/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": self.model,
+                "messages": messages,
+                "temperature": 0.3,
+            },
+            timeout=60,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
 
 
 class _OpenRouterLLM:

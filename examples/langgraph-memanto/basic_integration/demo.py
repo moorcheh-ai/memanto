@@ -26,11 +26,17 @@ def main():
         print("Please set it: export MOORCHEH_API_KEY='your_key'")
         sys.exit(1)
 
-    if not os.getenv("OPENAI_API_KEY") and not os.getenv("OPENROUTER_API_KEY"):
+    if (
+        not os.getenv("OPENAI_API_KEY")
+        and not os.getenv("OPENROUTER_API_KEY")
+        and not os.getenv("ORCAROUTER_API_KEY")
+    ):
         print(
-            "❌ Error: OPENAI_API_KEY or OPENROUTER_API_KEY environment variable is missing."
+            "❌ Error: OPENAI_API_KEY, OPENROUTER_API_KEY, or ORCAROUTER_API_KEY environment variable is missing."
         )
-        print("Please set one: export OPENROUTER_API_KEY='your_key'")
+        print(
+            "Please set one: export OPENROUTER_API_KEY='your_key' or export ORCAROUTER_API_KEY='your_key'"
+        )
         sys.exit(1)
 
     # Initialize Memanto Client

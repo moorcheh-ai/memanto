@@ -12,8 +12,8 @@ from typing import Any, Literal
 
 from dotenv import load_dotenv
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
 from langgraph_memanto import create_memanto_tools
+from orcarouter_llm import build_orcarouter_llm
 
 from memanto.cli.client.sdk_client import SdkClient
 
@@ -44,15 +44,8 @@ def _get_moorcheh_api_key() -> str:
 
 
 def _get_llm():
-    """Build a flexible ChatOpenAI model."""
-    return ChatOpenAI(
-        model=os.getenv("LLM_MODEL", "openai/gpt-4o-mini"),
-        api_key=os.getenv("OPENROUTER_API_KEY")
-        or os.getenv("OPENAI_API_KEY")
-        or OPENROUTER_API_KEY,
-        base_url=os.getenv("OPENAI_API_BASE", "https://openrouter.ai/api/v1"),
-        temperature=0.7,
-    )
+    """Build a flexible ChatOpenAI model (prefers OrcaRouter when configured)."""
+    return build_orcarouter_llm(temperature=0.7)
 
 
 # ---------------------------------------------------------------------------
