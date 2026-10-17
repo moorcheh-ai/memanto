@@ -73,6 +73,15 @@ _NOFOLLOW_ERRNOS: set[int] = {
 
 
 def _read_open_regular_file(fd: int, display_path: Path) -> str:
+    """Read contents of an open file descriptor enforcing regular file and size constraints.
+
+    Args:
+        fd: Open file descriptor.
+        display_path: Path for display in exception messages.
+
+    Returns:
+        The decoded UTF-8 string content.
+    """
     st = os.fstat(fd)
     if not stat.S_ISREG(st.st_mode):
         raise ValueError(f"OKF document is not a regular file: {display_path}")
@@ -84,6 +93,16 @@ def _read_open_regular_file(fd: int, display_path: Path) -> str:
 
 
 def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
+    """Open and read a document relative to an open directory descriptor without following symlinks.
+
+    Args:
+        directory_fd: Open directory file descriptor.
+        name: Basename of the file in the directory.
+        display_path: Full relative path for error messages.
+
+    Returns:
+        The decoded UTF-8 document content.
+    """
     document_fd: int | None = None
     try:
         document_fd = os.open(
@@ -106,6 +125,17 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
 def _read_directory_documents(
     directory_fd: int, prefix: Path = Path(), depth: int = 0, counters: list[int] | None = None
 ) -> list[tuple[Path, str]]:
+    """Recursively read documents under an open directory descriptor with depth and size bounds.
+
+    Args:
+        directory_fd: Directory file descriptor.
+        prefix: Current relative path prefix.
+        depth: Current recursion depth.
+        counters: Mutable accumulator [file_count, aggregate_bytes].
+
+    Returns:
+        List of (relative_path, content) tuples.
+    """
     if depth > 32:
         raise ValueError(f"OKF bundle directory too deep (limit 32): {prefix}")
     if counters is None:
@@ -235,6 +265,15 @@ def _extract_links(body: str) -> list[tuple[str, str]]:
 def _load_documents_secure(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
+    """Load documents securely using file descriptors and O_NOFOLLOW to prevent symlink traversal.
+
+    Args:
+        root: Resolved root directory or single file.
+        original_path: Input path string for error messages.
+
+    Returns:
+        A tuple of (base_directory, list of (document_path, text_content)).
+    """
     try:
         root_fd = os.open(root, _READ_FLAGS | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError as exc:
@@ -306,6 +345,15 @@ def _load_documents_secure(
 def _load_documents_portable(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
+    """Load documents on platforms lacking dir_fd / O_NOFOLLOW support using bounded checks.
+
+    Args:
+        root: Resolved root directory or single file.
+        original_path: Input path string for error messages.
+
+    Returns:
+        A tuple of (base_directory, list of (document_path, text_content)).
+    """
     try:
         root_stat = root.lstat()
     except FileNotFoundError:

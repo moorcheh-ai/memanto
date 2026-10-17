@@ -9,6 +9,11 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Demonstrate non-atomic file replacement allowing intermediate empty reads.
+
+    Returns:
+        Exit code indicating success (0).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--size-kib", type=int, default=256)
     args = parser.parse_args()
@@ -25,6 +30,7 @@ def main() -> int:
         observed: dict[str, object] = {}
 
         def reader() -> None:
+            """Inspect target file concurrently during the in-place truncation window."""
             truncated.wait()
             raw = report.read_text(encoding="utf-8")
             observed["empty"] = not raw

@@ -14,6 +14,11 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Measure peak heap allocation during unconstrained Markdown file materialization.
+
+    Returns:
+        Exit code indicating success (0).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--size-mib", type=float, default=8.0)
     parser.add_argument("--depth", type=int, default=8)

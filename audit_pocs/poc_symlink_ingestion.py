@@ -9,6 +9,11 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Demonstrate recursive bundle ingestion resolving external symbolic links.
+
+    Returns:
+        Exit code indicating success (0) or unavailable link permissions (2).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--require-link", action="store_true")
     args = parser.parse_args()

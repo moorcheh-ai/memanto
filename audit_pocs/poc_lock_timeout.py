@@ -12,6 +12,11 @@ from filelock import FileLock, Timeout
 
 
 def main() -> int:
+    """Execute the lock timeout demonstration and report acquisition state.
+
+    Returns:
+        Exit code indicating success (0).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--hold-seconds", type=float, default=1.0)
     args = parser.parse_args()

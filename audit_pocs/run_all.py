@@ -18,6 +18,11 @@ POCS = (
 
 
 def main() -> int:
+    """Execute all security demonstration fixtures and report aggregate results.
+
+    Returns:
+        0 if all PoCs pass, 1 if any failure occurs.
+    """
     root = Path(__file__).resolve().parent
     failures = 0
     for name in POCS:

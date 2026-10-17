@@ -9,6 +9,11 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Exercise and verify argument-vector subprocess execution with path metacharacters.
+
+    Returns:
+        Exit code indicating success (0).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", default=str(Path(temp_dir_name()) / "memanto;marker.py"))
     args = parser.parse_args()
@@ -36,6 +41,7 @@ def main() -> int:
 
 
 def temp_dir_name() -> str:
+    """Generate a temporary directory name containing whitespace to test path escaping."""
     import tempfile
 
     return tempfile.mkdtemp(prefix="memanto audit ")

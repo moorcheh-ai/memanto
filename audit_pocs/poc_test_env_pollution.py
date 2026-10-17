@@ -15,6 +15,11 @@ print(os.environ.get('MEMANTO_AUDIT_FLAG', 'missing'))
 
 
 def main() -> int:
+    """Verify process-level environment variable isolation across child execution.
+
+    Returns:
+        Exit code indicating success (0).
+    """
     original = os.environ.pop("MEMANTO_AUDIT_FLAG", None)
     try:
         result = subprocess.run(
