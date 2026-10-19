@@ -222,13 +222,23 @@ def load_export(file_path: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"Export file not found: {file_path}")
     if file_path.stat().st_size > 200 * 1024 * 1024:
         raise ValueError(f"Export file exceeds size limit (200MB): {file_path}")
-    data = json.loads(file_path.read_text(encoding="utf-8"))
+    with file_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
     if not isinstance(data, dict):
         raise ValueError(f"Export file must be a JSON object: {file_path}")
     return data
 
 
 def map_export(provider: str, export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a provider's raw export dictionary to Memanto-compatible memory payloads.
+
+    Args:
+        provider: Name of the source provider (e.g., langfuse, mem0, zep).
+        export: Raw JSON dictionary loaded from provider export.
+
+    Returns:
+        List of mapped memory dictionaries ready for import.
+    """
     mapper = MAPPERS.get(provider)
     if mapper is None:
         raise ValueError(f"Unknown provider '{provider}'. Supported: {sorted(MAPPERS)}")
@@ -236,6 +246,15 @@ def map_export(provider: str, export: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def chunked(items: list[dict[str, Any]], size: int = BATCH_LIMIT):
+    """Yield successive chunks of items up to the batch limit size.
+
+    Args:
+        items: List of dictionary records to batch.
+        size: Maximum number of records per batch.
+
+    Yields:
+        Slices of the original item list.
+    """
     for i in range(0, len(items), size):
         yield items[i : i + size]
 
