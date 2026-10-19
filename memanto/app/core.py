@@ -7,9 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints, field_validator
 
 from memanto.app.constants import (
+    INJECTION_PATTERNS,
     MemoryType,
     ProvenanceType,
     StatusType,
@@ -19,6 +20,30 @@ from memanto.app.constants import (
 # would split a tag and a line break or control character could forge
 # document structure. Everything else (e.g. ``lg:key:<key>``) is allowed.
 TAG_PATTERN = r"^[^,\x00-\x1f\x7f\x85\u2028\u2029]+$"
+
+_INJECTION_TAG_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS
+)
+
+
+def _reject_injection_shaped_tag(value: str) -> str:
+    """
+    SECURITY (Memanto #1852): tags are comma-joined into the document text
+    (``to_moorcheh_document``) and rendered into session summaries and
+    exports, so a tag must not carry directive/override payloads or the
+    documented ``#`` filter-token prefix (see ``_sanitize_query_text``).
+    The extraction path enforces the same rule set
+    (``ConversationMemoryExtractionService._normalize_candidates``).
+    """
+    if value.startswith("#") or any(
+        pattern.search(value) for pattern in _INJECTION_TAG_PATTERNS
+    ):
+        raise ValueError(
+            "tag matches an injection directive or a '#'-prefixed filter token"
+        )
+    return value
+
+
 MemoryTag = Annotated[
     str,
     StringConstraints(
@@ -27,6 +52,7 @@ MemoryTag = Annotated[
         max_length=64,
         pattern=TAG_PATTERN,
     ),
+    AfterValidator(_reject_injection_shaped_tag),
 ]
 BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
 

@@ -39,7 +39,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from memanto.app.constants import VALID_MEMORY_TYPES, VALID_PROVENANCE_TYPES
-from memanto.app.core import TAG_PATTERN
+from memanto.app.core import TAG_PATTERN, INJECTION_PATTERNS
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -65,6 +65,9 @@ _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 _MAX_TAGS = 20  # MemoryRecord.tags max_length
 _MAX_TAG_CHARS = 64  # MemoryTag max_length
 _TAG_RE = re.compile(TAG_PATTERN)
+_INJECTION_TAG_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS
+)
 
 
 def _bounded_tags(tags: list[str]) -> tuple[list[str], list[str]]:
@@ -74,12 +77,22 @@ def _bounded_tags(tags: list[str]) -> tuple[list[str], list[str]]:
     so tags that are too long, fail ``TAG_PATTERN`` (e.g. contain a comma,
     since tags are stored comma-joined), or exceed the per-memory cap are
     returned as ``extra`` for the supporting-data footer instead of being altered.
+    Injection-shaped or ``#``-prefixed filter-token tags are discarded entirely:
+    the footer content feeds session summaries and daily-analysis prompts.
     """
     kept: list[str] = []
     extra: list[str] = []
     for tag in tags:
         text = tag.strip()
         if not text or text in kept:
+            continue
+        if (
+            text.startswith("#")
+            or any(pattern.search(text) for pattern in _INJECTION_TAG_PATTERNS)
+        ):
+            # SECURITY (Memanto #1852): never persist injection-shaped or
+            # filter-token tags - not even in the supporting-data footer,
+            # whose content feeds session summaries and daily-analysis prompts.
             continue
         if (
             len(text) > _MAX_TAG_CHARS
