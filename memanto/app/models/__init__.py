@@ -21,6 +21,8 @@ from memanto.app.core import (
 )
 
 
+from datetime import datetime
+
 def _validate_non_blank_content(value: str) -> str:
     """Reject whitespace-only memory content before it reaches storage."""
     if not value.strip():
@@ -42,6 +44,9 @@ class BatchRememberItem(BaseModel):
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
     tags: BoundedTags | None = Field(None, description="Tags for this memory")
+    status: str | None = Field(None, description="Memory lifecycle status (e.g. active, expired)")
+    expired_at: datetime | None = Field(None, description="When this memory was expired")
+    expired_by: str | None = Field(None, description="What/who expired this memory")
     source: MemorySource = Field(
         "agent",
         description=(

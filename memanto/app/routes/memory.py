@@ -585,17 +585,25 @@ async def batch_remember(
             title = item.title or (
                 item.content[:47] + "..." if len(item.content) > 50 else item.content
             )
-            memory = MemoryRecord(
-                type=cast(MemoryType, item.type),
-                title=title,
-                content=item.content,
-                agent_id=agent_id,
-                actor_id=agent_id,
-                confidence=item.confidence,
-                tags=item.tags or [],
-                source=item.source,
-                provenance=cast(ProvenanceType, item.provenance),
-            )
+            kwargs = {
+                "type": cast(MemoryType, item.type),
+                "title": title,
+                "content": item.content,
+                "agent_id": agent_id,
+                "actor_id": agent_id,
+                "confidence": item.confidence,
+                "tags": item.tags or [],
+                "source": item.source,
+                "provenance": cast(ProvenanceType, item.provenance),
+            }
+            if item.status is not None:
+                kwargs["status"] = item.status
+            if item.expired_at is not None:
+                kwargs["expired_at"] = item.expired_at
+            if item.expired_by is not None:
+                kwargs["expired_by"] = item.expired_by
+
+            memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
         # Store in batch
