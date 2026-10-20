@@ -838,6 +838,9 @@ class DirectClient:
                 if val is not None:
                     kwargs[opt_key] = val
 
+            if kwargs.get("status") == "expired" and (not kwargs.get("expired_at") or not kwargs.get("expired_by")):
+                raise ValueError(f"Memory at index {i} is marked expired but missing expired_at/expired_by")
+
             memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
