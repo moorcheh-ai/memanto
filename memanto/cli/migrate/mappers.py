@@ -633,6 +633,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": provenance,
                 "created_at": created_at,
                 "updated_at": updated_at,
+                "status": x_memanto.get("status", "active"),
                 "expired_at": expired_at,
                 "expired_by": expired_by,
             }

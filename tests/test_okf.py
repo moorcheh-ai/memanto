@@ -142,6 +142,7 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     pg = by_title["Postgres is the DB"]
     assert pg["type"] == "fact"  # x_memanto.type round-trips
     assert pg["confidence"] == 0.9  # x_memanto.confidence round-trips
+    assert pg.get("status") == "active"
     assert pg["source_ref"] == "https://example.com/db"  # resource -> source_ref
     assert pg["provenance"] == "explicit_statement"
     assert set(pg["tags"]) == {"infra", "db"}
@@ -496,6 +497,7 @@ def test_okf_round_trip_preserves_expired_lifecycle(tmp_path):
 
     row = rows[0]
     # The lifecycle stamp must round-trip, not the dead schema fields.
+    assert row.get("status") == "expired"
     assert row["expired_at"] is not None
     assert row["expired_at"].isoformat() == "2026-07-01T00:00:00+00:00"
     assert row["expired_by"] == "manual"
