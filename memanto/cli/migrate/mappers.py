@@ -598,6 +598,10 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         expired_at = _parse_dt(x_memanto.get("expired_at"))
         expired_by = x_memanto.get("expired_by") if isinstance(x_memanto.get("expired_by"), str) and x_memanto.get("expired_by").strip() else None
 
+        status = x_memanto.get("status")
+        if not isinstance(status, str) or not status.strip():
+            status = "active"
+
         original_title = None
         if title and len(title) > _MAX_TITLE_CHARS:
             original_title = title
@@ -633,7 +637,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": provenance,
                 "created_at": created_at,
                 "updated_at": updated_at,
-                "status": x_memanto.get("status", "active"),
+                "status": status,
                 "expired_at": expired_at,
                 "expired_by": expired_by,
             }
