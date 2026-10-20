@@ -244,13 +244,7 @@ def test_presentation_imperative_beats_topical_error_terms():
 
 
 def test_desire_framing_does_not_steal_goals():
-    """A desire followed by "to <verb>" still belongs to the goal ruleset.
-
-    The sentence-opening branch needs the same guard as the "I want" branch.
-    Without it, "Prefer to ship the CLI by Friday" scored 5 as a preference
-    instead of tying with the goal ruleset at 4, and ``goal`` outranks
-    ``preference`` in ``TYPE_PRIORITY``, so the goal won on ``main``.
-    """
+    """A desire followed by "to <verb>" still belongs to the goal ruleset."""
 
     parser = MemoryParsingService()
 
@@ -272,12 +266,7 @@ def test_desire_framing_does_not_steal_goals():
 
 
 def test_work_choice_preference_still_loses_to_hard_requirement():
-    """The desire rule stays narrow: a choice about the work is not upgraded.
-
-    "I prefer the new approach" is a preference about the work itself, not
-    about how it is reported, so it keeps its existing weaker score and the
-    "must" requirement in the same sentence still wins.
-    """
+    """The desire rule stays narrow: a choice about the work is not upgraded."""
 
     parser = MemoryParsingService()
 

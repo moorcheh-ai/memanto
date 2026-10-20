@@ -69,26 +69,10 @@ class MemoryParsingService:
                 ),
                 (r"\b(?:prefer|prefers)\s+not\s+to\b", 5),
                 (
-                    # Desire framing ("I want…", "Prefer…") so a stated
-                    # preference has a signal that competes with a bare topical
-                    # mention of errors. Scored to tie with the error ruleset's
-                    # keyword score: durable types outrank "error" in
-                    # TYPE_PRIORITY, so the tie resolves the same way it already
-                    # does for "always"/"never" in the instruction ruleset.
-                    #
-                    # Deliberately narrow. The rule only fires when the desire
-                    # points at a presentation noun ("I want error messages
-                    # explained in plain English"), which is the shape of a
-                    # standing preference about how work is reported. A desire
-                    # about the work itself ("I prefer the new approach") keeps
-                    # its existing, weaker preference score so a hard
-                    # requirement in the same sentence still outranks it.
-                    #
-                    # A following "to <verb>" is left to the goal ruleset, and
-                    # both branches carry that guard. Without it on the
-                    # sentence-opening branch, "Prefer to ship the CLI by
-                    # Friday" scored 5 here instead of tying with the goal
-                    # ruleset at 4, which flipped a goal into a preference.
+                    # Matches desire framing ("I want...", "Prefer...") regarding presentation
+                    # nouns (e.g., "messages", "errors"). Scored at 5 to tie with the error
+                    # ruleset so TYPE_PRIORITY can rank it as a preference. Negative lookahead
+                    # on "to <verb>" ensures goals ("I want to...") aren't misclassified here.
                     r"(?:"
                     r"\b(?:i|we)\s*(?:['’]d|would)?\s*"
                     r"(?:want|need|prefer|like|expect)\b(?!\s+to\b)"
@@ -132,12 +116,9 @@ class MemoryParsingService:
                 ),
                 (r"\b(?:always|never)\b", 5),
                 (
-                    # A sentence that opens on a presentation directive is a
-                    # standing instruction about how work should be reported,
-                    # even when its topic happens to be failures. Ties with the
-                    # error ruleset's keyword score so TYPE_PRIORITY decides, as
-                    # it already does for "always"/"never" above. Anchored, so
-                    # it costs one failed match on almost every input.
+                    # Anchored instruction for sentences starting with presentation directives
+                    # (e.g., "Show...", "Explain..."). Ties at score 5 with the error ruleset
+                    # so TYPE_PRIORITY correctly resolves it as an instruction.
                     r"^\s*(?:please\s+)?(?:(?:always|never)\s+)?"
                     r"(?:show|explain|point out|call out|lead with|start with|"
                     r"begin with|answer|respond|report|format|highlight|"
