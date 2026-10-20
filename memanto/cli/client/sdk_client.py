@@ -1089,7 +1089,7 @@ class SdkClient:
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         min_confidence: float | None = None,
-        status: str = "all",
+        status: str = "active",
     ) -> dict[str, Any]:
         """
         Search memories by semantic similarity.
@@ -1104,8 +1104,8 @@ class SdkClient:
             created_after: Only memories created after this datetime.
             created_before: Only memories created before this datetime.
             min_confidence: Minimum confidence threshold.
-            status: Lifecycle filter — ``all`` (default), ``active`` or
-                ``expired``. The default returns both so callers can label them.
+            status: Lifecycle filter — ``active`` (default), ``all`` or
+                ``expired``.
 
         Returns:
             Dict with ``agent_id``, ``query``, ``memories``, ``count``.
@@ -1194,7 +1194,7 @@ class SdkClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
-        status: str = "all",
+        status: str = "active",
     ) -> dict[str, Any]:
         """
         Differential retrieval: what changed since a given date?
@@ -1238,7 +1238,7 @@ class SdkClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
-        status: str = "all",
+        status: str = "active",
     ) -> dict[str, Any]:
         """
         Recall the most recently stored memories (newest first).
@@ -1248,7 +1248,7 @@ class SdkClient:
             limit: Max results (defaults to config).
             type: Optional type filter.
             tags: Optional tag filter.
-            status: Lifecycle filter — ``all`` (default), ``active`` or ``expired``.
+            status: Lifecycle filter — ``active`` (default), ``all`` or ``expired``.
 
         Returns:
             Dict with ``memories`` and ``count``.

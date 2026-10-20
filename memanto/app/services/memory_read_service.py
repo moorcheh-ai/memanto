@@ -131,7 +131,7 @@ class MemoryReadService:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
-        status: str = "all",
+        status: str = "active",
         limit: int = 10,
         offset: int = 0,
         min_similarity_score: float | None = None,
@@ -198,7 +198,7 @@ class MemoryReadService:
                 created_after is not None
                 or created_before is not None
                 or min_confidence is not None
-                or status != "all"
+                or status not in ("all", "active")
             )
             if needs_post_filter:
                 top_k = min(
@@ -446,7 +446,7 @@ class MemoryReadService:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         limit: int | None = 10,
-        status: str = "all",
+        status: str = "active",
     ) -> dict[str, Any]:
         """
         Differential retrieval: "What changed recently?"
@@ -866,10 +866,10 @@ class MemoryReadService:
         """
         Narrow results to one lifecycle state.
 
-        ``status="all"`` (the default everywhere) returns both active and
-        expired memories so callers can label them; expiry is surfaced to the
-        reader, not hidden from them. A record with no stored status predates
-        the lifecycle field and counts as active.
+        ``status="active"`` (the default everywhere) returns only active memories
+        to prevent injecting superseded rules into LLM context. Callers can
+        explicitly request ``status="all"`` to view history. A record with no
+        stored status predates the lifecycle field and counts as active.
 
         Args:
             results: List of formatted memory items
