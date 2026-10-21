@@ -64,10 +64,17 @@ def _claim(key: str, ttl: float = 10.0) -> bool:
         return True  # never suppress the hook over an unexpected filesystem error
 
 
-def _emit(message: str | None) -> None:
+def _emit(message: str | None, host: str = "claude-code") -> None:
     if not message:
         return
-    payload = {"systemMessage": f"{MARK} · {message}"}
+    # Claude Code surfaces PostToolUse output only via the systemMessage JSON
+    # field; other hosts (e.g. Kimi Code) read plain hook stdout instead.
+    if host == "kimi-code":
+        payload_text = f"{MARK} · {message}"
+    else:
+        payload_text = json.dumps(
+            {"systemMessage": f"{MARK} · {message}"}, ensure_ascii=False
+        )
     try:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
@@ -75,10 +82,20 @@ def _emit(message: str | None) -> None:
         # Ignore if stdout reconfigure fails or is unsupported
         pass
     try:
-        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+        sys.stdout.write(payload_text)
     except Exception:
         # Ignore stdout writing errors in hook
         pass
+
+
+def _host(argv: list[str]) -> str:
+    """Identify the calling agent from `--host <name>` / `--host=<name>`."""
+    for i, arg in enumerate(argv):
+        if arg == "--host" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--host="):
+            return arg.split("=", 1)[1]
+    return "claude-code"
 
 
 def _plain(value) -> str:
@@ -228,7 +245,7 @@ def main() -> None:
         response = _plain(payload.get("tool_response"))
         if not _claim("posttooluse:" + command + ":" + response[:200]):
             return
-        _emit(describe(command, response))
+        _emit(describe(command, response), _host(sys.argv[1:]))
     except Exception:
         # Never disrupt the session over a cosmetic notice.
         pass
