@@ -1263,7 +1263,15 @@ async def connections_install(body: dict, _: None = Depends(_require_local)):
                 status_code=400,
                 detail=f"project_dir does not exist or is not a directory: {project_dir}",
             )
+            
         project_dir = str(path_obj.resolve())
+        
+        # Prevent treating the user's home directory as a local project
+        if path_obj.resolve() == Path.home().resolve():
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot install as a local project in the home directory. Please use 'Install Globally' instead.",
+            )
 
     results = [install_agent(name, project_dir, is_global) for name in agents]
     return {"results": results}

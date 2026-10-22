@@ -53,7 +53,14 @@ def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool) -
     if is_global:
         scope_label = f"Global (~/{agent.config_global_dir or ''})"
     else:
-        scope_label = str(Path(project_dir).resolve())
+        path_obj = Path(project_dir).resolve()
+        # Prevent treating the user's home directory as a local project
+        if path_obj == Path.home().resolve():
+            _error(
+                "Cannot install as a local project in your home directory.",
+                hint="Use the --global / -g flag instead to install globally.",
+            )
+        scope_label = str(path_obj)
 
     console.print(
         Panel.fit(

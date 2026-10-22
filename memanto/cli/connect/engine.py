@@ -63,6 +63,15 @@ def install_agent(
         }
 
     project_path = Path(project_dir).resolve()
+    
+    # Prevent treating the user's home directory as a local project
+    if not is_global and project_path == Path.home().resolve():
+        return {
+            "agent": agent_name,
+            "steps": [],
+            "errors": ["Cannot install as a local project in the home directory. Please use 'is_global=True' instead."],
+        }
+
     steps: list[str] = []
     errors: list[str] = []
 
@@ -155,6 +164,15 @@ def remove_agent(
         }
 
     project_path = Path(project_dir).resolve()
+    
+    # Prevent treating the user's home directory as a local project
+    if not is_global and project_path == Path.home().resolve():
+        return {
+            "agent": agent_name,
+            "steps": [],
+            "errors": ["Cannot remove as a local project in the home directory. Please use 'is_global=True' instead."],
+        }
+
     steps: list[str] = []
     errors: list[str] = []
 
