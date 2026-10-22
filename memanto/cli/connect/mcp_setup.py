@@ -235,8 +235,8 @@ def install_mcp(
         )
     if not agent_id:
         return (
-            "Skipped MCP server: no active memanto agent "
-            "(memanto agent activate <id>, then run connect again)"
+            "Skipped MCP server: no active memanto agent provided "
+            "(pass an agent ID to connect, or activate one first)"
         )
     command, args = launch
     entry = _server_entry(command, args, agent_id)

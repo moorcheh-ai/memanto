@@ -41,7 +41,7 @@ def _print_install_result(result: dict, scope_label: str) -> None:
         console.print("  [dim]Nothing to do[/dim]")
 
 
-def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool) -> None:
+def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool, mcp_agent_id: str | None = None) -> None:
     """Run connect for a single agent with full UI output."""
     agent = AGENT_REGISTRY.get(agent_name)
     if not agent:
@@ -70,7 +70,7 @@ def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool) -
         )
     )
 
-    result = install_agent(agent_name, project_dir, is_global)
+    result = install_agent(agent_name, project_dir, is_global, mcp_agent_id=mcp_agent_id)
     _print_install_result(result, scope_label)
 
     # Summary
@@ -144,6 +144,9 @@ def connect_claude_code(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.claude/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Claude Code.
 
@@ -151,8 +154,9 @@ def connect_claude_code(
         memanto connect claude-code
         memanto connect claude-code --project-dir ./my-project
         memanto connect claude-code --global
+        memanto connect claude-code --agent-id my-project-assistant
     """
-    _run_connect_for_agent("claude-code", project_dir, is_global)
+    _run_connect_for_agent("claude-code", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("codex")
@@ -163,6 +167,9 @@ def connect_codex(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.codex/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to OpenAI Codex CLI.
 
@@ -171,7 +178,7 @@ def connect_codex(
         memanto connect codex --project-dir ./my-project
         memanto connect codex --global
     """
-    _run_connect_for_agent("codex", project_dir, is_global)
+    _run_connect_for_agent("codex", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("pi")
@@ -181,6 +188,9 @@ def connect_pi(
     ),
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.pi/agent/"
+    ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
     ),
 ):
     """Connect MEMANTO to Pi (coding agent).
@@ -193,7 +203,7 @@ def connect_pi(
         memanto connect pi --project-dir ./my-project
         memanto connect pi --global
     """
-    _run_connect_for_agent("pi", project_dir, is_global)
+    _run_connect_for_agent("pi", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("cursor")
@@ -204,6 +214,9 @@ def connect_cursor(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.cursor/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Cursor IDE.
 
@@ -212,8 +225,9 @@ def connect_cursor(
     Examples:
         memanto connect cursor
         memanto connect cursor --global
+        memanto connect cursor --agent-id cursor-workspace
     """
-    _run_connect_for_agent("cursor", project_dir, is_global)
+    _run_connect_for_agent("cursor", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("windsurf")
@@ -222,6 +236,9 @@ def connect_windsurf(
         ".", "--project-dir", "-p", help="Target project directory"
     ),
     is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Windsurf IDE.
 
@@ -230,8 +247,9 @@ def connect_windsurf(
     Examples:
         memanto connect windsurf
         memanto connect windsurf --global
+        memanto connect windsurf --agent-id windsurf-workspace
     """
-    _run_connect_for_agent("windsurf", project_dir, is_global)
+    _run_connect_for_agent("windsurf", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("antigravity")
@@ -240,6 +258,9 @@ def connect_antigravity(
         ".", "--project-dir", "-p", help="Target project directory"
     ),
     is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Google Antigravity.
 
@@ -249,7 +270,7 @@ def connect_antigravity(
         memanto connect antigravity
         memanto connect antigravity --global
     """
-    _run_connect_for_agent("antigravity", project_dir, is_global)
+    _run_connect_for_agent("antigravity", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("gemini-cli")
@@ -260,6 +281,9 @@ def connect_gemini_cli(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.gemini/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Google Gemini CLI.
 
@@ -269,7 +293,7 @@ def connect_gemini_cli(
         memanto connect gemini-cli
         memanto connect gemini-cli --global
     """
-    _run_connect_for_agent("gemini-cli", project_dir, is_global)
+    _run_connect_for_agent("gemini-cli", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("cline")
@@ -278,6 +302,9 @@ def connect_cline(
         ".", "--project-dir", "-p", help="Target project directory"
     ),
     is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Cline VS Code extension.
 
@@ -286,8 +313,9 @@ def connect_cline(
     Examples:
         memanto connect cline
         memanto connect cline --global
+        memanto connect cline --agent-id cline-workspace
     """
-    _run_connect_for_agent("cline", project_dir, is_global)
+    _run_connect_for_agent("cline", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("continue")
@@ -298,6 +326,9 @@ def connect_continue(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.continue/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Continue.dev.
 
@@ -306,8 +337,9 @@ def connect_continue(
     Examples:
         memanto connect continue
         memanto connect continue --global
+        memanto connect continue --agent-id continue-workspace
     """
-    _run_connect_for_agent("continue", project_dir, is_global)
+    _run_connect_for_agent("continue", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("opencode")
@@ -316,6 +348,9 @@ def connect_opencode(
         ".", "--project-dir", "-p", help="Target project directory"
     ),
     is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to OpenCode CLI.
 
@@ -325,7 +360,7 @@ def connect_opencode(
         memanto connect opencode
         memanto connect opencode --global
     """
-    _run_connect_for_agent("opencode", project_dir, is_global)
+    _run_connect_for_agent("opencode", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("goose")
@@ -334,6 +369,9 @@ def connect_goose(
         ".", "--project-dir", "-p", help="Target project directory"
     ),
     is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Goose AI agent.
 
@@ -343,7 +381,7 @@ def connect_goose(
         memanto connect goose
         memanto connect goose --global
     """
-    _run_connect_for_agent("goose", project_dir, is_global)
+    _run_connect_for_agent("goose", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("roo")
@@ -354,6 +392,9 @@ def connect_roo(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.roo/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Roo Code.
 
@@ -362,8 +403,9 @@ def connect_roo(
     Examples:
         memanto connect roo
         memanto connect roo --global
+        memanto connect roo --agent-id roo-workspace
     """
-    _run_connect_for_agent("roo", project_dir, is_global)
+    _run_connect_for_agent("roo", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("github-copilot")
@@ -372,6 +414,9 @@ def connect_github_copilot(
         ".", "--project-dir", "-p", help="Target project directory"
     ),
     is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to GitHub Copilot.
 
@@ -381,7 +426,7 @@ def connect_github_copilot(
         memanto connect github-copilot
         memanto connect github-copilot --global
     """
-    _run_connect_for_agent("github-copilot", project_dir, is_global)
+    _run_connect_for_agent("github-copilot", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("augment")
@@ -392,6 +437,9 @@ def connect_augment(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.augment/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Augment Code.
 
@@ -401,7 +449,7 @@ def connect_augment(
         memanto connect augment
         memanto connect augment --global
     """
-    _run_connect_for_agent("augment", project_dir, is_global)
+    _run_connect_for_agent("augment", project_dir, is_global, mcp_agent_id)
 
 
 # Connect List

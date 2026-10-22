@@ -7948,6 +7948,10 @@
         // Connect modal
         function openConnectModal(preselectAgent) {
             const placeholder = S.cwd || '/absolute/path/to/project';
+            
+            // Suggest a default MCP agent ID based on the active agent, or the folder name
+            const defaultMcpId = S.agentId || '';
+            
             const agents = S.connections;
             const checkboxes = agents.map(a => {
                 const checked = preselectAgent && preselectAgent === a.name ? 'checked' : '';
@@ -7974,6 +7978,11 @@
                     <div id="folderBrowser" class="browser">
                         <div class="loading-overlay" style="padding:16px"><span class="spinner"></span> Loading…</div>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Memanto Agent ID (for MCP)</label>
+                    <input id="connectMcpAgentIdInput" type="text" placeholder="e.g. cursor-workspace" value="${escHtml(defaultMcpId)}">
+                    <div class="helper-text">The Memanto agent ID this editor should use for memories. It will be auto-created if it doesn't exist.</div>
                 </div>
                 <div class="form-group">
                     <label>Agents</label>
@@ -8094,13 +8103,14 @@
             if (!agents.length) { toast('Pick at least one agent', 'error'); return; }
             const isGlobal = document.getElementById('connectGlobalToggle').checked;
             const projectDir = document.getElementById('connectPathInput').value.trim();
+            const mcpAgentId = document.getElementById('connectMcpAgentIdInput').value.trim() || undefined;
             if (!isGlobal && !projectDir) { toast('Project path is required', 'error'); return; }
 
             const btn = document.getElementById('connectInstallBtn');
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Installing...';
             try {
                 const res = await api('POST', '/api/ui/connections/install', {
-                    agents, project_dir: isGlobal ? null : projectDir, is_global: isGlobal
+                    agents, project_dir: isGlobal ? null : projectDir, is_global: isGlobal, mcp_agent_id: mcpAgentId
                 });
                 (res.results || []).forEach(r => {
                     const label = (S.connections.find(c => c.name === r.agent)?.display_name) || r.agent;

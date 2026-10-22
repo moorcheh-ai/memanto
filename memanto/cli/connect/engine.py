@@ -48,6 +48,7 @@ def install_agent(
     agent_name: str,
     project_dir: str = ".",
     is_global: bool = False,
+    mcp_agent_id: str | None = None,
 ) -> dict[str, Any]:
     """Install MEMANTO integration for a single agent.
 
@@ -83,12 +84,15 @@ def install_agent(
     except Exception as e:
         errors.append(f"Instruction file: {e}")
 
+    # Determine which agent_id to set as the default for MCP
+    target_agent_id = mcp_agent_id if mcp_agent_id is not None else _active_agent_id()
+
     # MCP server (Claude Code, Codex, Cursor): memanto tools for the agent
     mcp_ready = False
     if agent.mcp_client:
         try:
             mcp_result = install_mcp(
-                agent.mcp_client, project_path, is_global, _active_agent_id()
+                agent.mcp_client, project_path, is_global, target_agent_id
             )
             mcp_ready = mcp_result is None or not mcp_result.startswith("Skipped")
             if mcp_result:
