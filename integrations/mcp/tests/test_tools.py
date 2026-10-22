@@ -95,6 +95,8 @@ def test_batch_remember_normalizes_comma_separated_tags() -> None:
         {
             "content": "Uses Memanto MCP for durable memory.",
             "type": "fact",
+            "confidence": 0.85,
+            "provenance": "explicit_statement",
             "tags": "mcp, batch, ",
         }
     ]
@@ -135,6 +137,9 @@ def test_remember_uses_same_tag_normalization_without_mutating_input() -> None:
     result = mcp.tools["remember"](
         content="Uses Memanto MCP for durable memory.",
         tags=tags,
+        type="fact",
+        confidence=0.85,
+        provenance="explicit_statement",
     )
 
     assert result.status == "ok"
@@ -182,7 +187,12 @@ def test_remember_defaults_are_accepted_by_memanto_core() -> None:
     lifecycle = FakeLifecycle()
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
-    result = mcp.tools["remember"](content="Prefers concise answers.")
+    result = mcp.tools["remember"](
+        content="Prefers concise answers.",
+        type="fact",
+        confidence=0.85,
+        provenance="explicit_statement",
+    )
 
     assert result.status == "ok"
     record = _as_memory_record(lifecycle.client.remember.call_args.kwargs)
@@ -199,7 +209,13 @@ def test_remember_accepts_any_writer_label(source: str) -> None:
     lifecycle = FakeLifecycle()
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
-    result = mcp.tools["remember"](content="A stable fact.", source=source)
+    result = mcp.tools["remember"](
+        content="A stable fact.",
+        source=source,
+        type="fact",
+        confidence=0.85,
+        provenance="explicit_statement",
+    )
 
     assert result.status == "ok"
     assert (
@@ -229,7 +245,11 @@ def test_remember_attributes_the_write_to_the_calling_client(
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
     result = mcp.tools["remember"](
-        content="A stable fact.", ctx=_ctx_for_client(client_name)
+        content="A stable fact.",
+        ctx=_ctx_for_client(client_name),
+        type="fact",
+        confidence=0.85,
+        provenance="explicit_statement",
     )
 
     assert result.status == "ok"
@@ -244,7 +264,12 @@ def test_remember_prefers_an_explicit_source_over_the_client_name() -> None:
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
     result = mcp.tools["remember"](
-        content="A stable fact.", source="mem0", ctx=_ctx_for_client("cursor")
+        content="A stable fact.",
+        source="mem0",
+        ctx=_ctx_for_client("cursor"),
+        type="fact",
+        confidence=0.85,
+        provenance="explicit_statement",
     )
 
     assert result.status == "ok"
@@ -257,7 +282,15 @@ def test_batch_remember_rejects_source_core_would_refuse() -> None:
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
     result = mcp.tools["batch_remember"](
-        memories=[{"content": "A fact.", "source": "claude code"}]
+        memories=[
+            {
+                "content": "A fact.",
+                "source": "claude code",
+                "type": "fact",
+                "confidence": 0.85,
+                "provenance": "explicit_statement",
+            }
+        ]
     )
 
     assert result.status == "error"
@@ -272,7 +305,21 @@ def test_batch_remember_attributes_missing_sources_to_the_client() -> None:
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
     result = mcp.tools["batch_remember"](
-        memories=[{"content": "A fact."}, {"content": "Another.", "source": "mem0"}],
+        memories=[
+            {
+                "content": "A fact.",
+                "type": "fact",
+                "confidence": 0.85,
+                "provenance": "explicit_statement",
+            },
+            {
+                "content": "Another.",
+                "source": "mem0",
+                "type": "fact",
+                "confidence": 0.85,
+                "provenance": "explicit_statement",
+            },
+        ],
         ctx=_ctx_for_client("codex"),
     )
 
@@ -343,8 +390,8 @@ def test_list_agents_still_accepts_the_pre_0_2_13_list() -> None:
 
 # One minimal invocation per registered tool, admin tools included.
 TOOL_INVOCATIONS: list[tuple[str, dict[str, Any]]] = [
-    ("remember", {"content": "A fact."}),
-    ("batch_remember", {"memories": [{"content": "A fact."}]}),
+    ("remember", {"content": "A fact.", "type": "fact", "confidence": 0.85, "provenance": "explicit_statement"}),
+    ("batch_remember", {"memories": [{"content": "A fact.", "type": "fact", "confidence": 0.85, "provenance": "explicit_statement"}]}),
     ("recall", {"query": "what do I prefer?"}),
     ("recall_recent", {}),
     ("recall_as_of", {"as_of": "2026-01-01"}),

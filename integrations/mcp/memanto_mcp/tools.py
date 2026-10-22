@@ -373,17 +373,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     "happened, 'observation' for inferred behavior."
                 ),
             ),
-        ] = "fact",
-        title: Annotated[
-            str | None,
-            Field(
-                default=None,
-                description=(
-                    "Short label (<= 100 chars). If omitted, derived from content."
-                ),
-                max_length=_MAX_TITLE_LENGTH,
-            ),
-        ] = None,
+        ],
         confidence: Annotated[
             float,
             Field(
@@ -395,14 +385,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 ge=0.0,
                 le=1.0,
             ),
-        ] = 0.85,
-        tags: Annotated[
-            list[str] | None,
-            Field(
-                default=None,
-                description="Optional lowercase tag list for later filtering.",
-            ),
-        ] = None,
+        ],
         provenance: Annotated[
             ProvenanceLiteral,
             Field(
@@ -413,7 +396,24 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     "'corrected' means it overrides an earlier wrong memory."
                 ),
             ),
-        ] = "explicit_statement",
+        ],
+        title: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description=(
+                    "Short label (<= 100 chars). If omitted, derived from content."
+                ),
+                max_length=_MAX_TITLE_LENGTH,
+            ),
+        ] = None,
+        tags: Annotated[
+            list[str] | None,
+            Field(
+                default=None,
+                description="Optional lowercase tag list for later filtering.",
+            ),
+        ] = None,
         source: Annotated[str | None, SOURCE_CONSTRAINT] = None,
         agent_id: AgentIdField = None,
         ctx: Context | None = None,
@@ -501,16 +501,22 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         raise ValueError(
                             f"memories[{i}] is missing required field 'content'"
                         )
-                    m_type = item.get("type", "fact")
+                    m_type = item.get("type")
                     if m_type not in VALID_MEMORY_TYPES:
                         raise ValueError(
-                            f"memories[{i}].type={m_type!r} is not a valid memory type. "
+                            f"memories[{i}] is missing required valid field 'type'. "
                             f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
                         )
-                    prov = item.get("provenance", "explicit_statement")
+                    
+                    if "confidence" not in item:
+                        raise ValueError(
+                            f"memories[{i}] is missing required field 'confidence' (0.0-1.0)"
+                        )
+                    
+                    prov = item.get("provenance")
                     if prov not in VALID_PROVENANCE_TYPES:
                         raise ValueError(
-                            f"memories[{i}].provenance={prov!r} is not valid. "
+                            f"memories[{i}] is missing required valid field 'provenance'. "
                             f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                         )
                     src = item.get("source") or default_source
