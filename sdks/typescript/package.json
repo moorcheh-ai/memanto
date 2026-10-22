@@ -61,7 +61,7 @@
     "@types/node": "^20.0.0",
     "@voltagent/core": "^2.9.0",
     "ai": "^7.0.22",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "eve": "^0.82.0",
     "openai": "^6.46.0",
     "tsup": "^8.0.0",
@@ -111,5 +111,12 @@
     "type": "git",
     "url": "https://github.com/moorcheh-ai/memanto.git",
     "directory": "sdks/typescript"
+  },
+  "overrides": {
+    "source-map-js": "^1.2.2",
+    "uuid": "^14.0.3",
+    "vite": "^8.3.5",
+    "sprintf-js": "^1.1.3",
+    "undici": "6.28.1"
   }
 }
