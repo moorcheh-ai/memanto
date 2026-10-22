@@ -166,7 +166,7 @@ export default defineMemory({
 });
 ```
 
-- **Recall.** Before each turn, the memories most relevant to the user's message are added to the model's context as one user-role message marked as data, not instructions. It supersedes the previous turn's recall.
+- **Recall.** Before each turn, the memories most relevant to the user's message are added to the model's context as one user-role message. It supersedes the previous turn's recall.
 - **Tools.** The model gets `memanto__remember` and `memanto__recall` (eve names them after the slot file). Each call shows an activity label such as `Recalling "coffee order"` → `Found 2 memories`.
 - **Capture** (`capture: true`, off by default). After each completed turn, durable memories are extracted from the user's words and saved. This makes one server-side LLM call per turn.
 
