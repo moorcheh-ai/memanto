@@ -428,12 +428,14 @@ def _remove_instructions(
     if modified:
         # Clean up extra whitespace
         updated = re.sub(r"\n{3,}", "\n\n", existing).strip() + "\n"
-        if updated.strip():
-            instr_path.write_text(updated, encoding="utf-8")
-            return f"Removed MEMANTO sections from {instr_path.name}"
-        else:
+        
+        # If the file only has applyTo frontmatter left (or is empty), delete it
+        if not updated.strip() or re.fullmatch(r"---\r?\napplyTo:\s*.*?---", updated.strip(), flags=re.DOTALL):
             instr_path.unlink()
             return f"Removed {instr_path.name} (was empty)"
+        else:
+            instr_path.write_text(updated, encoding="utf-8")
+            return f"Removed MEMANTO sections from {instr_path.name}"
 
     return None
 
