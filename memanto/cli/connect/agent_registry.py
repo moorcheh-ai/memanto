@@ -80,7 +80,16 @@ class AgentDef:
     def resolve_skill_local(self, project_dir: Path) -> Path:
         """Resolve local skill directory path."""
         if self.skill_local_dir:
-            return project_dir / self.skill_local_dir / "memanto"
+            target = project_dir / self.skill_local_dir / "memanto"
+            if not target.exists() and self.name == "github-copilot":
+                for fallback in (
+                    project_dir / ".github" / "skills" / "memanto",
+                    project_dir / ".agents" / "skills" / "memanto",
+                    project_dir / ".github" / "prompts" / "memanto",
+                ):
+                    if fallback.exists():
+                        return fallback
+            return target
         return project_dir / ".agents" / "skills" / "memanto"
 
     def resolve_skill_global(self) -> Path:
@@ -107,12 +116,17 @@ class AgentDef:
             if not self.instruction_local_file:
                 return None
             target = project_dir / self.instruction_local_file
-            if (
-                not target.exists()
-                and self.name == "github-copilot"
-                and (project_dir / ".github" / "copilot-instructions.md").exists()
-            ):
-                return project_dir / ".github" / "copilot-instructions.md"
+            if not target.exists() and self.name == "github-copilot":
+                for fallback in (
+                    project_dir
+                    / ".github"
+                    / "instructions"
+                    / "memanto.instructions.md",
+                    project_dir / ".github" / "copilot-instructions.md",
+                    project_dir / ".github" / "prompts" / "memanto.instructions.md",
+                ):
+                    if fallback.exists():
+                        return fallback
             return target
 
     def resolve_extension_file(self, project_dir: Path, is_global: bool) -> Path | None:
@@ -304,10 +318,10 @@ ROO = AgentDef(
 GITHUB_COPILOT = AgentDef(
     name="github-copilot",
     display_name="GitHub Copilot",
-    instruction_local_file=".github/prompts/memanto.instructions.md",
+    instruction_local_file=".github/instructions/memanto.instructions.md",
     instruction_global_file=_get_vscode_prompts_dir(),
     instruction_format="markdown",
-    skill_local_dir=".github/prompts",
+    skill_local_dir=".github/skills",
     skill_global_dir="~/.copilot/skills",
     config_local_dir=".github",
     mcp_client="github-copilot",

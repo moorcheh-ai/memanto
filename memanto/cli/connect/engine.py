@@ -173,16 +173,6 @@ def remove_agent(
 
     project_path = Path(project_dir).resolve()
 
-    # Prevent treating the user's home directory as a local project
-    if not is_global and project_path == Path.home().resolve():
-        return {
-            "agent": agent_name,
-            "steps": [],
-            "errors": [
-                "Cannot remove as a local project in the home directory. Please use 'is_global=True' instead."
-            ],
-        }
-
     steps: list[str] = []
     errors: list[str] = []
 
@@ -443,7 +433,7 @@ def _remove_instructions(
 
         # If the file only has applyTo frontmatter left (or is empty), delete it
         if not updated.strip() or re.fullmatch(
-            r"---\r?\napplyTo:\s*.*?---", updated.strip(), flags=re.DOTALL
+            r"---\r?\napplyTo:\s*[^\r\n]+\r?\n---", updated.strip()
         ):
             instr_path.unlink()
             return f"Removed {instr_path.name} (was empty)"

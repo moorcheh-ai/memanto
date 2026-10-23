@@ -446,7 +446,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     content=content,
                     confidence=confidence,
                     tags=_normalize_tags(tags),
-                    source=source or _client_source(ctx),
+                    source=source or _client_source(ctx, default_source),
                     provenance=provenance,
                 )
                 return RememberResult(
@@ -483,11 +483,10 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             list[dict[str, Any]],
             Field(
                 description=(
-                    "List of memory dicts. Each item supports the same fields "
-                    "as `remember` (content [required], type, title, "
-                    "confidence, tags, source, provenance) with the same "
-                    "allowed values; an item without a source is attributed to "
-                    "the calling client. Max 100 items."
+                    "List of memory dicts. Each item requires 'content', 'type', "
+                    "'confidence' (0.0-1.0), and 'provenance' (same allowed values "
+                    "as `remember`); 'title', 'tags', and 'source' are optional "
+                    "(missing source is attributed to the calling client). Max 100 items."
                 ),
                 min_length=1,
                 max_length=_MAX_BATCH_SIZE,
