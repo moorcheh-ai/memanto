@@ -297,12 +297,13 @@ ROO = AgentDef(
 GITHUB_COPILOT = AgentDef(
     name="github-copilot",
     display_name="GitHub Copilot",
-    instruction_local_file=".github/copilot-instructions.md",
+    instruction_local_file=".github/prompts/memanto.instructions.md",
     instruction_global_file=_get_vscode_prompts_dir(),
     instruction_format="markdown",
-    skill_local_dir=".agents/skills",
+    skill_local_dir=".github/prompts",
     skill_global_dir="~/.copilot/skills",
     config_local_dir=".github",
+    mcp_client="github-copilot",
 )
 
 AUGMENT = AgentDef(

@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import os
 SERVER_NAME = "memanto"
 MANAGED_ENV = "MEMANTO_MANAGED_BY"
 MANAGED_VALUE = "memanto-connect"
@@ -74,7 +75,7 @@ def _is_managed(entry: Any) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
-    data = json.loads(path.read_text(encoding="utf-8") or "{}")
+    data = json.loads(path.read_text(encoding="utf-8-sig") or "{}")
     if not isinstance(data, dict):
         raise ValueError(f"{path} is not a JSON object")
     return data
@@ -95,7 +96,17 @@ def _check_local(project_path: Path, target: Path, is_global: bool) -> None:
     _assert_local_write_scope(project_path, target, is_global)
 
 
-# JSON clients (Claude Code .mcp.json / ~/.claude.json, Cursor mcp.json)
+def _vscode_user_mcp_path() -> Path:
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA", os.path.expanduser("~\\AppData\\Roaming"))
+        return Path(base) / "Code" / "User" / "mcp.json"
+    elif sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Code" / "User" / "mcp.json"
+    else:
+        return Path.home() / ".config" / "Code" / "User" / "mcp.json"
+
+
+# JSON clients (Claude Code .mcp.json / ~/.claude.json, Cursor mcp.json, VS Code mcp.json)
 
 
 def _install_json_server(
@@ -260,6 +271,15 @@ def install_mcp(
         target = base / ".cursor" / "mcp.json"
         _check_local(project_path, target, is_global)
         return _install_json_server(target, "mcpServers", entry)
+    if client == "github-copilot":
+        target = (
+            _vscode_user_mcp_path()
+            if is_global
+            else project_path / ".vscode" / "mcp.json"
+        )
+        _check_local(project_path, target, is_global)
+        entry["type"] = "stdio"
+        return _install_json_server(target, "servers", entry)
     if client == "codex":
         # Codex reads MCP servers only from the user config, for every project.
         return _install_codex(command, args, agent_id)
@@ -285,6 +305,14 @@ def remove_mcp(client: str, project_path: Path, is_global: bool) -> str | None:
         target = base / ".cursor" / "mcp.json"
         _check_local(project_path, target, is_global)
         return _remove_json_server(target, "mcpServers")
+    if client == "github-copilot":
+        target = (
+            _vscode_user_mcp_path()
+            if is_global
+            else project_path / ".vscode" / "mcp.json"
+        )
+        _check_local(project_path, target, is_global)
+        return _remove_json_server(target, "servers")
     if client == "codex":
         # The Codex entry is shared by every project, so only a global remove
         # takes it out; removing one project must not break the others.
