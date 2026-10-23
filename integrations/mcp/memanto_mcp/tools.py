@@ -124,6 +124,49 @@ class RememberResult(BaseModel):
     message: str | None = Field(default=None, description="Human-readable detail.")
 
 
+class BatchMemoryItem(BaseModel):
+    """A single memory item in a batch_remember request."""
+
+    content: str = Field(
+        description=f"The memory itself - one atomic statement. Max {_MAX_CONTENT_LENGTH} characters.",
+        min_length=1,
+        max_length=_MAX_CONTENT_LENGTH,
+    )
+    type: MemoryTypeLiteral = Field(
+        description=(
+            "Semantic memory type. Use 'preference' for likes/styles, "
+            "'fact' for stable factual claims, 'decision' for choices the user "
+            "has made, 'goal' for objectives, 'instruction' for explicit how-to "
+            "directives, 'event' for things that happened, 'observation' for inferred behavior."
+        )
+    )
+    confidence: float = Field(
+        description="How sure you are this is true (0.0-1.0).",
+        ge=0.0,
+        le=1.0,
+    )
+    provenance: ProvenanceLiteral = Field(
+        description=(
+            "How this memory was obtained. 'explicit_statement' means the user "
+            "said it; 'inferred' means you deduced it; 'observed' means you saw "
+            "it during a tool call; 'corrected' means it overrides an earlier wrong memory."
+        )
+    )
+    title: str | None = Field(
+        default=None,
+        description="Short label (<= 100 chars). If omitted, derived from content.",
+        max_length=_MAX_TITLE_LENGTH,
+    )
+    tags: list[str] | str | None = Field(
+        default=None,
+        description="Optional lowercase tag list or comma-separated string for later filtering.",
+    )
+    source: str | None = Field(
+        default=None,
+        description="Optional source identifier. If omitted, attributed to the calling client.",
+    )
+
+
 class MemoryHit(BaseModel):
     """A single retrieved memory."""
 
@@ -480,10 +523,10 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     )
     def batch_remember(
         memories: Annotated[
-            list[dict[str, Any]],
+            list[BatchMemoryItem],
             Field(
                 description=(
-                    "List of memory dicts. Each item requires 'content', 'type', "
+                    "List of memory items. Each item requires 'content', 'type', "
                     "'confidence' (0.0-1.0), and 'provenance' (same allowed values "
                     "as `remember`); 'title', 'tags', and 'source' are optional "
                     "(missing source is attributed to the calling client). Max 100 items."
@@ -502,10 +545,14 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 batch_default_source = _client_source(ctx, default_source)
                 # Validate before round-trip so we fail fast with a clear error.
                 normalized_memories: list[dict[str, Any]] = []
-                for i, item in enumerate(memories):
-                    if not isinstance(item, dict):
+                for i, raw_item in enumerate(memories):
+                    if isinstance(raw_item, BaseModel):
+                        item = raw_item.model_dump()
+                    elif isinstance(raw_item, dict):
+                        item = dict(raw_item)
+                    else:
                         raise ValueError(
-                            f"memories[{i}] must be an object, got {type(item).__name__}"
+                            f"memories[{i}] must be an object, got {type(raw_item).__name__}"
                         )
                     if "content" not in item or not str(item["content"]).strip():
                         raise ValueError(
