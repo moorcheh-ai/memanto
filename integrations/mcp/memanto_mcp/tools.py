@@ -14,6 +14,7 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 """
 
 import logging
+import os
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -251,7 +252,7 @@ def _sanitize_source(raw: Any) -> str | None:
     return token[:SOURCE_MAX_LENGTH] or None
 
 
-def _client_source(ctx: Context | None) -> str:
+def _client_source(ctx: Context | None, default_source: str | None = None) -> str:
     """Name the MCP client behind this call so writes stay attributable.
 
     Clients identify themselves during the initialize handshake ("cursor",
@@ -259,9 +260,12 @@ def _client_source(ctx: Context | None) -> str:
     Memanto's open ``source`` field is for. Falls back to a generic label when
     no client info reached us (direct calls, clients that omit it).
     """
-    from memanto_mcp.lifecycle import lifecycle
-    if lifecycle.settings.default_source:
-        return _sanitize_source(lifecycle.settings.default_source) or DEFAULT_SOURCE
+    if default_source:
+        return _sanitize_source(default_source) or DEFAULT_SOURCE
+
+    env_default = os.environ.get("MEMANTO_DEFAULT_SOURCE")
+    if env_default:
+        return _sanitize_source(env_default) or DEFAULT_SOURCE
 
     try:
         client_params = ctx.session.client_params if ctx is not None else None
@@ -272,7 +276,9 @@ def _client_source(ctx: Context | None) -> str:
 
 
 @contextmanager
-def _attributed(ctx: Context | None) -> Iterator[None]:
+def _attributed(
+    ctx: Context | None, default_source: str | None = None
+) -> Iterator[None]:
     """Attribute activity logged during this tool call to the MCP client.
 
     The MCP server runs as its own process, so its environment says nothing
@@ -280,7 +286,7 @@ def _attributed(ctx: Context | None) -> Iterator[None]:
     here is the only way a recall through MCP gets credited to Cursor rather
     than to an anonymous caller.
     """
-    name = _client_source(ctx)
+    name = _client_source(ctx, default_source)
     if name == DEFAULT_SOURCE:
         yield
         return
@@ -315,6 +321,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     """
 
     settings = lifecycle.settings
+    default_source = getattr(settings, "default_source", None)
     default_hint = (
         f" (defaults to '{settings.default_agent_id}')"
         if settings.default_agent_id
@@ -424,7 +431,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 resolved_title = title or (
@@ -491,9 +498,9 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> BatchRememberResult:
         """Validate and store multiple memories for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
-                default_source = _client_source(ctx)
+                batch_default_source = _client_source(ctx, default_source)
                 # Validate before round-trip so we fail fast with a clear error.
                 normalized_memories: list[dict[str, Any]] = []
                 for i, item in enumerate(memories):
@@ -511,19 +518,19 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                             f"memories[{i}] is missing required valid field 'type'. "
                             f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
                         )
-                    
+
                     if "confidence" not in item:
                         raise ValueError(
                             f"memories[{i}] is missing required field 'confidence' (0.0-1.0)"
                         )
-                    
+
                     prov = item.get("provenance")
                     if prov not in VALID_PROVENANCE_TYPES:
                         raise ValueError(
                             f"memories[{i}] is missing required valid field 'provenance'. "
                             f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                         )
-                    src = item.get("source") or default_source
+                    src = item.get("source") or batch_default_source
                     if not is_valid_source(src):
                         raise ValueError(
                             f"memories[{i}].source={src!r} is not valid. Use up to "
@@ -630,7 +637,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Search memories semantically for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 result = client.recall(
@@ -687,7 +694,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Return the most recent memories for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 result = client.recall_recent(
@@ -746,7 +753,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Recall memories that were valid at a point in time."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 result = client.recall_as_of(
@@ -806,7 +813,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Recall memories changed after the supplied timestamp."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 result = client.recall_changed_since(
@@ -886,7 +893,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> AnswerResult:
         """Answer a question using memories from the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source):
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 result = client.answer(

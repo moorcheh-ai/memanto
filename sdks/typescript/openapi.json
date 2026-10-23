@@ -3392,7 +3392,7 @@
           "Sessions & Agents"
         ],
         "summary": "Deactivate Agent",
-        "description": "Deactivate agent and end session\n\nTerminates the current session and returns statistics.\nRequires X-Session-Token header and matching agent_id.",
+        "description": "Deactivate agent and end session\n\nTerminates the current session and returns statistics.",
         "operationId": "deactivate_agent_api_v2_agents__agent_id__deactivate_post",
         "parameters": [
           {
@@ -3402,22 +3402,6 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
-            }
-          },
-          {
-            "name": "x-session-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Session-Token"
             }
           },
           {
@@ -3450,22 +3434,6 @@
                 }
               ],
               "title": "X-Api-Key"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -4367,7 +4335,7 @@
           "Web UI"
         ],
         "summary": "Connections Install",
-        "description": "Install MEMANTO integration for one or more agents at a given location.\n\nBody: {\"agents\": [\"claude-code\", ...], \"project_dir\": \"/abs/path\", \"is_global\": false}",
+        "description": "Install MEMANTO integration for one or more agents at a given location.\n\nBody: {\"agents\": [\"claude-code\", ...], \"project_dir\": \"/abs/path\", \"is_global\": false, \"mcp_agent_id\": \"optional-id\"}",
         "operationId": "connections_install_api_ui_connections_install_post",
         "requestBody": {
           "content": {

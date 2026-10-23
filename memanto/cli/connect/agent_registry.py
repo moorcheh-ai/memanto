@@ -106,7 +106,14 @@ class AgentDef:
         else:
             if not self.instruction_local_file:
                 return None
-            return project_dir / self.instruction_local_file
+            target = project_dir / self.instruction_local_file
+            if (
+                not target.exists()
+                and self.name == "github-copilot"
+                and (project_dir / ".github" / "copilot-instructions.md").exists()
+            ):
+                return project_dir / ".github" / "copilot-instructions.md"
+            return target
 
     def resolve_extension_file(self, project_dir: Path, is_global: bool) -> Path | None:
         """Resolve code extension file path (for agents that support one)."""

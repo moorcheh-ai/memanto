@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
-import os
 SERVER_NAME = "memanto"
 MANAGED_ENV = "MEMANTO_MANAGED_BY"
 MANAGED_VALUE = "memanto-connect"
@@ -56,7 +56,9 @@ def server_command() -> tuple[str, list[str]] | None:
     return None
 
 
-def _server_entry(command: str, args: list[str], agent_id: str, client: str = "") -> dict[str, Any]:
+def _server_entry(
+    command: str, args: list[str], agent_id: str, client: str = ""
+) -> dict[str, Any]:
     env = {"MEMANTO_DEFAULT_AGENT_ID": agent_id, MANAGED_ENV: MANAGED_VALUE}
     if client:
         # Override the default source in the MCP server with the CLI client name
@@ -107,7 +109,14 @@ def _vscode_user_mcp_path() -> Path:
         base = os.environ.get("APPDATA", os.path.expanduser("~\\AppData\\Roaming"))
         return Path(base) / "Code" / "User" / "mcp.json"
     elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Code" / "User" / "mcp.json"
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / "Code"
+            / "User"
+            / "mcp.json"
+        )
     else:
         return Path.home() / ".config" / "Code" / "User" / "mcp.json"
 

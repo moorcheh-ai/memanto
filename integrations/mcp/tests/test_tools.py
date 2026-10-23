@@ -390,8 +390,28 @@ def test_list_agents_still_accepts_the_pre_0_2_13_list() -> None:
 
 # One minimal invocation per registered tool, admin tools included.
 TOOL_INVOCATIONS: list[tuple[str, dict[str, Any]]] = [
-    ("remember", {"content": "A fact.", "type": "fact", "confidence": 0.85, "provenance": "explicit_statement"}),
-    ("batch_remember", {"memories": [{"content": "A fact.", "type": "fact", "confidence": 0.85, "provenance": "explicit_statement"}]}),
+    (
+        "remember",
+        {
+            "content": "A fact.",
+            "type": "fact",
+            "confidence": 0.85,
+            "provenance": "explicit_statement",
+        },
+    ),
+    (
+        "batch_remember",
+        {
+            "memories": [
+                {
+                    "content": "A fact.",
+                    "type": "fact",
+                    "confidence": 0.85,
+                    "provenance": "explicit_statement",
+                }
+            ]
+        },
+    ),
     ("recall", {"query": "what do I prefer?"}),
     ("recall_recent", {}),
     ("recall_as_of", {"as_of": "2026-01-01"}),

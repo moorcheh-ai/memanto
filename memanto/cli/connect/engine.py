@@ -64,13 +64,15 @@ def install_agent(
         }
 
     project_path = Path(project_dir).resolve()
-    
+
     # Prevent treating the user's home directory as a local project
     if not is_global and project_path == Path.home().resolve():
         return {
             "agent": agent_name,
             "steps": [],
-            "errors": ["Cannot install as a local project in the home directory. Please use 'is_global=True' instead."],
+            "errors": [
+                "Cannot install as a local project in the home directory. Please use 'is_global=True' instead."
+            ],
         }
 
     steps: list[str] = []
@@ -81,7 +83,9 @@ def install_agent(
 
     # Instruction file
     try:
-        instr_result = _install_instructions(agent, project_path, is_global, target_agent_id)
+        instr_result = _install_instructions(
+            agent, project_path, is_global, target_agent_id
+        )
         if instr_result:
             steps.append(instr_result)
     except Exception as e:
@@ -168,13 +172,15 @@ def remove_agent(
         }
 
     project_path = Path(project_dir).resolve()
-    
+
     # Prevent treating the user's home directory as a local project
     if not is_global and project_path == Path.home().resolve():
         return {
             "agent": agent_name,
             "steps": [],
-            "errors": ["Cannot remove as a local project in the home directory. Please use 'is_global=True' instead."],
+            "errors": [
+                "Cannot remove as a local project in the home directory. Please use 'is_global=True' instead."
+            ],
         }
 
     steps: list[str] = []
@@ -246,7 +252,10 @@ def remove_agent(
 
 
 def _install_instructions(
-    agent: AgentDef, project_path: Path, is_global: bool, target_agent_id: str | None = None
+    agent: AgentDef,
+    project_path: Path,
+    is_global: bool,
+    target_agent_id: str | None = None,
 ) -> str | None:
     """Install MEMANTO instructions into the agent's instruction file."""
     if is_global and not agent.instruction_global_file:
@@ -431,9 +440,11 @@ def _remove_instructions(
     if modified:
         # Clean up extra whitespace
         updated = re.sub(r"\n{3,}", "\n\n", existing).strip() + "\n"
-        
+
         # If the file only has applyTo frontmatter left (or is empty), delete it
-        if not updated.strip() or re.fullmatch(r"---\r?\napplyTo:\s*.*?---", updated.strip(), flags=re.DOTALL):
+        if not updated.strip() or re.fullmatch(
+            r"---\r?\napplyTo:\s*.*?---", updated.strip(), flags=re.DOTALL
+        ):
             instr_path.unlink()
             return f"Removed {instr_path.name} (was empty)"
         else:

@@ -25,7 +25,6 @@ from memanto.app.services.agent_service import AgentService
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
-    AuthorizationError,
     NamespaceError,
     SessionNotFoundError,
     map_error_to_http_exception,
@@ -39,7 +38,6 @@ router = APIRouter()
 from memanto.app.routes import memory  # noqa: E402
 from memanto.app.routes.auth_deps import (  # noqa: E402
     clear_session_cookie,
-    get_current_session,
     get_session_service,
     set_session_cookie,
     verify_moorcheh_api_key,

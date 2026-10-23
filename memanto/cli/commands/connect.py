@@ -41,7 +41,9 @@ def _print_install_result(result: dict, scope_label: str) -> None:
         console.print("  [dim]Nothing to do[/dim]")
 
 
-def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool, mcp_agent_id: str | None = None) -> None:
+def _run_connect_for_agent(
+    agent_name: str, project_dir: str, is_global: bool, mcp_agent_id: str | None = None
+) -> None:
     """Run connect for a single agent with full UI output."""
     agent = AGENT_REGISTRY.get(agent_name)
     if not agent:
@@ -70,7 +72,9 @@ def _run_connect_for_agent(agent_name: str, project_dir: str, is_global: bool, m
         )
     )
 
-    result = install_agent(agent_name, project_dir, is_global, mcp_agent_id=mcp_agent_id)
+    result = install_agent(
+        agent_name, project_dir, is_global, mcp_agent_id=mcp_agent_id
+    )
     _print_install_result(result, scope_label)
 
     # Summary

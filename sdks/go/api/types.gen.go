@@ -1093,10 +1093,8 @@ type GenerateDailySummaryApiV2AgentsAgentIdDailySummaryPostParams struct {
 
 // DeactivateAgentApiV2AgentsAgentIdDeactivatePostParams defines parameters for DeactivateAgentApiV2AgentsAgentIdDeactivatePost.
 type DeactivateAgentApiV2AgentsAgentIdDeactivatePostParams struct {
-	XSessionToken       *string `json:"x-session-token,omitempty"`
-	Authorization       *string `json:"authorization,omitempty"`
-	XApiKey             *string `json:"X-Api-Key,omitempty"`
-	MemantoSessionToken *string `form:"memanto_session_token,omitempty" json:"memanto_session_token,omitempty"`
+	Authorization *string `json:"authorization,omitempty"`
+	XApiKey       *string `json:"X-Api-Key,omitempty"`
 }
 
 // DeleteMemoryApiV2AgentsAgentIdMemoriesMemoryIdDeleteParams defines parameters for DeleteMemoryApiV2AgentsAgentIdMemoriesMemoryIdDelete.

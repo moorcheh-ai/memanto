@@ -106,7 +106,13 @@ async def test_remember_records_the_connected_client_as_source(
         ) as session:
             await session.initialize()
             result = await session.call_tool(
-                "remember", {"content": "Prefers concise answers."}
+                "remember",
+                {
+                    "content": "Prefers concise answers.",
+                    "type": "preference",
+                    "confidence": 0.9,
+                    "provenance": "explicit_statement",
+                },
             )
 
     assert not result.isError

@@ -59,8 +59,8 @@ def test_instruction_text_is_shared_and_safe(agent_name):
     content = get_instruction_content(agent_name)
 
     assert f"memanto-template-version: {TEMPLATE_VERSION}" in content
-    assert "Use the `memanto` MCP tools" in content
-    assert "If you don't have them, use the `memanto` command line" in content
+    assert "use the `memanto` MCP tools" in content
+    assert "or CLI commands" in content
     # No ready-made CLI commands: agents that can use the tools should not be
     # pulled toward shell commands (Codex prefers them when they are shown).
     assert 'memanto remember "' not in content
