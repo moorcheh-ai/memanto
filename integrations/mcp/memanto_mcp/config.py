@@ -71,6 +71,14 @@ class MCPServerSettings(BaseSettings):
             "Set this to a stable per-project identifier."
         ),
     )
+    default_source: str | None = Field(
+        default=None,
+        validation_alias="MEMANTO_DEFAULT_SOURCE",
+        description=(
+            "Override the source identity recorded for memories when none is explicitly provided. "
+            "If unset, the server infers the source from the MCP client's handshake."
+        ),
+    )
     agent_pattern: str = Field(
         default="tool",
         validation_alias="MEMANTO_AGENT_PATTERN",

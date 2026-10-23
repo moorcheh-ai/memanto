@@ -259,6 +259,10 @@ def _client_source(ctx: Context | None) -> str:
     Memanto's open ``source`` field is for. Falls back to a generic label when
     no client info reached us (direct calls, clients that omit it).
     """
+    from memanto_mcp.lifecycle import lifecycle
+    if lifecycle.settings.default_source:
+        return _sanitize_source(lifecycle.settings.default_source) or DEFAULT_SOURCE
+
     try:
         client_params = ctx.session.client_params if ctx is not None else None
         name = client_params.clientInfo.name if client_params else None

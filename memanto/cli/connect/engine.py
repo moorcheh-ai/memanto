@@ -76,16 +76,16 @@ def install_agent(
     steps: list[str] = []
     errors: list[str] = []
 
+    # Determine which agent_id to set as the default for MCP
+    target_agent_id = mcp_agent_id if mcp_agent_id is not None else _active_agent_id()
+
     # Instruction file
     try:
-        instr_result = _install_instructions(agent, project_path, is_global)
+        instr_result = _install_instructions(agent, project_path, is_global, target_agent_id)
         if instr_result:
             steps.append(instr_result)
     except Exception as e:
         errors.append(f"Instruction file: {e}")
-
-    # Determine which agent_id to set as the default for MCP
-    target_agent_id = mcp_agent_id if mcp_agent_id is not None else _active_agent_id()
 
     # MCP server (Claude Code, Codex, Cursor): memanto tools for the agent
     mcp_ready = False
@@ -246,20 +246,19 @@ def remove_agent(
 
 
 def _install_instructions(
-    agent: AgentDef, project_path: Path, is_global: bool
+    agent: AgentDef, project_path: Path, is_global: bool, target_agent_id: str | None = None
 ) -> str | None:
     """Install MEMANTO instructions into the agent's instruction file."""
     if is_global and not agent.instruction_global_file:
         return None
     if not is_global and not agent.instruction_local_file:
         return None
-
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path:
         return None
     _assert_local_write_scope(project_path, instr_path, is_global)
 
-    content = get_instruction_content(agent.name)
+    content = get_instruction_content(agent.name, target_agent_id)
 
     # For agents with directory-based instruction files (cline, roo, continue, augment)
     if agent.instruction_is_dir:

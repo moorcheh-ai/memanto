@@ -225,13 +225,16 @@ Just use the tools or commands; there's no need to mention memory checks in your
 {MEMANTO_DYNAMIC_SENTINEL_END}"""
 
 
-def get_instruction_content(agent_name: str) -> str:
-    """Get MEMANTO instruction section content for a specific agent."""
+def get_instruction_content(agent_name: str, target_agent_id: str | None = None) -> str:
+    """Get MEMANTO instruction section content for a specific agent.
+    If target_agent_id is provided (e.g. --agent-id override), it is injected into the text rules.
+    """
+    display_id = target_agent_id if target_agent_id else agent_name
     if agent_name == "cursor":
-        return _get_mdc_content(agent_id="cursor")
+        return _get_mdc_content(agent_id=display_id)
     if agent_name == "github-copilot":
-        return _get_copilot_content()
-    return _base_instruction_content(agent_id=agent_name)
+        return _get_copilot_content(agent_id=display_id)
+    return _base_instruction_content(agent_id=display_id)
 
 
 def _get_mdc_content(agent_id: str = "cursor") -> str:
@@ -244,13 +247,13 @@ alwaysApply: true
 {_base_instruction_content(agent_id=agent_id)}"""
 
 
-def _get_copilot_content() -> str:
+def _get_copilot_content(agent_id: str = "github-copilot") -> str:
     """Get frontmatter-formatted rules content for GitHub Copilot."""
     return f"""---
 applyTo: "**/*"
 ---
 
-{_base_instruction_content(agent_id="github-copilot")}"""
+{_base_instruction_content(agent_id=agent_id)}"""
 
 
 def get_skill_content(agent_name: str = "<agent_name>") -> str:

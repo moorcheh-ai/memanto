@@ -56,11 +56,17 @@ def server_command() -> tuple[str, list[str]] | None:
     return None
 
 
-def _server_entry(command: str, args: list[str], agent_id: str) -> dict[str, Any]:
+def _server_entry(command: str, args: list[str], agent_id: str, client: str = "") -> dict[str, Any]:
+    env = {"MEMANTO_DEFAULT_AGENT_ID": agent_id, MANAGED_ENV: MANAGED_VALUE}
+    if client:
+        # Override the default source in the MCP server with the CLI client name
+        # so cross-namespace setups (e.g. Cursor writing to Copilot namespace)
+        # attribute the write to the actual client making the call.
+        env["MEMANTO_DEFAULT_SOURCE"] = client
     return {
         "command": command,
         "args": args,
-        "env": {"MEMANTO_DEFAULT_AGENT_ID": agent_id, MANAGED_ENV: MANAGED_VALUE},
+        "env": env,
     }
 
 
@@ -250,7 +256,9 @@ def install_mcp(
             "(pass an agent ID to connect, or activate one first)"
         )
     command, args = launch
-    entry = _server_entry(command, args, agent_id)
+    # Pass the CLI client identifier so the MCP server knows who configured it
+    # and can use it as the default source when writing memories.
+    entry = _server_entry(command, args, agent_id, client)
 
     if client == "claude":
         if is_global:
