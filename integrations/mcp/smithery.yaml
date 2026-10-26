@@ -1,0 +1,23 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - moorchehApiKey
+    properties:
+      moorchehApiKey:
+        type: string
+        description: Your Moorcheh API key from console.moorcheh.ai
+      agentId:
+        type: string
+        description: A short name for this memory space (e.g. cline-assistant)
+        default: cline-assistant
+  commandFunction: |-
+    (config) => ({
+      command: 'uvx',
+      args: ['memanto-mcp'],
+      env: {
+        MOORCHEH_API_KEY: config.moorchehApiKey,
+        MEMANTO_DEFAULT_AGENT_ID: config.agentId || 'cline-assistant'
+      }
+    })
