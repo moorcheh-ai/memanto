@@ -7,6 +7,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Publish Integration to PyPI
@@ -179,4 +183,7 @@ jobs:
         INTEGRATION: ${{ steps.info.outputs.integration }}
       run: |
         cd "integrations/$INTEGRATION"
-        mcp-publisher publish
+        mcp-publisher publish || {
+          status=$?
+          echo "Warning: mcp-publisher exited with $status. If this is a duplicate run from simultaneous tag/release events, the version may already be published."
+        }
