@@ -1,20 +1,27 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.moorcheh-ai/memanto",
-  "title": "Memanto",
+  "title": "Memanto Memory",
   "description": "MCP server for Memanto - persistent semantic memory for any MCP-compatible agent",
-  "version": "0.1.4",
   "repository": {
-    "source": "github",
     "url": "https://github.com/moorcheh-ai/memanto",
-    "subfolder": "integrations/mcp"
+    "subfolder": "integrations/mcp",
+    "source": "github"
   },
+  "version": "0.1.4",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "memanto-mcp",
       "version": "0.1.4",
       "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/moorcheh-ai/memanto-mcp:0.1.4",
       "transport": {
         "type": "stdio"
       }
