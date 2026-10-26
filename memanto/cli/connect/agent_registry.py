@@ -14,12 +14,55 @@ from pathlib import Path
 def _get_vscode_prompts_dir() -> str:
     system = platform.system()
     if system == "Windows":
-        base = os.environ.get("APPDATA", os.path.expanduser("~\\AppData\\Roaming"))
+        home = Path.home()
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            appdata_path = Path(appdata)
+            try:
+                appdata_path.relative_to(Path(os.path.expanduser("~")))
+                # If Path.home() was overridden (e.g. in tests), stay under Path.home()
+                if home != Path(os.path.expanduser("~")):
+                    base = str(home / "AppData" / "Roaming")
+                else:
+                    base = appdata
+            except ValueError:
+                base = appdata
+        else:
+            base = str(home / "AppData" / "Roaming")
         return os.path.join(base, "Code", "User", "prompts", "memanto.instructions.md")
     elif system == "Darwin":
         return "~/Library/Application Support/Code/User/prompts/memanto.instructions.md"
     else:
         return "~/.config/Code/User/prompts/memanto.instructions.md"
+
+
+def _get_goose_config_dir() -> str:
+    system = platform.system()
+    if system == "Windows":
+        home = Path.home()
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            appdata_path = Path(appdata)
+            try:
+                appdata_path.relative_to(Path(os.path.expanduser("~")))
+                if home != Path(os.path.expanduser("~")):
+                    base = str(home / "AppData" / "Roaming")
+                else:
+                    base = appdata
+            except ValueError:
+                base = appdata
+        else:
+            base = str(home / "AppData" / "Roaming")
+        return os.path.join(base, "Block", "goose", "config")
+    return "~/.config/goose"
+
+
+def _get_goose_global_hints_file() -> str:
+    return os.path.join(_get_goose_config_dir(), ".goosehints")
+
+
+def _get_goose_global_skills_dir() -> str:
+    return os.path.join(_get_goose_config_dir(), "skills")
 
 
 @dataclass
@@ -43,6 +86,7 @@ class AgentDef:
     # Instruction file (the main file where agent reads instructions)
     instruction_local_file: str | None = None  # e.g. "CLAUDE.md"
     instruction_global_file: str | None = None  # e.g. "~/.claude/CLAUDE.md"
+    instruction_extra_global_files: tuple[str, ...] = ()
     instruction_format: str = "markdown"  # "markdown" | "mdc" | "append"
 
     # Skill directory paths (relative)
@@ -94,9 +138,19 @@ class AgentDef:
 
     def resolve_skill_global(self) -> Path:
         """Resolve global skill directory path."""
+        if self.name == "goose":
+            return self._resolve_global_path(_get_goose_global_skills_dir()) / "memanto"
         if self.skill_global_dir:
-            return Path.home() / self.skill_global_dir.lstrip("~/") / "memanto"
+            return self._resolve_global_path(self.skill_global_dir) / "memanto"
         return Path.home() / ".agents" / "skills" / "memanto"
+
+    def _resolve_global_path(self, raw_path: str) -> Path:
+        p = Path(raw_path)
+        if p.is_absolute():
+            return p
+        if raw_path.startswith("~/"):
+            return Path.home() / raw_path[2:]
+        return Path.home() / raw_path
 
     def resolve_instruction_file(
         self, project_dir: Path, is_global: bool
@@ -105,29 +159,42 @@ class AgentDef:
         if is_global:
             if not self.instruction_global_file:
                 return None
-            p = Path(self.instruction_global_file)
-            if p.is_absolute():
-                return p
-            elif self.instruction_global_file.startswith("~/"):
-                return Path.home() / self.instruction_global_file[2:]
-            else:
-                return Path.home() / self.instruction_global_file
+            if self.name == "github-copilot":
+                return self._resolve_global_path(_get_vscode_prompts_dir())
+            if self.name == "goose":
+                return self._resolve_global_path(_get_goose_global_hints_file())
+            return self._resolve_global_path(self.instruction_global_file)
         else:
             if not self.instruction_local_file:
                 return None
             target = project_dir / self.instruction_local_file
             if not target.exists() and self.name == "github-copilot":
                 for fallback in (
+                    project_dir / ".github" / "copilot-instructions.md",
                     project_dir
                     / ".github"
                     / "instructions"
                     / "memanto.instructions.md",
-                    project_dir / ".github" / "copilot-instructions.md",
                     project_dir / ".github" / "prompts" / "memanto.instructions.md",
                 ):
                     if fallback.exists():
                         return fallback
             return target
+
+    def resolve_instruction_files(
+        self, project_dir: Path, is_global: bool
+    ) -> list[Path]:
+        """Resolve all instruction file paths for this agent and scope."""
+        primary = self.resolve_instruction_file(project_dir, is_global)
+        if primary is None:
+            return []
+        files = [primary]
+        if is_global:
+            for extra in self.instruction_extra_global_files:
+                resolved = self._resolve_global_path(extra)
+                if resolved not in files:
+                    files.append(resolved)
+        return files
 
     def resolve_extension_file(self, project_dir: Path, is_global: bool) -> Path | None:
         """Resolve code extension file path (for agents that support one)."""
@@ -225,6 +292,7 @@ WINDSURF = AgentDef(
     display_name="Windsurf",
     instruction_local_file=".windsurfrules",
     instruction_global_file="~/.codeium/windsurf/.windsurfrules",
+    instruction_extra_global_files=("~/.codeium/windsurf/memories/global_rules.md",),
     instruction_format="append",
     skill_local_dir=".windsurf/skills",
     skill_global_dir="~/.codeium/windsurf/skills",
@@ -259,12 +327,13 @@ CLINE = AgentDef(
     name="cline",
     display_name="Cline",
     instruction_local_file=".clinerules/memanto.md",
-    instruction_global_file="~/.clinerules/memanto.md",
+    instruction_global_file="~/.cline/rules/memanto.md",
     instruction_format="markdown",
     instruction_is_dir=True,
     skill_local_dir=".agents/skills",
     skill_global_dir="~/.agents/skills",
     config_local_dir=".clinerules",
+    config_global_dir="~/.cline",
 )
 
 CONTINUE = AgentDef(
@@ -294,10 +363,12 @@ OPENCODE = AgentDef(
 GOOSE = AgentDef(
     name="goose",
     display_name="Goose",
-    instruction_local_file=None,
-    instruction_global_file=None,
+    instruction_local_file=".goosehints",
+    instruction_global_file=_get_goose_global_hints_file(),
+    instruction_extra_global_files=("~/.config/goose/.goosehints",),
+    instruction_format="append",
     skill_local_dir=".goose/skills",
-    skill_global_dir="~/.config/goose/skills",
+    skill_global_dir=_get_goose_global_skills_dir(),
     config_local_dir=".goose",
     config_global_dir="~/.config/goose",
 )
@@ -318,8 +389,9 @@ ROO = AgentDef(
 GITHUB_COPILOT = AgentDef(
     name="github-copilot",
     display_name="GitHub Copilot",
-    instruction_local_file=".github/instructions/memanto.instructions.md",
+    instruction_local_file=".github/copilot-instructions.md",
     instruction_global_file=_get_vscode_prompts_dir(),
+    instruction_extra_global_files=("~/.copilot/copilot-instructions.md",),
     instruction_format="markdown",
     skill_local_dir=".github/skills",
     skill_global_dir="~/.copilot/skills",

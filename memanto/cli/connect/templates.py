@@ -20,7 +20,7 @@ MEMANTO_VERSION_TAG = f"<!-- memanto-template-version: {TEMPLATE_VERSION} -->"
 # Shared SKILL.md content (same across all agents)
 
 SKILL_MD_CONTENT = """---
-name: memanto-memory
+name: memanto
 description: Use this skill when you need to store, search, edit, or manage MEMANTO persistent memories. It defines mandatory guidelines for CLI command syntax, memory types, confidence levels, provenance, tagging rules, and patterns for effective agent memory usage.
 ---
 
@@ -250,7 +250,8 @@ alwaysApply: true
 def _get_copilot_content(agent_id: str = "github-copilot") -> str:
     """Get frontmatter-formatted rules content for GitHub Copilot."""
     return f"""---
-applyTo: "**/*"
+description: "Use on every task to recall and remember project context, user rules, and decisions with Memanto."
+applyTo: "**"
 ---
 
 {_base_instruction_content(agent_id=agent_id)}"""
