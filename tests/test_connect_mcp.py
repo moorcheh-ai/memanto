@@ -136,9 +136,13 @@ def test_claude_global_uses_user_config(env):
     data = read_json(home / ".claude.json")
     assert data["theme"] == "dark"
     assert data["mcpServers"]["memanto"]["env"]["MEMANTO_DEFAULT_AGENT_ID"] == AGENT
+    user_settings = read_json(home / ".claude" / "settings.json")
+    assert "mcp__memanto" in user_settings["permissions"]["allow"]
+    assert not (home / ".claude" / "settings.local.json").exists()
 
     engine.remove_agent("claude-code", str(project), is_global=True)
     assert read_json(home / ".claude.json") == {"theme": "dark"}
+    assert not (home / ".claude" / "settings.json").exists()
 
 
 # Codex

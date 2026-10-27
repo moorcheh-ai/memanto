@@ -761,7 +761,12 @@ def _install_permissions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Configure permissions for agents that need them."""
-    if not agent.permissions_file or not agent.permissions_payload:
+    perm_file = (
+        agent.permissions_global_file or agent.permissions_file
+        if is_global
+        else agent.permissions_file
+    )
+    if not perm_file or not agent.permissions_payload:
         return None
 
     if is_global:
@@ -769,13 +774,13 @@ def _install_permissions(
             config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
     else:
         if agent.config_local_dir:
             config_dir = project_path / agent.config_local_dir
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
 
     _assert_local_write_scope(project_path, perm_path, is_global)
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -807,7 +812,12 @@ def _remove_permissions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Remove permissions added by MEMANTO without disturbing user entries."""
-    if not agent.permissions_file or not agent.permissions_payload:
+    perm_file = (
+        agent.permissions_global_file or agent.permissions_file
+        if is_global
+        else agent.permissions_file
+    )
+    if not perm_file or not agent.permissions_payload:
         return None
 
     if is_global:
@@ -815,13 +825,13 @@ def _remove_permissions(
             config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
     else:
         if agent.config_local_dir:
             config_dir = project_path / agent.config_local_dir
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
 
     if not perm_path.exists():
         return None

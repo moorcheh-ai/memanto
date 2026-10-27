@@ -110,6 +110,7 @@ class AgentDef:
 
     # Permission configuration (agent-specific)
     permissions_file: str | None = None  # e.g. "settings.local.json"
+    permissions_global_file: str | None = None  # e.g. "settings.json"
     permissions_payload: dict | None = None
 
     # Code extension file (for agents that load native extensions, e.g. Pi .ts)
@@ -230,6 +231,7 @@ CLAUDE_CODE = AgentDef(
         asset_file="hooks.json",
     ),
     permissions_file="settings.local.json",
+    permissions_global_file="settings.json",
     permissions_payload={"permissions": {"allow": ["Bash(memanto:*)", "mcp__memanto"]}},
     mcp_client="claude",
 )
