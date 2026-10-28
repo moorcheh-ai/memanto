@@ -97,6 +97,9 @@ func (f *fakeAPI) handle(w http.ResponseWriter, r *http.Request) {
 		case "/remember":
 			reply(200, map[string]any{"memory_id": "mem-1", "agent_id": f.agentID, "session_id": "sess",
 				"namespace": "ns", "status": "queued", "provenance": "explicit_statement", "confidence": 0.8})
+		case "/batch-remember":
+			reply(200, map[string]any{"agent_id": f.agentID, "session_id": "sess", "namespace": "ns",
+				"total_submitted": 2, "successful": 2, "failed": 0, "results": []map[string]any{}})
 		case "/recall":
 			reply(200, map[string]any{"agent_id": f.agentID, "session_id": "sess", "query": "q", "count": 1,
 				"memories": []map[string]any{{"id": "mem-1", "content": "likes tea", "score": 0.9}}})
@@ -205,6 +208,21 @@ func TestRememberCreatesAgentActivatesAndSendsDefaults(t *testing.T) {
 	}
 	equal(t, f.activationCount(), 1)
 	equal(t, json.RawMessage(f.last("/api/v2/agents/a b/recall").Body), map[string]any{"query": "tea", "min_similarity": 0})
+
+	// BatchRememberWithSource sends batch-level source and omits default item source while preserving explicit item source.
+	if _, err := c.BatchRememberWithSource(context.Background(), []RememberInput{
+		{Content: "one"},
+		{Content: "two", Source: "user"},
+	}, "cursor"); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, json.RawMessage(f.last("/api/v2/agents/a b/batch-remember").Body), map[string]any{
+		"source": "cursor",
+		"memories": []map[string]any{
+			{"content": "one", "confidence": 0.8, "provenance": "explicit_statement"},
+			{"content": "two", "confidence": 0.8, "source": "user", "provenance": "explicit_statement"},
+		},
+	})
 }
 
 func TestDisableAutoCreateSkipsLookup(t *testing.T) {

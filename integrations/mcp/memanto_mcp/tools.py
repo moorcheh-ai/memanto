@@ -13,10 +13,11 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 ``AgentIdField``) that won't resolve once they have been deferred to strings.
 """
 
+import inspect
 import logging
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Annotated, Any, Literal, TypeVar
 
@@ -32,6 +33,7 @@ from memanto.app.core import (
 )
 from memanto.app.utils.client_identity import (
     ClientIdentity,
+    display_for,
     normalize_tool,
     reset_client,
     set_client,
@@ -318,24 +320,61 @@ def _client_source(ctx: Context | None, default_source: str | None = None) -> st
     return _sanitize_source(name) or DEFAULT_SOURCE
 
 
+_NON_TOOL_SOURCES = frozenset(
+    {"user", "agent", "human", "conversation", "system", "tool", "mcp-agent"}
+)
+
+
+def _tool_from_source(source: str | None) -> str | None:
+    if source and source.strip().lower() not in _NON_TOOL_SOURCES:
+        return source.strip()
+    return None
+
+
+def _call_sdk(fn: Callable[..., Any], **kwargs: Any) -> Any:
+    """Call an SdkClient method, dropping `source` only if an older memanto (<0.2.31) lacks it."""
+    if "source" in kwargs:
+        try:
+            params = inspect.signature(fn).parameters
+            has_var_kw = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+            if not has_var_kw and "source" not in params:
+                kwargs.pop("source", None)
+        except (TypeError, ValueError) as exc:
+            # Built-in or non-introspectable callables (e.g. C extensions or
+            # certain test doubles) may raise on signature inspection; proceed
+            # with the original kwargs rather than failing the tool call.
+            logger.debug("Could not inspect signature for %r: %s", fn, exc)
+    return fn(**kwargs)
+
+
 @contextmanager
 def _attributed(
-    ctx: Context | None, default_source: str | None = None
-) -> Iterator[None]:
-    """Attribute activity logged during this tool call to the MCP client.
+    ctx: Context | None,
+    default_source: str | None = None,
+    explicit_source: str | None = None,
+) -> Iterator[str]:
+    """Attribute activity logged during this tool call to the MCP client and yield the resolved source.
 
     The MCP server runs as its own process, so its environment says nothing
-    about which editor is driving it. Binding the handshake's ``clientInfo``
-    here is the only way a recall through MCP gets credited to Cursor rather
-    than to an anonymous caller.
+    about which editor is driving it unless ``MEMANTO_DEFAULT_SOURCE`` is set.
+    Resolving ``explicit_source`` -> ``MEMANTO_DEFAULT_SOURCE`` -> handshake
+    ``clientInfo`` here ensures the ``source`` parameter is automatically
+    populated and bound on every MCP operation. When ``explicit_source`` is a
+    generic writer role (e.g. ``"user"``), the memory keeps ``"user"`` as its
+    stored source while activity is still attributed to the calling MCP client.
     """
-    name = _client_source(ctx, default_source)
-    if name == DEFAULT_SOURCE:
-        yield
+    client_source = _client_source(ctx, default_source)
+    resolved_source = explicit_source or client_source
+    tool_name = _tool_from_source(explicit_source) or _tool_from_source(client_source)
+    if not tool_name:
+        yield resolved_source
         return
-    token = set_client(ClientIdentity(tool=normalize_tool(name), display=name))
+    slug = normalize_tool(tool_name)
+    token = set_client(ClientIdentity(tool=slug, display=display_for(slug)))
     try:
-        yield
+        yield resolved_source
     finally:
         reset_client(token)
 
@@ -474,7 +513,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source, source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 resolved_title = title or (
@@ -489,7 +528,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     content=content,
                     confidence=confidence,
                     tags=_normalize_tags(tags),
-                    source=source or _client_source(ctx, default_source),
+                    source=resolved_source,
                     provenance=provenance,
                 )
                 return RememberResult(
@@ -540,9 +579,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> BatchRememberResult:
         """Validate and store multiple memories for the resolved agent."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source) as batch_default_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
-                batch_default_source = _client_source(ctx, default_source)
                 # Validate before round-trip so we fail fast with a clear error.
                 normalized_memories: list[dict[str, Any]] = []
                 for i, raw_item in enumerate(memories):
@@ -590,9 +628,11 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     normalized_memories.append(normalized_item)
 
                 client = lifecycle.ensure_ready(resolved)
-                result = client.batch_remember(
+                result = _call_sdk(
+                    client.batch_remember,
                     agent_id=resolved,
                     memories=normalized_memories,
+                    source=batch_default_source,
                 )
                 sub_results = _to_batch_item_results(result.get("results"))
                 return BatchRememberResult(
@@ -683,15 +723,17 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Search memories semantically for the resolved agent."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall(
+                result = _call_sdk(
+                    client.recall,
                     agent_id=resolved,
                     query=query,
                     limit=limit,
                     type=list(type) if type else None,
                     min_similarity=min_similarity,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -740,13 +782,15 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Return the most recent memories for the resolved agent."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall_recent(
+                result = _call_sdk(
+                    client.recall_recent,
                     agent_id=resolved,
                     limit=limit,
                     type=list(type) if type else None,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -799,14 +843,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Recall memories that were valid at a point in time."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall_as_of(
+                result = _call_sdk(
+                    client.recall_as_of,
                     agent_id=resolved,
                     as_of=as_of,
                     limit=limit,
                     type=list(type) if type else None,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -859,14 +905,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Recall memories changed after the supplied timestamp."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall_changed_since(
+                result = _call_sdk(
+                    client.recall_changed_since,
                     agent_id=resolved,
                     since=since,
                     limit=limit,
                     type=list(type) if type else None,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -939,15 +987,17 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> AnswerResult:
         """Answer a question using memories from the resolved agent."""
         try:
-            with _attributed(ctx, default_source):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.answer(
+                result = _call_sdk(
+                    client.answer,
                     agent_id=resolved,
                     question=question,
                     limit=limit,
                     temperature=temperature,
                     kiosk_mode=kiosk_mode,
+                    source=resolved_source,
                 )
                 return AnswerResult(
                     status="ok",

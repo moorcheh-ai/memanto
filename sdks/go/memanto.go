@@ -144,12 +144,12 @@ type RememberInput struct {
 	Provenance string `json:"provenance,omitempty"`
 }
 
-func (in RememberInput) withDefaults() RememberInput {
+func (in RememberInput) withDefaults(defaultSource string) RememberInput {
 	if in.Confidence == 0 {
 		in.Confidence = 0.8
 	}
 	if in.Source == "" {
-		in.Source = "agent"
+		in.Source = defaultSource
 	}
 	if in.Provenance == "" {
 		in.Provenance = "explicit_statement"
@@ -159,16 +159,29 @@ func (in RememberInput) withDefaults() RememberInput {
 
 // Remember stores one memory.
 func (c *Client) Remember(ctx context.Context, in RememberInput) (*api.RememberResponse, error) {
-	return request[api.RememberResponse](ctx, c, http.MethodPost, c.agentPath+"/remember", in.withDefaults(), true)
+	return request[api.RememberResponse](ctx, c, http.MethodPost, c.agentPath+"/remember", in.withDefaults("agent"), true)
 }
 
 // BatchRemember stores several memories in one request.
 func (c *Client) BatchRemember(ctx context.Context, items []RememberInput) (*api.BatchRememberResponse, error) {
+	return c.BatchRememberWithSource(ctx, items, "")
+}
+
+// BatchRememberWithSource stores several memories in one request and attributes
+// the batch (and any item that omits Source) to source when non-empty.
+func (c *Client) BatchRememberWithSource(ctx context.Context, items []RememberInput, source string) (*api.BatchRememberResponse, error) {
+	itemDefaultSource := "agent"
+	if source != "" {
+		itemDefaultSource = ""
+	}
 	memories := make([]RememberInput, len(items))
 	for i, m := range items {
-		memories[i] = m.withDefaults()
+		memories[i] = m.withDefaults(itemDefaultSource)
 	}
 	body := map[string]any{"memories": memories}
+	if source != "" {
+		body["source"] = source
+	}
 	return request[api.BatchRememberResponse](ctx, c, http.MethodPost, c.agentPath+"/batch-remember", body, true)
 }
 
@@ -186,6 +199,8 @@ type ExtractMemoriesInput struct {
 	// MaxMemories in [1, 100]. Zero means the server default, 20.
 	MaxMemories int    `json:"max_memories,omitempty"`
 	AIModel     string `json:"ai_model,omitempty"`
+	// Source is the slug of the AI tool making this call (e.g. "cursor", "copilot").
+	Source string `json:"source,omitempty"`
 }
 
 // ExtractMemories asks the server's LLM to pull memories out of a conversation.
@@ -250,6 +265,8 @@ type RecallInput struct {
 	Type []string `json:"type,omitempty"`
 	// Tags keeps only memories carrying all of these tags.
 	Tags []string `json:"tags,omitempty"`
+	// Source is the slug of the AI tool making this call (e.g. "cursor", "copilot").
+	Source string `json:"source,omitempty"`
 }
 
 // Recall returns the memories most relevant to a query.
@@ -260,9 +277,10 @@ func (c *Client) Recall(ctx context.Context, in RecallInput) (*api.RecallRespons
 // RecallAsOfInput selects memories as they were at a point in time.
 type RecallAsOfInput struct {
 	// AsOf is YYYY-MM-DD or an ISO 8601 datetime.
-	AsOf  string   `json:"as_of"`
-	Limit int      `json:"limit,omitempty"`
-	Type  []string `json:"type,omitempty"`
+	AsOf   string   `json:"as_of"`
+	Limit  int      `json:"limit,omitempty"`
+	Type   []string `json:"type,omitempty"`
+	Source string   `json:"source,omitempty"`
 }
 
 // RecallAsOf returns memories as they existed at AsOf.
@@ -273,9 +291,10 @@ func (c *Client) RecallAsOf(ctx context.Context, in RecallAsOfInput) (*api.Tempo
 // RecallChangedSinceInput selects memories changed after a point in time.
 type RecallChangedSinceInput struct {
 	// Since is YYYY-MM-DD or an ISO 8601 datetime.
-	Since string   `json:"since"`
-	Limit int      `json:"limit,omitempty"`
-	Type  []string `json:"type,omitempty"`
+	Since  string   `json:"since"`
+	Limit  int      `json:"limit,omitempty"`
+	Type   []string `json:"type,omitempty"`
+	Source string   `json:"source,omitempty"`
 }
 
 // RecallChangedSince returns memories created or changed since Since.
@@ -285,8 +304,9 @@ func (c *Client) RecallChangedSince(ctx context.Context, in RecallChangedSinceIn
 
 // RecallRecentInput selects the newest memories.
 type RecallRecentInput struct {
-	Limit int      `json:"limit,omitempty"`
-	Type  []string `json:"type,omitempty"`
+	Limit  int      `json:"limit,omitempty"`
+	Type   []string `json:"type,omitempty"`
+	Source string   `json:"source,omitempty"`
 }
 
 // RecallRecent returns the most recently created memories.
@@ -304,6 +324,7 @@ type AnswerInput struct {
 	Temperature *float64 `json:"temperature,omitempty"`
 	AIModel     string   `json:"ai_model,omitempty"`
 	KioskMode   bool     `json:"kiosk_mode"`
+	Source      string   `json:"source,omitempty"`
 }
 
 // Answer generates an answer grounded in the agent's memories.

@@ -76,7 +76,7 @@ def test_instruction_text_differs_only_by_agent_id():
     def core(name):
         text = get_instruction_content(name)
         text = text[text.index("## MEMANTO") :]
-        return text.replace(f"--tool {name}", "--tool <agent>")
+        return text.replace(f"--source {name}", "--source <agent>")
 
     texts = {core(name) for name in AGENT_REGISTRY}
     assert len(texts) == 1

@@ -47,6 +47,8 @@ export interface RecallInput {
   type?: string[];
   /** Only return memories carrying all of these tags. */
   tags?: string[];
+  /** Slug of the AI tool making this call (e.g. "cursor", "copilot"). */
+  source?: string;
 }
 
 export interface AnswerInput {
@@ -56,6 +58,8 @@ export interface AnswerInput {
   temperature?: number;
   aiModel?: string;
   kioskMode?: boolean;
+  /** Slug of the AI tool making this call (e.g. "cursor", "copilot"). */
+  source?: string;
 }
 
 export interface RecallAsOfInput {
@@ -63,6 +67,8 @@ export interface RecallAsOfInput {
   asOf: string;
   limit?: number;
   type?: string[];
+  /** Slug of the AI tool making this call (e.g. "cursor", "copilot"). */
+  source?: string;
 }
 
 export interface RecallChangedSinceInput {
@@ -70,11 +76,15 @@ export interface RecallChangedSinceInput {
   since: string;
   limit?: number;
   type?: string[];
+  /** Slug of the AI tool making this call (e.g. "cursor", "copilot"). */
+  source?: string;
 }
 
 export interface RecallRecentInput {
   limit?: number;
   type?: string[];
+  /** Slug of the AI tool making this call (e.g. "cursor", "copilot"). */
+  source?: string;
 }
 
 export interface CreateAgentInput {
@@ -128,6 +138,8 @@ export interface ExtractMemoriesInput {
   maxMemories?: number;
   /** Optional model override for extraction. */
   aiModel?: string;
+  /** Slug of the AI tool making this call (e.g. "cursor", "copilot"). */
+  source?: string;
 }
 
 interface SessionRecord {
@@ -204,6 +216,7 @@ export class Memanto {
         dry_run: input.dryRun,
         max_memories: input.maxMemories,
         ai_model: input.aiModel,
+        source: input.source,
       },
     );
   }
@@ -235,6 +248,7 @@ export class Memanto {
       min_similarity: input.minSimilarity,
       type: input.type,
       tags: input.tags,
+      source: input.source,
     });
   }
 
@@ -242,7 +256,12 @@ export class Memanto {
     return this.request(
       "POST",
       `/api/v2/agents/${this.encodedAgentId}/recall/as-of`,
-      { as_of: input.asOf, limit: input.limit, type: input.type },
+      {
+        as_of: input.asOf,
+        limit: input.limit,
+        type: input.type,
+        source: input.source,
+      },
     );
   }
 
@@ -250,7 +269,12 @@ export class Memanto {
     return this.request(
       "POST",
       `/api/v2/agents/${this.encodedAgentId}/recall/changed-since`,
-      { since: input.since, limit: input.limit, type: input.type },
+      {
+        since: input.since,
+        limit: input.limit,
+        type: input.type,
+        source: input.source,
+      },
     );
   }
 
@@ -258,7 +282,7 @@ export class Memanto {
     return this.request(
       "POST",
       `/api/v2/agents/${this.encodedAgentId}/recall/recent`,
-      { limit: input.limit, type: input.type },
+      { limit: input.limit, type: input.type, source: input.source },
     );
   }
 
@@ -270,6 +294,7 @@ export class Memanto {
       temperature: input.temperature,
       ai_model: input.aiModel,
       kiosk_mode: input.kioskMode ?? false,
+      source: input.source,
     });
   }
 

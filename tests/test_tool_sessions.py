@@ -419,7 +419,7 @@ def test_anonymous_http_caller_is_never_attributed_to_the_server_env(monkeypatch
 
 
 # --------------------------------------------------------------------------
-# Explicit tool declaration (--tool / --source)
+# Explicit tool declaration (--source / API source)
 # --------------------------------------------------------------------------
 
 
@@ -428,9 +428,10 @@ def test_client_from_tool_normalizes_and_labels():
 
     assert identity.tool == "claude-code"
     assert identity.display == "Claude Code"
+    assert client_from_tool("copilot").tool == "github-copilot"
 
 
-def test_recall_tool_flag_beats_environment(monkeypatch, tmp_path):
+def test_recall_source_flag_beats_environment(monkeypatch, tmp_path):
     """An agent naming itself is exact; the environment is only a guess."""
     from unittest.mock import MagicMock, patch
 
@@ -457,13 +458,13 @@ def test_recall_tool_flag_beats_environment(monkeypatch, tmp_path):
             return_value=("dev", "token"),
         ),
     ):
-        result = CliRunner().invoke(app, ["recall", "anything", "--tool", "cursor"])
+        result = CliRunner().invoke(app, ["recall", "anything", "--source", "cursor"])
 
     assert result.exit_code == 0, result.output
     assert captured["tool"] == "cursor"
 
 
-def test_answer_accepts_the_tool_flag(monkeypatch):
+def test_answer_accepts_the_source_flag(monkeypatch):
     from unittest.mock import MagicMock, patch
 
     from typer.testing import CliRunner
@@ -487,14 +488,14 @@ def test_answer_accepts_the_tool_flag(monkeypatch):
             return_value=("dev", "token"),
         ),
     ):
-        result = CliRunner().invoke(app, ["answer", "what?", "--tool", "codex"])
+        result = CliRunner().invoke(app, ["answer", "what?", "--source", "codex"])
 
     assert result.exit_code == 0, result.output
     assert captured["tool"] == "codex"
 
 
 def test_remember_source_names_the_calling_tool(monkeypatch):
-    """`remember` has no --tool: --source already names the writer."""
+    """`--source` names the calling tool across CLI and API."""
     from memanto.cli.commands.memory import _tool_from_source
 
     assert _tool_from_source("cursor") == "cursor"
@@ -512,4 +513,174 @@ def test_a_human_source_does_not_become_a_connected_tool():
     assert _tool_from_source("user") is None
     assert _tool_from_source("User") is None
     assert _tool_from_source("agent") is None
+    assert _tool_from_source("system") is None
+    assert _tool_from_source("tool") is None
     assert _tool_from_source(None) is None
+
+
+def test_calling_tool_scopes_identity_to_single_operation(monkeypatch):
+    """A source on one call must not leak onto a subsequent call that omits it."""
+    from memanto.app.utils.client_identity import calling_tool, tool_from_source
+
+    monkeypatch.setenv("CLAUDECODE", "1")
+    with calling_tool(tool_from_source("cursor")):
+        assert detect_client().tool == "cursor"
+    # After the scoped operation exits, identity reverts to the environment.
+    assert detect_client().tool == "claude-code"
+
+
+def test_api_endpoints_attribute_calling_tool_from_source_body(monkeypatch):
+    """API routes bind the calling tool when `source` is passed in the JSON body."""
+    from unittest.mock import MagicMock, patch
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    import memanto.app.main as main_module
+    from memanto.app.clients.moorcheh import get_moorcheh_client
+    from memanto.app.models.session import Session
+    from memanto.app.routes import memory as memory_routes
+    from memanto.app.routes.auth_deps import get_current_session
+
+    now = utc_now()
+    fake_session = Session(
+        session_id="sess-api-1",
+        session_token="tok-1",
+        agent_id="dev",
+        namespace="memanto_agent_dev",
+        started_at=now,
+        expires_at=now + timedelta(hours=6),
+    )
+    fake_moorcheh = MagicMock()
+    fake_moorcheh.answer.generate.return_value = {"answer": "ok", "sources": []}
+
+    test_app = FastAPI()
+    test_app.middleware("http")(main_module.attribute_calling_tool)
+    test_app.include_router(memory_routes.router, prefix="/api/v2/agents")
+    test_app.dependency_overrides[get_current_session] = lambda: fake_session
+    test_app.dependency_overrides[get_moorcheh_client] = lambda: fake_moorcheh
+
+    captured_tools: list[tuple[str, str]] = []
+
+    def _capture_write(*_args, **_kwargs):
+        captured_tools.append(("remember", detect_client().tool))
+        return {"id": "m1", "status": "queued", "type": "fact"}
+
+    def _capture_batch(*_args, **_kwargs):
+        captured_tools.append(("batch", detect_client().tool))
+        return {
+            "total_submitted": 1,
+            "successful": 1,
+            "failed": 0,
+            "results": [{"id": "m2", "status": "queued"}],
+        }
+
+    def _capture_read(*_args, **_kwargs):
+        captured_tools.append(("read", detect_client().tool))
+        return {"results": [], "total_found": 0}
+
+    with (
+        patch.object(
+            memory_routes.MemoryWriteService,
+            "store_memory",
+            side_effect=_capture_write,
+        ),
+        patch.object(
+            memory_routes.MemoryWriteService,
+            "batch_store_memories",
+            side_effect=_capture_batch,
+        ),
+        patch.object(
+            memory_routes.MemoryReadService,
+            "search_memories",
+            side_effect=_capture_read,
+        ),
+        patch.object(
+            memory_routes.MemoryReadService,
+            "search_as_of",
+            side_effect=_capture_read,
+        ),
+        patch.object(
+            memory_routes.MemoryReadService,
+            "search_changed_since",
+            side_effect=_capture_read,
+        ),
+        patch.object(
+            memory_routes.MemoryReadService,
+            "search_recent",
+            side_effect=_capture_read,
+        ),
+        patch.object(
+            memory_routes,
+            "get_moorcheh_client",
+            return_value=fake_moorcheh,
+        ),
+        patch.object(
+            memory_routes,
+            "log_memory_activity",
+            side_effect=lambda op, agent_id, count=0: captured_tools.append(
+                (op, detect_client().tool)
+            ),
+        ),
+        patch.object(
+            memory_routes,
+            "get_session_service",
+            return_value=MagicMock(),
+        ),
+    ):
+        client = TestClient(test_app)
+
+        r1 = client.post(
+            "/api/v2/agents/dev/remember",
+            json={"content": "Use Ruff for linting", "source": "cursor"},
+        )
+        assert r1.status_code == 200, r1.text
+
+        r2 = client.post(
+            "/api/v2/agents/dev/batch-remember",
+            json={
+                "memories": [{"content": "Use pytest"}],
+                "source": "copilot",
+            },
+        )
+        assert r2.status_code == 200, r2.text
+
+        r3 = client.post(
+            "/api/v2/agents/dev/recall",
+            json={"query": "linting", "source": "claude-code"},
+        )
+        assert r3.status_code == 200, r3.text
+
+        r4 = client.post(
+            "/api/v2/agents/dev/recall/as-of",
+            json={"as_of": "2026-05-01", "source": "codex"},
+        )
+        assert r4.status_code == 200, r4.text
+
+        r5 = client.post(
+            "/api/v2/agents/dev/recall/changed-since",
+            json={"since": "2026-05-01", "source": "windsurf"},
+        )
+        assert r5.status_code == 200, r5.text
+
+        r6 = client.post(
+            "/api/v2/agents/dev/recall/recent",
+            json={"limit": 5, "source": "copilot"},
+        )
+        assert r6.status_code == 200, r6.text
+
+        r7 = client.post(
+            "/api/v2/agents/dev/answer",
+            json={"question": "What linter?", "source": "cursor"},
+        )
+        assert r7.status_code == 200, r7.text
+
+    assert captured_tools == [
+        ("remember", "cursor"),
+        ("batch", "github-copilot"),
+        ("read", "claude-code"),
+        ("read", "codex"),
+        ("read", "windsurf"),
+        ("read", "github-copilot"),
+        ("answer", "cursor"),
+    ]

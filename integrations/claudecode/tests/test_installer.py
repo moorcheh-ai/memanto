@@ -114,7 +114,7 @@ def test_cli_end_to_end_mcp_install_and_uninstall(tmp_path: Path, monkeypatch) -
 
     claude_md = (project / "CLAUDE.md").read_text(encoding="utf-8")
     assert "use the `memanto` MCP tools" in claude_md
-    assert "--tool test-claude-agent" in claude_md
+    assert "--source test-claude-agent" in claude_md
 
     rc_uninstall = cli.main(["uninstall", "--project-dir", str(project)])
     assert rc_uninstall == 0

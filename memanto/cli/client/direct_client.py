@@ -40,7 +40,11 @@ from memanto.app.constants import (
 )
 from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.utils.atomic_write import atomic_write_text
-from memanto.app.utils.client_identity import set_memanto_session
+from memanto.app.utils.client_identity import (
+    calling_tool,
+    set_memanto_session,
+    tool_from_source,
+)
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -742,7 +746,8 @@ class DirectClient:
         )
 
         logger.debug("Storing memory for agent '%s' (type=%s)", agent_id, memory_type)
-        result = self._get_write_service().store_memory(memory)
+        with calling_tool(tool_from_source(source)):
+            result = self._get_write_service().store_memory(memory)
 
         # Log to local session Markdown summary only after a durable write.
         if self.session_token and is_successful_write_result(result):
@@ -763,7 +768,10 @@ class DirectClient:
         }
 
     def batch_remember(
-        self, agent_id: str, memories: list[dict[str, Any]]
+        self,
+        agent_id: str,
+        memories: list[dict[str, Any]],
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Store multiple memories in batch.
@@ -773,6 +781,7 @@ class DirectClient:
             memories: List of memory dicts (max 100). Each dict must
                 have ``content`` and may have ``type``, ``title``,
                 ``confidence``, ``tags``.
+            source: Optional calling tool / default source slug.
 
         Returns:
             Batch result dict with ``total_submitted``, ``successful``,
@@ -783,6 +792,13 @@ class DirectClient:
         """
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
+        batch_tool = tool_from_source(source)
+        if not batch_tool:
+            for item in memories:
+                if isinstance(item, dict):
+                    batch_tool = tool_from_source(item.get("source"))
+                    if batch_tool:
+                        break
 
         if not memories:
             raise ValueError("Batch must contain at least one memory")
@@ -823,7 +839,7 @@ class DirectClient:
                 "actor_id": agent_id,
                 "confidence": item.get("confidence", 0.8),
                 "tags": item.get("tags", []),
-                "source": item.get("source") or "user",
+                "source": item.get("source") or source or "user",
                 "provenance": provenance,
             }
             for opt_key in (
@@ -853,10 +869,11 @@ class DirectClient:
             len(memory_records),
             agent_id,
         )
-        result = cast(
-            dict[str, Any],
-            self._get_write_service().batch_store_memories(memory_records),
-        )
+        with calling_tool(batch_tool):
+            result = cast(
+                dict[str, Any],
+                self._get_write_service().batch_store_memories(memory_records),
+            )
 
         # Log each memory to local session Markdown summary
         if self.session_token:
@@ -988,6 +1005,7 @@ class DirectClient:
         dry_run: bool = False,
         max_memories: int = 20,
         ai_model: str | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Extract typed memories from conversation turns.
@@ -998,6 +1016,8 @@ class DirectClient:
             dry_run: When True, preview extracted candidates without storing them.
             max_memories: Maximum number of candidate memories to extract.
             ai_model: Optional model override for extraction.
+            source: Optional calling tool / writer slug to stamp on extracted
+                memories and attribute the batch write.
 
         Returns:
             A dictionary containing extracted candidates and, unless ``dry_run``
@@ -1021,6 +1041,8 @@ class DirectClient:
             max_memories=max_memories,
             ai_model=ai_model,
         )
+        if source:
+            candidates = [{**c, "source": source} for c in candidates]
 
         if dry_run:
             return {
@@ -1034,7 +1056,9 @@ class DirectClient:
                 "Memory extraction produced no usable candidates"
             )
 
-        result = self.batch_remember(agent_id=agent_id, memories=candidates)
+        result = self.batch_remember(
+            agent_id=agent_id, memories=candidates, source=source
+        )
         return {
             "dry_run": False,
             "candidates": candidates,
@@ -1231,6 +1255,7 @@ class DirectClient:
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         status: str = "all",
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Search memories by semantic similarity.
@@ -1247,6 +1272,7 @@ class DirectClient:
             created_before: Only memories created before this datetime.
             status: Lifecycle filter — ``all`` (default), ``active`` or
                 ``expired``. The default returns both so callers can label them.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``agent_id``, ``query``, ``memories`` (list),
@@ -1266,18 +1292,19 @@ class DirectClient:
         logger.debug(
             "Recall for agent '%s': query='%s', limit=%d", agent_id, query, limit
         )
-        result = self._get_read_service().search_memories(
-            query=query,
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            min_confidence=min_confidence,
-            min_similarity_score=min_similarity,
-            created_after=created_after.isoformat() if created_after else None,
-            created_before=created_before.isoformat() if created_before else None,
-            status=status,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_memories(
+                query=query,
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                min_confidence=min_confidence,
+                min_similarity_score=min_similarity,
+                created_after=created_after.isoformat() if created_after else None,
+                created_before=created_before.isoformat() if created_before else None,
+                status=status,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1293,6 +1320,7 @@ class DirectClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Point-in-time recall: what memories existed at a given moment?
@@ -1303,6 +1331,7 @@ class DirectClient:
             limit: Max results (defaults to config).
             type: Optional type filter.
             tags: Optional tag filter.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1314,13 +1343,14 @@ class DirectClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        result = self._get_read_service().search_as_of(
-            as_of_date=as_of,
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_as_of(
+                as_of_date=as_of,
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1337,6 +1367,7 @@ class DirectClient:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         status: str = "all",
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Differential retrieval: what changed since a given date?
@@ -1347,6 +1378,7 @@ class DirectClient:
             limit: Max results (defaults to config).
             type: Optional type filter.
             tags: Optional tag filter.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1358,14 +1390,15 @@ class DirectClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        result = self._get_read_service().search_changed_since(
-            since_date=since,
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            status=status,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_changed_since(
+                since_date=since,
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                status=status,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1381,6 +1414,7 @@ class DirectClient:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         status: str = "all",
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Recall the most recently stored memories (newest first).
@@ -1391,6 +1425,7 @@ class DirectClient:
             type: Optional type filter.
             tags: Optional tag filter.
             status: Lifecycle filter — ``all`` (default), ``active`` or ``expired``.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1402,13 +1437,14 @@ class DirectClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        result = self._get_read_service().search_recent(
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            status=status,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_recent(
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                status=status,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1427,6 +1463,7 @@ class DirectClient:
         kiosk_mode: bool | None = None,
         header_prompt: str | None = None,
         footer_prompt: str | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Answer a question using RAG (Retrieval-Augmented Generation).
@@ -1447,6 +1484,7 @@ class DirectClient:
                 ``threshold``. When None (default), reads the config value.
             header_prompt: Header prompt for the LLM.
             footer_prompt: Footer prompt for the LLM.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``answer``, ``sources``, ``namespace``.
@@ -1493,22 +1531,23 @@ class DirectClient:
             question[:80],
             limit,
         )
-        response = self._get_moorcheh().answer.generate(
-            namespace=namespace,
-            query=question,
-            top_k=limit,
-            threshold=threshold,
-            temperature=temperature,
-            ai_model=ai_model,
-            kiosk_mode=kiosk_mode,
-            header_prompt=header_prompt,
-            footer_prompt=footer_prompt,
-        )
+        with calling_tool(tool_from_source(source)):
+            response = self._get_moorcheh().answer.generate(
+                namespace=namespace,
+                query=question,
+                top_k=limit,
+                threshold=threshold,
+                temperature=temperature,
+                ai_model=ai_model,
+                kiosk_mode=kiosk_mode,
+                header_prompt=header_prompt,
+                footer_prompt=footer_prompt,
+            )
 
-        # The RAG path calls Moorcheh directly rather than going through
-        # MemoryReadService, so it needs its own activity entry - otherwise
-        # `answer` is the one memory operation that leaves no trace.
-        log_memory_activity(op="answer", agent_id=agent_id)
+            # The RAG path calls Moorcheh directly rather than going through
+            # MemoryReadService, so it needs its own activity entry - otherwise
+            # `answer` is the one memory operation that leaves no trace.
+            log_memory_activity(op="answer", agent_id=agent_id)
 
         return {
             "agent_id": agent_id,

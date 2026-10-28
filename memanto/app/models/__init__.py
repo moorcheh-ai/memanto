@@ -18,6 +18,7 @@ from memanto.app.constants import (
     StatusType,
 )
 from memanto.app.core import (
+    SOURCE_MAX_LENGTH,
     BoundedTags,
     MemorySource,
 )
@@ -103,6 +104,14 @@ class BatchRememberRequest(BaseModel):
         max_length=100,
         description="List of memories to store (max 100)",
     )
+    source: MemorySource | None = Field(
+        None,
+        description=(
+            "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', "
+            "'claude-code') to attribute the batch write and default item "
+            "sources when omitted."
+        ),
+    )
 
 
 class ConversationMessage(BaseModel):
@@ -150,6 +159,13 @@ class ExtractMemoriesRequest(BaseModel):
     ai_model: str | None = Field(
         None,
         description="Optional model override for extraction",
+    )
+    source: MemorySource | None = Field(
+        None,
+        description=(
+            "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', "
+            "'claude-code') to attribute the extraction."
+        ),
     )
 
 
@@ -213,6 +229,14 @@ class AnswerRequest(BaseModel):
         None, description="AI model to use for generating the answer"
     )
     kiosk_mode: bool = Field(False, description="Kiosk mode setting")
+    source: str | None = Field(
+        None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("question")
     @classmethod

@@ -118,6 +118,17 @@ def test_extract_is_scoped_to_agent(sdk):
         "bot", messages, dry_run=True, max_memories=5, ai_model=None
     )
 
+    sdk.extract_memories_from_conversation.reset_mock()
+    Memanto("bot").extract(messages, source="cursor")
+    sdk.extract_memories_from_conversation.assert_called_once_with(
+        "bot",
+        messages,
+        dry_run=False,
+        max_memories=20,
+        ai_model=None,
+        source="cursor",
+    )
+
 
 def test_nothing_to_extract_error_is_exported():
     import memanto

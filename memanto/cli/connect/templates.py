@@ -37,17 +37,17 @@ All Memanto operations are performed via shell commands. Never simulate commands
 memanto remember "Generalized principle or rule" --type TYPE --tags "tag1,tag2" --confidence <0.0-1.0> --provenance PROVENANCE --source <agent_name>
 
 # Search memories (Semantic recall for context building)
-# Reads have no --source, so pass --tool: it is how Memanto knows which agent
+# Pass --source on reads as well: it is how Memanto knows which agent
 # is calling, which drives the live connection view and session attribution.
-memanto recall "query string" --limit 10 --type TYPE --min-similarity 0.8 --tool <agent_name>
+memanto recall "query string" --limit 10 --type TYPE --min-similarity 0.8 --source <agent_name>
 
 # Temporal search variants (no query needed)
-memanto recall --recent --limit 10 --tool <agent_name>            # newest memories first
-memanto recall --as-of "YYYY-MM-DD" --tool <agent_name>           # memory state at a past point in time
-memanto recall --changed-since "last 7 days" --tool <agent_name>  # memories created or updated recently
+memanto recall --recent --limit 10 --source <agent_name>            # newest memories first
+memanto recall --as-of "YYYY-MM-DD" --source <agent_name>           # memory state at a past point in time
+memanto recall --changed-since "last 7 days" --source <agent_name>  # memories created or updated recently
 
 # Grounded RAG answer (Synthesizes memory into a direct answer)
-memanto answer "Question about past decisions or commitments" --tool <agent_name>
+memanto answer "Question about past decisions or commitments" --source <agent_name>
 
 # Edit existing memory
 memanto edit MEMORY_ID --content "Updated content" --type TYPE --confidence 0.95
@@ -145,7 +145,7 @@ Always pass `--tags` with 2 to 5 specific, lowercase, hyphenated tags. Tags make
 
 4. **Missing Metadata Flags**
    - Never omit `--type`, `--confidence`, `--provenance`, or `--source`. Untyped memories pollute retrieval quality.
-   - On `recall` and `answer`, always pass `--tool <agent_name>`. Reads carry no `--source`, and this is how Memanto identifies the calling agent.
+   - On `recall` and `answer`, always pass `--source <agent_name>`. This is how Memanto identifies the calling agent on reads as well as writes.
 
 5. **Expecting Invisible Context Injection**
    - Do not expect hooks or background tools to automatically inject dynamic memories into chat UI. If context is needed, run `memanto recall` explicitly.
@@ -158,7 +158,7 @@ Always pass `--tags` with 2 to 5 specific, lowercase, hyphenated tags. Tags make
 ### Workflow 1: Session Start / Task Initiation
 ```bash
 # Check for existing architectural decisions and instructions relevant to the task
-memanto recall "authentication setup guidelines" --limit 10 --tool <agent_name>
+memanto recall "authentication setup guidelines" --limit 10 --source <agent_name>
 ```
 
 ### Workflow 2: Learning from Error / Correction
@@ -192,7 +192,7 @@ def _base_instruction_content(agent_id: str = "<agent_name>") -> str:
 {MEMANTO_VERSION_TAG}
 ## MEMANTO - Long-term memory
 
-This project uses Memanto for long-term memory across sessions. You MUST actively evaluate whether to use the `memanto` MCP tools (`recall`, `remember`) or CLI commands (identifying yourself with `--tool {agent_id}`) at every step.
+This project uses Memanto for long-term memory across sessions. You MUST actively evaluate whether to use the `memanto` MCP tools (`recall`, `remember`) or CLI commands (identifying yourself with `--source {agent_id}`) at every step.
 
 ### 1. WHEN TO RECALL (Search Context)
 - **TASK INITIATION**: Starting a new feature, evaluating PR reviews, reviewing external code, or planning a refactor.

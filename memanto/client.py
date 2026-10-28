@@ -24,6 +24,7 @@ import os
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+from memanto.app.utils.client_identity import calling_tool, tool_from_source
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
@@ -179,21 +180,39 @@ class Memanto:
         """
         if title is None:
             title = f"{content[:50]}..." if len(content) > 50 else content
-        return self._call(
-            self.client.remember,
-            memory_type=type,
-            title=title,
-            content=content,
-            confidence=confidence,
-            tags=_as_list(tags),
-            source=source,
-            provenance=provenance,
-        )
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.remember,
+                memory_type=type,
+                title=title,
+                content=content,
+                confidence=confidence,
+                tags=_as_list(tags),
+                source=source,
+                provenance=provenance,
+            )
 
-    def batch_remember(self, memories: list[dict[str, Any]]) -> dict[str, Any]:
+    def batch_remember(
+        self, memories: list[dict[str, Any]], *, source: str | None = None
+    ) -> dict[str, Any]:
         """Store up to 100 memories. Each item takes the same keys as
         :meth:`remember` (``content`` required)."""
-        return self._call(self.client.batch_remember, memories)
+        batch_tool = tool_from_source(source)
+        if not batch_tool:
+            for item in memories:
+                if isinstance(item, dict):
+                    batch_tool = tool_from_source(item.get("source"))
+                    if batch_tool:
+                        break
+        if source:
+            memories = [
+                {**item, "source": item.get("source") or source}
+                if isinstance(item, dict)
+                else item
+                for item in memories
+            ]
+        with calling_tool(batch_tool):
+            return self._call(self.client.batch_remember, memories)
 
     def extract(
         self,
@@ -202,6 +221,7 @@ class Memanto:
         dry_run: bool = False,
         max_memories: int = 20,
         ai_model: str | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """Extract typed memories from chat turns and store them.
 
@@ -215,13 +235,18 @@ class Memanto:
             NothingToExtractError: If the conversation held nothing worth
                 remembering (a ``ValueError``; importable from ``memanto``).
         """
-        return self._call(
-            self.client.extract_memories_from_conversation,
-            messages,
-            dry_run=dry_run,
-            max_memories=max_memories,
-            ai_model=ai_model,
-        )
+        extra: dict[str, Any] = {}
+        if source is not None:
+            extra["source"] = source
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.extract_memories_from_conversation,
+                messages,
+                dry_run=dry_run,
+                max_memories=max_memories,
+                ai_model=ai_model,
+                **extra,
+            )
 
     def update_memory(self, memory_id: str, **updates: Any) -> dict[str, Any]:
         """Update fields of a memory, e.g. ``content=...`` or ``tags=[...]``."""
@@ -253,19 +278,21 @@ class Memanto:
         type: str | list[str] | None = None,
         tags: str | list[str] | None = None,
         min_similarity: float | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """Semantic search over this agent's memories.
 
         Returns a dict whose ``memories`` list is ranked by relevance.
         """
-        return self._call(
-            self.client.recall,
-            query,
-            limit=limit,
-            type=_as_list(type),
-            tags=_as_list(tags),
-            min_similarity=min_similarity,
-        )
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.recall,
+                query,
+                limit=limit,
+                type=_as_list(type),
+                tags=_as_list(tags),
+                min_similarity=min_similarity,
+            )
 
     def recall_as_of(
         self,
@@ -274,15 +301,17 @@ class Memanto:
         limit: int | None = None,
         type: str | list[str] | None = None,
         tags: str | list[str] | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """What the agent believed at *as_of* (ISO date or datetime)."""
-        return self._call(
-            self.client.recall_as_of,
-            as_of,
-            limit=limit,
-            type=_as_list(type),
-            tags=_as_list(tags),
-        )
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.recall_as_of,
+                as_of,
+                limit=limit,
+                type=_as_list(type),
+                tags=_as_list(tags),
+            )
 
     def recall_changed_since(
         self,
@@ -291,15 +320,17 @@ class Memanto:
         limit: int | None = None,
         type: str | list[str] | None = None,
         tags: str | list[str] | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """Memories created or updated after *since* (ISO date or datetime)."""
-        return self._call(
-            self.client.recall_changed_since,
-            since,
-            limit=limit,
-            type=_as_list(type),
-            tags=_as_list(tags),
-        )
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.recall_changed_since,
+                since,
+                limit=limit,
+                type=_as_list(type),
+                tags=_as_list(tags),
+            )
 
     def recall_recent(
         self,
@@ -307,14 +338,16 @@ class Memanto:
         limit: int | None = None,
         type: str | list[str] | None = None,
         tags: str | list[str] | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """Most recently created memories, newest first."""
-        return self._call(
-            self.client.recall_recent,
-            limit=limit,
-            type=_as_list(type),
-            tags=_as_list(tags),
-        )
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.recall_recent,
+                limit=limit,
+                type=_as_list(type),
+                tags=_as_list(tags),
+            )
 
     def answer(
         self,
@@ -325,17 +358,19 @@ class Memanto:
         temperature: float | None = None,
         ai_model: str | None = None,
         kiosk_mode: bool | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """Answer *question* grounded in this agent's memories.
 
         Returns a dict with ``answer`` and the supporting memories.
         """
-        return self._call(
-            self.client.answer,
-            question,
-            limit=limit,
-            threshold=threshold,
-            temperature=temperature,
-            ai_model=ai_model,
-            kiosk_mode=kiosk_mode,
-        )
+        with calling_tool(tool_from_source(source)):
+            return self._call(
+                self.client.answer,
+                question,
+                limit=limit,
+                threshold=threshold,
+                temperature=temperature,
+                ai_model=ai_model,
+                kiosk_mode=kiosk_mode,
+            )

@@ -448,3 +448,46 @@ def test_every_tool_succeeds_and_matches_the_sdk_signature() -> None:
         sdk_method = getattr(SdkClient, method_name)
         # ``None`` stands in for ``self``; every tool calls by keyword.
         signature(sdk_method).bind(None, *call[1], **call[2])
+
+
+def test_default_source_is_automatically_passed_to_all_memory_tools() -> None:
+    """MEMANTO_DEFAULT_SOURCE automatically populates `source` on every MCP memory call."""
+    mcp = FakeMCP()
+    lifecycle = FakeLifecycle()
+    lifecycle.settings.default_source = "cursor"
+    register_tools(mcp, lifecycle)  # type: ignore[arg-type]
+
+    mcp.tools["remember"](
+        content="A fact.",
+        type="fact",
+        confidence=0.85,
+        provenance="explicit_statement",
+    )
+    assert lifecycle.client.remember.call_args.kwargs["source"] == "cursor"
+
+    mcp.tools["batch_remember"](
+        memories=[
+            {
+                "content": "A fact.",
+                "type": "fact",
+                "confidence": 0.85,
+                "provenance": "explicit_statement",
+            }
+        ]
+    )
+    assert lifecycle.client.batch_remember.call_args.kwargs["source"] == "cursor"
+
+    mcp.tools["recall"](query="what do I prefer?")
+    assert lifecycle.client.recall.call_args.kwargs["source"] == "cursor"
+
+    mcp.tools["recall_recent"]()
+    assert lifecycle.client.recall_recent.call_args.kwargs["source"] == "cursor"
+
+    mcp.tools["recall_as_of"](as_of="2026-01-01")
+    assert lifecycle.client.recall_as_of.call_args.kwargs["source"] == "cursor"
+
+    mcp.tools["recall_changed_since"](since="2026-01-01")
+    assert lifecycle.client.recall_changed_since.call_args.kwargs["source"] == "cursor"
+
+    mcp.tools["answer"](question="what do I prefer?")
+    assert lifecycle.client.answer.call_args.kwargs["source"] == "cursor"

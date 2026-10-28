@@ -3,7 +3,7 @@
   "name": "io.github.moorcheh-ai/memanto",
   "title": "Memanto",
   "description": "MCP server for Memanto - persistent semantic memory for any MCP-compatible agent",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "repository": {
     "source": "github",
     "url": "https://github.com/moorcheh-ai/memanto",
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "memanto-mcp",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

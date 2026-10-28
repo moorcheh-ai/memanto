@@ -4856,6 +4856,19 @@
             "title": "Kiosk Mode",
             "description": "Kiosk mode setting",
             "default": false
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -5053,6 +5066,21 @@
             "minItems": 1,
             "title": "Memories",
             "description": "List of memories to store (max 100)"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', 'claude-code') to attribute the batch write and default item sources when omitted."
           }
         },
         "type": "object",
@@ -5363,6 +5391,21 @@
             ],
             "title": "Ai Model",
             "description": "Optional model override for extraction"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', 'claude-code') to attribute the extraction."
           }
         },
         "type": "object",
@@ -5950,6 +5993,19 @@
             ],
             "title": "Tags",
             "description": "Tag filters"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6020,6 +6076,19 @@
             "title": "Status",
             "description": "Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.",
             "default": "all"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6118,6 +6187,19 @@
             ],
             "title": "Created Before",
             "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6233,6 +6315,19 @@
             ],
             "title": "Created Before",
             "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",

@@ -473,6 +473,9 @@ type AnswerRequest struct {
 	// Question Question to ask
 	Question string `json:"question"`
 
+	// Source Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution.
+	Source *string `json:"source,omitempty"`
+
 	// Temperature Temperature for the LLM response
 	Temperature *float32 `json:"temperature,omitempty"`
 
@@ -533,6 +536,9 @@ type BatchRememberItemType string
 type BatchRememberRequest struct {
 	// Memories List of memories to store (max 100)
 	Memories []BatchRememberItem `json:"memories"`
+
+	// Source Optional calling tool or writer slug (e.g. 'cursor', 'copilot', 'claude-code') to attribute the batch write and default item sources when omitted.
+	Source *string `json:"source,omitempty"`
 }
 
 // BatchRememberResponse defines model for BatchRememberResponse.
@@ -617,6 +623,9 @@ type ExtractMemoriesRequest struct {
 
 	// Messages Conversation turns to extract durable memories from
 	Messages []ConversationMessage `json:"messages"`
+
+	// Source Optional calling tool or writer slug (e.g. 'cursor', 'copilot', 'claude-code') to attribute the extraction.
+	Source *string `json:"source,omitempty"`
 }
 
 // HTTPValidationError defines model for HTTPValidationError.
@@ -733,6 +742,9 @@ type RecallAsOfRequest struct {
 	// Limit Max results
 	Limit *int `json:"limit,omitempty"`
 
+	// Source Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution.
+	Source *string `json:"source,omitempty"`
+
 	// Tags Tag filters
 	Tags *[]string `json:"tags,omitempty"`
 
@@ -747,6 +759,9 @@ type RecallChangedSinceRequest struct {
 
 	// Since Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z
 	Since time.Time `json:"since"`
+
+	// Source Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution.
+	Source *string `json:"source,omitempty"`
 
 	// Status Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.
 	Status *RecallChangedSinceRequestStatus `json:"status,omitempty"`
@@ -771,6 +786,9 @@ type RecallRecentRequest struct {
 
 	// Limit Max results
 	Limit *int `json:"limit,omitempty"`
+
+	// Source Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution.
+	Source *string `json:"source,omitempty"`
 
 	// Status Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.
 	Status *RecallRecentRequestStatus `json:"status,omitempty"`
@@ -823,6 +841,9 @@ type RecallRequest struct {
 
 	// Query Search query
 	Query string `json:"query"`
+
+	// Source Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution.
+	Source *string `json:"source,omitempty"`
 
 	// Status Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.
 	Status *RecallRequestStatus `json:"status,omitempty"`

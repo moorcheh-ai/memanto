@@ -20,7 +20,7 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
 from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType, StatusFilter
-from memanto.app.core import MemoryRecord, MemorySource
+from memanto.app.core import SOURCE_MAX_LENGTH, MemoryRecord, MemorySource
 from memanto.app.models import (
     AnswerRequest,
     AnswerResponse,
@@ -41,6 +41,7 @@ from memanto.app.routes.auth_deps import (
     get_moorcheh_api_key,
     get_session_service,
 )
+from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
@@ -51,6 +52,7 @@ from memanto.app.services.memory_policy_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.services.policy_presets import PRESETS, list_presets, load_preset
+from memanto.app.utils.client_identity import bind_calling_tool, tool_from_source
 from memanto.app.utils.errors import (
     AuthorizationError,
     MemoryOperationError,
@@ -160,6 +162,14 @@ class RecallRequest(BaseModel):
             "Date-only values (YYYY-MM-DD) use the end of that day."
         ),
     )
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("created_after", mode="before")
     @classmethod
@@ -240,6 +250,14 @@ class RecallAsOfRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
     tags: list[str] | None = Field(default=None, description="Tag filters")
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
@@ -292,6 +310,14 @@ class RecallChangedSinceRequest(BaseModel):
     type: list[str] | None = Field(default=None, description="Memory type filters")
     tags: list[str] | None = Field(default=None, description="Tag filters")
     status: StatusFilter = Field(default="all", description=STATUS_FILTER_DESCRIPTION)
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
@@ -353,6 +379,14 @@ class RecallRecentRequest(BaseModel):
         description=(
             "Include only memories created at or before this timestamp. "
             "Date-only values (YYYY-MM-DD) use the end of that day."
+        ),
+    )
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
         ),
     )
 
@@ -490,6 +524,7 @@ async def remember(
 
     # Enforce session scope: token must match agent_id
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     try:
         # Initialize memory write service
@@ -571,6 +606,14 @@ async def batch_remember(
     # Enforce session scope: token must match agent_id
     enforce_session_scope(session, agent_id)
 
+    batch_tool = tool_from_source(request.source)
+    if not batch_tool:
+        for item in request.memories:
+            batch_tool = tool_from_source(item.source)
+            if batch_tool:
+                break
+    bind_calling_tool(batch_tool)
+
     try:
         # Initialize memory write service
         write_service = MemoryWriteService(client)
@@ -586,6 +629,11 @@ async def batch_remember(
             title = item.title or (
                 item.content[:47] + "..." if len(item.content) > 50 else item.content
             )
+            item_source = (
+                request.source
+                if request.source and "source" not in item.model_fields_set
+                else item.source
+            )
             kwargs: dict[str, Any] = {
                 "type": cast(MemoryType, item.type),
                 "title": title,
@@ -594,7 +642,7 @@ async def batch_remember(
                 "actor_id": agent_id,
                 "confidence": item.confidence,
                 "tags": item.tags or [],
-                "source": item.source,
+                "source": item_source,
                 "provenance": cast(ProvenanceType, item.provenance),
             }
             if item.status is not None:
@@ -740,6 +788,7 @@ async def extract_memories_from_conversation(
     /batch-remember.
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     try:
         extraction_service = ConversationMemoryExtractionService(client)
@@ -776,7 +825,7 @@ async def extract_memories_from_conversation(
                 actor_id=agent_id,
                 confidence=item["confidence"],
                 tags=["conversation-extract"],
-                source=item["source"],
+                source=request.source or item["source"],
                 provenance=cast(ProvenanceType, item["provenance"]),
             )
             memory_records.append(memory)
@@ -1004,6 +1053,7 @@ async def recall(
 
     # Enforce session scope
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     recall_cfg = _config_manager.get_recall_config()
     raw_min_similarity = (
@@ -1076,6 +1126,7 @@ async def answer(
 
     # Enforce session scope
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     client = get_moorcheh_client()
 
@@ -1134,6 +1185,12 @@ async def answer(
         # Extract the generated answer and sources
         answer = response.get("answer", "No answer generated.")
         sources = response.get("sources", [])
+
+        log_memory_activity(
+            op="answer",
+            agent_id=agent_id,
+            count=len(sources) if isinstance(sources, list) else 0,
+        )
 
         return {
             "agent_id": agent_id,
@@ -1336,6 +1393,7 @@ async def recall_as_of(
     - X-Session-Token: {session_token}
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     limit = resolve_recall_limit(request.limit)
 
@@ -1382,6 +1440,7 @@ async def recall_changed_since(
     - X-Session-Token: {session_token}
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     limit = resolve_recall_limit(request.limit)
 
@@ -1430,6 +1489,7 @@ async def recall_recent(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     limit = resolve_recall_limit(request.limit)
 
@@ -1483,6 +1543,7 @@ async def recall_all(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     try:
         read_service = MemoryReadService(client)
