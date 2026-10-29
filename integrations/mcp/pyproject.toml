@@ -41,11 +41,9 @@ dependencies = [
     # `mcp.server.fastmcp` (FastMCP became `mcp.server.mcpserver.MCPServer`),
     # so an unpinned install resolves to a release this server cannot import.
     "mcp[cli]>=1.2.0,<2",
-    # Sources are open labels again as of 0.2.13, which is also where
-    # core.MemorySource / is_valid_source (imported by tools.py) land. 0.2.11
-    # and 0.2.12 reject any source outside user/agent/tool/system, so this
-    # server cannot attribute writes to the calling client on those.
-    "memanto>=0.2.13",
+    # `source` on SdkClient read/answer/batch_remember methods and
+    # tool_from_source / alias normalization in client_identity land in 0.2.31.
+    "memanto>=0.2.31",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",

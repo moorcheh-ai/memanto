@@ -41,12 +41,9 @@ def test_mcp_dependency_excludes_v2() -> None:
     assert specifier.contains(Version("1.29.0"))
 
 
-def test_memanto_dependency_requires_open_sources() -> None:
-    """tools.py imports MemorySource/is_valid_source, added in memanto 0.2.13.
-
-    0.2.11 and 0.2.12 also reject the open source labels this server writes.
-    """
+def test_memanto_dependency_requires_source_enabled_reads() -> None:
+    """tools.py passes `source=` to SdkClient read/answer/batch_remember, added in 0.2.31."""
     specifier = _requirement("memanto").specifier
 
-    assert not specifier.contains(Version("0.2.12"))
-    assert specifier.contains(Version("0.2.13"))
+    assert not specifier.contains(Version("0.2.30"))
+    assert specifier.contains(Version("0.2.31"))
