@@ -13,19 +13,32 @@
   <a href="https://pepy.tech/projects/memanto"><img alt="Downloads" src="https://static.pepy.tech/personalized-badge/memanto?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
   <a href="https://arxiv.org/abs/2604.22085"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.22085-b31b1b.svg"></a>
   <a href="https://pypi.org/project/memanto/"><img alt="PyPI" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
+  <a href="https://mcptoplist.com/server/io.github.moorcheh-ai%2Fmemanto"><img alt="MCP Toplist" src="https://mcptoplist.com/badge/io.github.moorcheh-ai%2Fmemanto.svg"></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
+</p>
+
+<p align="center">
+  <sub><a href="../README.md">English</a> · <a href="README_es.md">Español</a> · <a href="README_zh-CN.md">简体中文</a> · <a href="README_ja.md">日本語</a></sub>
 </p>
 
 ```bash
 pip install memanto
 ```
+
+```bash
+npm install @moorcheh-ai/memanto
+```
+
+```bash
+go get github.com/moorcheh-ai/memanto/sdks/go
+```
 <!-- ============================================================
      演示 GIF——影响最大的待补资源。assets/demo.gif
      VHS 磁带另行提供。少于 15 秒，少于 3 MB。
      ============================================================ -->
-<p align="center">
+<!-- <p align="center">
   <img alt="15 秒了解 Memanto" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/demo.gif" width="900">
-</p>
+</p> -->
 
 ---
 > **每个平台都会存储你的智能体记忆，但没有一个会管理它。** 跨平台管理记忆不符合它们的利益；这正是记忆智能体的工作。
@@ -79,7 +92,7 @@ macOS、Linux、Windows。`memanto ui` 打开覆盖整个资产的本地仪表�
 
 **你的资产是一个文件。** `memanto memory export --okf` 提供[开放知识格式](https://docs.memanto.ai/integrations/okf)：纯 Markdown，可读、可 diff、可提交、可 grep；不是只能申请的专有导出，而是真正的工作格式。
 
-**它可以迁移。** `memanto migrate` 可从 Mem0、Letta、Supermemory 或任意 OKF 包导入，反向同样适用。OKF 是任何框架或供应商（包括我们的竞争对手）都能实现的开放交换格式。
+**它可以迁移。** `memanto migrate` 可从 Mem0、Letta、Supermemory、Zep、Hindsight 或任意 OKF 包导入，反向同样适用。OKF 是任何框架或供应商（包括我们的竞争对手）都能实现的开放交换格式。
 
 **它在你的机器上运行。** 本地 Docker + Ollama，无需账户和 API 密钥，内容不会离开你的基础设施；也可以使用免费云或自托管。`memanto config backend` 一条命令切换，资产随你而行。
 
@@ -185,7 +198,7 @@ memanto memory restore mem-123      # 再恢复它
 | 每日智能 | `memanto daily-summary`, `memanto conflicts` | 摘要、矛盾检测和交互式解决。 |
 | 会话和自动化 | `memanto session ...`, `memanto schedule ...` | 检查会话，启用每日定时运行。 |
 | 资产导出和同步 | `memanto memory export`, `memanto memory sync` | 导出结构化 Markdown，同步项目中的 `MEMORY.md`；`--okf` 生成可移植的 [OKF](https://docs.memanto.ai/integrations/okf) 包。 |
-| 导入和迁移 | `memanto migrate` | 从 Mem0、Letta、Supermemory 或 OKF 包导入。 |
+| 导入和迁移 | `memanto migrate` | 从 Mem0、Letta、Supermemory、Zep、Hindsight 或 OKF 包导入。 |
 | 配置 | `memanto config show` | API 密钥、活动智能体/会话、服务器设置和计划时间。 |
 | 智能体群集成 | `memanto connect ...` | Claude Code、Codex、Cursor、Windsurf、Antigravity、Gemini CLI、Cline、Continue、OpenCode、Goose、Roo、GitHub Copilot、Augment。 |
 
@@ -236,7 +249,22 @@ memanto           # 选择 "Cloud"；粘贴免费 API 密钥
 <details><summary><strong>SDK 和 REST API</strong></summary>
 <br>
 
+**Python** — `memanto` 包内置了客户端进程；无需启动服务器：
+
+```python
+from memanto import Memanto
+
+memanto = Memanto(agent_id="my-agent")   # 首次使用时创建智能体
+memanto.remember("Alex prefers oat milk.", type="preference")
+memanto.recall("what does Alex drink?")
+memanto.answer("Does Alex drink dairy?")
+```
+
+参考文档：[docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python)。
+
 **TypeScript / Node.js**：[`@moorcheh-ai/memanto`](../sdks/typescript) 通过 `uvx` 启动本地 Memanto 服务器，并提供易用客户端（`remember` / `recall` / `answer`）。
+
+**Go** — [`github.com/moorcheh-ai/memanto/sdks/go`](../sdks/go) 连接到正在运行的 Memanto 服务器或通过 `uvx` 启动一个服务器。
 
 **REST API**：使用 `memanto serve` 启动。端点参考见 [docs.memanto.ai/api](https://docs.memanto.ai/api)，运行时也可访问 `http://localhost:8000/docs`。
 </details>
@@ -287,6 +315,5 @@ memanto           # 选择 "Cloud"；粘贴免费 API 密钥
 
 ---
 <p align="center">
-  <strong>MIT 许可证</strong><br>
-  <sub><a href="../README.md">English</a> · <a href="README_es.md">Español</a> · <a href="README_zh-CN.md">简体中文</a> · <a href="README_ja.md">日本語</a></sub>
+  <strong>MIT 许可证</strong>
 </p>

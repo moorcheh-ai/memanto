@@ -99,3 +99,71 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-go:
+    name: Tag Go SDK
+    # A Go module is published by its git tag: tagging sdks/go/vX.Y.Z on the
+    # release commit makes `go get github.com/moorcheh-ai/memanto/sdks/go@vX.Y.Z`
+    # work. The version tracks the release, like the npm package.
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the sdks/go tag
+    defaults:
+      run:
+        working-directory: sdks/go
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Work out the Go tag
+        id: tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # Go needs plain semver (v1.2.3 or v1.2.3-rc.1). A v2+ module would
+          # also need a /v2 module path, so stop rather than tag a version
+          # `go get` cannot resolve.
+          if ! printf '%s' "$RELEASE_TAG" | grep -qE '^v[01]\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Release tag '$RELEASE_TAG' is not a Go-compatible v0/v1 semver tag; not tagging the Go SDK."
+            exit 1
+          fi
+          echo "name=sdks/go/$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: sdks/go/go.mod
+          cache-dependency-path: sdks/go/go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Push tag
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG already exists; leaving it unchanged."
+            exit 0
+          fi
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+
+      - name: Announce to the Go module proxy
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        working-directory: ${{ runner.temp }}
+        run: |
+          # Fetching the version through proxy.golang.org caches it there and
+          # lists it on pkg.go.dev. Retry briefly while the new tag propagates.
+          for _ in 1 2 3 4 5; do
+            GOPROXY=https://proxy.golang.org GOFLAGS=-mod=mod \
+              go list -m "github.com/moorcheh-ai/memanto/sdks/go@${TAG#sdks/go/}" && exit 0
+            sleep 15
+          done
+          echo "::warning::The Go proxy has not picked up $TAG yet; it will on the first go get."

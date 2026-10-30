@@ -3,6 +3,7 @@ MEMANTO FastAPI Application
 """
 
 from contextlib import asynccontextmanager
+from dataclasses import replace
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,7 @@ from memanto.app.ui.routes.ui_router import router as ui_router
 from memanto.app.utils.client_identity import (
     UNKNOWN_CLIENT,
     ClientIdentity,
+    display_for,
     normalize_tool,
     reset_client,
     set_client,
@@ -132,20 +134,28 @@ async def attribute_calling_tool(request, call_next):
     ``X-Memanto-Project``). The session comes from the session token, not from
     a header.
     """
+    project_dir = (request.headers.get("X-Memanto-Project") or "").strip() or None
     tool = (request.headers.get("X-Memanto-Client") or "").strip()
     if tool:
+        slug = normalize_tool(tool)
+        # The label is persisted to the activity log and rendered by the
+        # dashboard, so derive it from the normalized slug rather than echoing
+        # caller-controlled header text.
         identity = ClientIdentity(
-            tool=normalize_tool(tool),
-            display=tool,
-            project_dir=(request.headers.get("X-Memanto-Project") or "").strip()
-            or None,
+            tool=slug,
+            display=display_for(slug),
+            project_dir=project_dir,
         )
     else:
         # Bind UNKNOWN rather than leaving the context empty. Falling through to
         # environment detection here would attribute every anonymous HTTP call
         # to whatever launched the *server* - an editor that started `memanto
         # server` would be credited with requests it never made.
-        identity = UNKNOWN_CLIENT
+        identity = (
+            replace(UNKNOWN_CLIENT, project_dir=project_dir)
+            if project_dir
+            else UNKNOWN_CLIENT
+        )
 
     token = set_client(identity)
     try:

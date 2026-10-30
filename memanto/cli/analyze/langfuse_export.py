@@ -153,9 +153,8 @@ def _resolve_public_ip(host: str) -> str | None:
 def normalize_host(host: str | None) -> str:
     """Normalize a Langfuse base URL (cloud EU/US or self-hosted).
 
-    SECURITY (#1852): the Langfuse secret key is transmitted as HTTP Basic auth,
-    so a host value must never point at internal infrastructure or travel in
-    cleartext. Rules:
+    The Langfuse secret key is transmitted as HTTP Basic auth, so a host value
+    must never point at internal infrastructure or travel in cleartext. Rules:
       * empty -> official cloud default
       * explicit http:// -> rejected (cleartext + Langfuse is HTTPS-only)
       * official cloud regions -> allowed as-is

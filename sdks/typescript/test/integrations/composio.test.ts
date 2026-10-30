@@ -112,6 +112,22 @@ describe("createMemantoComposioTools", () => {
     });
   });
 
+  it("wraps a non-success remember status into an unsuccessful tool result", async () => {
+    const m = fakeMemanto();
+    m.remember.mockResolvedValueOnce({ memory_id: "mem-1", status: "failed" });
+    const tools = await createMemantoComposioTools(m as unknown as Memanto, fakeComposio() as never);
+
+    const result = await (tools.rememberMemory as unknown as { execute: (input: unknown) => Promise<unknown> }).execute({
+      content: "Alex switched to soy",
+    });
+
+    expect(result).toEqual({
+      data: {},
+      error: "Memanto remember returned non-success status: failed",
+      successful: false,
+    });
+  });
+
   it("wraps a failed memanto call into an unsuccessful tool result", async () => {
     const m = fakeMemanto();
     m.recall.mockRejectedValueOnce(new Error("server unreachable"));

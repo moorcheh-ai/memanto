@@ -19,9 +19,9 @@ from memanto.app.clients.agent_conflict import describe_conflict_progress
 from memanto.app.constants import SourceType
 from memanto.app.core import is_valid_source
 from memanto.app.utils.client_identity import (
-    client_from_tool,
+    bind_calling_tool,
     detect_client,
-    set_client,
+    tool_from_source,
 )
 from memanto.app.utils.temporal_helpers import get_yesterday_range, utc_date_str
 from memanto.cli.commands._shared import (
@@ -58,32 +58,15 @@ def _as_float(value: object, default: float = 0.0) -> float:
 
 # Agent-facing: an AI tool naming itself is exact, where sniffing the
 # environment is a guess that fails entirely for tools that leave no marker.
-# Hidden because a human running `memanto` by hand has nothing to declare.
-_TOOL_OPTION = typer.Option(
+_SOURCE_OPTION = typer.Option(
     None,
-    "--tool",
-    hidden=True,
-    help="Slug of the AI tool making this call (e.g. claude-code, cursor).",
+    "--source",
+    "-s",
+    help="Slug of the AI tool making this call (e.g. claude-code, cursor, copilot).",
 )
 
-
-# `--source` values that name a person rather than a tool. A memory dictated
-# by a human is still made by some tool, so these fall through to environment
-# detection instead of putting "user" on the connected-tools diagram.
-_NON_TOOL_SOURCES = frozenset({"user", "agent", "human"})
-
-
-def _tool_from_source(source: str | None) -> str | None:
-    """Read the calling tool off `remember --source`, when it names one."""
-    if source and source.strip().lower() not in _NON_TOOL_SOURCES:
-        return source
-    return None
-
-
-def _bind_calling_tool(tool: str | None) -> None:
-    """Attribute this invocation to the tool that named itself, if any."""
-    if tool:
-        set_client(client_from_tool(tool))
+_tool_from_source = tool_from_source
+_bind_calling_tool = bind_calling_tool
 
 
 @app.command()
@@ -158,6 +141,15 @@ def remember(
     client = get_client()
     agent_id = active_agent_id
 
+    # Single-item, batch, and conversation-extraction modes all accept
+    # `--source`; validate once up front when provided.
+    if source is not None and not is_valid_source(source):
+        _error(
+            f"Invalid source: '{source}'.",
+            hint="A source names who wrote the memory (e.g. user, agent, cursor, "
+            "codex, claude_code). Use up to 64 letters, digits, '.', '_', or '-'.",
+        )
+
     # Conversation extraction mode
     if from_conversation:
         if batch or content:
@@ -193,13 +185,23 @@ def remember(
             with console.status(
                 "[cyan]Extracting memories from conversation...", spinner="dots"
             ):
-                result = client.extract_memories_from_conversation(
-                    agent_id=agent_id,
-                    messages=messages,
-                    dry_run=dry_run,
-                    max_memories=max_memories,
-                    ai_model=ai_model,
-                )
+                if source is not None:
+                    result = client.extract_memories_from_conversation(
+                        agent_id=agent_id,
+                        messages=messages,
+                        dry_run=dry_run,
+                        max_memories=max_memories,
+                        ai_model=ai_model,
+                        source=source,
+                    )
+                else:
+                    result = client.extract_memories_from_conversation(
+                        agent_id=agent_id,
+                        messages=messages,
+                        dry_run=dry_run,
+                        max_memories=max_memories,
+                        ai_model=ai_model,
+                    )
             elapsed = time.perf_counter() - start
             candidates = result.get("candidates", [])
 
@@ -277,7 +279,12 @@ def remember(
             with console.status(
                 f"[cyan]Storing {len(memories)} memories in batch...", spinner="dots"
             ):
-                result = client.batch_remember(agent_id=agent_id, memories=memories)
+                if source is not None:
+                    result = client.batch_remember(
+                        agent_id=agent_id, memories=memories, source=source
+                    )
+                else:
+                    result = client.batch_remember(agent_id=agent_id, memories=memories)
             elapsed = time.perf_counter() - start
 
             successful = result.get("successful", 0)
@@ -652,14 +659,14 @@ def recall(
         False, "--active", help="Only active memories (exclude expired)"
     ),
     expired_only: bool = typer.Option(False, "--expired", help="Only expired memories"),
-    tool: str | None = _TOOL_OPTION,
+    source: str | None = _SOURCE_OPTION,
 ):
     """Search and retrieve memories for the active agent with temporal query support.
 
     By default both active and expired memories are returned, each clearly
     labelled. Narrow with --active or --expired.
     """
-    _bind_calling_tool(tool)
+    _bind_calling_tool(_tool_from_source(source))
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
@@ -907,10 +914,10 @@ def answer(
     limit: int | None = typer.Option(
         None, "--limit", "-n", help="Number of context memories to use"
     ),
-    tool: str | None = _TOOL_OPTION,
+    source: str | None = _SOURCE_OPTION,
 ):
     """Answer a question using RAG (Retrieval-Augmented Generation)."""
-    _bind_calling_tool(tool)
+    _bind_calling_tool(_tool_from_source(source))
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 

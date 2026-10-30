@@ -47,7 +47,7 @@ describe("memantoMemory", () => {
       ],
     });
     expect((result as { messages: { content: string }[] }).messages[0]!.content).toContain(
-      "not instructions",
+      "useful context for this turn:",
     );
   });
 

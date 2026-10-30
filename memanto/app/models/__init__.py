@@ -2,6 +2,7 @@
 MEMANTO API Models
 """
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import (
@@ -14,8 +15,10 @@ from pydantic import (
 from memanto.app.constants import (
     VALID_PROVENANCE_TYPES,
     MemoryType,
+    StatusType,
 )
 from memanto.app.core import (
+    SOURCE_MAX_LENGTH,
     BoundedTags,
     MemorySource,
 )
@@ -42,6 +45,13 @@ class BatchRememberItem(BaseModel):
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
     tags: BoundedTags | None = Field(None, description="Tags for this memory")
+    status: StatusType | None = Field(
+        None, description="Memory lifecycle status (e.g. active, expired)"
+    )
+    expired_at: datetime | None = Field(
+        None, description="When this memory was expired"
+    )
+    expired_by: str | None = Field(None, description="What/who expired this memory")
     source: MemorySource = Field(
         "agent",
         description=(
@@ -70,6 +80,16 @@ class BatchRememberItem(BaseModel):
             )
         return value
 
+    @model_validator(mode="after")
+    def validate_lifecycle(self) -> "BatchRememberItem":
+        """If a memory is marked expired, it must have an audit trail."""
+        if self.status == "expired":
+            if not self.expired_at or not self.expired_by:
+                raise ValueError(
+                    "An expired memory must have both expired_at and expired_by"
+                )
+        return self
+
 
 class RememberRequest(BatchRememberItem):
     """Request body for remember endpoint"""
@@ -83,6 +103,14 @@ class BatchRememberRequest(BaseModel):
         min_length=1,
         max_length=100,
         description="List of memories to store (max 100)",
+    )
+    source: MemorySource | None = Field(
+        None,
+        description=(
+            "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', "
+            "'claude-code') to attribute the batch write and default item "
+            "sources when omitted."
+        ),
     )
 
 
@@ -131,6 +159,13 @@ class ExtractMemoriesRequest(BaseModel):
     ai_model: str | None = Field(
         None,
         description="Optional model override for extraction",
+    )
+    source: MemorySource | None = Field(
+        None,
+        description=(
+            "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', "
+            "'claude-code') to attribute the extraction."
+        ),
     )
 
 
@@ -194,6 +229,14 @@ class AnswerRequest(BaseModel):
         None, description="AI model to use for generating the answer"
     )
     kiosk_mode: bool = Field(False, description="Kiosk mode setting")
+    source: str | None = Field(
+        None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("question")
     @classmethod

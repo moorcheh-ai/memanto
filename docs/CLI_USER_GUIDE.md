@@ -282,6 +282,7 @@ memanto remember CONTENT [OPTIONS]
 - `--title TEXT` - Memory title (defaults to truncated content)
 - `--confidence, -c FLOAT` - Confidence score 0.0-1.0 (default: 0.8)
 - `--tags TEXT` - Comma-separated tags
+- `--source, -s TEXT` - Who wrote the memory / calling AI tool slug (e.g. `cursor`, `copilot`, `claude-code`, `user`)
 
 **Examples:**
 ```bash
@@ -355,6 +356,7 @@ memanto recall QUERY [OPTIONS]
 - `--type, -t TEXT` - Filter by memory type
 - `--min-confidence FLOAT` - Minimum confidence score
 - `--tags TEXT` - Filter by tags (comma-separated)
+- `--source, -s TEXT` - Slug of the AI tool making this call (e.g. `cursor`, `copilot`, `claude-code`)
 
 **Examples:**
 ```bash
@@ -403,6 +405,7 @@ memanto answer QUESTION [OPTIONS]
 
 **Options:**
 - `--limit, -n INT` - Number of context memories to use (default: `answer_limit` from config, factory default 5)
+- `--source, -s TEXT` - Slug of the AI tool making this call (e.g. `cursor`, `copilot`, `claude-code`)
 
 **Examples:**
 ```bash

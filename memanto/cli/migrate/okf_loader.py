@@ -23,7 +23,11 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.services.okf_export_service import (
+    ENTRY_DELIMITER,
+    decode_okf_data,
+    decode_okf_delimiter,
+)
 from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
@@ -69,14 +73,36 @@ _NOFOLLOW_ERRNOS: set[int] = {
 
 
 def _read_open_regular_file(fd: int, display_path: Path) -> str:
-    if not stat.S_ISREG(os.fstat(fd).st_mode):
+    """Read contents of an open file descriptor enforcing regular file and size constraints.
+
+    Args:
+        fd: Open file descriptor.
+        display_path: Path for display in exception messages.
+
+    Returns:
+        The decoded UTF-8 string content.
+    """
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):
         raise ValueError(f"OKF document is not a regular file: {display_path}")
+    if st.st_size > 50 * 1024 * 1024:
+        raise ValueError(f"OKF document exceeds size limit (50MB): {display_path}")
 
     with os.fdopen(os.dup(fd), "r", encoding="utf-8") as stream:
         return stream.read()
 
 
 def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
+    """Open and read a document relative to an open directory descriptor without following symlinks.
+
+    Args:
+        directory_fd: Open directory file descriptor.
+        name: Basename of the file in the directory.
+        display_path: Full relative path for error messages.
+
+    Returns:
+        The decoded UTF-8 document content.
+    """
     document_fd: int | None = None
     try:
         document_fd = os.open(
@@ -97,8 +123,28 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
 
 
 def _read_directory_documents(
-    directory_fd: int, prefix: Path = Path()
+    directory_fd: int,
+    prefix: Path = Path(),
+    depth: int = 0,
+    counters: list[int] | None = None,
 ) -> list[tuple[Path, str]]:
+    """Recursively read documents under an open directory descriptor with depth and size bounds.
+
+    Args:
+        directory_fd: Directory file descriptor.
+        prefix: Current relative path prefix.
+        depth: Current recursion depth.
+        counters: Mutable accumulator [file_count, aggregate_bytes].
+
+    Returns:
+        List of (relative_path, content) tuples.
+    """
+    if depth > 32:
+        raise ValueError(f"OKF bundle directory too deep (limit 32): {prefix}")
+    if counters is None:
+        counters = [0, 0]
+    max_bundle_files = 10_000
+    max_bundle_bytes = 64 * 1024 * 1024
     try:
         with os.scandir(directory_fd) as entries:
             names = sorted(entry.name for entry in entries)
@@ -149,7 +195,11 @@ def _read_directory_documents(
                     raise ValueError(
                         f"OKF bundle contains an unsafe directory: {relative_path}"
                     )
-                documents.extend(_read_directory_documents(child_fd, relative_path))
+                documents.extend(
+                    _read_directory_documents(
+                        child_fd, relative_path, depth + 1, counters
+                    )
+                )
             finally:
                 os.close(child_fd)
             continue
@@ -157,12 +207,24 @@ def _read_directory_documents(
             continue
         if not stat.S_ISREG(entry_stat.st_mode):
             raise ValueError(f"OKF document is not a regular file: {relative_path}")
-        documents.append(
-            (
-                relative_path,
-                _read_document_at(directory_fd, name, relative_path),
+        if counters[0] >= max_bundle_files:
+            raise ValueError(
+                f"OKF bundle file count exceeds limit ({max_bundle_files})"
             )
-        )
+
+        text = _read_document_at(directory_fd, name, relative_path)
+        actual_size = len(text.encode("utf-8"))
+
+        if actual_size > 50 * 1024 * 1024:
+            raise ValueError(f"OKF document exceeds size limit (50MB): {relative_path}")
+        if counters[1] + actual_size > max_bundle_bytes:
+            raise ValueError(
+                f"OKF bundle total size exceeds limit ({max_bundle_bytes // (1024 * 1024)}MB)"
+            )
+
+        counters[0] += 1
+        counters[1] += actual_size
+        documents.append((relative_path, text))
 
     return documents
 
@@ -209,6 +271,15 @@ def _extract_links(body: str) -> list[tuple[str, str]]:
 def _load_documents_secure(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
+    """Load documents securely using file descriptors and O_NOFOLLOW to prevent symlink traversal.
+
+    Args:
+        root: Resolved root directory or single file.
+        original_path: Input path string for error messages.
+
+    Returns:
+        A tuple of (base_directory, list of (document_path, text_content)).
+    """
     try:
         root_fd = os.open(root, _READ_FLAGS | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError as exc:
@@ -280,6 +351,15 @@ def _load_documents_secure(
 def _load_documents_portable(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
+    """Load documents on platforms lacking dir_fd / O_NOFOLLOW support using bounded checks.
+
+    Args:
+        root: Resolved root directory or single file.
+        original_path: Input path string for error messages.
+
+    Returns:
+        A tuple of (base_directory, list of (document_path, text_content)).
+    """
     try:
         root_stat = root.lstat()
     except FileNotFoundError:
@@ -296,6 +376,8 @@ def _load_documents_portable(
     )
 
     if root.is_file():
+        if root.stat().st_size > 50 * 1024 * 1024:
+            raise ValueError(f"OKF document exceeds size limit (50MB): {root}")
         return root.parent, [(root, root.read_text(encoding="utf-8"))]
 
     memories_dir = root / "memories"
@@ -308,25 +390,65 @@ def _load_documents_portable(
     else:
         scan_root = root
 
+    if not scan_root.resolve().is_relative_to(root.resolve()):
+        raise ValueError(
+            f"OKF bundle memories directory escapes bundle root: {scan_root}"
+        )
+
     documents = []
-    for file_path in sorted(scan_root.rglob("*.md")):
+    total_bytes = 0
+    max_bundle_bytes = 64 * 1024 * 1024
+    max_bundle_files = 10_000
+
+    found_files = []
+    for file_path in scan_root.rglob("*.md"):
         if file_path.name.lower() in _SKIP_FILENAMES:
             continue
-
-        current = file_path
-        is_unsafe = False
-        while current != root:
-            if current.is_symlink():
-                is_unsafe = True
-                break
-            current = current.parent
-
-        if is_unsafe:
+        found_files.append(file_path)
+        if len(found_files) > max_bundle_files:
             raise ValueError(
-                f"OKF bundle contains a symbolic-link document or directory: {file_path}"
+                f"OKF bundle file count exceeds limit ({max_bundle_files})"
             )
 
-        documents.append((file_path, file_path.read_text(encoding="utf-8")))
+    for file_path in sorted(found_files):
+        try:
+            rel_parts = file_path.relative_to(root).parts
+        except ValueError:
+            rel_parts = file_path.parts
+
+        if len(rel_parts) > 32:
+            raise ValueError(f"OKF bundle directory too deep (limit 32): {file_path}")
+
+        with file_path.open("r", encoding="utf-8") as handle:
+            # Verify the resolved path AFTER opening to prevent TOCTOU junction swaps,
+            # especially on Windows where an open handle prevents moving/deletion.
+            if not file_path.resolve().is_relative_to(scan_root.resolve()):
+                raise ValueError(
+                    f"OKF bundle contains an unsafe symbolic-link or junction escape: {file_path}"
+                )
+
+            # A document must not exceed 50MiB. UTF-8 characters are at least 1 byte each,
+            # so reading 50MiB + 1 characters guarantees we'll catch a file that exceeds the byte limit
+            # before we actually load the whole thing into memory.
+            max_chars = 50 * 1024 * 1024
+            text = handle.read(max_chars + 1)
+
+            # If there's still more data to read after max_chars, it's definitively too big.
+            if handle.read(1):
+                raise ValueError(f"OKF document exceeds size limit (50MB): {file_path}")
+
+        actual_size = len(text.encode("utf-8"))
+
+        if actual_size > 50 * 1024 * 1024:
+            raise ValueError(f"OKF document exceeds size limit (50MB): {file_path}")
+
+        if total_bytes + actual_size > max_bundle_bytes:
+            raise ValueError(
+                f"OKF bundle total size exceeds limit ({max_bundle_bytes // (1024 * 1024)}MB)"
+            )
+
+        total_bytes += actual_size
+        documents.append((file_path, text))
 
     return root, documents
 
@@ -372,6 +494,7 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
         rel_base, documents = _load_documents_portable(root, display_path)
 
     memories: list[dict[str, Any]] = []
+    max_bundle_entries = 10_000
     for file_path, text in documents:
         for chunk in text.split(ENTRY_DELIMITER):
             chunk = chunk.strip()
@@ -379,6 +502,10 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
                 continue
             entry = _parse_entry(chunk, file_path, rel_base)
             if entry is not None:
+                if len(memories) >= max_bundle_entries:
+                    raise ValueError(
+                        f"OKF bundle entry count exceeds limit ({max_bundle_entries})"
+                    )
                 memories.append(entry)
 
     return {"memories": memories}
@@ -398,7 +525,9 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
     else:
         frontmatter, body = {}, chunk
 
-    body = body.strip()
+    body = decode_okf_delimiter(body.strip())
+    if frontmatter:
+        frontmatter = decode_okf_data(frontmatter)
 
     # Skip navigation index documents.
     if str(frontmatter.get("type", "")).strip().lower() == "index":

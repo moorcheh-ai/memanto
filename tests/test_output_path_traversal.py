@@ -18,19 +18,23 @@ class TestValidateOutputPath:
     """Unit tests for validate_output_path()."""
 
     def setup_method(self):
+        """Set up test environment and initialize target function."""
         from memanto.app.utils.validation import validate_output_path
 
         self.fn = validate_output_path
 
     def _base(self, tmp_path: Path) -> Path:
+        """Create and return a fixture base directory."""
         base = tmp_path / ".memanto"
         base.mkdir(parents=True, exist_ok=True)
         return base
 
     def test_none_returns_none(self, tmp_path):
+        """Verify that passing None returns None without error."""
         assert self.fn(None, base_dir=self._base(tmp_path)) is None
 
     def test_valid_path_inside_base(self, tmp_path):
+        """Verify that valid paths within base_dir are accepted."""
         base = self._base(tmp_path)
         result = self.fn(
             str(base / "summaries" / "agent1_2026-06-25.md"), base_dir=base
@@ -39,11 +43,13 @@ class TestValidateOutputPath:
         assert str(result).startswith(str(base))
 
     def test_relative_path_anchored_to_base(self, tmp_path):
+        """Verify that relative paths resolve anchored to base_dir."""
         base = self._base(tmp_path)
         result = self.fn("summaries/agent1.md", base_dir=base)
         assert result == (base / "summaries" / "agent1.md").resolve()
 
     def test_absolute_traversal_rejected(self, tmp_path):
+        """Verify that absolute paths outside base_dir raise HTTP 400."""
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc:
@@ -51,6 +57,7 @@ class TestValidateOutputPath:
         assert exc.value.status_code == 400
 
     def test_dotdot_traversal_rejected(self, tmp_path):
+        """Verify that dot-dot path traversal sequences raise HTTP 400."""
         from fastapi import HTTPException
 
         base = self._base(tmp_path)
@@ -60,12 +67,14 @@ class TestValidateOutputPath:
         assert exc.value.status_code == 400
 
     def test_cron_path_rejected(self, tmp_path):
+        """Verify that system cron directories are rejected."""
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException):
             self.fn("/etc/cron.d/backdoor", base_dir=self._base(tmp_path))
 
     def test_ssh_authorized_keys_rejected(self, tmp_path):
+        """Verify that sensitive user directories like .ssh are rejected."""
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException):
@@ -76,6 +85,7 @@ class TestDailyAnalysisOutputPath:
     """validate_output_path is called from DailyAnalysisService.generate_summary."""
 
     def test_traversal_raises_http_400(self, tmp_path):
+        """Verify that traversal via DailyAnalysisService raises HTTP 400."""
         from fastapi import HTTPException
 
         from memanto.app.services.daily_analysis_service import DailyAnalysisService
@@ -97,6 +107,7 @@ class TestDailyAnalysisOutputPath:
         assert exc.value.status_code == 400
 
     def test_valid_output_path_accepted(self, tmp_path):
+        """Verify that valid summary output path is accepted."""
         from memanto.app.utils.validation import validate_output_path
 
         base = tmp_path / ".memanto"
@@ -109,6 +120,7 @@ class TestMemoryExportOutputPath:
     """memory_export_service also applies the guard when output_path is given."""
 
     def test_traversal_raises(self, tmp_path):
+        """Verify that traversal path in MemoryExportService raises HTTP 400."""
         from fastapi import HTTPException
 
         from memanto.app.services.memory_export_service import MemoryExportService

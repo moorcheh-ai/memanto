@@ -36,7 +36,12 @@ from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
 from memanto.app.services.activity_service import log_memory_activity
-from memanto.app.utils.client_identity import set_memanto_session
+from memanto.app.utils.atomic_write import atomic_write_text
+from memanto.app.utils.client_identity import (
+    calling_tool,
+    set_memanto_session,
+    tool_from_source,
+)
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -150,7 +155,7 @@ class SdkClient:
         if self._agent_service is None:
             from memanto.app.services.agent_service import AgentService
 
-            self._agent_service = AgentService()
+            self._agent_service = AgentService(client=self._get_moorcheh())
         return self._agent_service
 
     def _get_session_service(self):
@@ -168,7 +173,9 @@ class SdkClient:
                 DailyAnalysisService,
             )
 
-            self._daily_analysis_service = DailyAnalysisService()
+            self._daily_analysis_service = DailyAnalysisService(
+                client=self._get_moorcheh()
+            )
         return self._daily_analysis_service
 
     def _get_export_service(self):
@@ -213,6 +220,12 @@ class SdkClient:
                 if renewed:
                     self._cached_session = renewed
                     self.session_token = renewed.session_token
+                else:
+                    try:
+                        session_service.validate_session(self.session_token)
+                    except Exception:
+                        self._cached_session = None
+                        raise
                 return self._cached_session
             self._cached_session = None
 
@@ -366,13 +379,15 @@ class SdkClient:
                 left intact so the delete can be retried.
         """
         logger.debug("Deleting agent '%s'", agent_id)
-        agent_service = self._get_agent_service()
-        if not agent_service.get_agent(agent_id):
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
-        if delete_memories:
-            agent_service.delete_agent_memories(agent_id, self.api_key)
-        agent_service.delete_agent(agent_id)
-        self._get_session_service().delete_session(agent_id)
+        session_service = self._get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            agent_service = self._get_agent_service()
+            if not agent_service.get_agent(agent_id):
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+            if delete_memories:
+                agent_service.delete_agent_memories(agent_id, self.api_key)
+            agent_service.delete_agent(agent_id)
+            session_service.delete_session(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
             self.agent_id = None
@@ -402,22 +417,24 @@ class SdkClient:
         Raises:
             AgentNotFoundError: If agent does not exist.
         """
-        agent = self._get_agent_service().get_agent(agent_id)
-        if not agent:
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        session_service = self._get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            agent = self._get_agent_service().get_agent(agent_id)
+            if not agent:
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
-        logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
-        session = self._get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-        )
+            logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
+            session = session_service.create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
 
-        self._get_agent_service().update_agent_stats(
-            agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+            self._get_agent_service().update_agent_stats(
+                agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
 
         self.session_token = session.session_token
         self.agent_id = agent_id
@@ -546,7 +563,8 @@ class SdkClient:
         )
 
         logger.debug("Storing memory for agent '%s' (type=%s)", agent_id, memory_type)
-        result = self._get_write_service().store_memory(memory)
+        with calling_tool(tool_from_source(source)):
+            result = self._get_write_service().store_memory(memory)
 
         # Log to local session Markdown summary only after a durable write.
         if self.session_token and is_successful_write_result(result):
@@ -567,7 +585,10 @@ class SdkClient:
         }
 
     def batch_remember(
-        self, agent_id: str, memories: list[dict[str, Any]]
+        self,
+        agent_id: str,
+        memories: list[dict[str, Any]],
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Store multiple memories in batch.
@@ -575,6 +596,7 @@ class SdkClient:
         Args:
             agent_id: Target agent.
             memories: List of memory dicts (max 100).
+            source: Optional calling tool / default source slug.
 
         Returns:
             Batch result dict with ``total_submitted``, ``successful``,
@@ -585,6 +607,13 @@ class SdkClient:
         """
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
+        batch_tool = tool_from_source(source)
+        if not batch_tool:
+            for item in memories:
+                if isinstance(item, dict):
+                    batch_tool = tool_from_source(item.get("source"))
+                    if batch_tool:
+                        break
 
         if not memories:
             raise ValueError("Batch must contain at least one memory")
@@ -626,17 +655,27 @@ class SdkClient:
                 "actor_id": agent_id,
                 "confidence": item.get("confidence", 0.8),
                 "tags": item.get("tags", []),
-                "source": item.get("source") or "user",
+                "source": item.get("source") or source or "user",
                 "provenance": provenance,
             }
             for opt_key in (
                 "source_ref",
                 "created_at",
                 "updated_at",
+                "status",
+                "expired_at",
+                "expired_by",
             ):
                 val = item.get(opt_key)
                 if val is not None:
                     kwargs[opt_key] = val
+
+            if kwargs.get("status") == "expired" and (
+                not kwargs.get("expired_at") or not kwargs.get("expired_by")
+            ):
+                raise ValueError(
+                    f"Memory at index {i} is marked expired but missing expired_at/expired_by"
+                )
 
             memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
@@ -646,10 +685,11 @@ class SdkClient:
             len(memory_records),
             agent_id,
         )
-        result = cast(
-            dict[str, Any],
-            self._get_write_service().batch_store_memories(memory_records),
-        )
+        with calling_tool(batch_tool):
+            result = cast(
+                dict[str, Any],
+                self._get_write_service().batch_store_memories(memory_records),
+            )
 
         # Log each memory to local session Markdown summary
         if self.session_token:
@@ -782,6 +822,7 @@ class SdkClient:
         dry_run: bool = False,
         max_memories: int = 20,
         ai_model: str | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Extract typed memories from conversation turns.
@@ -792,6 +833,8 @@ class SdkClient:
             dry_run: When True, preview candidates without storing.
             max_memories: Maximum candidates to extract.
             ai_model: Optional model override for extraction.
+            source: Optional calling tool / writer slug to stamp on extracted
+                memories and attribute the batch write.
 
         Returns:
             Dict containing extracted candidates and, when not dry-run, the
@@ -801,6 +844,7 @@ class SdkClient:
 
         from memanto.app.services.conversation_memory_extraction_service import (
             ConversationMemoryExtractionService,
+            NothingToExtractError,
         )
 
         service = ConversationMemoryExtractionService(self._get_moorcheh())
@@ -810,6 +854,8 @@ class SdkClient:
             max_memories=max_memories,
             ai_model=ai_model,
         )
+        if source:
+            candidates = [{**c, "source": source} for c in candidates]
 
         if dry_run:
             return {
@@ -818,7 +864,14 @@ class SdkClient:
                 "count": len(candidates),
             }
 
-        result = self.batch_remember(agent_id=agent_id, memories=candidates)
+        if not candidates:
+            raise NothingToExtractError(
+                "Memory extraction produced no usable candidates"
+            )
+
+        result = self.batch_remember(
+            agent_id=agent_id, memories=candidates, source=source
+        )
         return {
             "dry_run": False,
             "candidates": candidates,
@@ -933,6 +986,7 @@ class SdkClient:
 
     def get_policy(self, agent_id: str) -> dict[str, Any]:
         """Return the agent's expiry policy as a plain dict."""
+        self._get_validated_session_for_agent(agent_id)
         policy = self._get_policy_service().load_policy(agent_id)
         return {
             "agent_id": agent_id,
@@ -945,6 +999,8 @@ class SdkClient:
 
         Saving does not expire anything; run :meth:`apply_policy` afterwards.
         """
+        self._get_validated_session_for_agent(agent_id)
+
         from memanto.app.services.memory_policy_service import MemoryPolicy
 
         parsed = MemoryPolicy(**policy)
@@ -978,6 +1034,8 @@ class SdkClient:
 
     def apply_policy_preset(self, agent_id: str, name: str) -> dict[str, Any]:
         """Adopt a predefined policy bundle as the agent's policy."""
+        self._get_validated_session_for_agent(agent_id)
+
         from memanto.app.services.policy_presets import load_preset
 
         policy = load_preset(name)
@@ -1064,6 +1122,7 @@ class SdkClient:
         created_before: datetime | None = None,
         min_confidence: float | None = None,
         status: str = "all",
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Search memories by semantic similarity.
@@ -1080,6 +1139,7 @@ class SdkClient:
             min_confidence: Minimum confidence threshold.
             status: Lifecycle filter — ``all`` (default), ``active`` or
                 ``expired``. The default returns both so callers can label them.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``agent_id``, ``query``, ``memories``, ``count``.
@@ -1098,18 +1158,19 @@ class SdkClient:
         logger.debug(
             "Recall for agent '%s': query='%s', limit=%d", agent_id, query, limit
         )
-        result = self._get_read_service().search_memories(
-            query=query,
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            min_confidence=min_confidence,
-            min_similarity_score=min_similarity,
-            created_after=created_after.isoformat() if created_after else None,
-            created_before=created_before.isoformat() if created_before else None,
-            status=status,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_memories(
+                query=query,
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                min_confidence=min_confidence,
+                min_similarity_score=min_similarity,
+                created_after=created_after.isoformat() if created_after else None,
+                created_before=created_before.isoformat() if created_before else None,
+                status=status,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1125,6 +1186,7 @@ class SdkClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Point-in-time recall: what memories existed at a given moment?
@@ -1135,6 +1197,7 @@ class SdkClient:
             limit: Max results (defaults to config).
             type: Optional type filter.
             tags: Optional tag filter.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1146,13 +1209,14 @@ class SdkClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        result = self._get_read_service().search_as_of(
-            as_of_date=as_of,
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_as_of(
+                as_of_date=as_of,
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1169,6 +1233,7 @@ class SdkClient:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         status: str = "all",
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Differential retrieval: what changed since a given date?
@@ -1179,6 +1244,7 @@ class SdkClient:
             limit: Max results (defaults to config).
             type: Optional type filter.
             tags: Optional tag filter.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1190,14 +1256,15 @@ class SdkClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        result = self._get_read_service().search_changed_since(
-            since_date=since,
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            status=status,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_changed_since(
+                since_date=since,
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                status=status,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1213,6 +1280,7 @@ class SdkClient:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         status: str = "all",
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Recall the most recently stored memories (newest first).
@@ -1223,6 +1291,7 @@ class SdkClient:
             type: Optional type filter.
             tags: Optional tag filter.
             status: Lifecycle filter — ``all`` (default), ``active`` or ``expired``.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1234,13 +1303,14 @@ class SdkClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        result = self._get_read_service().search_recent(
-            agent_id=agent_id,
-            type=type,
-            tags=tags,
-            status=status,
-            limit=limit,
-        )
+        with calling_tool(tool_from_source(source)):
+            result = self._get_read_service().search_recent(
+                agent_id=agent_id,
+                type=type,
+                tags=tags,
+                status=status,
+                limit=limit,
+            )
 
         return {
             "agent_id": agent_id,
@@ -1259,6 +1329,7 @@ class SdkClient:
         kiosk_mode: bool | None = None,
         header_prompt: str | None = None,
         footer_prompt: str | None = None,
+        source: str | None = None,
     ) -> dict[str, Any]:
         """
         Answer a question using RAG (Retrieval-Augmented Generation).
@@ -1276,6 +1347,7 @@ class SdkClient:
                 ``threshold``. When None (default), reads the config value.
             header_prompt: Header prompt for the LLM.
             footer_prompt: Footer prompt for the LLM.
+            source: Optional calling tool slug for attribution.
 
         Returns:
             Dict with ``answer``, ``sources``, ``namespace``.
@@ -1322,22 +1394,23 @@ class SdkClient:
             question[:80],
             limit,
         )
-        response = self._get_moorcheh().answer.generate(
-            namespace=namespace,
-            query=question,
-            top_k=limit,
-            threshold=threshold,
-            temperature=temperature,
-            ai_model=ai_model,
-            kiosk_mode=kiosk_mode,
-            header_prompt=header_prompt,
-            footer_prompt=footer_prompt,
-        )
+        with calling_tool(tool_from_source(source)):
+            response = self._get_moorcheh().answer.generate(
+                namespace=namespace,
+                query=question,
+                top_k=limit,
+                threshold=threshold,
+                temperature=temperature,
+                ai_model=ai_model,
+                kiosk_mode=kiosk_mode,
+                header_prompt=header_prompt,
+                footer_prompt=footer_prompt,
+            )
 
-        # The RAG path calls Moorcheh directly rather than going through
-        # MemoryReadService, so it needs its own activity entry - otherwise
-        # `answer` is the one memory operation that leaves no trace.
-        log_memory_activity(op="answer", agent_id=agent_id)
+            # The RAG path calls Moorcheh directly rather than going through
+            # MemoryReadService, so it needs its own activity entry - otherwise
+            # `answer` is the one memory operation that leaves no trace.
+            log_memory_activity(op="answer", agent_id=agent_id)
 
         return {
             "agent_id": agent_id,
@@ -1726,8 +1799,10 @@ class SdkClient:
                 raise
             # Backend unreachable, but we have a previously good export —
             # serve that instead of wiping the project's MEMORY.md.
-            shutil.copy2(str(cache_path), str(target_path))
             content = cache_path.read_text(encoding="utf-8")
+            # Replace the project entry atomically so a repository-controlled
+            # MEMORY.md symlink cannot redirect this write outside the project.
+            atomic_write_text(target_path, content)
             return {
                 "output_path": str(target_path.resolve()),
                 "total_memories": content.count("### "),
@@ -1736,7 +1811,7 @@ class SdkClient:
 
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
-            shutil.copy2(str(exported_path), str(target_path))
+            atomic_write_text(target_path, exported_path.read_text(encoding="utf-8"))
 
         return {
             "output_path": str(target_path.resolve()),

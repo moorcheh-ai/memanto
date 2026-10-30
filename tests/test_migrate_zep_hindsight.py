@@ -165,7 +165,7 @@ def test_unstorable_tags_move_to_footer_instead_of_failing_the_batch():
     # write batch, so every mapped row must stay within the tag limits.
     long_tag = "x" * 80
     unit = hindsight_unit(
-        tags=["project,billing", long_tag, *(f"t{i}" for i in range(25))]
+        tags=["project,billing", "two\nlines", long_tag, *(f"t{i}" for i in range(25))]
     )
     edge = zep_edge(export_user_id="u" * 70)
 
@@ -175,6 +175,7 @@ def test_unstorable_tags_move_to_footer_instead_of_failing_the_batch():
     assert len(h_row["tags"]) == 20
     assert h_row["tags"][:2] == ["bank=bank-a", "t0"]
     assert "project,billing" not in h_row["tags"] and long_tag not in h_row["tags"]
+    assert "two\nlines" not in h_row["tags"]
     assert "- Extra tags: project,billing, " in h_row["content"]
     assert z_row["tags"] == ["works_at"]
     assert f"- Extra tags: user={'u' * 70}" in z_row["content"]

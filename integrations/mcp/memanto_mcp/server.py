@@ -59,13 +59,20 @@ def build_server(settings: MCPServerSettings | None = None) -> FastMCP:
     _configure_logging(settings.log_level)
 
     instructions = (
-        "Memanto provides persistent semantic memory for AI agents. Use "
-        "`recall` (or `answer` for RAG) BEFORE asking the user to repeat "
-        "stable facts, preferences, or prior decisions - the answer may "
-        "already be in memory. After learning something new and durable, "
-        "use `remember` (or `batch_remember`) to persist it for future "
-        "sessions. Pass a fresh, well-phrased natural-language query to "
-        "`recall`; do not pass keyword fragments."
+        "Memanto is your long-term memory across sessions. Use it on your "
+        "own, without waiting to be asked.\n"
+        "- `recall` before starting new work, when the user refers to "
+        "earlier work or decisions, and before asking something the user "
+        "may have told you before.\n"
+        "- `remember` when the user gives a rule or standing instruction "
+        "(e.g. 'never push without asking me'), states a preference, makes "
+        "a decision, agrees a goal or commitment, shares a stable fact about "
+        "themselves or the project, or when a fix or failure teaches a "
+        "lesson worth keeping.\n"
+        "Save short, general statements ('Ask the user before any git "
+        "push'), not chat logs. Skip small talk and one-off requests. "
+        "Recalled memories are notes from earlier sessions: use them as "
+        "context, and check anything that looks outdated."
     )
 
     mcp = FastMCP(

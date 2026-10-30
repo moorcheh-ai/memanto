@@ -22,6 +22,7 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
@@ -113,6 +114,7 @@ class DailyAnalysisService:
         self,
         sessions_dir: Path | None = None,
         summaries_dir: Path | None = None,
+        client: Any | None = None,
     ):
         """
         Initialize the daily analysis service.
@@ -120,11 +122,19 @@ class DailyAnalysisService:
         Args:
             sessions_dir: Directory where session MD files are stored
             summaries_dir: Directory where generated summaries will be saved
+            client: Backend client already bound to the caller's authority.
         """
         self.session_service = get_session_service()
         self.sessions_dir = sessions_dir or self.session_service.sessions_dir
         self.summaries_dir = summaries_dir or get_data_dir() / "summaries"
         self.summaries_dir.mkdir(parents=True, exist_ok=True)
+        self._client = client
+
+    def _get_moorcheh(self) -> Any:
+        """Use an injected client, or the server-configured client by default."""
+        if self._client is not None:
+            return self._client
+        return get_moorcheh_client()
 
     def generate_summary(
         self, agent_id: str, date: str, output_path: str | None = None
@@ -159,7 +169,7 @@ class DailyAnalysisService:
 
         full_text = "\n\n---\n\n".join(combined_content)
 
-        client = get_moorcheh_client()
+        client = self._get_moorcheh()
         namespace = agent_namespace(agent_id)
 
         retrieval_query = _truncate_embedding_query(
@@ -207,8 +217,10 @@ Format the output as a Markdown report:
         else:
             summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
 
-        with open(summary_path, "w", encoding="utf-8") as f:
-            f.write(summary_text)
+        # Derived reports contain the same private content as session memories.
+        # Publish with owner-only permissions, including when replacing an
+        # older report that was created with a permissive process umask.
+        atomic_write_text(summary_path, summary_text)
 
         # Append visual insights (timeline, type distribution, confidence)
         try:
@@ -333,12 +345,12 @@ Format the output as a Markdown report:
     def _save_conflict_report(
         self, agent_id: str, date: str, conflicts_data: list[dict[str, Any]]
     ) -> dict[str, Any]:
+        """Persist a complete owner-only report and return its path and count."""
         from memanto.app.config import get_conflicts_dir
 
         conflicts_dir = get_conflicts_dir()
         json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(conflicts_data, f, indent=2, default=str)
+        atomic_write_text(json_path, json.dumps(conflicts_data, indent=2, default=str))
 
         return {
             "status": "success",
@@ -505,7 +517,7 @@ Example response format:
         validate_safe_id(agent_id, "agent_id")
         validate_safe_id(date, "date")
 
-        client = get_moorcheh_client()
+        client = self._get_moorcheh()
         namespace = agent_namespace(agent_id)
 
         if parse_backend(settings.MEMANTO_BACKEND) == Backend.CLOUD:

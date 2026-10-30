@@ -13,9 +13,11 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 ``AgentIdField``) that won't resolve once they have been deferred to strings.
 """
 
+import inspect
 import logging
+import os
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Annotated, Any, Literal, TypeVar
 
@@ -31,6 +33,7 @@ from memanto.app.core import (
 )
 from memanto.app.utils.client_identity import (
     ClientIdentity,
+    display_for,
     normalize_tool,
     reset_client,
     set_client,
@@ -121,6 +124,49 @@ class RememberResult(BaseModel):
     namespace: str | None = Field(default=None, description="Underlying namespace.")
     confidence: float | None = Field(default=None, description="Confidence stored.")
     message: str | None = Field(default=None, description="Human-readable detail.")
+
+
+class BatchMemoryItem(BaseModel):
+    """A single memory item in a batch_remember request."""
+
+    content: str = Field(
+        description=f"The memory itself - one atomic statement. Max {_MAX_CONTENT_LENGTH} characters.",
+        min_length=1,
+        max_length=_MAX_CONTENT_LENGTH,
+    )
+    type: MemoryTypeLiteral = Field(
+        description=(
+            "Semantic memory type. Use 'preference' for likes/styles, "
+            "'fact' for stable factual claims, 'decision' for choices the user "
+            "has made, 'goal' for objectives, 'instruction' for explicit how-to "
+            "directives, 'event' for things that happened, 'observation' for inferred behavior."
+        )
+    )
+    confidence: float = Field(
+        description="How sure you are this is true (0.0-1.0).",
+        ge=0.0,
+        le=1.0,
+    )
+    provenance: ProvenanceLiteral = Field(
+        description=(
+            "How this memory was obtained. 'explicit_statement' means the user "
+            "said it; 'inferred' means you deduced it; 'observed' means you saw "
+            "it during a tool call; 'corrected' means it overrides an earlier wrong memory."
+        )
+    )
+    title: str | None = Field(
+        default=None,
+        description="Short label (<= 100 chars). If omitted, derived from content.",
+        max_length=_MAX_TITLE_LENGTH,
+    )
+    tags: list[str] | str | None = Field(
+        default=None,
+        description="Optional lowercase tag list or comma-separated string for later filtering.",
+    )
+    source: str | None = Field(
+        default=None,
+        description="Optional source identifier. If omitted, attributed to the calling client.",
+    )
 
 
 class MemoryHit(BaseModel):
@@ -251,7 +297,7 @@ def _sanitize_source(raw: Any) -> str | None:
     return token[:SOURCE_MAX_LENGTH] or None
 
 
-def _client_source(ctx: Context | None) -> str:
+def _client_source(ctx: Context | None, default_source: str | None = None) -> str:
     """Name the MCP client behind this call so writes stay attributable.
 
     Clients identify themselves during the initialize handshake ("cursor",
@@ -259,6 +305,13 @@ def _client_source(ctx: Context | None) -> str:
     Memanto's open ``source`` field is for. Falls back to a generic label when
     no client info reached us (direct calls, clients that omit it).
     """
+    if default_source:
+        return _sanitize_source(default_source) or DEFAULT_SOURCE
+
+    env_default = os.environ.get("MEMANTO_DEFAULT_SOURCE")
+    if env_default:
+        return _sanitize_source(env_default) or DEFAULT_SOURCE
+
     try:
         client_params = ctx.session.client_params if ctx is not None else None
         name = client_params.clientInfo.name if client_params else None
@@ -267,22 +320,61 @@ def _client_source(ctx: Context | None) -> str:
     return _sanitize_source(name) or DEFAULT_SOURCE
 
 
+_NON_TOOL_SOURCES = frozenset(
+    {"user", "agent", "human", "conversation", "system", "tool", "mcp-agent"}
+)
+
+
+def _tool_from_source(source: str | None) -> str | None:
+    if source and source.strip().lower() not in _NON_TOOL_SOURCES:
+        return source.strip()
+    return None
+
+
+def _call_sdk(fn: Callable[..., Any], **kwargs: Any) -> Any:
+    """Call an SdkClient method, dropping `source` only if an older memanto (<0.2.31) lacks it."""
+    if "source" in kwargs:
+        try:
+            params = inspect.signature(fn).parameters
+            has_var_kw = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+            if not has_var_kw and "source" not in params:
+                kwargs.pop("source", None)
+        except (TypeError, ValueError) as exc:
+            # Built-in or non-introspectable callables (e.g. C extensions or
+            # certain test doubles) may raise on signature inspection; proceed
+            # with the original kwargs rather than failing the tool call.
+            logger.debug("Could not inspect signature for %r: %s", fn, exc)
+    return fn(**kwargs)
+
+
 @contextmanager
-def _attributed(ctx: Context | None) -> Iterator[None]:
-    """Attribute activity logged during this tool call to the MCP client.
+def _attributed(
+    ctx: Context | None,
+    default_source: str | None = None,
+    explicit_source: str | None = None,
+) -> Iterator[str]:
+    """Attribute activity logged during this tool call to the MCP client and yield the resolved source.
 
     The MCP server runs as its own process, so its environment says nothing
-    about which editor is driving it. Binding the handshake's ``clientInfo``
-    here is the only way a recall through MCP gets credited to Cursor rather
-    than to an anonymous caller.
+    about which editor is driving it unless ``MEMANTO_DEFAULT_SOURCE`` is set.
+    Resolving ``explicit_source`` -> ``MEMANTO_DEFAULT_SOURCE`` -> handshake
+    ``clientInfo`` here ensures the ``source`` parameter is automatically
+    populated and bound on every MCP operation. When ``explicit_source`` is a
+    generic writer role (e.g. ``"user"``), the memory keeps ``"user"`` as its
+    stored source while activity is still attributed to the calling MCP client.
     """
-    name = _client_source(ctx)
-    if name == DEFAULT_SOURCE:
-        yield
+    client_source = _client_source(ctx, default_source)
+    resolved_source = explicit_source or client_source
+    tool_name = _tool_from_source(explicit_source) or _tool_from_source(client_source)
+    if not tool_name:
+        yield resolved_source
         return
-    token = set_client(ClientIdentity(tool=normalize_tool(name), display=name))
+    slug = normalize_tool(tool_name)
+    token = set_client(ClientIdentity(tool=slug, display=display_for(slug)))
     try:
-        yield
+        yield resolved_source
     finally:
         reset_client(token)
 
@@ -311,6 +403,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     """
 
     settings = lifecycle.settings
+    default_source = getattr(settings, "default_source", None)
     default_hint = (
         f" (defaults to '{settings.default_agent_id}')"
         if settings.default_agent_id
@@ -333,14 +426,21 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     @mcp.tool(
         name="remember",
         description=(
-            "Store a single piece of information in the agent's long-term "
-            "memory. Use this whenever the user shares a stable fact, "
-            "preference, decision, goal, or instruction you should recall "
-            "in a future conversation. Memory is typed (13 categories) and "
-            "carries confidence + provenance so later retrievals can rank "
-            f"and filter intelligently. Content is capped at "
-            f"{_MAX_CONTENT_LENGTH} chars - store atomic, self-contained "
-            "statements."
+            "Save one durable piece of information to long-term memory so it "
+            "is available in future sessions. Call this on your own, without "
+            "waiting for the user to say 'remember', whenever:\n"
+            "- the user states a rule or standing instruction ('never push "
+            "without asking me', 'always use pnpm')\n"
+            "- the user states a preference or makes a decision\n"
+            "- a goal, deadline or commitment is agreed\n"
+            "- you learn a stable fact about the user, the project or its "
+            "setup\n"
+            "- a bug fix, failed attempt or correction teaches a lesson "
+            "worth keeping\n"
+            "Write one short, general statement ('Ask the user before any git "
+            "push'), not a transcript. Skip small talk and one-off details. "
+            "For important items, a quick `recall` first avoids duplicates. "
+            f"Content is capped at {_MAX_CONTENT_LENGTH} characters."
         ),
     )
     def remember(
@@ -366,17 +466,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     "happened, 'observation' for inferred behavior."
                 ),
             ),
-        ] = "fact",
-        title: Annotated[
-            str | None,
-            Field(
-                default=None,
-                description=(
-                    "Short label (<= 100 chars). If omitted, derived from content."
-                ),
-                max_length=_MAX_TITLE_LENGTH,
-            ),
-        ] = None,
+        ],
         confidence: Annotated[
             float,
             Field(
@@ -388,14 +478,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 ge=0.0,
                 le=1.0,
             ),
-        ] = 0.85,
-        tags: Annotated[
-            list[str] | None,
-            Field(
-                default=None,
-                description="Optional lowercase tag list for later filtering.",
-            ),
-        ] = None,
+        ],
         provenance: Annotated[
             ProvenanceLiteral,
             Field(
@@ -406,14 +489,31 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     "'corrected' means it overrides an earlier wrong memory."
                 ),
             ),
-        ] = "explicit_statement",
+        ],
+        title: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description=(
+                    "Short label (<= 100 chars). If omitted, derived from content."
+                ),
+                max_length=_MAX_TITLE_LENGTH,
+            ),
+        ] = None,
+        tags: Annotated[
+            list[str] | None,
+            Field(
+                default=None,
+                description="Optional lowercase tag list for later filtering.",
+            ),
+        ] = None,
         source: Annotated[str | None, SOURCE_CONSTRAINT] = None,
         agent_id: AgentIdField = None,
         ctx: Context | None = None,
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source, source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
                 resolved_title = title or (
@@ -428,7 +528,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     content=content,
                     confidence=confidence,
                     tags=_normalize_tags(tags),
-                    source=source or _client_source(ctx),
+                    source=resolved_source,
                     provenance=provenance,
                 )
                 return RememberResult(
@@ -462,14 +562,13 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     )
     def batch_remember(
         memories: Annotated[
-            list[dict[str, Any]],
+            list[BatchMemoryItem],
             Field(
                 description=(
-                    "List of memory dicts. Each item supports the same fields "
-                    "as `remember` (content [required], type, title, "
-                    "confidence, tags, source, provenance) with the same "
-                    "allowed values; an item without a source is attributed to "
-                    "the calling client. Max 100 items."
+                    "List of memory items. Each item requires 'content', 'type', "
+                    "'confidence' (0.0-1.0), and 'provenance' (same allowed values "
+                    "as `remember`); 'title', 'tags', and 'source' are optional "
+                    "(missing source is attributed to the calling client). Max 100 items."
                 ),
                 min_length=1,
                 max_length=_MAX_BATCH_SIZE,
@@ -480,33 +579,42 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> BatchRememberResult:
         """Validate and store multiple memories for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source) as batch_default_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
-                default_source = _client_source(ctx)
                 # Validate before round-trip so we fail fast with a clear error.
                 normalized_memories: list[dict[str, Any]] = []
-                for i, item in enumerate(memories):
-                    if not isinstance(item, dict):
+                for i, raw_item in enumerate(memories):
+                    if isinstance(raw_item, BaseModel):
+                        item = raw_item.model_dump()
+                    elif isinstance(raw_item, dict):
+                        item = dict(raw_item)
+                    else:
                         raise ValueError(
-                            f"memories[{i}] must be an object, got {type(item).__name__}"
+                            f"memories[{i}] must be an object, got {type(raw_item).__name__}"
                         )
                     if "content" not in item or not str(item["content"]).strip():
                         raise ValueError(
                             f"memories[{i}] is missing required field 'content'"
                         )
-                    m_type = item.get("type", "fact")
+                    m_type = item.get("type")
                     if m_type not in VALID_MEMORY_TYPES:
                         raise ValueError(
-                            f"memories[{i}].type={m_type!r} is not a valid memory type. "
+                            f"memories[{i}] is missing required valid field 'type'. "
                             f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
                         )
-                    prov = item.get("provenance", "explicit_statement")
+
+                    if "confidence" not in item:
+                        raise ValueError(
+                            f"memories[{i}] is missing required field 'confidence' (0.0-1.0)"
+                        )
+
+                    prov = item.get("provenance")
                     if prov not in VALID_PROVENANCE_TYPES:
                         raise ValueError(
-                            f"memories[{i}].provenance={prov!r} is not valid. "
+                            f"memories[{i}] is missing required valid field 'provenance'. "
                             f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                         )
-                    src = item.get("source") or default_source
+                    src = item.get("source") or batch_default_source
                     if not is_valid_source(src):
                         raise ValueError(
                             f"memories[{i}].source={src!r} is not valid. Use up to "
@@ -520,9 +628,11 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     normalized_memories.append(normalized_item)
 
                 client = lifecycle.ensure_ready(resolved)
-                result = client.batch_remember(
+                result = _call_sdk(
+                    client.batch_remember,
                     agent_id=resolved,
                     memories=normalized_memories,
+                    source=batch_default_source,
                 )
                 sub_results = _to_batch_item_results(result.get("results"))
                 return BatchRememberResult(
@@ -552,11 +662,20 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     @mcp.tool(
         name="recall",
         description=(
-            "Search the agent's memories by semantic similarity. Returns the "
-            "top-N most relevant items. Use this FIRST before asking the user "
-            "to repeat information - the agent may already remember it. The "
-            "query should be natural language ('what does the user prefer for "
-            "code style?'), not keywords."
+            "Search long-term memory for relevant context (semantic search, "
+            "top-N results). Call this on your own, without waiting to be "
+            "asked:\n"
+            "- at the start of a new task or topic, before writing code or "
+            "running commands, to pick up the user's rules, preferences and "
+            "earlier decisions\n"
+            "- when the user refers to earlier work ('like last time', 'the "
+            "bug we fixed')\n"
+            "- before choosing a library, pattern or convention the user "
+            "hasn't specified\n"
+            "- before asking the user for something they may have told you "
+            "before\n"
+            "Use a natural-language query ('what are the user's rules for "
+            "git?'), not keywords."
         ),
     )
     def recall(
@@ -604,15 +723,17 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Search memories semantically for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall(
+                result = _call_sdk(
+                    client.recall,
                     agent_id=resolved,
                     query=query,
                     limit=limit,
                     type=list(type) if type else None,
                     min_similarity=min_similarity,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -661,13 +782,15 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Return the most recent memories for the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall_recent(
+                result = _call_sdk(
+                    client.recall_recent,
                     agent_id=resolved,
                     limit=limit,
                     type=list(type) if type else None,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -720,14 +843,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Recall memories that were valid at a point in time."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall_as_of(
+                result = _call_sdk(
+                    client.recall_as_of,
                     agent_id=resolved,
                     as_of=as_of,
                     limit=limit,
                     type=list(type) if type else None,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -780,14 +905,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> RecallResult:
         """Recall memories changed after the supplied timestamp."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.recall_changed_since(
+                result = _call_sdk(
+                    client.recall_changed_since,
                     agent_id=resolved,
                     since=since,
                     limit=limit,
                     type=list(type) if type else None,
+                    source=resolved_source,
                 )
                 hits = [_to_memory_hit(m) for m in result.get("memories", [])]
                 return RecallResult(
@@ -817,8 +944,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             "Ask a natural-language question and get an LLM-generated answer "
             "grounded ONLY in the agent's stored memories (RAG). Prefer this "
             "over `recall` when you need a synthesized answer rather than a "
-            "ranked list. Returns the answer text plus the supporting memory "
-            "sources."
+            "ranked list, e.g. 'what did we decide about X?'. Returns the "
+            "answer text plus the supporting memory sources."
         ),
     )
     def answer(
@@ -860,15 +987,17 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> AnswerResult:
         """Answer a question using memories from the resolved agent."""
         try:
-            with _attributed(ctx):
+            with _attributed(ctx, default_source) as resolved_source:
                 resolved = lifecycle.resolve_agent_id(agent_id)
                 client = lifecycle.ensure_ready(resolved)
-                result = client.answer(
+                result = _call_sdk(
+                    client.answer,
                     agent_id=resolved,
                     question=question,
                     limit=limit,
                     temperature=temperature,
                     kiosk_mode=kiosk_mode,
+                    source=resolved_source,
                 )
                 return AnswerResult(
                     status="ok",

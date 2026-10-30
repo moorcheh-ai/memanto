@@ -11,6 +11,7 @@ import re
 import tempfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
@@ -19,7 +20,7 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
 from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType, StatusFilter
-from memanto.app.core import MemoryRecord, MemorySource
+from memanto.app.core import SOURCE_MAX_LENGTH, MemoryRecord, MemorySource
 from memanto.app.models import (
     AnswerRequest,
     AnswerResponse,
@@ -35,7 +36,12 @@ from memanto.app.models import (
     UploadFileResponse,
 )
 from memanto.app.models.session import Session
-from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.routes.auth_deps import (
+    get_current_session,
+    get_moorcheh_api_key,
+    get_session_service,
+)
+from memanto.app.services.activity_service import log_memory_activity
 from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
@@ -46,10 +52,12 @@ from memanto.app.services.memory_policy_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.services.policy_presets import PRESETS, list_presets, load_preset
+from memanto.app.utils.client_identity import bind_calling_tool, tool_from_source
 from memanto.app.utils.errors import (
     AuthorizationError,
     MemoryOperationError,
     map_error_to_http_exception,
+    redact_sensitive_text,
 )
 from memanto.app.utils.temporal_helpers import (
     END_OF_DAY,
@@ -98,6 +106,31 @@ def _validate_memory_type_filters(value: list[str] | None) -> list[str] | None:
     return value
 
 
+_RECALL_TAG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _validate_recall_tag_filters(value: list[str] | None) -> list[str] | None:
+    """Reject tag filter values that contain characters invalid in Moorcheh query syntax.
+
+    Tags are embedded as ``#<tag>`` tokens in Moorcheh search queries.
+    Values with spaces, colons, hash signs, or control characters would
+    cause _validate_filter_token() inside search_memories() to raise a
+    ValueError that is caught as a generic Exception and re-raised as a
+    MemoryOperationError — producing HTTP 500 from user-controlled input.
+    Validating here returns HTTP 422 with a clear message instead.
+    """
+    if value is None:
+        return value
+    for tag in value:
+        stripped = str(tag).strip()
+        if not stripped or not _RECALL_TAG_RE.fullmatch(stripped):
+            raise ValueError(
+                f"Invalid tag filter '{tag}': only letters, digits, '.', '_', "
+                "and '-' are allowed in recall tag filters."
+            )
+    return value
+
+
 STATUS_FILTER_DESCRIPTION = (
     "Lifecycle filter: 'all' (default) returns active and expired memories "
     "together so callers can label them, 'active' or 'expired' narrows to one."
@@ -127,6 +160,14 @@ class RecallRequest(BaseModel):
         description=(
             "Include only memories created at or before this timestamp. "
             "Date-only values (YYYY-MM-DD) use the end of that day."
+        ),
+    )
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
         ),
     )
 
@@ -161,6 +202,12 @@ class RecallRequest(BaseModel):
     def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
         """Reject recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tag_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject tag filter values that would cause a 500 in the query builder."""
+        return _validate_recall_tag_filters(value)
 
 
 def _parse_recall_temporal_bound(v: object, *, end_of_day: bool) -> datetime:
@@ -203,12 +250,26 @@ class RecallAsOfRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
     tags: list[str] | None = Field(default=None, description="Tag filters")
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
     def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
         """Reject as-of recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tag_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject tag filter values that would cause a 500 in the query builder."""
+        return _validate_recall_tag_filters(value)
 
     @field_validator("as_of", mode="before")
     @classmethod
@@ -249,12 +310,26 @@ class RecallChangedSinceRequest(BaseModel):
     type: list[str] | None = Field(default=None, description="Memory type filters")
     tags: list[str] | None = Field(default=None, description="Tag filters")
     status: StatusFilter = Field(default="all", description=STATUS_FILTER_DESCRIPTION)
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
     def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
         """Reject changed-since recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tag_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject tag filter values that would cause a 500 in the query builder."""
+        return _validate_recall_tag_filters(value)
 
     @field_validator("since", mode="before")
     @classmethod
@@ -306,12 +381,26 @@ class RecallRecentRequest(BaseModel):
             "Date-only values (YYYY-MM-DD) use the end of that day."
         ),
     )
+    source: str | None = Field(
+        default=None,
+        max_length=SOURCE_MAX_LENGTH,
+        description=(
+            "Slug of the AI tool making this call (e.g. 'claude-code', "
+            "'cursor', 'copilot') for session and connection attribution."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
     def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
         """Reject recent-recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tag_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject tag filter values that would cause a 500 in the query builder."""
+        return _validate_recall_tag_filters(value)
 
     @field_validator("created_after", mode="before")
     @classmethod
@@ -397,7 +486,8 @@ def resolve_recall_limit(request_limit: int | None) -> int:
         limit = int(raw_limit)
     except (TypeError, ValueError) as e:
         raise HTTPException(
-            status_code=400, detail=f"Invalid recall configuration: {e}"
+            status_code=400,
+            detail=redact_sensitive_text(f"Invalid recall configuration: {e}"),
         ) from e
     if limit < 1:
         raise HTTPException(
@@ -434,6 +524,7 @@ async def remember(
 
     # Enforce session scope: token must match agent_id
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     try:
         # Initialize memory write service
@@ -515,6 +606,14 @@ async def batch_remember(
     # Enforce session scope: token must match agent_id
     enforce_session_scope(session, agent_id)
 
+    batch_tool = tool_from_source(request.source)
+    if not batch_tool:
+        for item in request.memories:
+            batch_tool = tool_from_source(item.source)
+            if batch_tool:
+                break
+    bind_calling_tool(batch_tool)
+
     try:
         # Initialize memory write service
         write_service = MemoryWriteService(client)
@@ -530,17 +629,30 @@ async def batch_remember(
             title = item.title or (
                 item.content[:47] + "..." if len(item.content) > 50 else item.content
             )
-            memory = MemoryRecord(
-                type=cast(MemoryType, item.type),
-                title=title,
-                content=item.content,
-                agent_id=agent_id,
-                actor_id=agent_id,
-                confidence=item.confidence,
-                tags=item.tags or [],
-                source=item.source,
-                provenance=cast(ProvenanceType, item.provenance),
+            item_source = (
+                request.source
+                if request.source and "source" not in item.model_fields_set
+                else item.source
             )
+            kwargs: dict[str, Any] = {
+                "type": cast(MemoryType, item.type),
+                "title": title,
+                "content": item.content,
+                "agent_id": agent_id,
+                "actor_id": agent_id,
+                "confidence": item.confidence,
+                "tags": item.tags or [],
+                "source": item_source,
+                "provenance": cast(ProvenanceType, item.provenance),
+            }
+            if item.status is not None:
+                kwargs["status"] = item.status
+            if item.expired_at is not None:
+                kwargs["expired_at"] = item.expired_at
+            if item.expired_by is not None:
+                kwargs["expired_by"] = item.expired_by
+
+            memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
         # Store in batch
@@ -676,6 +788,7 @@ async def extract_memories_from_conversation(
     /batch-remember.
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     try:
         extraction_service = ConversationMemoryExtractionService(client)
@@ -712,7 +825,7 @@ async def extract_memories_from_conversation(
                 actor_id=agent_id,
                 confidence=item["confidence"],
                 tags=["conversation-extract"],
-                source=item["source"],
+                source=request.source or item["source"],
                 provenance=cast(ProvenanceType, item["provenance"]),
             )
             memory_records.append(memory)
@@ -940,6 +1053,7 @@ async def recall(
 
     # Enforce session scope
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     recall_cfg = _config_manager.get_recall_config()
     raw_min_similarity = (
@@ -954,7 +1068,8 @@ async def recall(
         )
     except (TypeError, ValueError) as e:
         raise HTTPException(
-            status_code=400, detail=f"Invalid recall configuration: {e}"
+            status_code=400,
+            detail=redact_sensitive_text(f"Invalid recall configuration: {e}"),
         )
     try:
         # Initialize memory read service
@@ -1011,6 +1126,7 @@ async def answer(
 
     # Enforce session scope
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     client = get_moorcheh_client()
 
@@ -1070,6 +1186,12 @@ async def answer(
         answer = response.get("answer", "No answer generated.")
         sources = response.get("sources", [])
 
+        log_memory_activity(
+            op="answer",
+            agent_id=agent_id,
+            count=len(sources) if isinstance(sources, list) else 0,
+        )
+
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
@@ -1113,6 +1235,7 @@ async def generate_daily_summary(
     agent_id: str,
     request: DailySummaryRequest = Body(default_factory=DailySummaryRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Generate the on-demand daily AI summary for an agent/date.
@@ -1125,8 +1248,12 @@ async def generate_daily_summary(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        client = DirectClient(moorcheh_api_key)
+        client.session_token = session.session_token
+        client.agent_id = agent_id
+
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            client.generate_daily_summary,
             agent_id,
             resolved_date,
             None,
@@ -1146,6 +1273,7 @@ async def generate_conflict_report(
     agent_id: str,
     request: ConflictDetectRequest = Body(default_factory=ConflictDetectRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Generate the conflict report for an agent/date.
@@ -1158,7 +1286,7 @@ async def generate_conflict_report(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            DirectClient(moorcheh_api_key).generate_conflict_report,
             agent_id,
             resolved_date,
         )
@@ -1177,6 +1305,7 @@ async def list_conflicts(
     agent_id: str,
     date: str | None = Query(None, description="Conflict report date (YYYY-MM-DD)"),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     List unresolved conflicts for an agent.
@@ -1193,7 +1322,7 @@ async def list_conflicts(
     _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
+            DirectClient(moorcheh_api_key).list_conflicts,
             agent_id,
             resolved_date,
         )
@@ -1213,6 +1342,7 @@ async def resolve_conflict(
     agent_id: str,
     request: ConflictResolveRequest = Body(...),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(get_moorcheh_api_key),
 ):
     """
     Resolve a conflict for an agent.
@@ -1225,7 +1355,7 @@ async def resolve_conflict(
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
+            DirectClient(moorcheh_api_key).resolve_conflict,
             agent_id,
             resolved_date,
             request.conflict_index,
@@ -1263,6 +1393,7 @@ async def recall_as_of(
     - X-Session-Token: {session_token}
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     limit = resolve_recall_limit(request.limit)
 
@@ -1309,6 +1440,7 @@ async def recall_changed_since(
     - X-Session-Token: {session_token}
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     limit = resolve_recall_limit(request.limit)
 
@@ -1357,6 +1489,7 @@ async def recall_recent(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     limit = resolve_recall_limit(request.limit)
 
@@ -1410,6 +1543,7 @@ async def recall_all(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
+    bind_calling_tool(tool_from_source(request.source))
 
     try:
         read_service = MemoryReadService(client)
@@ -1626,7 +1760,7 @@ async def get_policy_preset(
     try:
         policy = load_preset(name)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=redact_sensitive_text(str(e)))
 
     return {
         "name": name,
@@ -1655,7 +1789,7 @@ async def apply_policy_preset(
     try:
         policy = load_preset(request.name)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=redact_sensitive_text(str(e)))
 
     try:
         service = MemoryPolicyService(client)

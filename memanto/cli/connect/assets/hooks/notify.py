@@ -217,10 +217,73 @@ def describe(command: str, output: str) -> str | None:
     return None
 
 
+MCP_PREFIX = "mcp__memanto__"
+
+
+def _count_memories(output: str) -> int | None:
+    """Count memories in an MCP tool result, if it is JSON we understand."""
+    try:
+        data = json.loads(output)
+    except (ValueError, TypeError):
+        return None
+    if isinstance(data, dict):
+        if isinstance(data.get("count"), int):
+            return int(data["count"])
+        if isinstance(data.get("memories"), list):
+            return len(data["memories"])
+    if isinstance(data, list):
+        return len(data)
+    return None
+
+
+def describe_mcp(tool: str, tool_input: dict, output: str) -> str | None:
+    """Describe a memanto MCP tool call (mcp__memanto__<tool>)."""
+    if tool == "remember":
+        kind = tool_input.get("type") or "memory"
+        article = "an" if str(kind)[:1].lower() in "aeiou" else "a"
+        return f"stored {article} {kind}"
+    if tool == "batch_remember":
+        # Report what the server actually stored, not what was submitted.
+        try:
+            result = json.loads(output)
+        except (ValueError, TypeError):
+            result = None
+        stored = result.get("successful") if isinstance(result, dict) else None
+        if not isinstance(stored, int) or stored <= 0:
+            return None
+        return f"stored {stored} " + ("memory" if stored == 1 else "memories")
+    if tool.startswith("recall"):
+        found = _count_memories(output)
+        if found is None:
+            return "searched memory"
+        if found == 0:
+            return "searched memory — no matches"
+        return f"recalled {found} " + ("memory" if found == 1 else "memories")
+    if tool == "answer":
+        return "answered from memory"
+    return None
+
+
 def main() -> None:
     try:
         payload = json.loads(sys.stdin.read().strip() or "{}")
         if not isinstance(payload, dict):
+            return
+        tool_name = str(payload.get("tool_name") or "")
+        if tool_name.startswith(MCP_PREFIX):
+            response = _plain(payload.get("tool_response"))
+            call_key = str(payload.get("tool_use_id") or response[:200])
+            session = str(payload.get("session_id") or "")
+            if not _claim(f"posttooluse:{session}:{tool_name}:{call_key}"):
+                return
+            tool_input = payload.get("tool_input")
+            _emit(
+                describe_mcp(
+                    tool_name[len(MCP_PREFIX) :],
+                    tool_input if isinstance(tool_input, dict) else {},
+                    response,
+                )
+            )
             return
         command = (payload.get("tool_input") or {}).get("command") or ""
         if "memanto" not in command:

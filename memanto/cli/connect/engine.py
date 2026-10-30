@@ -13,6 +13,7 @@ from typing import Any
 
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, AgentDef
+from memanto.cli.connect.mcp_setup import install_mcp, remove_mcp
 from memanto.cli.connect.templates import (
     MEMANTO_DYNAMIC_SENTINEL,
     MEMANTO_DYNAMIC_SENTINEL_END,
@@ -47,6 +48,7 @@ def install_agent(
     agent_name: str,
     project_dir: str = ".",
     is_global: bool = False,
+    mcp_agent_id: str | None = None,
 ) -> dict[str, Any]:
     """Install MEMANTO integration for a single agent.
 
@@ -62,22 +64,58 @@ def install_agent(
         }
 
     project_path = Path(project_dir).resolve()
+
+    # Prevent treating the user's home directory as a local project
+    if not is_global and project_path == Path.home().resolve():
+        return {
+            "agent": agent_name,
+            "steps": [],
+            "errors": [
+                "Cannot install as a local project in the home directory. Please use 'is_global=True' instead."
+            ],
+        }
+
     steps: list[str] = []
     errors: list[str] = []
 
+    # Determine which agent_id to set as the default for MCP
+    target_agent_id = mcp_agent_id if mcp_agent_id is not None else _active_agent_id()
+
     # Instruction file
     try:
-        instr_result = _install_instructions(agent, project_path, is_global)
+        instr_result = _install_instructions(
+            agent, project_path, is_global, target_agent_id
+        )
         if instr_result:
             steps.append(instr_result)
     except Exception as e:
         errors.append(f"Instruction file: {e}")
 
-    # Skill deployment
+    # MCP server (Claude Code, Codex, Cursor): memanto tools for the agent
+    mcp_ready = False
+    if agent.mcp_client:
+        try:
+            mcp_result = install_mcp(
+                agent.mcp_client, project_path, is_global, target_agent_id
+            )
+            mcp_ready = mcp_result is None or not mcp_result.startswith("Skipped")
+            if mcp_result:
+                steps.append(mcp_result)
+        except Exception as e:
+            errors.append(f"MCP server: {e}")
+
+    # Skill deployment. With the MCP tools available the CLI skill is left out:
+    # agents that load skills (e.g. Codex) otherwise follow it and run memanto
+    # shell commands instead of calling the tools.
     try:
-        skill_result = _install_skill(agent, project_path, is_global)
-        if skill_result:
-            steps.append(skill_result)
+        if mcp_ready:
+            skill_result = _remove_skill(agent, project_path, is_global)
+            if skill_result:
+                steps.append(skill_result + " (memanto MCP tools are used instead)")
+        else:
+            skill_result = _install_skill(agent, project_path, is_global)
+            if skill_result:
+                steps.append(skill_result)
     except Exception as e:
         errors.append(f"Skill deployment: {e}")
 
@@ -134,6 +172,7 @@ def remove_agent(
         }
 
     project_path = Path(project_dir).resolve()
+
     steps: list[str] = []
     errors: list[str] = []
 
@@ -171,6 +210,15 @@ def remove_agent(
         except Exception as e:
             errors.append(f"Permission removal: {e}")
 
+    # Remove MCP server entry added by MEMANTO
+    if agent.mcp_client:
+        try:
+            result = remove_mcp(agent.mcp_client, project_path, is_global)
+            if result:
+                steps.append(result)
+        except Exception as e:
+            errors.append(f"MCP server removal: {e}")
+
     # Remove code extension (agent-specific)
     if agent.extension_file:
         try:
@@ -194,7 +242,10 @@ def remove_agent(
 
 
 def _install_instructions(
-    agent: AgentDef, project_path: Path, is_global: bool
+    agent: AgentDef,
+    project_path: Path,
+    is_global: bool,
+    target_agent_id: str | None = None,
 ) -> str | None:
     """Install MEMANTO instructions into the agent's instruction file."""
     if is_global and not agent.instruction_global_file:
@@ -202,27 +253,24 @@ def _install_instructions(
     if not is_global and not agent.instruction_local_file:
         return None
 
-    instr_path = agent.resolve_instruction_file(project_path, is_global)
-    if not instr_path:
+    instr_paths = agent.resolve_instruction_files(project_path, is_global)
+    if not instr_paths:
         return None
-    _assert_local_write_scope(project_path, instr_path, is_global)
 
-    content = get_instruction_content(agent.name)
+    content = get_instruction_content(agent.name, target_agent_id)
+    results: list[str] = []
 
-    # For agents with directory-based instruction files (cline, roo, continue, augment)
-    if agent.instruction_is_dir:
-        return _write_dedicated_file(instr_path, content)
+    for instr_path in instr_paths:
+        _assert_local_write_scope(project_path, instr_path, is_global)
+        res: str | None
+        if agent.instruction_is_dir or agent.instruction_format == "mdc":
+            res = _write_dedicated_file(instr_path, content)
+        else:
+            res = _inject_into_file(instr_path, content, create_if_missing=True)
+        if res:
+            results.append(res)
 
-    # For MDC format (Cursor)
-    if agent.instruction_format == "mdc":
-        return _write_dedicated_file(instr_path, content)
-
-    # For agents that use append-style (Windsurf .windsurfrules)
-    if agent.instruction_format == "append":
-        return _inject_into_file(instr_path, content, create_if_missing=True)
-
-    # For standard markdown files (CLAUDE.md, AGENTS.md, GEMINI.md, copilot-instructions.md)
-    return _inject_into_file(instr_path, content, create_if_missing=True)
+    return ", ".join(results) if results else None
 
 
 def _strip_dynamic_block(text: str) -> str:
@@ -272,10 +320,20 @@ def _inject_into_file(
     file_path: Path, section: str, create_if_missing: bool = True
 ) -> str | None:
     """Inject MEMANTO section into an existing file, or create it."""
+    is_instructions_file = file_path.name.endswith(".instructions.md")
+    section_frontmatter_match = re.match(
+        r"\A(---\r?\n.*?\r?\n---)(?:\r?\n)*",
+        section,
+        flags=re.DOTALL,
+    )
+    if not is_instructions_file and section_frontmatter_match:
+        section = section[section_frontmatter_match.end() :]
+
     if file_path.exists():
         existing = file_path.read_text(encoding="utf-8")
 
-        # Prevent duplicating applyTo frontmatter in Copilot instructions
+        # Prevent duplicating frontmatter in Copilot .instructions.md files,
+        # while upgrading legacy frontmatter that lacked description or used "**/*".
         frontmatter = re.match(
             r"\A---\r?\n(.*?)\r?\n---(?:\r?\n)*",
             existing,
@@ -284,8 +342,18 @@ def _inject_into_file(
         has_apply_to = bool(
             frontmatter and re.search(r"(?m)^applyTo\s*:", frontmatter.group(1))
         )
-        if file_path.name.endswith("instructions.md") and has_apply_to:
-            section = re.sub(r"^---\napplyTo:.*?\n---\n*", "", section, flags=re.DOTALL)
+        if is_instructions_file and frontmatter is not None and has_apply_to:
+            if section_frontmatter_match is not None and re.fullmatch(
+                r'applyTo:\s*["\']?\*\*(?:/\*)?["\']?',
+                frontmatter.group(1).strip(),
+            ):
+                existing = (
+                    section_frontmatter_match.group(1)
+                    + "\n\n"
+                    + existing[frontmatter.end() :]
+                )
+            if section_frontmatter_match is not None:
+                section = section[section_frontmatter_match.end() :]
 
         if MEMANTO_SENTINEL in existing:
             # Replace existing section
@@ -331,12 +399,10 @@ def _inject_into_file(
     return None
 
 
-def _remove_instructions(
-    agent: AgentDef, project_path: Path, is_global: bool
+def _remove_single_instruction_file(
+    agent: AgentDef, project_path: Path, instr_path: Path, is_global: bool
 ) -> str | None:
-    """Remove MEMANTO instructions from the agent's instruction file."""
-    instr_path = agent.resolve_instruction_file(project_path, is_global)
-    if not instr_path or not instr_path.exists():
+    if not instr_path.exists():
         return None
     _assert_local_write_scope(project_path, instr_path, is_global)
 
@@ -380,14 +446,42 @@ def _remove_instructions(
     if modified:
         # Clean up extra whitespace
         updated = re.sub(r"\n{3,}", "\n\n", existing).strip() + "\n"
-        if updated.strip():
+
+        # If the file only has description/applyTo frontmatter left (or is empty), delete it
+        if not updated.strip() or re.fullmatch(
+            r"---\r?\n(?:(?:description|applyTo):\s*[^\r\n]+\r?\n)+---",
+            updated.strip(),
+        ):
+            instr_path.unlink()
+            parent = instr_path.parent
+            try:
+                if parent.exists() and not any(parent.iterdir()):
+                    parent.rmdir()
+            except OSError:
+                # Ignore errors if directory is not empty or non-deletable
+                pass
+            return f"Removed {instr_path.name} (was empty)"
+        else:
             instr_path.write_text(updated, encoding="utf-8")
             return f"Removed MEMANTO sections from {instr_path.name}"
-        else:
-            instr_path.unlink()
-            return f"Removed {instr_path.name} (was empty)"
 
     return None
+
+
+def _remove_instructions(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Remove MEMANTO instructions from the agent's instruction file."""
+    candidates = agent.resolve_instruction_files(project_path, is_global)
+    results: list[str] = []
+    for instr_path in candidates:
+        res = _remove_single_instruction_file(
+            agent, project_path, instr_path, is_global
+        )
+        if res:
+            results.append(res)
+
+    return ", ".join(results) if results else None
 
 
 # Internal: Skill deployment
@@ -667,7 +761,12 @@ def _install_permissions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Configure permissions for agents that need them."""
-    if not agent.permissions_file or not agent.permissions_payload:
+    perm_file = (
+        agent.permissions_global_file or agent.permissions_file
+        if is_global
+        else agent.permissions_file
+    )
+    if not perm_file or not agent.permissions_payload:
         return None
 
     if is_global:
@@ -675,13 +774,13 @@ def _install_permissions(
             config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
     else:
         if agent.config_local_dir:
             config_dir = project_path / agent.config_local_dir
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
 
     _assert_local_write_scope(project_path, perm_path, is_global)
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -713,7 +812,12 @@ def _remove_permissions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Remove permissions added by MEMANTO without disturbing user entries."""
-    if not agent.permissions_file or not agent.permissions_payload:
+    perm_file = (
+        agent.permissions_global_file or agent.permissions_file
+        if is_global
+        else agent.permissions_file
+    )
+    if not perm_file or not agent.permissions_payload:
         return None
 
     if is_global:
@@ -721,13 +825,13 @@ def _remove_permissions(
             config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
     else:
         if agent.config_local_dir:
             config_dir = project_path / agent.config_local_dir
         else:
             return None
-        perm_path = config_dir / agent.permissions_file
+        perm_path = config_dir / perm_file
 
     if not perm_path.exists():
         return None
@@ -761,6 +865,15 @@ def _remove_permissions(
 
 
 # Utilities
+
+
+def _active_agent_id() -> str | None:
+    """The memanto agent currently active in the CLI, used as the MCP default."""
+    try:
+        agent_id, _token = ConfigManager().get_active_session()
+    except Exception:
+        return None
+    return agent_id or None
 
 
 def _display_path(path: Path, is_global: bool) -> str:

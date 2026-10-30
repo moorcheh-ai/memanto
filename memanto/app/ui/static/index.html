@@ -9,41 +9,131 @@
     <link rel="icon" type="image/x-icon" href="/ui/static/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <script>
+        // Apply the saved theme before first paint so dark mode doesn't flash
+        // light. Light (the landing's look) is the default.
+        try {
+            if (localStorage.getItem('memanto-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+        } catch (e) { }
+    </script>
     <style>
+        /* Design tokens mirror memanto-landing (src/app/globals.css): the light
+           theme is the landing's lavender-white canvas with the Memanto purple
+           and cyan accents; the dark theme is the landing's near-black palette.
+           Light is the default; [data-theme="dark"] on <html> switches. */
         :root {
-            --bg-primary: #000000;
-            --bg-secondary: #050508;
-            --bg-card: #0a0a0f;
-            --bg-card-hover: #111118;
-            --bg-input: #0a0a10;
-            --bg-surface: #08080d;
-            --border: #1a1a25;
-            --border-hover: #2a2a3a;
-            --border-focus: #06b6d4;
-            --text-primary: #f0f0f5;
-            --text-secondary: #b4b4c4;
-            --text-dim: #8e8ea3;
-            --accent: #06b6d4;
-            --accent-hover: #22d3ee;
-            --accent-glow: rgba(6, 182, 212, 0.15);
-            --accent-glow-strong: rgba(6, 182, 212, 0.25);
-            --indigo: #6366f1;
-            --indigo-glow: rgba(99, 102, 241, 0.15);
-            --success: #22c55e;
-            --success-bg: rgba(34, 197, 94, 0.1);
-            --warning: #f59e0b;
-            --warning-bg: rgba(245, 158, 11, 0.1);
-            --error: #ef4444;
-            --error-bg: rgba(239, 68, 68, 0.1);
-            --cyan: #06b6d4;
-            --pink: #ec4899;
+            color-scheme: light;
+            --bg-primary: #fbfaff;
+            --bg-secondary: #f6f4fc;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8f6fd;
+            --bg-input: #ffffff;
+            --bg-surface: #f6f4fc;
+            --bg-sidebar: rgba(255, 255, 255, 0.78);
+            --border: rgba(28, 22, 58, 0.09);
+            --border-soft: rgba(28, 22, 58, 0.06);
+            --border-hover: rgba(107, 78, 173, 0.32);
+            --border-focus: #6b4ead;
+            --text-primary: #16131f;
+            --text-secondary: #3f3b52;
+            --text-dim: #5c5872;
+            --ink-rgb: 28, 22, 58;
+            --accent: #6b4ead;
+            --accent-rgb: 107, 78, 173;
+            --accent-hover: #5534a5;
+            --accent-grad: linear-gradient(180deg, #7a5cc0 0%, #5534a5 100%);
+            --accent-glow: rgba(107, 78, 173, 0.1);
+            --accent-glow-strong: rgba(107, 78, 173, 0.22);
+            --indigo: #0891b2;
+            --indigo-glow: rgba(8, 145, 178, 0.1);
+            --success: #15803d;
+            --success-bg: rgba(21, 128, 61, 0.09);
+            --warning: #b45309;
+            --warning-bg: rgba(180, 83, 9, 0.09);
+            --error: #dc2626;
+            --error-bg: rgba(220, 38, 38, 0.08);
+            --cyan: #0891b2;
+            --cyan-bright: #00d2fe;
+            --pink: #db2777;
+            --shadow-card: 0 1px 2px rgba(46, 32, 98, 0.04), 0 10px 30px -12px rgba(46, 32, 98, 0.12);
+            --shadow-card-hover: 0 1px 2px rgba(46, 32, 98, 0.05), 0 22px 44px -16px rgba(46, 32, 98, 0.2);
+            --shadow-pop: 0 1px 2px rgba(46, 32, 98, 0.05), 0 24px 56px -16px rgba(46, 32, 98, 0.25);
+            --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(46, 32, 98, 0.2), 0 8px 20px -6px rgba(85, 52, 165, 0.45);
+            --shadow-btn-hover: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(46, 32, 98, 0.2), 0 14px 28px -8px rgba(85, 52, 165, 0.55);
+            --backdrop: rgba(22, 19, 31, 0.35);
+            --grid-line: rgba(28, 22, 58, 0.045);
+            --wash:
+                radial-gradient(60% 50% at 82% 0%, rgba(107, 78, 173, 0.14) 0%, transparent 70%),
+                radial-gradient(50% 45% at 12% 10%, rgba(0, 210, 254, 0.11) 0%, transparent 70%),
+                linear-gradient(180deg, #f4f1ff 0%, #fbfaff 60%);
+            /* Contribution graph: brand purple scale instead of GitHub green. */
+            --heat-0: #eeebf6;
+            --heat-1: #d9cdf3;
+            --heat-2: #b39be4;
+            --heat-3: #8a6bcf;
+            --heat-4: #5534a5;
+            --chart-tick: #5c5872;
+            --chart-grid: rgba(28, 22, 58, 0.07);
             --sidebar-w: 240px;
-            --radius: 14px;
+            --radius: 16px;
             --radius-sm: 10px;
             --radius-xs: 6px;
             --transition: 0.2s ease;
-            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-            --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+            --font-sans: var(--font-mono);
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --bg-primary: #060608;
+            --bg-secondary: #09090b;
+            --bg-card: #0f0d18;
+            --bg-card-hover: #15131f;
+            --bg-input: #0a0a0f;
+            --bg-surface: #0a0a0f;
+            --bg-sidebar: rgba(10, 10, 15, 0.82);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-soft: rgba(255, 255, 255, 0.05);
+            --border-hover: rgba(157, 122, 214, 0.4);
+            --border-focus: #9d7ad6;
+            --text-primary: #e8e8f0;
+            --text-secondary: #b4b2c8;
+            --text-dim: #8f8ca8;
+            --ink-rgb: 255, 255, 255;
+            --accent: #a888e0;
+            --accent-rgb: 157, 122, 214;
+            --accent-hover: #c4b0f0;
+            --accent-grad: linear-gradient(180deg, #7a5cc0 0%, #5534a5 100%);
+            --accent-glow: rgba(157, 122, 214, 0.14);
+            --accent-glow-strong: rgba(157, 122, 214, 0.28);
+            --indigo: #00d2fe;
+            --indigo-glow: rgba(0, 210, 254, 0.12);
+            --success: #7ee787;
+            --success-bg: rgba(126, 231, 135, 0.1);
+            --warning: #fbcb6f;
+            --warning-bg: rgba(251, 203, 111, 0.1);
+            --error: #ff8a80;
+            --error-bg: rgba(255, 138, 128, 0.1);
+            --cyan: #00d2fe;
+            --pink: #f472b6;
+            --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+            --shadow-card-hover: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 22px 44px -16px rgba(0, 0, 0, 0.7);
+            --shadow-pop: 0 24px 64px rgba(0, 0, 0, 0.6);
+            --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 20px -6px rgba(107, 78, 173, 0.5);
+            --shadow-btn-hover: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 14px 28px -8px rgba(107, 78, 173, 0.6);
+            --backdrop: rgba(0, 0, 0, 0.7);
+            --grid-line: rgba(255, 255, 255, 0.035);
+            --wash:
+                radial-gradient(60% 50% at 82% 0%, rgba(107, 78, 173, 0.18) 0%, transparent 70%),
+                radial-gradient(50% 45% at 12% 10%, rgba(0, 210, 254, 0.07) 0%, transparent 70%),
+                linear-gradient(180deg, #0a0812 0%, #060608 60%);
+            --heat-0: #16141f;
+            --heat-1: #2e2350;
+            --heat-2: #4a3480;
+            --heat-3: #7a5cc0;
+            --heat-4: #b69cf0;
+            --chart-tick: #8f8ca8;
+            --chart-grid: rgba(255, 255, 255, 0.06);
         }
 
         *,
@@ -64,7 +154,8 @@
         }
 
         ::-webkit-scrollbar {
-            width: 5px;
+            width: 6px;
+            height: 6px;
         }
 
         ::-webkit-scrollbar-track {
@@ -72,8 +163,23 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: var(--border);
+            background: rgba(var(--ink-rgb), 0.14);
             border-radius: 3px;
+        }
+
+        ::selection {
+            background: rgba(var(--accent-rgb), 0.2);
+        }
+
+        /* Buttons don't inherit the page font by default; the landing resets
+           this too, so nav items and tabs stay in JetBrains Mono. */
+        button {
+            font-family: inherit;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
         /* ── Layout ── */
@@ -85,9 +191,9 @@
 
         .sidebar {
             width: var(--sidebar-w);
-            background: rgba(5, 5, 10, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: var(--bg-sidebar);
+            backdrop-filter: saturate(180%) blur(16px);
+            -webkit-backdrop-filter: saturate(180%) blur(16px);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
@@ -103,21 +209,31 @@
             position: relative;
         }
 
-        /* Subtle grid background */
-        .main::before {
+        /* Landing hero backdrop: purple/cyan wash plus a 64px grid that fades
+           out from the top (Hero.module.css .bgWash / .bgGrid). */
+        .main::before,
+        .main::after {
             content: '';
             position: fixed;
             top: 0;
             left: var(--sidebar-w);
             right: 0;
             bottom: 0;
-            background-image:
-                radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.04) 0%, transparent 60%),
-                linear-gradient(rgba(20, 20, 35, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(20, 20, 35, 0.3) 1px, transparent 1px);
-            background-size: 100% 100%, 60px 60px, 60px 60px;
             pointer-events: none;
             z-index: 0;
+        }
+
+        .main::before {
+            background: var(--wash);
+        }
+
+        .main::after {
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 64px 64px;
+            -webkit-mask-image: radial-gradient(80% 70% at 50% 0%, #000 0%, rgba(0, 0, 0, 0.5) 50%, transparent 85%);
+            mask-image: radial-gradient(80% 70% at 50% 0%, #000 0%, rgba(0, 0, 0, 0.5) 50%, transparent 85%);
         }
 
         .main>* {
@@ -135,18 +251,40 @@
             background: transparent;
         }
 
-        .sidebar-logo .logo-stack img {
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar-logo .logo-stack img:hover {
-            transform: scale(1.02);
-        }
-
         .logo-stack {
             display: flex;
             flex-direction: column;
             gap: 12px;
+        }
+
+        /* Landing navbar lockup: purple ant + "Memanto" wordmark in the text
+           colour, so it reads on both themes (the old logo.svg had a white
+           wordmark baked in). */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary) !important;
+            text-decoration: none;
+        }
+
+        .brand-ant {
+            width: 30px;
+            height: 37px;
+            color: var(--accent);
+            flex-shrink: 0;
+            transition: color 0.2s ease;
+        }
+
+        .brand:hover .brand-ant {
+            color: #00b4d8;
+        }
+
+        .brand-word {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.04em;
+            line-height: 1;
         }
 
         .sidebar-logo p {
@@ -182,6 +320,7 @@
             transition: all 0.2s ease;
             font-size: 13px;
             font-weight: 500;
+            text-decoration: none;
             border: 1px solid transparent;
             background: none;
             width: 100%;
@@ -190,15 +329,15 @@
         }
 
         .nav-item:hover {
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--text-secondary);
-            border-color: var(--border);
+            background: rgba(var(--ink-rgb), 0.04);
+            color: var(--text-primary);
         }
 
         .nav-item.active {
             background: var(--accent-glow);
             color: var(--accent);
-            border-color: rgba(6, 182, 212, 0.2);
+            font-weight: 600;
+            box-shadow: inset 2px 0 0 var(--accent);
         }
 
         .nav-item svg {
@@ -225,8 +364,41 @@
         }
 
         .sidebar-footer {
-            padding: 16px;
+            padding: 14px 16px;
             border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .sidebar-footer .sidebar-status {
+            min-width: 0;
+        }
+
+        .sidebar-footer .sidebar-status span:last-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .theme-toggle {
+            flex-shrink: 0;
+            border-radius: 999px;
+        }
+
+        .theme-toggle svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .theme-toggle .ico-sun,
+        :root[data-theme="dark"] .theme-toggle .ico-moon {
+            display: none;
+        }
+
+        :root[data-theme="dark"] .theme-toggle .ico-sun {
+            display: block;
         }
 
         .sidebar-status {
@@ -239,6 +411,7 @@
         }
 
         .status-dot {
+            flex-shrink: 0;
             width: 7px;
             height: 7px;
             border-radius: 50%;
@@ -303,18 +476,21 @@
         }
 
         .page-header h2 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.8px;
+            font-size: 30px;
+            font-weight: 600;
+            letter-spacing: -0.04em;
+            line-height: 1.15;
             color: var(--text-primary);
+            text-wrap: balance;
         }
 
         .page-header p {
             color: var(--text-dim);
-            margin-top: 6px;
+            margin-top: 8px;
             font-size: 14px;
+            font-weight: 500;
             font-family: var(--font-mono);
-            letter-spacing: 0.3px;
+            text-wrap: pretty;
         }
 
         /* ── Cards ── */
@@ -333,16 +509,18 @@
             transition: all 0.25s ease;
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-card);
         }
 
+        /* Cyan→purple hairline from the landing's eyebrow rule. */
         .card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan-bright, #00d2fe), var(--accent));
             opacity: 0;
             transition: opacity 0.3s;
         }
@@ -350,7 +528,7 @@
         .card:hover {
             border-color: var(--border-hover);
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow-card-hover);
         }
 
         .card:hover::before {
@@ -369,6 +547,8 @@
         .card-value {
             font-size: 26px;
             font-weight: 700;
+            letter-spacing: -0.03em;
+            font-feature-settings: "tnum";
         }
 
         .card-sub {
@@ -384,19 +564,25 @@
             border-radius: var(--radius);
             padding: 24px;
             margin-bottom: 24px;
+            box-shadow: var(--shadow-card);
         }
 
+        /* Section eyebrow from the landing (.label-md): small purple caps led
+           by a short cyan→purple rule. The rule is a background, not a
+           pseudo-element, so titles laid out with space-between keep working. */
         .panel-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             margin-bottom: 18px;
             display: flex;
             align-items: center;
             gap: 8px;
-            color: var(--text-secondary);
+            color: var(--accent);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.14em;
             font-family: var(--font-mono);
+            padding-left: 28px;
+            background: linear-gradient(90deg, var(--cyan-bright, #00d2fe), var(--accent)) no-repeat left center / 18px 2px;
         }
 
         /* ── Badges ── */
@@ -417,31 +603,31 @@
         .badge-success {
             background: var(--success-bg);
             color: var(--success);
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
         }
 
         .badge-warning {
             background: var(--warning-bg);
             color: var(--warning);
-            border: 1px solid rgba(245, 158, 11, 0.2);
+            border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
         }
 
         .badge-error {
             background: var(--error-bg);
             color: var(--error);
-            border: 1px solid rgba(239, 68, 68, 0.2);
+            border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
         }
 
         .badge-info {
             background: var(--accent-glow);
             color: var(--accent);
-            border: 1px solid rgba(6, 182, 212, 0.2);
+            border: 1px solid rgba(var(--accent-rgb), 0.25);
         }
 
         .badge-accent {
             background: var(--indigo-glow);
             color: var(--indigo);
-            border: 1px solid rgba(99, 102, 241, 0.2);
+            border: 1px solid color-mix(in srgb, var(--indigo) 25%, transparent);
         }
 
         /* ── Forms ── */
@@ -460,11 +646,34 @@
             outline: none;
         }
 
+        input:hover,
+        textarea:hover,
+        select:hover {
+            border-color: rgba(var(--ink-rgb), 0.18);
+        }
+
         input:focus,
         textarea:focus,
         select:focus {
             border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px var(--accent-glow);
+            box-shadow: 0 0 0 3px var(--accent-glow-strong);
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: rgba(var(--ink-rgb), 0.35);
+        }
+
+        input[type="range"],
+        input[type="checkbox"],
+        input[type="radio"] {
+            accent-color: var(--accent);
+            box-shadow: none;
+        }
+
+        input[type="range"] {
+            background: transparent;
+            border: none;
         }
 
         textarea {
@@ -500,35 +709,39 @@
             justify-content: center;
             gap: 8px;
             padding: 10px 22px;
-            border-radius: var(--radius-sm);
+            border-radius: 999px;
             font-family: inherit;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            border: none;
+            border: 1px solid transparent;
             transition: all 0.2s ease;
-            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
+        /* Landing .btn--primary / .btn--secondary (light theme pills). */
         .btn-primary {
-            background: var(--accent);
-            color: #000;
+            background: var(--accent-grad);
+            color: #fff;
+            box-shadow: var(--shadow-btn);
         }
 
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 4px 20px var(--accent-glow-strong), 0 0 40px var(--accent-glow);
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-btn-hover);
         }
 
         .btn-secondary {
-            background: transparent;
+            background: var(--bg-card);
             color: var(--text-primary);
             border: 1px solid var(--border);
+            box-shadow: 0 1px 2px rgba(46, 32, 98, 0.06);
         }
 
-        .btn-secondary:hover {
-            border-color: var(--accent);
+        .btn-secondary:hover:not(:disabled) {
+            border-color: var(--border-hover);
             color: var(--accent);
+            box-shadow: 0 6px 16px -6px rgba(46, 32, 98, 0.18);
         }
 
         .btn-sm {
@@ -552,18 +765,20 @@
         }
 
         .btn-icon:hover {
-            border-color: var(--accent);
+            border-color: var(--border-hover);
             color: var(--accent);
+            background: var(--accent-glow);
         }
 
         .btn-danger {
-            background: var(--error);
-            color: white;
+            background: #dc2626;
+            color: #fff;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 16px -6px rgba(220, 38, 38, 0.45);
         }
 
-        .btn-danger:hover {
-            background: #dc2626;
-            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+            transform: translateY(-1px);
         }
 
         .btn:disabled {
@@ -597,7 +812,7 @@
         }
 
         .tab:hover {
-            color: var(--text-secondary);
+            color: var(--text-primary);
         }
 
         .tab.active {
@@ -637,13 +852,13 @@
 
         td {
             padding: 12px 14px;
-            border-bottom: 1px solid rgba(26, 26, 37, 0.5);
+            border-bottom: 1px solid var(--border-soft);
             font-size: 13px;
             color: var(--text-secondary);
         }
 
         tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(var(--accent-rgb), 0.04);
         }
 
         tr.expandable {
@@ -706,21 +921,21 @@
             font-weight: 500;
             animation: toast-in 0.3s ease;
             min-width: 280px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--shadow-pop);
             backdrop-filter: blur(10px);
             font-family: var(--font-mono);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-left-width: 3px;
         }
 
         .toast-success {
-            background: rgba(6, 78, 59, 0.9);
-            color: #a7f3d0;
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-left-color: var(--success);
         }
 
         .toast-error {
-            background: rgba(127, 29, 29, 0.9);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-left-color: var(--error);
         }
 
         @keyframes toast-in {
@@ -754,8 +969,8 @@
         }
 
         .chat-msg.user {
-            background: var(--accent);
-            color: #000;
+            background: var(--accent-grad);
+            color: #fff;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
             font-weight: 500;
@@ -839,8 +1054,8 @@
             align-items: center;
             gap: 16px;
             padding: 14px 20px;
-            background: linear-gradient(90deg, var(--accent-glow), rgba(99, 102, 241, 0.05));
-            border: 1px solid rgba(6, 182, 212, 0.15);
+            background: linear-gradient(90deg, var(--accent-glow), var(--indigo-glow));
+            border: 1px solid rgba(var(--accent-rgb), 0.18);
             border-radius: var(--radius-sm);
             margin-bottom: 16px;
         }
@@ -866,6 +1081,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 24px;
+            box-shadow: var(--shadow-card);
         }
 
         .chart-box canvas {
@@ -880,10 +1096,12 @@
             padding: 24px;
             margin-bottom: 16px;
             transition: all 0.25s ease;
+            box-shadow: var(--shadow-card);
         }
 
         .conflict-card:hover {
             border-color: var(--border-hover);
+            box-shadow: var(--shadow-card-hover);
         }
 
         .conflict-header {
@@ -995,16 +1213,18 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
+            box-shadow: var(--shadow-card);
         }
 
         .conn-card:hover {
             border-color: var(--border-hover);
             transform: translateY(-2px);
+            box-shadow: var(--shadow-card-hover);
         }
 
         .conn-card.active {
             border-color: var(--accent);
-            box-shadow: 0 0 0 1px var(--accent), 0 8px 30px var(--accent-glow);
+            box-shadow: 0 0 0 1px var(--accent), 0 14px 32px -12px var(--accent-glow-strong);
         }
 
         .conn-card.muted {
@@ -1091,8 +1311,8 @@
         }
 
         .conn-project-row.missing {
-            border-color: rgba(245, 158, 11, 0.3);
-            background: rgba(245, 158, 11, 0.05);
+            border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+            background: var(--warning-bg);
         }
 
         .conn-project-path {
@@ -1106,8 +1326,8 @@
             display: flex;
             gap: 8px;
             align-items: center;
-            background: rgba(239, 68, 68, 0.08);
-            border: 1px solid rgba(239, 68, 68, 0.25);
+            background: var(--error-bg);
+            border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
             border-radius: var(--radius-sm);
             padding: 10px 14px;
             margin: 6px 0;
@@ -1124,6 +1344,7 @@
             margin-bottom: 22px;
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-card);
         }
 
         .mesh-head {
@@ -1169,7 +1390,7 @@
         }
 
         .mesh-edge.live {
-            stroke: var(--accent);
+            stroke: var(--cyan);
             stroke-width: 1.5;
             opacity: 0.55;
         }
@@ -1185,14 +1406,18 @@
             z-index: 2;
         }
 
-        /* The logo sits bare on the panel - no ring, no plate, no rounding.
-           agentLogo() paints a per-agent background inline, so !important is
-           what actually removes it. */
-        .mesh-node .agent-logo {
+        /* Dark theme: the logo sits bare on the panel - no ring, no plate, no
+           rounding. agentLogo() paints a per-agent background inline, so
+           !important is what actually removes it. On the light theme the plate
+           stays: several logos are white glyphs that vanish on a white card. */
+        :root[data-theme="dark"] .mesh-node .agent-logo {
             background: transparent !important;
             border: none !important;
             border-radius: 0;
             box-shadow: none;
+        }
+
+        .mesh-node .agent-logo {
             transition: transform 0.2s ease;
         }
 
@@ -1230,9 +1455,9 @@
             width: 96px;
             height: 96px;
             border-radius: 50%;
-            background: radial-gradient(circle at 50% 40%, #0d1b20, var(--bg-card));
-            border: 1px solid var(--accent);
-            box-shadow: 0 0 40px var(--accent-glow);
+            background: radial-gradient(circle at 50% 40%, var(--accent-glow), var(--bg-card));
+            border: 1px solid var(--cyan);
+            box-shadow: 0 0 40px rgba(0, 210, 254, 0.18);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1246,7 +1471,7 @@
         .mesh-hub .hub-ant {
             height: 38px;
             width: auto;
-            color: #9d7ad6;
+            color: var(--accent);
         }
 
         .mesh-hub .hub-ant-legs {
@@ -1412,7 +1637,7 @@
             margin-left: 8px;
         }
 
-        .sess-tools .agent-logo {
+        :root[data-theme="dark"] .sess-tools .agent-logo {
             background: transparent !important;
             border: none !important;
             border-radius: 0;
@@ -1459,7 +1684,7 @@
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--backdrop);
             backdrop-filter: blur(6px);
             z-index: 9000;
             display: flex;
@@ -1476,7 +1701,7 @@
             max-height: 88vh;
             overflow-y: auto;
             padding: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            box-shadow: var(--shadow-pop);
         }
 
         .modal-header {
@@ -1531,7 +1756,7 @@
         }
 
         .agent-checkbox-row:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(var(--ink-rgb), 0.04);
         }
 
         .agent-checkbox-row input {
@@ -1545,6 +1770,21 @@
             color: var(--text-dim);
             margin-top: 6px;
         }
+
+        /* ── Agent ID Combobox (Connect Modal) ── */
+        .agent-combobox { position: relative; }
+        .agent-combobox input { padding-right: 36px; }
+        .agent-combo-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 26px; height: 26px; border: none; border-radius: var(--radius-xs); background: transparent; color: var(--text-dim); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+        .agent-combo-toggle:hover { color: var(--text-primary); background: rgba(var(--ink-rgb), 0.05); }
+        .agent-combo-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 210px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-pop); z-index: 20; }
+        .agent-combo-dropdown.open { display: block; }
+        .agent-combo-option { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-soft); transition: background 0.12s ease; }
+        .agent-combo-option:last-child { border-bottom: none; }
+        .agent-combo-option:hover, .agent-combo-option.active { background: var(--accent-glow); color: var(--text-primary); }
+        .agent-combo-option-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+        .agent-combo-option-id { font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+        .agent-combo-option-desc { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .agent-combo-empty { padding: 10px 12px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); }
 
         /* ── Folder Browser ── */
         .browser {
@@ -1632,7 +1872,7 @@
         }
 
         .browser-crumb:hover {
-            background: rgba(6, 182, 212, 0.1);
+            background: var(--accent-glow);
         }
 
         .browser-crumb-sep {
@@ -1654,12 +1894,12 @@
             cursor: pointer;
             font-size: 13px;
             color: var(--text-secondary);
-            border-bottom: 1px solid rgba(26, 26, 37, 0.5);
+            border-bottom: 1px solid var(--border-soft);
             transition: background 0.12s ease;
         }
 
         .browser-list-item:hover {
-            background: rgba(255, 255, 255, 0.04);
+            background: rgba(var(--ink-rgb), 0.04);
             color: var(--text-primary);
         }
 
@@ -1731,9 +1971,9 @@
             }
 
             .sidebar-logo p,
-            .logo-stack,
+            .brand-word,
             .nav-item span,
-            .sidebar-footer,
+            .sidebar-status,
             .nav-badge {
                 display: none;
             }
@@ -1743,9 +1983,9 @@
                 justify-content: center;
             }
 
-            .sidebar-logo img {
-                width: 32px;
-                height: 32px;
+            .sidebar-footer {
+                padding: 12px 0;
+                justify-content: center;
             }
 
             .nav-item {
@@ -1753,11 +1993,16 @@
                 padding: 12px;
             }
 
+            .nav-item.active {
+                box-shadow: none;
+            }
+
             .main {
                 padding: 20px;
             }
 
-            .main::before {
+            .main::before,
+            .main::after {
                 left: 56px;
             }
 
@@ -1782,6 +2027,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             padding: 14px 16px;
+            box-shadow: var(--shadow-card);
         }
 
         .hh-stat-label {
@@ -1831,6 +2077,11 @@
         }
 
         .achv.locked .achv-badge {
+            filter: grayscale(1);
+            opacity: 0.4;
+        }
+
+        :root[data-theme="dark"] .achv.locked .achv-badge {
             filter: grayscale(1) brightness(0.55);
             opacity: 0.55;
         }
@@ -1875,10 +2126,12 @@
             width: max-content;
             max-width: min(540px, calc(100vw - 32px));
             padding: 18px 44px 18px 18px;
-            background: linear-gradient(135deg, rgba(24, 18, 44, 0.97), rgba(8, 8, 13, 0.97));
-            border: 1px solid rgba(157, 122, 214, 0.4);
+            background:
+                radial-gradient(ellipse 70% 100% at 0% 50%, var(--accent-glow), transparent 70%),
+                var(--bg-card);
+            border: 1px solid rgba(var(--accent-rgb), 0.35);
             border-radius: var(--radius);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 44px rgba(157, 122, 214, 0.2);
+            box-shadow: var(--shadow-pop), 0 0 44px rgba(var(--accent-rgb), 0.18);
             font-family: var(--font-mono);
             animation: celIn 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both;
         }
@@ -1911,7 +2164,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.09) 50%, transparent 65%);
+            background: linear-gradient(105deg, transparent 35%, rgba(var(--accent-rgb), 0.1) 50%, transparent 65%);
             transform: translateX(-100%);
             animation: celShine 1.4s 0.35s ease forwards;
         }
@@ -1933,7 +2186,7 @@
         .cel-ant {
             width: 60px;
             height: auto;
-            color: #b69cf0;
+            color: var(--accent);
             overflow: visible;
             transform-origin: 50% 100%;
             animation: celJump 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) 3;
@@ -1999,7 +2252,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            color: #b69cf0;
+            color: var(--accent);
         }
 
         .cel-title {
@@ -2086,29 +2339,29 @@
         }
 
         .hh-cell[data-level="0"] {
-            background: #161b22;
-            outline: 1px solid rgba(255, 255, 255, 0.03);
+            background: var(--heat-0);
+            outline: 1px solid rgba(var(--ink-rgb), 0.04);
             outline-offset: -1px;
         }
 
         .hh-cell[data-level="1"] {
-            background: #0e4429;
+            background: var(--heat-1);
         }
 
         .hh-cell[data-level="2"] {
-            background: #006d32;
+            background: var(--heat-2);
         }
 
         .hh-cell[data-level="3"] {
-            background: #26a641;
+            background: var(--heat-3);
         }
 
         .hh-cell[data-level="4"] {
-            background: #39d353;
+            background: var(--heat-4);
         }
 
         .hh-cell:hover {
-            outline: 1px solid rgba(255, 255, 255, 0.6);
+            outline: 1px solid rgba(var(--ink-rgb), 0.6);
             outline-offset: 1px;
         }
 
@@ -2130,7 +2383,7 @@
             height: 5px;
             border-radius: 50%;
             background: var(--error);
-            box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.85);
+            box-shadow: 0 0 0 1px var(--bg-card);
             pointer-events: none;
         }
 
@@ -2512,12 +2765,13 @@
             gap: 10px;
             position: relative;
             overflow: hidden;
+            box-shadow: var(--shadow-card);
         }
 
         .mig-tile:hover {
-            border-color: var(--accent);
+            border-color: var(--border-hover);
             transform: translateY(-2px);
-            box-shadow: 0 8px 32px var(--accent-glow);
+            box-shadow: var(--shadow-card-hover);
         }
 
         .mig-tile.selected {
@@ -2783,6 +3037,7 @@
             border-radius: 10px;
             padding: 18px;
             transition: all 0.2s;
+            box-shadow: var(--shadow-card);
         }
 
         .mig-stat:hover {
@@ -2870,15 +3125,22 @@
         <aside class="sidebar">
             <div class="sidebar-logo">
                 <div class="logo-stack">
-                    <a href="/" style="display: block;">
-                        <img src="/ui/static/logo.svg" alt="MEMANTO Logo"
-                            style="width: 150px; height: auto; object-fit: contain; filter: none; opacity: 1;">
+                    <a href="/" class="brand" aria-label="Memanto">
+                        <svg class="brand-ant" viewBox="0 0 96 120" fill="currentColor" aria-hidden="true">
+                            <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+                            <polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+                            <polygon points="42,32 44,36 42,40 40,36" />
+                            <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+                            <polygon points="54,32 56,36 54,40 52,36" />
+                            <path d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
+                        </svg>
+                        <span class="brand-word">Memanto</span>
                     </a>
                     <p>Memory Agent by <a href="https://moorcheh.ai" target="_blank">Moorcheh.ai</a></p>
                 </div>
             </div>
             <nav class="sidebar-nav">
-                <button class="nav-item active" data-page="dashboard">
+                <a class="nav-item active" href="/ui" data-page="dashboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7" rx="1" />
                         <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -2886,35 +3148,35 @@
                         <rect x="14" y="14" width="7" height="7" rx="1" />
                     </svg>
                     <span>Dashboard</span>
-                </button>
-                <button class="nav-item" data-page="agents">
+                </a>
+                <a class="nav-item" href="/ui/agents" data-page="agents">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
                         <circle cx="9" cy="7" r="4" />
                         <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
                     </svg>
                     <span>Agents</span>
-                </button>
-                <button class="nav-item" data-page="playground">
+                </a>
+                <a class="nav-item" href="/ui/playground" data-page="playground">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
                     <span>Playground</span>
-                </button>
-                <button class="nav-item" data-page="explorer">
+                </a>
+                <a class="nav-item" href="/ui/explorer" data-page="explorer">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <span>Explorer</span>
-                </button>
-                <button class="nav-item" data-page="history">
+                </a>
+                <a class="nav-item" href="/ui/history" data-page="history">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10" />
                         <polyline points="12 6 12 12 16 14" />
                     </svg>
                     <span>History</span>
-                </button>
-                <button class="nav-item" data-page="conflicts">
+                </a>
+                <a class="nav-item" href="/ui/conflicts" data-page="conflicts">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                         <line x1="12" y1="9" x2="12" y2="13" />
@@ -2922,47 +3184,51 @@
                     </svg>
                     <span>Conflicts</span>
                     <span class="nav-badge" id="conflictBadge" style="display:none">0</span>
-                </button>
-                <button class="nav-item" data-page="policy">
+                </a>
+                <a class="nav-item" href="/ui/policy" data-page="policy">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <polyline points="12 7 12 12 15 14" />
                     </svg>
                     <span>Expiry Policy</span>
-                </button>
-                <button class="nav-item" data-page="connections">
+                </a>
+                <a class="nav-item" href="/ui/connections" data-page="connections">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
                         <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
                     </svg>
                     <span>Connections</span>
-                </button>
-                <button class="nav-item" data-page="migrate">
+                </a>
+                <a class="nav-item" href="/ui/migrate" data-page="migrate">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 5l7 7-7 7M3 12h18" />
                     </svg>
                     <span>Migrate</span>
-                </button>
-                <button class="nav-item" data-page="config">
+                </a>
+                <a class="nav-item" href="/ui/config" data-page="config">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3" />
                         <path
                             d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
                     </svg>
                     <span>Config</span>
-                </button>
-                <button class="nav-item" data-page="analytics">
+                </a>
+                <a class="nav-item" href="/ui/analytics" data-page="analytics">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 20V10M12 20V4M6 20v-6" />
                     </svg>
                     <span>Analytics</span>
-                </button>
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="sidebar-status">
                     <span class="status-dot" id="sidebarDot"></span>
                     <span id="sidebarStatus">Connecting...</span>
                 </div>
+                <button class="btn-icon theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Switch to dark mode" aria-label="Switch to dark mode">
+                    <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+                    <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+                </button>
             </div>
         </aside>
 
@@ -2971,15 +3237,14 @@
             <!-- DASHBOARD -->
             <section class="page active" id="page-dashboard">
                 <!-- Update Banner (Hidden by default) -->
-                <div id="templateUpdateBanner" style="display: none; background: #fff3cd; color: #856404; padding: 8px 16px; border-radius: 4px; margin: 0 0 16px 0; border: 1px solid #ffeeba; align-items: center; justify-content: space-between; font-size: 14px;">
+                <div id="templateUpdateBanner" style="display: none; background: var(--warning-bg); color: var(--text-secondary); padding: 10px 16px; border-radius: var(--radius-sm); margin: 0 0 16px 0; border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); align-items: center; justify-content: space-between; gap: 12px; font-size: 13px;">
                     <div>
-                        <span style="margin-right: 6px;">⚠️</span>
-                        <strong style="margin-right: 4px;">Agent Instruction Update Available</strong>
+                        <strong style="margin-right: 4px; color: var(--warning);">Agent Instruction Update Available</strong>
                         <span id="templateUpdateMsg">Your workspace is using outdated agent instructions.</span>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button onclick="dismissTemplateUpdate()" style="background: transparent; border: 1px solid #856404; color: #856404; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Dismiss</button>
-                        <button onclick="updateTemplates()" style="background: #856404; border: none; color: white; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Update Now</button>
+                        <button class="btn btn-secondary btn-sm" onclick="dismissTemplateUpdate()">Dismiss</button>
+                        <button class="btn btn-primary btn-sm" onclick="updateTemplates()">Update Now</button>
                     </div>
                 </div>
                 <div class="page-header">
@@ -2989,13 +3254,13 @@
                 </div>
                 <div class="cards-row" id="dashCards"></div>
                 <div class="panel">
-                    <div class="panel-title">🧠 Agent Profile</div>
+                    <div class="panel-title">Agent Profile</div>
                     <div id="agentProfile">
                         <div class="loading-overlay"><span class="spinner"></span> Loading...</div>
                     </div>
                 </div>
                 <div class="panel">
-                    <div class="panel-title">📊 Session Info</div>
+                    <div class="panel-title">Session Info</div>
                     <div id="sessionInfo">
                         <div class="loading-overlay"><span class="spinner"></span> Loading...</div>
                     </div>
@@ -3206,7 +3471,7 @@
                     <button class="btn btn-primary btn-sm" id="btnDetectConflicts" onclick="detectConflictsNow()">⚡ Detect Conflicts Now</button>
                     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
                         <label for="conflictsDateInput" style="color:var(--text-dim);font-size:13px">Date</label>
-                        <input type="date" id="conflictsDateInput" onchange="loadConflicts()" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:inherit;font-size:13px">
+                        <input type="date" id="conflictsDateInput" onchange="loadConflicts()" style="width:auto;padding:6px 10px">
                     </div>
                 </div>
                 <div id="conflictsContent">
@@ -3312,6 +3577,14 @@
     </div>
     <div class="toast-container" id="toasts"></div>
     <script>
+        // DOM Utility to show loader without losing height (prevents scroll jumps)
+        function setContainerLoading(el, text = '') {
+            if (!el) return;
+            const h = el.getBoundingClientRect().height;
+            const minH = h > 20 ? `min-height:${h}px;` : 'padding:20px;';
+            el.innerHTML = `<div class="loading-overlay" style="${minH}"><span class="spinner"></span> ${text}</div>`;
+        }
+
         /* ================================================================
            MEMANTO Web UI — Application Logic
            ================================================================ */
@@ -3344,6 +3617,34 @@
         }
 
         // Toast
+        // ================================================================
+        // THEME
+        // ================================================================
+        function syncThemeToggle() {
+            const btn = document.getElementById('themeToggle');
+            const label = document.documentElement.dataset.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
+        }
+
+        function toggleTheme() {
+            const root = document.documentElement;
+            const dark = root.dataset.theme !== 'dark';
+            if (dark) root.dataset.theme = 'dark';
+            else delete root.dataset.theme;
+            try { localStorage.setItem('memanto-theme', dark ? 'dark' : 'light'); } catch (e) { }
+            syncThemeToggle();
+            // Chart.js bakes colours in at creation, so redraw the open charts.
+            if (S.history && S.history.length && document.getElementById('page-analytics').classList.contains('active')) {
+                renderAnalyticsCards(document.getElementById('analyticsCards'), S.history);
+            }
+        }
+
+        // Resolved value of a CSS custom property for the current theme.
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
         function toast(msg, type = 'success') {
             const el = document.createElement('div');
             el.className = `toast toast-${type}`;
@@ -3428,31 +3729,69 @@
         // Truncate
         function trunc(s, n = 120) { if (!s) return ''; return s.length > n ? s.substring(0, n) + '…' : s; }
 
-        // Escape HTML
-        function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        // Escape HTML and attribute values.
+        // Quotes are escaped so results are safe for both text content and quoted attributes.
+        function escHtml(s) {
+            if (s == null) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('page-' + btn.dataset.page).classList.add('active');
-                // Re-fetch on every visit so a page never shows stale data
-                // after changes made elsewhere (CLI, another page, etc.).
-                const reload = PAGE_RELOADERS[btn.dataset.page];
-                if (reload) reload();
-                if (btn.dataset.page === 'history') S._historyLoaded = true;
-                if (btn.dataset.page === 'connections') startMeshPolling();
-                else stopMeshPolling();
+        // Navigation. Each page has its own URL (/ui for the dashboard,
+        // /ui/<page> otherwise); the server returns this same file for all of
+        // them, so refresh, deep links and back/forward all work.
+        const DEFAULT_PAGE = 'dashboard';
+        const BASE_TITLE = document.title;
+
+        function pageUrl(page) {
+            return page === DEFAULT_PAGE ? '/ui' : '/ui/' + page;
+        }
+
+        // Page named by the current URL, or null if it names no known page.
+        function pageFromUrl() {
+            const name = location.pathname.replace(/^\/ui\/?/, '').replace(/\/$/, '') || DEFAULT_PAGE;
+            return document.querySelector(`.nav-item[data-page="${CSS.escape(name)}"]`) ? name : null;
+        }
+
+        function showPage(page) {
+            const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('page-' + page).classList.add('active');
+            document.title = page === DEFAULT_PAGE
+                ? BASE_TITLE
+                : `${btn.querySelector('span').textContent} · Memanto`;
+            // Re-fetch on every visit so a page never shows stale data
+            // after changes made elsewhere (CLI, another page, etc.).
+            const reload = PAGE_RELOADERS[page];
+            if (reload) reload();
+            if (page === 'history') S._historyLoaded = true;
+            if (page === 'connections') startMeshPolling();
+            else stopMeshPolling();
+        }
+
+        // Programmatically navigate to a page, adding a history entry.
+        function goToPage(page) {
+            if (!document.querySelector(`.nav-item[data-page="${page}"]`)) return;
+            if (location.pathname !== pageUrl(page)) history.pushState(null, '', pageUrl(page));
+            showPage(page);
+        }
+
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', e => {
+                // Let the browser handle ctrl/cmd/shift/middle-click (new tab/window).
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                goToPage(link.dataset.page);
             });
         });
 
-        // Programmatically navigate to a page (reuses the nav-item click handler)
-        function goToPage(page) {
-            const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
-            if (btn) btn.click();
-        }
+        window.addEventListener('popstate', () => showPage(pageFromUrl() || DEFAULT_PAGE));
 
         // Per-page reload used by the nav-item handler above and by the
         // Refresh button in each page header.
@@ -3507,10 +3846,14 @@
             } catch (e) {
                 console.warn('Config load failed:', e);
             }
+            syncThemeToggle();
             applyBackendVisibility();
             updateSidebarStatus();
             achvInit();
-            loadDashboard();
+            // Open the page named by the URL; normalize unknown paths to /ui.
+            const page = pageFromUrl();
+            if (!page) history.replaceState(null, '', pageUrl(DEFAULT_PAGE));
+            showPage(page || DEFAULT_PAGE);
             // Load conflict count for badge
             loadConflictBadge();
             // Check for template updates
@@ -3632,7 +3975,7 @@
                 box.innerHTML = buildAgentsTable(S._cachedAgents);
                 // Subtle updating indicator could go here
             } else {
-                box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading agents...</div>';
+                setContainerLoading(box, 'Loading agents...');
             }
             
             if (!isBackendConfigured()) {
@@ -3673,7 +4016,7 @@
                     <td style="font-size:12px">${escHtml(trunc(a.description || '—', 60))}</td>
                     <td>${a.memory_count ?? '—'}</td>
                     <td>${a.session_count ?? 0}</td>
-                    <td style="white-space:nowrap">${fmtDate(a.created_at)}</td>
+                    <td style="white-space:nowrap">${escHtml(fmtDate(a.created_at))}</td>
                     <td>${statusBadge}</td>
                     <td style="text-align:right;white-space:nowrap">${actions} ${deleteBtn}</td>
                 </tr>`;
@@ -4128,14 +4471,17 @@
                 const list = agents.agents || agents || [];
                 const el = document.getElementById('dashAgentCount');
                 if (el) el.textContent = Array.isArray(list) ? list.length : '?';
-                if (Array.isArray(list)) checkAchievements(list);
+                if (Array.isArray(list)) {
+                    if (!S._cachedAgents) S._cachedAgents = list;
+                    checkAchievements(list);
+                }
             }).catch(() => {
                 const el = document.getElementById('dashAgentCount');
                 if (el) el.textContent = '?';
             });
 
             if (S.agentId) {
-                profile.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                setContainerLoading(profile, '');
                 api('GET', `/api/v2/agents/${S.agentId}?include_counts=false`).then(agent => {
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
@@ -4143,7 +4489,7 @@
                 <tr><td>Pattern</td><td><span class="badge badge-accent">${escHtml(agent.pattern || '—')}</span></td></tr>
                 <tr><td>Description</td><td>${escHtml(agent.description || '—')}</td></tr>
                 <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(agent.namespace || '—')}</code></td></tr>
-                <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
+                <tr><td>Created</td><td>${escHtml(fmtDate(agent.created_at))}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
                 }).catch(e => {
@@ -4154,7 +4500,7 @@
             }
 
             if (hasActiveSession()) {
-                session.innerHTML = '<div class="loading-overlay" style="min-height: 100px"><span class="spinner"></span></div>';
+                setContainerLoading(session, '');
                 api('GET', '/api/v2/status').then(sess => {
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
@@ -4163,8 +4509,8 @@
                 <tr><td>Status</td><td><span class="badge badge-success">${escHtml(sess.status || 'active')}</span></td></tr>
                 <tr><td>Pattern</td><td>${escHtml(sess.pattern || '—')}</td></tr>
                 <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(sess.namespace || '—')}</code></td></tr>
-                <tr><td>Started</td><td>${fmtDate(sess.started_at)}</td></tr>
-                <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
+                <tr><td>Started</td><td>${escHtml(fmtDate(sess.started_at))}</td></tr>
+                <tr><td>Expires</td><td>${escHtml(fmtDate(sess.expires_at))}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
                 }).catch(e => {
@@ -4305,7 +4651,7 @@
             const simRaw = document.getElementById('recSim').value;
             if (simRaw) body.min_similarity = parseFloat(simRaw);
             const box = document.getElementById('recallResults');
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Searching...</div>';
+            setContainerLoading(box, 'Searching...');
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/recall`, body);
                 const mems = res.memories || [];
@@ -4489,7 +4835,7 @@
             }
 
             const box = document.getElementById('explorerTable');
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading memories...</div>';
+            setContainerLoading(box, 'Loading memories...');
             document.getElementById('tmStatus').textContent =
                 mode === 'asof' ? `Viewing memory as of ${tmDate}` :
                 mode === 'since' ? `Showing changes since ${tmDate}` :
@@ -4535,8 +4881,11 @@
             const sel = document.getElementById('expSource');
             const current = sel.value;
             const sources = [...new Set(mems.map(m => m.source).filter(Boolean))].sort();
-            sel.innerHTML = '<option value="">All Sources</option>' +
-                sources.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+            sel.replaceChildren(new Option('All Sources', ''));
+            sources.forEach(source => {
+                const value = String(source);
+                sel.add(new Option(value, value));
+            });
             sel.value = sources.includes(current) ? current : '';
         }
 
@@ -4595,7 +4944,7 @@
                     statusBadge = '<span class="badge badge-success">active</span>';
                 }
                 const provBadge = m.provenance ? `<span class="badge badge-accent">${escHtml(m.provenance)}</span>` : '—';
-                const mJson = attrEsc(JSON.stringify(m));
+                const mJson = escHtml(JSON.stringify(m));
                 const caret = expandable
                     ? '<svg class="row-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 6 15 12 9 18" /></svg>'
                     : '';
@@ -4606,7 +4955,7 @@
             <td>${confBadge(m.confidence)}</td>
             <td>${statusBadge}</td>
             <td>${provBadge}</td>
-            <td style="white-space:nowrap">${fmtDate(m.created_at)}</td>
+            <td style="white-space:nowrap">${escHtml(fmtDate(m.created_at))}</td>
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
         </tr>`;
                 if (expandable) {
@@ -4618,10 +4967,10 @@
                     // to Edit rather than beside the destructive Forget button.
                     const isExpired = m.status === 'expired';
                     const lifecycleBtn = memId
-                        ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-memory-id="${attrEsc(memId)}" onclick="setMemoryLifecycle(this.dataset.memoryId, ${isExpired ? 'false' : 'true'}, this, event)">${isExpired ? 'Restore' : 'Mark expired'}</button>`
+                        ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-memory-id="${escHtml(memId)}" onclick="setMemoryLifecycle(this.dataset.memoryId, ${isExpired ? 'false' : 'true'}, this, event)">${isExpired ? 'Restore' : 'Mark expired'}</button>`
                         : '';
                     const forgetBtn = memId
-                        ? `<button class="btn btn-danger btn-sm" data-memory-id="${attrEsc(memId)}" onclick="forgetMemory(this.dataset.memoryId, this, event)">Forget</button>`
+                        ? `<button class="btn btn-danger btn-sm" data-memory-id="${escHtml(memId)}" onclick="forgetMemory(this.dataset.memoryId, this, event)">Forget</button>`
                         : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
                     html += `<tr class="expand-row"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${escHtml(memId || '—')}\nScore: ${escHtml(String(m.score ?? '—'))}\nSource: ${escHtml(m.source || '—')}\nUpdated: ${escHtml(fmtDate(m.updated_at))}${isExpired ? `\nExpired: ${escHtml(fmtDate(m.expired_at))} (${escHtml(m.expired_by || 'unknown')})` : ''}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${lifecycleBtn}${forgetBtn}</div></td></tr>`;
                 }
@@ -4719,7 +5068,7 @@
                 </div>
                 <div class="form-group">
                     <label>Title</label>
-                    <input id="editMemTitle" type="text" value="${attrEsc(m.title || '')}">
+                    <input id="editMemTitle" type="text" value="${escHtml(m.title || '')}">
                 </div>
                 <div class="form-group">
                     <label>Content</label>
@@ -4737,11 +5086,11 @@
                 </div>
                 <div class="form-group">
                     <label>Tags (comma-separated)</label>
-                    <input id="editMemTags" type="text" value="${attrEsc(tagsStr)}">
+                    <input id="editMemTags" type="text" value="${escHtml(tagsStr)}">
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
                     <button class="btn btn-secondary" onclick="closeEditMemoryModal()">Cancel</button>
-                    <button class="btn btn-primary" data-mem-id="${attrEsc(String(m.id || ''))}" onclick="executeEditMemory(this.dataset.memId, this)">Save Changes</button>
+                    <button class="btn btn-primary" data-mem-id="${escHtml(String(m.id || ''))}" onclick="executeEditMemory(this.dataset.memId, this)">Save Changes</button>
                 </div>
             </div>`;
             modal.addEventListener('click', e => { if (e.target === modal) closeEditMemoryModal(); });
@@ -4858,7 +5207,7 @@
             if (S.history && S.history.length > 0) {
                 renderHistory();
             } else {
-                box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
+                setContainerLoading(box, 'Loading history...');
             }
             
             try {
@@ -5032,7 +5381,7 @@
         async function loadDaySummaryPanel(key) {
             const body = document.getElementById('historySummaryBody');
             if (!body) return;
-            body.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading summary…</div>';
+            setContainerLoading(body, 'Loading summary…');
             try {
                 const res = await api('GET', `/api/ui/daily-summary?date=${encodeURIComponent(key)}`);
                 renderDaySummaryPanel(key, res);
@@ -5078,7 +5427,7 @@
             const prev = btn ? btn.innerHTML : null;
             if (btn) { btn.disabled = true; btn.innerHTML = '↻ …'; }
             const body = document.getElementById('historySummaryBody');
-            if (body) body.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Regenerating…</div>';
+            if (body) setContainerLoading(body, 'Regenerating…');
             try {
                 const res = await api('POST', '/api/ui/daily-summary', { date: key });
                 const status = (res.summary && res.summary.status) || 'unknown';
@@ -5145,7 +5494,7 @@
                 if (staleCount > 0) {
                     const scan = (S.conflictScans || {})[filter];
                     const reason = scan
-                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${fmtDate(scan.scanned_at)})`
+                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${escHtml(fmtDate(scan.scanned_at))})`
                         : `${staleCount} ${staleCount === 1 ? 'memory has' : 'memories have'} never been scanned`;
                     html += `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <span>⚠ ${reason} for <strong>${filter}</strong>. Run conflict detection to review.</span>
@@ -5163,7 +5512,7 @@
                 const dateLabel = !isNaN(headerDate.getTime())
                     ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
                     : dateKey;
-                html += `<div class="hh-tl-date">${dateLabel}</div>`;
+                html += `<div class="hh-tl-date">${escHtml(dateLabel)}</div>`;
                 list.forEach(m => {
                     const shortId = (m.id || '').toString().substring(0, 7) || '———';
                     const tags = Array.isArray(m.tags) ? m.tags.filter(Boolean) : [];
@@ -5241,7 +5590,7 @@
             <!-- BACKEND / API KEY -->
             ${onPrem ? `
             <div class="panel">
-                <div class="panel-title">🖥️ Backend</div>
+                <div class="panel-title">Backend</div>
                 <table class="config-table" style="width:100%"><tbody>
                 <tr><td>Mode</td><td><span class="badge badge-success">On-Prem</span></td></tr>
                 <tr><td>Server URL</td><td><code style="font-family:var(--font-mono)">${escHtml(onPremCfg.url || 'http://localhost:8080')}</code></td></tr>
@@ -5252,7 +5601,7 @@
             </div>
             ` : `
             <div class="panel">
-                <div class="panel-title">🔑 API Key</div>
+                <div class="panel-title">API Key</div>
                 <div id="apiKeyRow">
                     ${c.api_key_configured ?
                         `<div class="api-key-display">
@@ -5272,7 +5621,7 @@
             `}
             <!-- STATUS (read-only) -->
             <div class="panel">
-                <div class="panel-title">📊 Status</div>
+                <div class="panel-title">Status</div>
                 <table class="config-table" style="width:100%"><tbody>
                 <tr><td>Active Agent</td><td><strong style="color:var(--accent)">${c.active_agent_id || '—'}</strong></td></tr>
                 <tr><td>Active Session</td><td>${c.has_active_session ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-warning">No</span>'}</td></tr>
@@ -5281,7 +5630,7 @@
             </div>
             <!-- SERVER -->
             <div class="panel">
-                <div class="panel-title">🖥️ Server</div>
+                <div class="panel-title">Server</div>
                 <div class="form-row">
                     <div class="form-group"><label>Host / URL</label><input id="cfgServerUrl" value="${srv.url || 'localhost'}"></div>
                     <div class="form-group"><label>Port</label><input type="number" id="cfgServerPort" value="${srv.port || 8000}" min="1" max="65535"></div>
@@ -5289,7 +5638,7 @@
             </div>
             <!-- SESSION MANAGEMENT -->
             <div class="panel">
-                <div class="panel-title">⏱️ Session Management</div>
+                <div class="panel-title">Session Management</div>
                 <div class="form-row">
                     <div class="form-group"><label>Default Duration (hours)</label><input type="number" id="cfgSessDuration" value="${sess.default_duration_hours ?? 6}" min="1" max="72"></div>
                     <div class="form-group"><label>Extend Threshold (minutes)</label><input type="number" id="cfgSessExtendThreshold" value="${sess.extend_threshold_minutes ?? 30}" min="1" max="120"></div>
@@ -5306,7 +5655,7 @@
             <!-- ANSWER CONFIG -->
             ${onPrem ? `
             <div class="panel">
-                <div class="panel-title">🤖 LLM Config (On-Prem)</div>
+                <div class="panel-title">LLM Config (On-Prem)</div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Provider</label>
@@ -5334,7 +5683,7 @@
             </div>
             ` : `
             <div class="panel">
-                <div class="panel-title">🤖 Answer Config</div>
+                <div class="panel-title">Answer Config</div>
                 <div class="form-group"><label>Model</label><input id="cfgAiModel" value="${ans.model || 'anthropic.claude-sonnet-4-20250514-v1:0'}" placeholder="e.g. anthropic.claude-sonnet-4-20250514-v1:0"></div>
                 <div class="form-row">
                     <div class="form-group"><label>Temperature</label><input type="number" id="cfgAiTemp" value="${ans.temperature ?? 0.7}" min="0" max="2" step="0.05"></div>
@@ -5351,7 +5700,7 @@
             `}
             <!-- TOP N LIMIT -->
             <div class="panel">
-                <div class="panel-title">🎯 Search & Retrieval</div>
+                <div class="panel-title">Search & Retrieval</div>
                 <div class="form-row">
                     <div class="form-group"><label>Recall Limit (search results)</label><input type="number" id="cfgRecallLimit" value="${rec.limit ?? 10}" min="1" max="100"></div>
                     <div class="form-group"><label>Recall Min Similarity (0.0-1.0)</label><input type="number" step="0.01" id="cfgRecallMinSimilarity" value="${rec.min_similarity ?? 0}" min="0" max="1"></div>
@@ -5359,14 +5708,14 @@
             </div>
             <!-- CLI BEHAVIOR -->
             <div class="panel">
-                <div class="panel-title">⚡ CLI Behavior</div>
+                <div class="panel-title">CLI Behavior</div>
                 <div style="display:flex;flex-direction:column;gap:12px">
                     ${cfgToggle('cfgCliSmartParse', 'Smart parse (auto-assign memory type for raw input)', cli.smart_parse ?? true)}
                 </div>
             </div>
             <!-- SCHEDULE -->
             <div class="panel">
-                <div class="panel-title">📅 Schedule</div>
+                <div class="panel-title">Schedule</div>
                 <div class="form-group"><label>Daily Summary + Conflict Scan Time (HH:MM)</label><input id="cfgSchedule" value="${c.schedule_time || '23:55'}" placeholder="HH:MM" style="width:120px"></div>
             </div>
             <!-- SAVE -->
@@ -5411,11 +5760,24 @@
         async function saveApiKey() {
             const newKey = document.getElementById('newApiKeyInput').value.trim();
             if (!newKey) { toast('API key cannot be empty', 'error'); return; }
+            
+            // Check if there is an existing key (indicated by the preview)
+            const previewEl = document.getElementById('apiKeyPreview');
+            let currentKey = "";
+            if (previewEl && previewEl.textContent && previewEl.textContent !== 'Not set') {
+                currentKey = prompt('Please enter your CURRENT API key to authorize the change:');
+                if (currentKey === null) {
+                    return; // user cancelled
+                }
+                currentKey = currentKey.trim();
+            }
+            
             try {
-                await api('PUT', '/api/ui/api-key', { api_key: newKey });
+                await api('PUT', '/api/ui/api-key', { api_key: newKey, current_key: currentKey });
                 toast('API key updated successfully!');
                 S.config = await api('GET', '/api/ui/config');
                 loadConfig();
+                document.getElementById('newApiKeyInput').value = '';
             } catch (e) { toast('Failed to save API key: ' + e.message, 'error'); }
         }
 
@@ -5930,7 +6292,7 @@
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading policy...</div>';
+            setContainerLoading(box, 'Loading policy...');
             try {
                 const [res, presetRes] = await Promise.all([
                     api('GET', `/api/v2/agents/${S.agentId}/policy`),
@@ -5964,30 +6326,30 @@
             const purgeParts = purgeToParts(p.purge_expired_after);
 
             const presetOpts = (S.policyPresets || [])
-                .map(x => `<option value="${attrEsc(x.name)}">${escHtml(x.name)} — ${escHtml(x.description)}</option>`)
+                .map(x => `<option value="${escHtml(x.name)}">${escHtml(x.name)} — ${escHtml(x.description)}</option>`)
                 .join('');
 
             const retentionRows = MEMORY_TYPES.map(t => {
                 const val = p.retention[t] || '';
                 return `<tr>
                     <td style="color:var(--text-primary)">${escHtml(t)}</td>
-                    <td><input value="${attrEsc(val)}" placeholder="never" style="width:110px;font-family:var(--font-mono);font-size:12px" onchange="updateRetention('${t}', this.value)"></td>
+                    <td><input value="${escHtml(val)}" placeholder="never" style="width:110px;font-family:var(--font-mono);font-size:12px" onchange="updateRetention('${t}', this.value)"></td>
                 </tr>`;
             }).join('');
 
             const ruleCards = p.rules.map((r, i) => `
                 <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-                        <input value="${attrEsc(r.name)}" placeholder="rule-name" style="flex:1;font-family:var(--font-mono);font-size:12px" onchange="updateRule(${i}, 'name', this.value)">
-                        <input value="${attrEsc(r.expire_after)}" placeholder="never" style="width:110px;font-family:var(--font-mono);font-size:12px" onchange="updateRule(${i}, 'expire_after', this.value)">
+                        <input value="${escHtml(r.name)}" placeholder="rule-name" style="flex:1;font-family:var(--font-mono);font-size:12px" onchange="updateRule(${i}, 'name', this.value)">
+                        <input value="${escHtml(r.expire_after)}" placeholder="never" style="width:110px;font-family:var(--font-mono);font-size:12px" onchange="updateRule(${i}, 'expire_after', this.value)">
                         <button class="btn btn-danger btn-sm" onclick="removeRule(${i})">Remove</button>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
-                        <input value="${attrEsc((r.match.type || []).join(', '))}" placeholder="type (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'type', this.value)">
-                        <input value="${attrEsc((r.match.tags || []).join(', '))}" placeholder="tags (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'tags', this.value)">
-                        <input value="${attrEsc((r.match.source || []).join(', '))}" placeholder="source (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'source', this.value)">
-                        <input value="${attrEsc((r.match.provenance || []).join(', '))}" placeholder="provenance (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'provenance', this.value)">
-                        <input value="${attrEsc(r.match.confidence_below ?? '')}" placeholder="confidence below" style="font-size:12px" onchange="updateMatch(${i}, 'confidence_below', this.value)">
+                        <input value="${escHtml((r.match.type || []).join(', '))}" placeholder="type (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'type', this.value)">
+                        <input value="${escHtml((r.match.tags || []).join(', '))}" placeholder="tags (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'tags', this.value)">
+                        <input value="${escHtml((r.match.source || []).join(', '))}" placeholder="source (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'source', this.value)">
+                        <input value="${escHtml((r.match.provenance || []).join(', '))}" placeholder="provenance (comma sep)" style="font-size:12px" onchange="updateMatch(${i}, 'provenance', this.value)">
+                        <input value="${escHtml(r.match.confidence_below ?? '')}" placeholder="confidence below" style="font-size:12px" onchange="updateMatch(${i}, 'confidence_below', this.value)">
                     </div>
                 </div>`).join('');
 
@@ -6205,7 +6567,7 @@
 
         async function runPolicySweep(dryRun) {
             const box = document.getElementById('policySweepResult');
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Evaluating...</div>';
+            setContainerLoading(box, 'Evaluating...');
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/policy/apply`, { dry_run: dryRun });
                 if (res.policy_is_empty) {
@@ -6233,7 +6595,7 @@
 
         async function runPolicyPurge() {
             const box = document.getElementById('policySweepResult');
-            box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Checking...</div>';
+            setContainerLoading(box, 'Checking...');
             let preview;
             try {
                 preview = await api('POST', `/api/v2/agents/${S.agentId}/policy/purge`, { dry_run: true });
@@ -6291,7 +6653,7 @@
                     renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
                 }
             } else {
-                container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
+                setContainerLoading(container, 'Loading conflicts...');
             }
 
             try {
@@ -6384,7 +6746,7 @@
             if (mems.length > 0) {
                 renderAnalyticsCards(cards, mems);
             } else {
-                cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
+                setContainerLoading(cards, 'Loading analytics...');
             }
 
             try {
@@ -6451,8 +6813,13 @@
             <div class="card"><div class="card-label">Avg Confidence</div><div class="card-value ${confClass(avgConf)}">${avgConf.toFixed(2)}</div></div>
         `;
 
-            const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
-            const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
+            // Brand-led palette: Memanto purple and cyan first, then supporting hues.
+            const colors = ['#6b4ead', '#00b4d8', '#9d7ad6', '#22c55e', '#f59e0b', '#ec4899', '#0e7490'];
+            const sourceColors = ['#9d7ad6', '#00b4d8', '#6b4ead', '#f59e0b', '#22c55e'];
+            const tick = cssVar('--chart-tick');
+            const gridColor = cssVar('--chart-grid');
+            const chartFont = { family: "'JetBrains Mono', monospace" };
+            const sliceBorder = cssVar('--bg-card');
 
             if (S.charts.usage) S.charts.usage.destroy();
             if (S.charts.type) S.charts.type.destroy();
@@ -6464,26 +6831,26 @@
 
             S.charts.usage = new Chart(document.getElementById('chartUsage'), {
                 type: 'line',
-                data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1' }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' }, stepSize: 1 }, grid: { color: 'rgba(26,26,37,0.5)' }, beginAtZero: true } } }
+                data: { labels: sortedDates, datasets: [{ label: 'Memories Created', data: usageData, borderColor: '#7a5cc0', backgroundColor: 'rgba(122, 92, 192, 0.12)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#7a5cc0' }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: tick, font: chartFont }, grid: { color: gridColor } }, y: { ticks: { color: tick, font: chartFont, stepSize: 1 }, grid: { color: gridColor }, beginAtZero: true } } }
             });
 
             S.charts.type = new Chart(document.getElementById('chartType'), {
                 type: 'doughnut',
-                data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 0 }] },
-                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+                data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: colors.slice(0, Object.keys(typeCounts).length), borderWidth: 2, borderColor: sliceBorder }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: tick, padding: 16, font: chartFont } } } }
             });
 
             S.charts.source = new Chart(document.getElementById('chartSource'), {
                 type: 'doughnut',
-                data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 0 }] },
-                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#8a8a9a', padding: 16, font: { family: 'Inter' } } } } }
+                data: { labels: Object.keys(sourceBuckets), datasets: [{ data: Object.values(sourceBuckets), backgroundColor: sourceColors.slice(0, Object.keys(sourceBuckets).length), borderWidth: 2, borderColor: sliceBorder }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: tick, padding: 16, font: chartFont } } } }
             });
 
             S.charts.conf = new Chart(document.getElementById('chartConf'), {
                 type: 'bar',
                 data: { labels: Object.keys(confBuckets), datasets: [{ label: 'Memories', data: Object.values(confBuckets), backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8, borderWidth: 0 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#8a8a9a', font: { family: 'Inter' } }, grid: { color: 'rgba(26,26,37,0.5)' } } } }
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: tick, font: chartFont }, grid: { display: false } }, y: { ticks: { color: tick, font: chartFont }, grid: { color: gridColor } } } }
             });
 
             // Generate Word Cloud
@@ -6498,7 +6865,7 @@
                     const ratio = count / maxCount; // 0.0 to 1.0
                     const size = Math.max(11, 11 + ratio * 18); // 11px to 29px
                     const opacity = Math.max(0.4, ratio); // 0.4 to 1.0
-                    cloudHtml += `<span title="${count} memories" style="font-size:${size}px;color:rgba(6,182,212,${opacity});font-weight:600;font-family:var(--font-mono);border:1px solid rgba(6,182,212,${opacity*0.3});padding:4px 12px;border-radius:20px;background:rgba(6,182,212,${opacity*0.05});background-clip:padding-box;line-height:1;margin:4px">${escHtml(tag)} <small style="font-size:0.65em;opacity:0.7">(${count})</small></span>`;
+                    cloudHtml += `<span title="${count} memories" style="font-size:${size}px;color:rgba(var(--accent-rgb),${opacity});font-weight:600;font-family:var(--font-mono);border:1px solid rgba(var(--accent-rgb),${opacity*0.3});padding:4px 12px;border-radius:20px;background:rgba(var(--accent-rgb),${opacity*0.06});background-clip:padding-box;line-height:1;margin:4px">${escHtml(tag)} <small style="font-size:0.65em;opacity:0.7">(${count})</small></span>`;
                 });
                 cloudHtml += '</div>';
                 tagsContainer.innerHTML = cloudHtml;
@@ -7104,7 +7471,7 @@
             const sample = (preview.sample || []).map(s => `
                 <div class="mig-sample-row">
                     <div class="ttl">${escHtml(s.title || '')}</div>
-                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + fmtDate(s.created_at) : ''}</div>
+                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + escHtml(fmtDate(s.created_at)) : ''}</div>
                 </div>
             `).join('') || '<p style="color:var(--text-dim);font-size:13px">No mapped rows.</p>';
 
@@ -7484,8 +7851,8 @@
         async function loadConnections() {
             const grid = document.getElementById('connectionsGrid');
             const details = document.getElementById('connectionDetails');
-            grid.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading connections...</div>';
-            details.innerHTML = '';
+            setContainerLoading(grid, 'Loading connections...');
+            setContainerLoading(details, '');
             try {
                 const res = await api('GET', '/api/ui/connections');
                 S.connections = res.connections || [];
@@ -7496,7 +7863,9 @@
                 if (S.activeConnection) {
                     const stillThere = S.connections.find(c => c.name === S.activeConnection);
                     if (stillThere) renderConnectionDetails(stillThere);
-                    else S.activeConnection = null;
+                    else { S.activeConnection = null; details.innerHTML = ''; }
+                } else {
+                    details.innerHTML = '';
                 }
             } catch (e) {
                 grid.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load connections: ${escHtml(e.message)}</p>`;
@@ -7553,8 +7922,8 @@
                             <div class="conn-project-path">${escHtml(p.path)}${missingTag}</div>
                         </div>
                         <button class="btn btn-sm btn-secondary"
-                                data-connection-name="${attrEsc(conn.name)}"
-                                data-project-path="${attrEsc(p.path)}"
+                                data-connection-name="${escHtml(conn.name)}"
+                                data-project-path="${escHtml(p.path)}"
                                 onclick="confirmDisconnect(this.dataset.connectionName, this.dataset.projectPath, false, this)">${btnLabel}</button>
                     </div>`;
                 }).join('');
@@ -7563,7 +7932,7 @@
             const globalHtml = conn.installed_global
                 ? `<div class="conn-project-row">
                     <div class="conn-project-path">✓ Installed at ${escHtml(conn.skill_global_path)}</div>
-                    <button class="btn btn-sm btn-danger" data-connection-name="${attrEsc(conn.name)}" onclick="confirmDisconnect(this.dataset.connectionName, null, true, this)">Remove Global</button>
+                    <button class="btn btn-sm btn-danger" data-connection-name="${escHtml(conn.name)}" onclick="confirmDisconnect(this.dataset.connectionName, null, true, this)">Remove Global</button>
                 </div>`
                 : `<p style="color:var(--text-dim);font-size:13px;padding:10px 0">Not installed globally.
                     <a href="#" onclick="openConnectModalGlobal('${escHtml(conn.name)}');return false" style="color:var(--accent);text-decoration:none;margin-left:6px">Install globally →</a></p>`;
@@ -7630,6 +7999,10 @@
         // Connect modal
         function openConnectModal(preselectAgent) {
             const placeholder = S.cwd || '/absolute/path/to/project';
+            
+            // Suggest a default MCP agent ID based on the active agent, or the folder name
+            const defaultMcpId = S.agentId || '';
+            
             const agents = S.connections;
             const checkboxes = agents.map(a => {
                 const checked = preselectAgent && preselectAgent === a.name ? 'checked' : '';
@@ -7650,12 +8023,24 @@
                 </div>
                 <div class="form-group">
                     <label>Project Directory</label>
-                    <input id="connectPathInput" type="text" placeholder="${attrEsc(placeholder)}" value="${attrEsc(placeholder)}"
+                    <input id="connectPathInput" type="text" placeholder="${escHtml(placeholder)}" value="${escHtml(placeholder)}"
                         onkeydown="if(event.key==='Enter'){event.preventDefault(); browseTo(this.value)}">
                     <div class="helper-text">Type or paste a path, or use the browser below. Hit Enter to navigate there.</div>
                     <div id="folderBrowser" class="browser">
                         <div class="loading-overlay" style="padding:16px"><span class="spinner"></span> Loading…</div>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label for="connectMcpAgentIdInput">Memanto Agent ID (for MCP)</label>
+                    <div class="agent-combobox" id="connectAgentCombobox">
+                        <input id="connectMcpAgentIdInput" type="text" autocomplete="off" role="combobox"
+                            aria-expanded="false" aria-autocomplete="list" aria-controls="connectAgentDropdown"
+                            placeholder="Select or type an agent ID (e.g. cursor-workspace)" value="${escHtml(defaultMcpId)}">
+                        <button type="button" class="agent-combo-toggle" id="connectAgentComboToggle"
+                            aria-label="Show existing agents" tabindex="-1">▾</button>
+                        <div class="agent-combo-dropdown" id="connectAgentDropdown" role="listbox"></div>
+                    </div>
+                    <div class="helper-text">Pick an existing Memanto agent or type a new ID — it will be auto-created if it doesn't exist.</div>
                 </div>
                 <div class="form-group">
                     <label>Agents</label>
@@ -7678,22 +8063,132 @@
             </div>`;
             modal.addEventListener('click', e => { if (e.target === modal) closeConnectModal(); });
             document.body.appendChild(modal);
+            initConnectAgentCombobox();
             setTimeout(() => document.getElementById('connectPathInput')?.focus(), 50);
             browseTo(placeholder);
+        }
+
+        function getConnectAgentsList() {
+            const cached = Array.isArray(S._cachedAgents) ? [...S._cachedAgents] : [];
+            if (S.agentId && !cached.some(a => a && a.agent_id === S.agentId)) cached.unshift({ agent_id: S.agentId });
+            return cached.sort((a, b) => (a.agent_id === S.agentId ? 0 : 1) - (b.agent_id === S.agentId ? 0 : 1));
+        }
+
+        function initConnectAgentCombobox() {
+            const combo = document.getElementById('connectAgentCombobox');
+            const input = document.getElementById('connectMcpAgentIdInput');
+            const toggle = document.getElementById('connectAgentComboToggle');
+            const dropdown = document.getElementById('connectAgentDropdown');
+            const modal = document.getElementById('connectModal');
+            if (!combo || !input || !toggle || !dropdown) return;
+
+            let filterByQuery = false, highlightIdx = -1;
+            const isOpen = () => dropdown.classList.contains('open');
+            const closeDropdown = () => { dropdown.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); highlightIdx = -1; };
+            const selectAgent = id => { input.value = id; closeDropdown(); };
+            const updateHighlight = opts => {
+                opts.forEach((el, i) => {
+                    const active = i === highlightIdx;
+                    el.classList.toggle('active', active);
+                    el.setAttribute('aria-selected', active ? 'true' : 'false');
+                    if (active) el.scrollIntoView({ block: 'nearest' });
+                });
+                if (highlightIdx >= 0 && opts[highlightIdx]?.id) input.setAttribute('aria-activedescendant', opts[highlightIdx].id);
+                else input.removeAttribute('aria-activedescendant');
+            };
+
+            function renderOptions(preserveHighlightId) {
+                const allAgents = getConnectAgentsList();
+                const rawVal = (input.value || '').trim();
+                const q = filterByQuery ? rawVal.toLowerCase() : '';
+                const matched = q ? allAgents.filter(a => [a.agent_id, a.description, a.pattern].some(v => (v || '').toLowerCase().includes(q)))
+                    .sort((a, b) => ((a.agent_id || '').toLowerCase().startsWith(q) ? 0 : 1) - ((b.agent_id || '').toLowerCase().startsWith(q) ? 0 : 1)) : allAgents;
+                const exactExists = rawVal && allAgents.some(a => (a.agent_id || '').toLowerCase() === rawVal.toLowerCase());
+                const showCreate = rawVal && !exactExists && (filterByQuery || !allAgents.length);
+
+                if (!matched.length && !showCreate) {
+                    dropdown.innerHTML = `<div class="agent-combo-empty">No existing agents yet — type an ID to create one</div>`;
+                    highlightIdx = -1;
+                    input.removeAttribute('aria-activedescendant');
+                    return;
+                }
+                let html = matched.map((a, idx) => {
+                    const isActive = a.agent_id === S.agentId && S.config?.has_active_session;
+                    return `<div class="agent-combo-option" id="connectAgentOpt-${idx}" role="option" aria-selected="false" data-agent-id="${escHtml(a.agent_id)}">
+                        <div class="agent-combo-option-main">
+                            <span class="agent-combo-option-id">${escHtml(a.agent_id)}</span>
+                            ${isActive ? '<span class="badge badge-success">● active</span>' : ''}
+                            ${a.description ? `<span class="agent-combo-option-desc">${escHtml(a.description)}</span>` : ''}
+                        </div>
+                        ${a.pattern ? `<span class="badge badge-accent">${escHtml(a.pattern)}</span>` : ''}
+                    </div>`;
+                }).join('');
+                if (showCreate) {
+                    html += `<div class="agent-combo-option" id="connectAgentOpt-${matched.length}" role="option" aria-selected="false" data-agent-id="${escHtml(rawVal)}">
+                        <div class="agent-combo-option-main"><span style="color:var(--accent);font-weight:600">+ Use "${escHtml(rawVal)}"</span><span class="agent-combo-option-desc">Create new agent on install</span></div>
+                        <span class="badge badge-info">new</span>
+                    </div>`;
+                }
+                dropdown.innerHTML = html;
+                const opts = [...dropdown.querySelectorAll('.agent-combo-option')];
+                if (preserveHighlightId !== undefined) {
+                    highlightIdx = preserveHighlightId ? opts.findIndex(el => el.dataset.agentId === preserveHighlightId) : -1;
+                } else {
+                    if (highlightIdx >= opts.length) highlightIdx = opts.length - 1;
+                    if (highlightIdx < 0 && rawVal) highlightIdx = opts.findIndex(el => el.dataset.agentId === rawVal);
+                }
+                updateHighlight(opts);
+                opts.forEach((el, idx) => {
+                    el.addEventListener('mouseenter', () => { highlightIdx = idx; updateHighlight(opts); });
+                    el.addEventListener('mousedown', e => { e.preventDefault(); selectAgent(el.dataset.agentId); });
+                });
+            }
+
+            const openDropdown = useFilter => { filterByQuery = !!useFilter; renderOptions(); dropdown.classList.add('open'); input.setAttribute('aria-expanded', 'true'); };
+            const shouldFilterOnOpen = () => { const v = (input.value || '').trim(); return !!v && !getConnectAgentsList().some(a => a.agent_id === v); };
+
+            input.addEventListener('focus', () => openDropdown(shouldFilterOnOpen()));
+            input.addEventListener('click', () => { if (!isOpen()) openDropdown(shouldFilterOnOpen()); });
+            input.addEventListener('input', () => { highlightIdx = 0; openDropdown(true); });
+            input.addEventListener('blur', () => setTimeout(() => { if (!combo.contains(document.activeElement)) closeDropdown(); }, 120));
+            input.addEventListener('keydown', e => {
+                const opts = [...dropdown.querySelectorAll('.agent-combo-option')];
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (!isOpen()) openDropdown(false);
+                    else if (opts.length) { highlightIdx = (highlightIdx + (e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length; updateHighlight(opts); }
+                } else if (e.key === 'Enter' && isOpen()) {
+                    e.preventDefault();
+                    if (highlightIdx >= 0 && opts[highlightIdx]) selectAgent(opts[highlightIdx].dataset.agentId); else closeDropdown();
+                } else if (e.key === 'Escape' && isOpen()) {
+                    e.preventDefault(); e.stopPropagation(); closeDropdown();
+                }
+            });
+            toggle.addEventListener('mousedown', e => e.preventDefault());
+            toggle.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (isOpen() && !filterByQuery) closeDropdown(); else { highlightIdx = -1; openDropdown(false); input.focus(); } });
+            if (modal) modal.addEventListener('mousedown', e => { if (!combo.contains(e.target)) closeDropdown(); });
+
+            if (isBackendConfigured()) {
+                api('GET', '/api/v2/agents?include_counts=false').then(res => {
+                    const fresh = res.agents || (Array.isArray(res) ? res : null);
+                    if (!Array.isArray(fresh)) return;
+                    const prev = new Map((S._cachedAgents || []).map(a => [a.agent_id, a]));
+                    S._cachedAgents = fresh.map(a => ({ ...a, memory_count: a.memory_count ?? prev.get(a.agent_id)?.memory_count }));
+                    if (document.body.contains(dropdown) && isOpen()) {
+                        const prevHighlightId = dropdown.querySelectorAll('.agent-combo-option')[highlightIdx]?.dataset.agentId || '';
+                        renderOptions(prevHighlightId);
+                    }
+                }).catch(() => {});
+            }
         }
 
         // Folder browser inside the connect modal — server-side via /api/ui/browse.
         // All path-bearing controls use data-browse-path attrs + event delegation
         // so Windows backslashes are not mangled by inline-onclick JS parsing.
-        function attrEsc(s) {
-            if (s == null) return '';
-            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
         async function browseTo(path) {
             const box = document.getElementById('folderBrowser');
             if (!box) return;
-            box.innerHTML = '<div class="loading-overlay" style="padding:16px"><span class="spinner"></span> Loading…</div>';
+            setContainerLoading(box, 'Loading…');
             try {
                 const qs = path ? ('?path=' + encodeURIComponent(path)) : '';
                 const data = await api('GET', '/api/ui/browse' + qs);
@@ -7720,20 +8215,20 @@
                 if (i === 0 && isWin) acc = p + sep;
                 else if (acc.endsWith(sep)) acc = acc + p;
                 else acc = acc + sep + p;
-                return `<a class="browser-crumb" data-browse-path="${attrEsc(acc)}">${escHtml(p)}</a>`;
+                return `<a class="browser-crumb" data-browse-path="${escHtml(acc)}">${escHtml(p)}</a>`;
             }).join(`<span class="browser-crumb-sep">${escHtml(sep)}</span>`);
 
             const quickHtml = (data.quick_paths || []).map(q =>
-                `<button class="browser-quick-btn" data-browse-path="${attrEsc(q.path)}">${escHtml(q.label)}</button>`
+                `<button class="browser-quick-btn" data-browse-path="${escHtml(q.path)}">${escHtml(q.label)}</button>`
             ).join('');
 
             const upHtml = data.parent
-                ? `<button class="browser-up" data-browse-path="${attrEsc(data.parent)}">↑ Up</button>`
+                ? `<button class="browser-up" data-browse-path="${escHtml(data.parent)}">↑ Up</button>`
                 : `<button class="browser-up" disabled>↑ Up</button>`;
 
             const list = (data.children && data.children.length)
                 ? data.children.map(c =>
-                    `<div class="browser-list-item" data-browse-path="${attrEsc(c.path)}">
+                    `<div class="browser-list-item" data-browse-path="${escHtml(c.path)}">
                         <span class="folder-ico">📁</span>
                         <span>${escHtml(c.name)}</span>
                     </div>`
@@ -7781,13 +8276,14 @@
             if (!agents.length) { toast('Pick at least one agent', 'error'); return; }
             const isGlobal = document.getElementById('connectGlobalToggle').checked;
             const projectDir = document.getElementById('connectPathInput').value.trim();
+            const mcpAgentId = document.getElementById('connectMcpAgentIdInput').value.trim() || undefined;
             if (!isGlobal && !projectDir) { toast('Project path is required', 'error'); return; }
 
             const btn = document.getElementById('connectInstallBtn');
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Installing...';
             try {
                 const res = await api('POST', '/api/ui/connections/install', {
-                    agents, project_dir: isGlobal ? null : projectDir, is_global: isGlobal
+                    agents, project_dir: isGlobal ? null : projectDir, is_global: isGlobal, mcp_agent_id: mcpAgentId
                 });
                 (res.results || []).forEach(r => {
                     const label = (S.connections.find(c => c.name === r.agent)?.display_name) || r.agent;

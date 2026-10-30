@@ -189,6 +189,25 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "MEMANTO Status" in result.stdout
 
+    @patch("memanto.cli.commands.core.httpx.get")
+    def test_status_lists_registered_agents(self, mock_get, mock_all_clients):
+        """list_agents() returns {"agents": [...]} — status must unwrap it."""
+        mock_get.side_effect = ConnectionError("offline")
+        mock_all_clients.get_session_info.return_value = {"agent_id": "test-agent"}
+        mock_all_clients.list_agents.return_value = {
+            "agents": [
+                {"agent_id": "test-agent", "pattern": "tool", "session_count": 2},
+                {"agent_id": "other-agent", "pattern": "tool", "session_count": 1},
+            ],
+            "count": 2,
+            "warnings": [],
+        }
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0, result.stdout
+        assert "Could not fetch agent list" not in result.stdout
+        assert "Registered Agents" in result.stdout
+        assert "other-agent" in result.stdout
+
     # ========================================================================
     # AGENT COMMANDS
     # ========================================================================
@@ -771,6 +790,53 @@ class TestMEMANTOCLI:
         assert session is new_session
         assert client._cached_session is new_session
         session_service.validate_session.assert_called_once_with("new-token")
+
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_cache_hit_keeps_full_session(self, mock_all_clients, client_path):
+        from datetime import timedelta
+        from unittest.mock import MagicMock
+
+        from memanto.app.models.session import Session, SessionToken
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        session = Session(
+            session_id="sess-test",
+            session_token="test-token",
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            started_at=utc_now() - timedelta(minutes=5),
+            expires_at=utc_now() + timedelta(hours=1),
+            status="active",
+        )
+        session_service = MagicMock()
+        session_service.validate_session.return_value = SessionToken(
+            agent_id=session.agent_id,
+            namespace=session.namespace,
+            session_id=session.session_id,
+            started_at=session.started_at,
+            expires_at=session.expires_at,
+        )
+        session_service.check_and_auto_renew.return_value = None
+
+        client = Client("test-api-key")
+        client.agent_id = "test-agent"
+        client.session_token = "test-token"
+        client._cached_session = session
+        client._session_service = session_service
+
+        # Each cache hit must still validate the token, then serve the full
+        # Session; get_session_info() reads Session-only fields.
+        for _ in range(2):
+            info = client.get_session_info()
+            assert info["session_id"] == "sess-test"
+            assert info["time_remaining_seconds"] > 0
+        assert client._cached_session is session
+        assert session_service.validate_session.call_count == 2
 
     def test_upload_file_sdk_accepts_snake_case_file_size(
         self, tmp_path, mock_all_clients

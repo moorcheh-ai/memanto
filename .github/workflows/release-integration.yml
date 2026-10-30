@@ -7,6 +7,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Publish Integration to PyPI
@@ -179,4 +183,17 @@ jobs:
         INTEGRATION: ${{ steps.info.outputs.integration }}
       run: |
         cd "integrations/$INTEGRATION"
-        mcp-publisher publish
+        # mcp-publisher prints output to stdout/stderr. We capture it to see if it failed
+        # because the version is already published.
+        OUTPUT=$(mcp-publisher publish 2>&1) || {
+          status=$?
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "invalid version: cannot publish duplicate version"; then
+            echo "Warning: Version already exists in MCP Registry. Ignoring duplicate publish error."
+            exit 0
+          else
+            echo "Error: mcp-publisher failed with status $status."
+            exit $status
+          fi
+        }
+        echo "$OUTPUT"

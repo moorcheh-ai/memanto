@@ -3,7 +3,7 @@
 
 Three jobs, in order of importance:
 
-1. Refresh MEMORY.md so the agent has full context before the first message.
+1. Run `memanto memory sync` so the agent has full context before the first message.
 2. Print a short notice — SessionStart stdout is added to the session context.
 3. Install the MEMANTO status line into ~/.claude/settings.json, once.
 
@@ -105,7 +105,7 @@ def _project_dir(payload: dict) -> str:
 
 
 def sync_memory(project_dir: str) -> str | None:
-    """Refresh MEMORY.md. Returns a one-line summary, or None if unavailable."""
+    """Run `memanto memory sync`. Returns a one-line summary, or None if unavailable."""
     try:
         result = subprocess.run(
             ["memanto", "memory", "sync", "--project-dir", project_dir],
@@ -121,25 +121,20 @@ def sync_memory(project_dir: str) -> str | None:
     if result.returncode != 0:
         return None
 
-    memory_file = Path(project_dir) / "MEMORY.md"
-    if not memory_file.exists():
-        return None
+    # `memory sync` no longer writes MEMORY.md (#2017), so a MEMORY.md left in
+    # the project can be stale and may still list expired memories (#1910).
+    # Report what the sync actually recalled instead.
+    import re
 
-    try:
-        import re
-
-        text = memory_file.read_text(encoding="utf-8", errors="replace")
-        match = re.search(r"Total memories:\s*\*{0,2}\s*(\d+)", text)
-        count = int(match.group(1)) if match else None
-    except Exception:
-        count = None
-
-    if count is None:
-        return "MEMORY.md refreshed."
-    if count == 0:
-        return "MEMORY.md refreshed — no memories stored yet."
+    out = result.stdout or ""
+    if re.search(r"No active dynamic memories", out):
+        return "Memory refreshed — no active standing memories."
+    match = re.search(r"Recalled\s+(\d+)\s+dynamic memor", out)
+    if not match:
+        return "Memory refreshed."
+    count = int(match.group(1))
     return (
-        f"MEMORY.md refreshed — {count} "
+        f"Memory refreshed — {count} active "
         + ("memory" if count == 1 else "memories")
         + " loaded."
     )
@@ -233,7 +228,7 @@ def main() -> None:
         summary = sync_memory(project_dir)
         if summary:
             lines.append(
-                f"{MARK} {summary} Read MEMORY.md before acting; it carries standing instructions, decisions, and open commitments from previous sessions."
+                f"{MARK} {summary} Use `memanto recall` for anything not already in your memory context."
             )
     except Exception:
         # Ignore errors syncing memory in session start hook

@@ -4,7 +4,6 @@
   </a>
 </p>
 
-<h3 align="center">Memory that AI Agents Love!</h3>
 
 <p align="center">
   Memanto is a <strong>Memory Agent</strong>; a companion agent that manages the memories of your other agents:<br>
@@ -16,6 +15,7 @@
   <a href="https://pepy.tech/projects/memanto"><img alt="Downloads" src="https://static.pepy.tech/personalized-badge/memanto?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
   <a href="https://arxiv.org/abs/2604.22085"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.22085-b31b1b.svg"></a>
   <a href="https://pypi.org/project/memanto/"><img alt="PyPI" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
+  <a href="https://mcptoplist.com/server/io.github.moorcheh-ai%2Fmemanto"><img alt="MCP Toplist" src="https://mcptoplist.com/badge/io.github.moorcheh-ai%2Fmemanto.svg"></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
 </p>
 
@@ -29,6 +29,10 @@ pip install memanto
 
 ```bash
 npm install @moorcheh-ai/memanto
+```
+
+```bash
+go get github.com/moorcheh-ai/memanto/sdks/go
 ```
 
 <!-- ============================================================
@@ -302,6 +306,8 @@ memanto.answer("Does Alex drink dairy?")
 Reference: [docs.memanto.ai/sdk/python](https://docs.memanto.ai/sdk/python).
 
 **TypeScript / Node.js** — [`@moorcheh-ai/memanto`](sdks/typescript) boots a local Memanto server via `uvx` and exposes an ergonomic client (`remember` / `recall` / `answer`).
+
+**Go** — [`github.com/moorcheh-ai/memanto/sdks/go`](sdks/go) connects to a running Memanto server or starts one via `uvx`.
 
 **REST API** — start with `memanto serve`. Endpoint reference at [docs.memanto.ai/api](https://docs.memanto.ai/api) and `http://localhost:8000/docs` while running.
 

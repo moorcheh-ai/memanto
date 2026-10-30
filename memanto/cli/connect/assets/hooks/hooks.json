@@ -1,5 +1,5 @@
 {
-  "description": "MEMANTO: persistent memory for Claude Code. SessionStart refreshes MEMORY.md and installs the status line once, PreCompact re-syncs before compaction, and PostToolUse summarizes manual memory operations.",
+  "description": "MEMANTO: persistent memory for Claude Code. SessionStart refreshes MEMORY.md and installs the status line once, PreCompact re-syncs before compaction, and PostToolUse summarizes memory operations (CLI commands and MCP tool calls).",
   "hooks": {
     "SessionStart": [
       {
@@ -9,7 +9,9 @@
             "_managed_by": "memanto",
             "type": "command",
             "command": "${SYS_EXECUTABLE}",
-            "args": ["${HOOKS_DIR}/session_start.py"],
+            "args": [
+              "${HOOKS_DIR}/session_start.py"
+            ],
             "timeout": 30
           }
         ]
@@ -44,7 +46,23 @@
             "type": "command",
             "if": "Bash(memanto *)",
             "command": "${SYS_EXECUTABLE}",
-            "args": ["${HOOKS_DIR}/notify.py"],
+            "args": [
+              "${HOOKS_DIR}/notify.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__memanto__.*",
+        "hooks": [
+          {
+            "_managed_by": "memanto",
+            "type": "command",
+            "command": "${SYS_EXECUTABLE}",
+            "args": [
+              "${HOOKS_DIR}/notify.py"
+            ],
             "timeout": 10
           }
         ]

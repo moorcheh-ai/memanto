@@ -69,6 +69,22 @@ class MemoryParsingService:
                 ),
                 (r"\b(?:prefer|prefers)\s+not\s+to\b", 5),
                 (
+                    # Matches desire framing ("I want...", "Prefer...") regarding presentation
+                    # nouns (e.g., "messages", "errors"). Scored at 5 to tie with the error
+                    # ruleset so TYPE_PRIORITY can rank it as a preference. Negative lookahead
+                    # on "to <verb>" ensures goals ("I want to...") aren't misclassified here.
+                    r"(?:"
+                    r"\b(?:i|we)\s*(?:['’]d|would)?\s*"
+                    r"(?:want|need|prefer|like|expect)\b(?!\s+to\b)"
+                    r"(?=[^.!?]{0,40}\b(?:answers?|responses?|replies|messages?|"
+                    r"explanations?|errors?|outputs?|code|comments?|feedback|"
+                    r"summar(?:y|ies)|docs?|documentation|format(?:ting)?|"
+                    r"styles?|wording|logs?|results?)\b)"
+                    r"|^\s*(?:please\s+)?prefer\b(?!\s+to\b)"
+                    r")",
+                    5,
+                ),
+                (
                     r"\b(?:i|we|they|he|she|user|client|customer)\s+(?:really\s+)?(?:like|likes|love|loves|prefer|prefers|enjoy|enjoys|favor|favors)\b",
                     4,
                 ),
@@ -99,6 +115,16 @@ class MemoryParsingService:
                     5,
                 ),
                 (r"\b(?:always|never)\b", 5),
+                (
+                    # Anchored instruction for sentences starting with presentation directives
+                    # (e.g., "Show...", "Explain..."). Ties at score 5 with the error ruleset
+                    # so TYPE_PRIORITY correctly resolves it as an instruction.
+                    r"^\s*(?:please\s+)?(?:(?:always|never)\s+)?"
+                    r"(?:show|explain|point out|call out|lead with|start with|"
+                    r"begin with|answer|respond|report|format|highlight|"
+                    r"surface|flag|order|list|summari[sz]e|prioriti[sz]e)\b",
+                    5,
+                ),
                 (r"\b(?:should|shall|required to|requirement|mandatory)\b", 4),
                 (r"\b(?:do not|don't|avoid|make sure to|ensure|remember to)\b", 4),
                 (

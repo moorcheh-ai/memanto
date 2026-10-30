@@ -64,13 +64,13 @@ def check_for_updates(
     for agent in list_agents():
         # Check Local
         local_has_files = False
-        inst_path_local = agent.resolve_instruction_file(project_path, False)
-        if inst_path_local and inst_path_local.exists():
-            v = _extract_version(inst_path_local)
-            if v is not None:
-                local_has_files = True
-                if lowest_version is None or _is_version_lower(v, lowest_version):
-                    lowest_version = v
+        for inst_path_local in agent.resolve_instruction_files(project_path, False):
+            if inst_path_local.exists():
+                v = _extract_version(inst_path_local)
+                if v is not None:
+                    local_has_files = True
+                    if lowest_version is None or _is_version_lower(v, lowest_version):
+                        lowest_version = v
 
         skill_dir_local = agent.resolve_skill_local(project_path)
         skill_path_local = skill_dir_local / "SKILL.md"
@@ -86,13 +86,13 @@ def check_for_updates(
 
         # Check Global
         global_has_files = False
-        inst_path_global = agent.resolve_instruction_file(project_path, True)
-        if inst_path_global and inst_path_global.exists():
-            v = _extract_version(inst_path_global)
-            if v is not None:
-                global_has_files = True
-                if lowest_version is None or _is_version_lower(v, lowest_version):
-                    lowest_version = v
+        for inst_path_global in agent.resolve_instruction_files(project_path, True):
+            if inst_path_global.exists():
+                v = _extract_version(inst_path_global)
+                if v is not None:
+                    global_has_files = True
+                    if lowest_version is None or _is_version_lower(v, lowest_version):
+                        lowest_version = v
 
         skill_dir_global = agent.resolve_skill_global()
         skill_path_global = skill_dir_global / "SKILL.md"
@@ -276,14 +276,14 @@ def inject_dynamic_memories(
                 )
             continue
 
-        instruction_path = agent.resolve_instruction_file(project_path, is_global)
+        instruction_paths = agent.resolve_instruction_files(project_path, is_global)
         skill_dir = (
             agent.resolve_skill_global()
             if is_global
             else agent.resolve_skill_local(project_path)
         )
         paths_to_check = [
-            instruction_path,
+            *instruction_paths,
             skill_dir / "SKILL.md" if skill_dir else None,
         ]
 

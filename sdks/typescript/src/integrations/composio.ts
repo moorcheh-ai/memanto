@@ -147,7 +147,15 @@ export async function createMemantoComposioTools(
         tags?: string[];
       }) => {
         try {
-          const res = await memanto.remember({ content, type, title, tags });
+          const res = (await memanto.remember({ content, type, title, tags })) as {
+            status?: unknown;
+          };
+          const status = String(res?.status ?? "").toLowerCase();
+          if (!["queued", "success", "ok"].includes(status)) {
+            return fail(
+              new Error(`Memanto remember returned non-success status: ${String(res?.status)}`),
+            );
+          }
           return ok(res);
         } catch (err) {
           return fail(err);

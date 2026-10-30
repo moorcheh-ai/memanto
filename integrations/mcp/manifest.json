@@ -1,0 +1,67 @@
+{
+  "manifest_version": "0.4",
+  "name": "memanto",
+  "display_name": "Memanto",
+  "version": "0.1.5",
+  "description": "Persistent semantic memory for AI agents. Remember facts, preferences and decisions, and recall them across sessions.",
+  "long_description": "Memanto gives your AI assistant long-term memory. It saves typed memories (facts, preferences, decisions, goals, instructions and more) to a Moorcheh memory space and recalls them by meaning in later chats, so you don't have to repeat yourself. Needs a Moorcheh API key (free tier available at https://console.moorcheh.ai/api-keys).",
+  "author": {
+    "name": "Memanto",
+    "email": "info@memanto.ai",
+    "url": "https://www.memanto.ai"
+  },
+  "homepage": "https://www.memanto.ai",
+  "documentation": "https://github.com/moorcheh-ai/memanto/tree/main/integrations/mcp",
+  "support": "https://github.com/moorcheh-ai/memanto/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moorcheh-ai/memanto"
+  },
+  "icon": "icon.png",
+  "server": {
+    "type": "uv",
+    "entry_point": "memanto_mcp/__main__.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "memanto-mcp"],
+      "env": {
+        "MOORCHEH_API_KEY": "${user_config.moorcheh_api_key}",
+        "MEMANTO_DEFAULT_AGENT_ID": "${user_config.agent_id}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "remember", "description": "Save a new fact, preference, decision, goal or instruction to memory." },
+    { "name": "batch_remember", "description": "Save up to 100 memories in one call." },
+    { "name": "recall", "description": "Search memory by meaning." },
+    { "name": "recall_recent", "description": "Get the newest memories, no query needed." },
+    { "name": "recall_as_of", "description": "Recall what was known at a point in time." },
+    { "name": "recall_changed_since", "description": "Recall what changed since a given time." },
+    { "name": "answer", "description": "Answer a question grounded in the agent's memories." }
+  ],
+  "user_config": {
+    "moorcheh_api_key": {
+      "type": "string",
+      "title": "Moorcheh API key",
+      "description": "Create one at https://console.moorcheh.ai/api-keys",
+      "sensitive": true,
+      "required": true
+    },
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID",
+      "description": "Name of the memory space to use. Agents that share an ID share memory.",
+      "default": "my-assistant",
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  },
+  "keywords": ["memory", "semantic-memory", "agents", "memanto", "moorcheh"],
+  "license": "MIT",
+  "privacy_policies": ["https://www.memanto.ai/privacy", "https://www.moorcheh.ai/privacy"]
+}

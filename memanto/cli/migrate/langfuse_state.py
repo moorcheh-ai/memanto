@@ -184,6 +184,11 @@ def _exclusive(path: Path) -> Generator[None, None, None]:
             pass
         time.sleep(_LOCK_POLL_SECONDS)
 
+    if handle is None:
+        raise TimeoutError(
+            f"Failed to acquire lock {lock_path} within {_LOCK_TIMEOUT_SECONDS}s"
+        )
+
     try:
         yield
     finally:

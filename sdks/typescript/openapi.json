@@ -3392,7 +3392,7 @@
           "Sessions & Agents"
         ],
         "summary": "Deactivate Agent",
-        "description": "Deactivate agent and end session\n\nTerminates the current session and returns statistics.\nRequires X-Session-Token header and matching agent_id.",
+        "description": "Deactivate agent and end session\n\nTerminates the current session and returns statistics.",
         "operationId": "deactivate_agent_api_v2_agents__agent_id__deactivate_post",
         "parameters": [
           {
@@ -3402,22 +3402,6 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
-            }
-          },
-          {
-            "name": "x-session-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Session-Token"
             }
           },
           {
@@ -3450,22 +3434,6 @@
                 }
               ],
               "title": "X-Api-Key"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -3645,7 +3613,7 @@
           "Web UI"
         ],
         "summary": "Update Api Key",
-        "description": "Update the Moorcheh API key from the Web UI.\nExpects: {\"api_key\": \"new-key-value\"}",
+        "description": "Update the Moorcheh API key from the Web UI.\nExpects: {\"api_key\": \"new-key-value\", \"current_key\": \"existing-key\"}\n\nWhen a key is already configured, the caller must supply the correct\ncurrent_key to authorize the replacement.  This prevents a loopback\nattacker (e.g. via DNS rebinding) from silently swapping credentials.",
         "operationId": "update_api_key_api_ui_api_key_put",
         "requestBody": {
           "content": {
@@ -4367,7 +4335,7 @@
           "Web UI"
         ],
         "summary": "Connections Install",
-        "description": "Install MEMANTO integration for one or more agents at a given location.\n\nBody: {\"agents\": [\"claude-code\", ...], \"project_dir\": \"/abs/path\", \"is_global\": false}",
+        "description": "Install MEMANTO integration for one or more agents at a given location.\n\nBody: {\"agents\": [\"claude-code\", ...], \"project_dir\": \"/abs/path\", \"is_global\": false, \"mcp_agent_id\": \"optional-id\"}",
         "operationId": "connections_install_api_ui_connections_install_post",
         "requestBody": {
           "content": {
@@ -4888,6 +4856,19 @@
             "title": "Kiosk Mode",
             "description": "Kiosk mode setting",
             "default": false
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -4997,7 +4978,8 @@
                 "items": {
                   "type": "string",
                   "maxLength": 64,
-                  "minLength": 1
+                  "minLength": 1,
+                  "pattern": "^[^,\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$"
                 },
                 "type": "array",
                 "maxItems": 20
@@ -5008,6 +4990,47 @@
             ],
             "title": "Tags",
             "description": "Tags for this memory"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "expired"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Memory lifecycle status (e.g. active, expired)"
+          },
+          "expired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired At",
+            "description": "When this memory was expired"
+          },
+          "expired_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired By",
+            "description": "What/who expired this memory"
           },
           "source": {
             "type": "string",
@@ -5043,6 +5066,21 @@
             "minItems": 1,
             "title": "Memories",
             "description": "List of memories to store (max 100)"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', 'claude-code') to attribute the batch write and default item sources when omitted."
           }
         },
         "type": "object",
@@ -5353,6 +5391,21 @@
             ],
             "title": "Ai Model",
             "description": "Optional model override for extraction"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Optional calling tool or writer slug (e.g. 'cursor', 'copilot', 'claude-code') to attribute the extraction."
           }
         },
         "type": "object",
@@ -5474,7 +5527,8 @@
                 "items": {
                   "type": "string",
                   "maxLength": 64,
-                  "minLength": 1
+                  "minLength": 1,
+                  "pattern": "^[^,\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$"
                 },
                 "type": "array",
                 "maxItems": 20
@@ -5939,6 +5993,19 @@
             ],
             "title": "Tags",
             "description": "Tag filters"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6009,6 +6076,19 @@
             "title": "Status",
             "description": "Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.",
             "default": "all"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6107,6 +6187,19 @@
             ],
             "title": "Created Before",
             "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6222,6 +6315,19 @@
             ],
             "title": "Created Before",
             "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Slug of the AI tool making this call (e.g. 'claude-code', 'cursor', 'copilot') for session and connection attribution."
           }
         },
         "type": "object",
@@ -6329,7 +6435,8 @@
                 "items": {
                   "type": "string",
                   "maxLength": 64,
-                  "minLength": 1
+                  "minLength": 1,
+                  "pattern": "^[^,\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$"
                 },
                 "type": "array",
                 "maxItems": 20
@@ -6340,6 +6447,47 @@
             ],
             "title": "Tags",
             "description": "Tags for this memory"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "expired"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Memory lifecycle status (e.g. active, expired)"
+          },
+          "expired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired At",
+            "description": "When this memory was expired"
+          },
+          "expired_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired By",
+            "description": "What/who expired this memory"
           },
           "source": {
             "type": "string",

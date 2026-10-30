@@ -16,7 +16,8 @@ from memanto.cli.client.sdk_client import SdkClient
 logger = logging.getLogger(__name__)
 
 _MAX_AGENT_ID_LENGTH = 64
-_AGENT_ID_RE = re.compile(r"[^a-zA-Z0-9_-]+")
+_READABLE_COMPONENT_RE = re.compile(r"[A-Za-z0-9_-]+")
+_STRUCTURED_SEPARATOR = "\x1f"
 
 
 class AgentResolutionError(ValueError):
@@ -34,11 +35,23 @@ class TurnContext:
     request_id: str | None = None
 
 
+def _occurrences(haystack: str, needle: str) -> int:
+    """Count occurrences of *needle* in *haystack*, overlapping ones included."""
+    return len(re.findall(f"(?={re.escape(needle)})", haystack))
+
+
 def default_agent_id_resolver(context: TurnContext) -> str:
     """Map tenant + user + agent to a Memanto agent_id (not runtimeSessionId).
 
-    Memanto agent IDs allow only ``[A-Za-z0-9_-]``. Readable form:
-    ``tenant-{tenant}-user-{user}-agent-{agent}``; long keys hash structured components.
+    Every distinct (tenant, user, agent) triple must land in its own Memanto
+    namespace, so this mapping has to be injective. Memanto agent IDs allow
+    only ``[A-Za-z0-9_-]``; the readable form
+    ``tenant-{tenant}-user-{user}-agent-{agent}`` is used only when it can be
+    parsed back unambiguously: every component is already within that charset
+    (nothing is rewritten) and the ``-user-`` / ``-agent-`` delimiters each
+    occur exactly once. Anything else (emails, dotted usernames, non-Latin
+    names, components containing a delimiter, or long keys) is hashed from the
+    structured components instead, so it can never fold into another user.
     """
     if not (context.user_id or "").strip():
         raise AgentResolutionError(
@@ -47,14 +60,24 @@ def default_agent_id_resolver(context: TurnContext) -> str:
     if not (context.agent_name or "").strip():
         raise AgentResolutionError("agent_name is required")
 
-    tenant = (context.tenant_id or "default").strip()
-    user = context.user_id.strip()
-    agent = context.agent_name.strip()
-    structured = "\x1f".join((tenant, user, agent))
+    tenant = context.tenant_id or "default"
+    user = context.user_id
+    agent = context.agent_name
+    components = (tenant, user, agent)
+    if any(_STRUCTURED_SEPARATOR in part for part in components):
+        raise AgentResolutionError(
+            "tenant_id, user_id and agent_name must not contain control character U+001F"
+        )
+
     readable = f"tenant-{tenant}-user-{user}-agent-{agent}"
-    sanitized = _AGENT_ID_RE.sub("_", readable)
-    if len(sanitized) <= _MAX_AGENT_ID_LENGTH:
-        return sanitized
+    if (
+        len(readable) <= _MAX_AGENT_ID_LENGTH
+        and all(_READABLE_COMPONENT_RE.fullmatch(part) for part in components)
+        and _occurrences(readable, "-user-") == 1
+        and _occurrences(readable, "-agent-") == 1
+    ):
+        return readable
+    structured = _STRUCTURED_SEPARATOR.join(components)
     digest = hashlib.sha256(structured.encode("utf-8")).hexdigest()
     return digest[:_MAX_AGENT_ID_LENGTH]
 
