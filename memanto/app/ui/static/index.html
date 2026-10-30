@@ -1771,6 +1771,21 @@
             margin-top: 6px;
         }
 
+        /* ── Agent ID Combobox (Connect Modal) ── */
+        .agent-combobox { position: relative; }
+        .agent-combobox input { padding-right: 36px; }
+        .agent-combo-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 26px; height: 26px; border: none; border-radius: var(--radius-xs); background: transparent; color: var(--text-dim); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+        .agent-combo-toggle:hover { color: var(--text-primary); background: rgba(var(--ink-rgb), 0.05); }
+        .agent-combo-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 210px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-pop); z-index: 20; }
+        .agent-combo-dropdown.open { display: block; }
+        .agent-combo-option { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-soft); transition: background 0.12s ease; }
+        .agent-combo-option:last-child { border-bottom: none; }
+        .agent-combo-option:hover, .agent-combo-option.active { background: var(--accent-glow); color: var(--text-primary); }
+        .agent-combo-option-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+        .agent-combo-option-id { font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+        .agent-combo-option-desc { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .agent-combo-empty { padding: 10px 12px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); }
+
         /* ── Folder Browser ── */
         .browser {
             border: 1px solid var(--border);
@@ -4456,7 +4471,10 @@
                 const list = agents.agents || agents || [];
                 const el = document.getElementById('dashAgentCount');
                 if (el) el.textContent = Array.isArray(list) ? list.length : '?';
-                if (Array.isArray(list)) checkAchievements(list);
+                if (Array.isArray(list)) {
+                    if (!S._cachedAgents) S._cachedAgents = list;
+                    checkAchievements(list);
+                }
             }).catch(() => {
                 const el = document.getElementById('dashAgentCount');
                 if (el) el.textContent = '?';
@@ -8013,9 +8031,16 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Memanto Agent ID (for MCP)</label>
-                    <input id="connectMcpAgentIdInput" type="text" placeholder="e.g. cursor-workspace" value="${escHtml(defaultMcpId)}">
-                    <div class="helper-text">The Memanto agent ID this editor should use for memories. It will be auto-created if it doesn't exist.</div>
+                    <label for="connectMcpAgentIdInput">Memanto Agent ID (for MCP)</label>
+                    <div class="agent-combobox" id="connectAgentCombobox">
+                        <input id="connectMcpAgentIdInput" type="text" autocomplete="off" role="combobox"
+                            aria-expanded="false" aria-autocomplete="list" aria-controls="connectAgentDropdown"
+                            placeholder="Select or type an agent ID (e.g. cursor-workspace)" value="${escHtml(defaultMcpId)}">
+                        <button type="button" class="agent-combo-toggle" id="connectAgentComboToggle"
+                            aria-label="Show existing agents" tabindex="-1">▾</button>
+                        <div class="agent-combo-dropdown" id="connectAgentDropdown" role="listbox"></div>
+                    </div>
+                    <div class="helper-text">Pick an existing Memanto agent or type a new ID — it will be auto-created if it doesn't exist.</div>
                 </div>
                 <div class="form-group">
                     <label>Agents</label>
@@ -8038,8 +8063,123 @@
             </div>`;
             modal.addEventListener('click', e => { if (e.target === modal) closeConnectModal(); });
             document.body.appendChild(modal);
+            initConnectAgentCombobox();
             setTimeout(() => document.getElementById('connectPathInput')?.focus(), 50);
             browseTo(placeholder);
+        }
+
+        function getConnectAgentsList() {
+            const cached = Array.isArray(S._cachedAgents) ? [...S._cachedAgents] : [];
+            if (S.agentId && !cached.some(a => a && a.agent_id === S.agentId)) cached.unshift({ agent_id: S.agentId });
+            return cached.sort((a, b) => (a.agent_id === S.agentId ? 0 : 1) - (b.agent_id === S.agentId ? 0 : 1));
+        }
+
+        function initConnectAgentCombobox() {
+            const combo = document.getElementById('connectAgentCombobox');
+            const input = document.getElementById('connectMcpAgentIdInput');
+            const toggle = document.getElementById('connectAgentComboToggle');
+            const dropdown = document.getElementById('connectAgentDropdown');
+            const modal = document.getElementById('connectModal');
+            if (!combo || !input || !toggle || !dropdown) return;
+
+            let filterByQuery = false, highlightIdx = -1;
+            const isOpen = () => dropdown.classList.contains('open');
+            const closeDropdown = () => { dropdown.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); highlightIdx = -1; };
+            const selectAgent = id => { input.value = id; closeDropdown(); };
+            const updateHighlight = opts => {
+                opts.forEach((el, i) => {
+                    const active = i === highlightIdx;
+                    el.classList.toggle('active', active);
+                    el.setAttribute('aria-selected', active ? 'true' : 'false');
+                    if (active) el.scrollIntoView({ block: 'nearest' });
+                });
+                if (highlightIdx >= 0 && opts[highlightIdx]?.id) input.setAttribute('aria-activedescendant', opts[highlightIdx].id);
+                else input.removeAttribute('aria-activedescendant');
+            };
+
+            function renderOptions(preserveHighlightId) {
+                const allAgents = getConnectAgentsList();
+                const rawVal = (input.value || '').trim();
+                const q = filterByQuery ? rawVal.toLowerCase() : '';
+                const matched = q ? allAgents.filter(a => [a.agent_id, a.description, a.pattern].some(v => (v || '').toLowerCase().includes(q)))
+                    .sort((a, b) => ((a.agent_id || '').toLowerCase().startsWith(q) ? 0 : 1) - ((b.agent_id || '').toLowerCase().startsWith(q) ? 0 : 1)) : allAgents;
+                const exactExists = rawVal && allAgents.some(a => (a.agent_id || '').toLowerCase() === rawVal.toLowerCase());
+                const showCreate = rawVal && !exactExists && (filterByQuery || !allAgents.length);
+
+                if (!matched.length && !showCreate) {
+                    dropdown.innerHTML = `<div class="agent-combo-empty">No existing agents yet — type an ID to create one</div>`;
+                    highlightIdx = -1;
+                    input.removeAttribute('aria-activedescendant');
+                    return;
+                }
+                let html = matched.map((a, idx) => {
+                    const isActive = a.agent_id === S.agentId && S.config?.has_active_session;
+                    return `<div class="agent-combo-option" id="connectAgentOpt-${idx}" role="option" aria-selected="false" data-agent-id="${escHtml(a.agent_id)}">
+                        <div class="agent-combo-option-main">
+                            <span class="agent-combo-option-id">${escHtml(a.agent_id)}</span>
+                            ${isActive ? '<span class="badge badge-success">● active</span>' : ''}
+                            ${a.description ? `<span class="agent-combo-option-desc">${escHtml(a.description)}</span>` : ''}
+                        </div>
+                        ${a.pattern ? `<span class="badge badge-accent">${escHtml(a.pattern)}</span>` : ''}
+                    </div>`;
+                }).join('');
+                if (showCreate) {
+                    html += `<div class="agent-combo-option" id="connectAgentOpt-${matched.length}" role="option" aria-selected="false" data-agent-id="${escHtml(rawVal)}">
+                        <div class="agent-combo-option-main"><span style="color:var(--accent);font-weight:600">+ Use "${escHtml(rawVal)}"</span><span class="agent-combo-option-desc">Create new agent on install</span></div>
+                        <span class="badge badge-info">new</span>
+                    </div>`;
+                }
+                dropdown.innerHTML = html;
+                const opts = [...dropdown.querySelectorAll('.agent-combo-option')];
+                if (preserveHighlightId !== undefined) {
+                    highlightIdx = preserveHighlightId ? opts.findIndex(el => el.dataset.agentId === preserveHighlightId) : -1;
+                } else {
+                    if (highlightIdx >= opts.length) highlightIdx = opts.length - 1;
+                    if (highlightIdx < 0 && rawVal) highlightIdx = opts.findIndex(el => el.dataset.agentId === rawVal);
+                }
+                updateHighlight(opts);
+                opts.forEach((el, idx) => {
+                    el.addEventListener('mouseenter', () => { highlightIdx = idx; updateHighlight(opts); });
+                    el.addEventListener('mousedown', e => { e.preventDefault(); selectAgent(el.dataset.agentId); });
+                });
+            }
+
+            const openDropdown = useFilter => { filterByQuery = !!useFilter; renderOptions(); dropdown.classList.add('open'); input.setAttribute('aria-expanded', 'true'); };
+            const shouldFilterOnOpen = () => { const v = (input.value || '').trim(); return !!v && !getConnectAgentsList().some(a => a.agent_id === v); };
+
+            input.addEventListener('focus', () => openDropdown(shouldFilterOnOpen()));
+            input.addEventListener('click', () => { if (!isOpen()) openDropdown(shouldFilterOnOpen()); });
+            input.addEventListener('input', () => { highlightIdx = 0; openDropdown(true); });
+            input.addEventListener('blur', () => setTimeout(() => { if (!combo.contains(document.activeElement)) closeDropdown(); }, 120));
+            input.addEventListener('keydown', e => {
+                const opts = [...dropdown.querySelectorAll('.agent-combo-option')];
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (!isOpen()) openDropdown(false);
+                    else if (opts.length) { highlightIdx = (highlightIdx + (e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length; updateHighlight(opts); }
+                } else if (e.key === 'Enter' && isOpen()) {
+                    e.preventDefault();
+                    if (highlightIdx >= 0 && opts[highlightIdx]) selectAgent(opts[highlightIdx].dataset.agentId); else closeDropdown();
+                } else if (e.key === 'Escape' && isOpen()) {
+                    e.preventDefault(); e.stopPropagation(); closeDropdown();
+                }
+            });
+            toggle.addEventListener('mousedown', e => e.preventDefault());
+            toggle.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (isOpen() && !filterByQuery) closeDropdown(); else { highlightIdx = -1; openDropdown(false); input.focus(); } });
+            if (modal) modal.addEventListener('mousedown', e => { if (!combo.contains(e.target)) closeDropdown(); });
+
+            if (isBackendConfigured()) {
+                api('GET', '/api/v2/agents?include_counts=false').then(res => {
+                    const fresh = res.agents || (Array.isArray(res) ? res : null);
+                    if (!Array.isArray(fresh)) return;
+                    const prev = new Map((S._cachedAgents || []).map(a => [a.agent_id, a]));
+                    S._cachedAgents = fresh.map(a => ({ ...a, memory_count: a.memory_count ?? prev.get(a.agent_id)?.memory_count }));
+                    if (document.body.contains(dropdown) && isOpen()) {
+                        const prevHighlightId = dropdown.querySelectorAll('.agent-combo-option')[highlightIdx]?.dataset.agentId || '';
+                        renderOptions(prevHighlightId);
+                    }
+                }).catch(() => {});
+            }
         }
 
         // Folder browser inside the connect modal — server-side via /api/ui/browse.
