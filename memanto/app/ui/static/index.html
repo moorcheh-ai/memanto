@@ -8084,14 +8084,20 @@
 
             let filterByQuery = false, highlightIdx = -1;
             const isOpen = () => dropdown.classList.contains('open');
-            const closeDropdown = () => { dropdown.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); highlightIdx = -1; };
+            const closeDropdown = () => { dropdown.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); highlightIdx = -1; };
             const selectAgent = id => { input.value = id; closeDropdown(); };
-            const updateHighlight = opts => opts.forEach((el, i) => {
-                el.classList.toggle('active', i === highlightIdx);
-                if (i === highlightIdx) el.scrollIntoView({ block: 'nearest' });
-            });
+            const updateHighlight = opts => {
+                opts.forEach((el, i) => {
+                    const active = i === highlightIdx;
+                    el.classList.toggle('active', active);
+                    el.setAttribute('aria-selected', active ? 'true' : 'false');
+                    if (active) el.scrollIntoView({ block: 'nearest' });
+                });
+                if (highlightIdx >= 0 && opts[highlightIdx]?.id) input.setAttribute('aria-activedescendant', opts[highlightIdx].id);
+                else input.removeAttribute('aria-activedescendant');
+            };
 
-            function renderOptions() {
+            function renderOptions(preserveHighlightId) {
                 const allAgents = getConnectAgentsList();
                 const rawVal = (input.value || '').trim();
                 const q = filterByQuery ? rawVal.toLowerCase() : '';
@@ -8103,11 +8109,12 @@
                 if (!matched.length && !showCreate) {
                     dropdown.innerHTML = `<div class="agent-combo-empty">No existing agents yet — type an ID to create one</div>`;
                     highlightIdx = -1;
+                    input.removeAttribute('aria-activedescendant');
                     return;
                 }
-                let html = matched.map(a => {
+                let html = matched.map((a, idx) => {
                     const isActive = a.agent_id === S.agentId && S.config?.has_active_session;
-                    return `<div class="agent-combo-option" role="option" data-agent-id="${escHtml(a.agent_id)}">
+                    return `<div class="agent-combo-option" id="connectAgentOpt-${idx}" role="option" aria-selected="false" data-agent-id="${escHtml(a.agent_id)}">
                         <div class="agent-combo-option-main">
                             <span class="agent-combo-option-id">${escHtml(a.agent_id)}</span>
                             ${isActive ? '<span class="badge badge-success">● active</span>' : ''}
@@ -8117,15 +8124,19 @@
                     </div>`;
                 }).join('');
                 if (showCreate) {
-                    html += `<div class="agent-combo-option" role="option" data-agent-id="${escHtml(rawVal)}">
+                    html += `<div class="agent-combo-option" id="connectAgentOpt-${matched.length}" role="option" aria-selected="false" data-agent-id="${escHtml(rawVal)}">
                         <div class="agent-combo-option-main"><span style="color:var(--accent);font-weight:600">+ Use "${escHtml(rawVal)}"</span><span class="agent-combo-option-desc">Create new agent on install</span></div>
                         <span class="badge badge-info">new</span>
                     </div>`;
                 }
                 dropdown.innerHTML = html;
                 const opts = [...dropdown.querySelectorAll('.agent-combo-option')];
-                if (highlightIdx >= opts.length) highlightIdx = opts.length - 1;
-                if (highlightIdx < 0 && rawVal) highlightIdx = opts.findIndex(el => el.dataset.agentId === rawVal);
+                if (preserveHighlightId !== undefined) {
+                    highlightIdx = preserveHighlightId ? opts.findIndex(el => el.dataset.agentId === preserveHighlightId) : -1;
+                } else {
+                    if (highlightIdx >= opts.length) highlightIdx = opts.length - 1;
+                    if (highlightIdx < 0 && rawVal) highlightIdx = opts.findIndex(el => el.dataset.agentId === rawVal);
+                }
                 updateHighlight(opts);
                 opts.forEach((el, idx) => {
                     el.addEventListener('mouseenter', () => { highlightIdx = idx; updateHighlight(opts); });
@@ -8163,7 +8174,10 @@
                     if (!Array.isArray(fresh)) return;
                     const prev = new Map((S._cachedAgents || []).map(a => [a.agent_id, a]));
                     S._cachedAgents = fresh.map(a => ({ ...a, memory_count: a.memory_count ?? prev.get(a.agent_id)?.memory_count }));
-                    if (document.body.contains(dropdown) && isOpen()) renderOptions();
+                    if (document.body.contains(dropdown) && isOpen()) {
+                        const prevHighlightId = dropdown.querySelectorAll('.agent-combo-option')[highlightIdx]?.dataset.agentId || '';
+                        renderOptions(prevHighlightId);
+                    }
                 }).catch(() => {});
             }
         }
