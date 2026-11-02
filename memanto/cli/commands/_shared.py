@@ -66,7 +66,9 @@ config_app = typer.Typer(help="Configuration commands")
 schedule_app = typer.Typer(help="Daily summary scheduling commands")
 memory_app = typer.Typer(help="Memory management commands")
 policy_app = typer.Typer(help="Memory expiry policy commands")
-connect_app = typer.Typer(help="Connect MEMANTO to external tools")
+connect_app = typer.Typer(
+    help="Connect MEMANTO to your coding tools. With no tool name: interactive setup."
+)
 migrate_app = typer.Typer(
     help="Migrate memories from other providers (Mem0/Letta/Supermemory/Zep/Hindsight) into Memanto"
 )

@@ -22,29 +22,9 @@ def _switch_backend(backend: Backend) -> None:
     config_manager.clear_active_session()
 
 
-@app.command()
-def login(
-    key: str = typer.Option(
-        ...,
-        "--key",
-        prompt="Memanto Cloud API key",
-        hide_input=True,
-        help=f"Memanto Cloud API key (mk_...). Create one at {MEMANTO_CONSOLE_URL}/api-keys",
-    ),
-):
-    """Sign in to Memanto Cloud with an API key and make it the active backend.
-
-    The key is checked against Memanto Cloud, then stored in ~/.memanto/.env.
-    Your previous backend is remembered so 'memanto logout' can restore it.
-
-    Examples:
-        memanto login --key mk_...
-    """
+def _verify_key(key: str) -> dict | None:
+    """Check *key* with Memanto Cloud; return the ``/me`` account when the server has it."""
     from memanto.cli.client.hosted_client import HostedClient
-
-    key = key.strip()
-    if not key:
-        _error("API key must not be empty.")
 
     client = HostedClient(key, base_url=config_manager.get_memanto_api_url())
     try:
@@ -60,6 +40,47 @@ def login(
         )
     except Exception as e:
         _error(f"Could not verify the key with Memanto Cloud: {e}")
+    return account
+
+
+def _browser_sign_in() -> tuple[str, str | None]:
+    """Sign in through the console in a browser; return ``(device key, email)``."""
+    from memanto.cli.client.device_auth import DeviceLoginError, device_login
+
+    def show_code(code: dict, opened: bool) -> None:
+        console.print("To sign in, approve this computer in the Memanto console:")
+        console.print(f"  [{BRIGHT}]{code['verification_uri_complete']}[/{BRIGHT}]")
+        console.print(f"  Code: [bold]{code['user_code']}[/bold]")
+        if not opened:
+            console.print(
+                "[dim]Could not open a browser here. Open the link on any device.[/dim]"
+            )
+        console.print("[dim]Waiting for approval... (Ctrl-C to cancel)[/dim]")
+
+    try:
+        result = device_login(config_manager.get_memanto_api_url(), on_code=show_code)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Sign-in cancelled.[/yellow]")
+        raise typer.Exit(1)
+    except DeviceLoginError as e:
+        _error(str(e))
+    return result["api_key"], result.get("user_email")
+
+
+def sign_in(key: str | None = None) -> None:
+    """Sign in to Memanto Cloud (browser, or *key* when given) and make it the active backend.
+
+    The key is stored in ~/.memanto/.env. The previous backend is remembered
+    so 'memanto logout' can restore it. Exits on failure.
+    """
+    if key is not None:
+        key = key.strip()
+        if not key:
+            _error("API key must not be empty.")
+        account = _verify_key(key)
+        email = account.get("email") if account else None
+    else:
+        key, email = _browser_sign_in()
 
     current = config_manager.get_backend()
     if current != Backend.MEMANTO_CLOUD and config_manager.get("backend"):
@@ -68,16 +89,34 @@ def login(
     if current != Backend.MEMANTO_CLOUD:
         _switch_backend(Backend.MEMANTO_CLOUD)
 
-    who = (
-        f" as [bold]{account['email']}[/bold]"
-        if account and account.get("email")
-        else ""
-    )
+    who = f" as [bold]{email}[/bold]" if email else ""
     console.print(f"[green]Signed in to Memanto Cloud{who}.[/green]")
+
+
+@app.command()
+def login(
+    key: str | None = typer.Option(
+        None,
+        "--key",
+        help="Sign in with an API key (mk_...) instead of the browser, e.g. for CI. "
+        f"Create one at {MEMANTO_CONSOLE_URL}/api-keys",
+    ),
+):
+    """Sign in to Memanto Cloud and make it the active backend.
+
+    Opens the Memanto console in your browser to approve this computer; no key
+    to copy. Over SSH, open the printed link on any device. With --key, signs
+    in with an existing API key instead (headless / CI).
+    Your previous backend is remembered so 'memanto logout' can restore it.
+
+    Examples:
+        memanto login
+        memanto login --key mk_...
+    """
+    sign_in(key)
     console.print(
-        f"[dim]Next:[/dim] [{BRIGHT}]memanto connect <tool>[/{BRIGHT}] "
-        "[dim]or[/dim] "
-        f"[{BRIGHT}]memanto agent activate <agent>[/{BRIGHT}]"
+        f"[dim]Next:[/dim] [{BRIGHT}]memanto connect[/{BRIGHT}] "
+        "[dim]to set up your coding tools.[/dim]"
     )
 
 

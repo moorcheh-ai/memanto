@@ -8,6 +8,7 @@ import typer
 from rich.panel import Panel
 from rich.table import Table
 
+from memanto.app.clients.backend import Backend
 from memanto.cli.commands._shared import (
     AGENT_REGISTRY,
     BOLD_PRIMARY,
@@ -15,15 +16,47 @@ from memanto.cli.commands._shared import (
     PRIMARY,
     SUCCESS,
     _error,
+    _warn,
+    config_manager,
     connect_app,
     console,
     detect_agents_in_project,
     detect_memanto_installed,
     detect_memanto_installed_global,
+    get_client,
     install_agent,
     list_agents,
     remove_agent,
 )
+from memanto.cli.config.manager import MEMANTO_CONSOLE_URL
+
+DEFAULT_AGENT_ID = "my-agent"
+
+
+def _ensure_signed_in() -> None:
+    """With no backend configured yet, sign in to Memanto Cloud before connecting."""
+    if config_manager.is_configured():
+        return
+    from memanto.cli.commands.auth import sign_in
+
+    console.print("Not signed in yet. Signing in to Memanto Cloud first.\n")
+    sign_in()
+    console.print()
+
+
+def _activate_for_hooks(agent_id: str, replace_active: bool) -> None:
+    """Make *agent_id* the active agent, which the session-start hook syncs from.
+
+    Leaves an existing active agent alone unless *replace_active* is set.
+    """
+    active_agent_id, _ = config_manager.get_active_session()
+    if active_agent_id == agent_id or (active_agent_id and not replace_active):
+        return
+    try:
+        get_client().activate_agent(agent_id)
+        console.print(f"[dim]Active agent: {agent_id}[/dim]")
+    except Exception as e:
+        _warn(f"Could not activate agent '{agent_id}': {e}")
 
 
 def _print_install_result(result: dict, scope_label: str) -> None:
@@ -51,6 +84,7 @@ def _run_connect_for_agent(
             f"Unknown agent: {agent_name}",
             hint="Run 'memanto connect list' to see available agents.",
         )
+    _ensure_signed_in()
 
     if is_global:
         scope_label = f"Global (~/{agent.config_global_dir or ''})"
@@ -98,11 +132,17 @@ def _run_connect_for_agent(
                 "starting a session to pre-populate MEMORY.md.[/dim]"
             )
 
+        summary_parts.append(
+            f"\nOpen a new {agent.display_name} session to start using Memanto."
+        )
+
         console.print(
             Panel(
                 "\n".join(summary_parts), title="Setup Complete", border_style=SUCCESS
             )
         )
+        if mcp_agent_id:
+            _activate_for_hooks(mcp_agent_id, replace_active=False)
     else:
         console.print(f"\n[yellow]Completed with {len(errors)} error(s)[/yellow]")
 
@@ -717,3 +757,155 @@ def connect_multi(
             border_style=SUCCESS,
         )
     )
+
+
+# `memanto connect` with no tool: sign in, pick tools and an agent, connect.
+
+
+def _choose_tools(project_path: Path, assume_yes: bool) -> list[str]:
+    """Pick tools to connect; tools detected in the project are pre-selected."""
+    all_tools = list_agents()
+    detected = [a.name for a in detect_agents_in_project(project_path)]
+    if assume_yes:
+        if not detected:
+            _error(
+                "No coding tools detected in this project.",
+                hint="Name one instead, e.g. 'memanto connect claude-code'.",
+            )
+        return detected
+
+    console.print(f"[{BOLD_PRIMARY}]Which tools should use Memanto?[/{BOLD_PRIMARY}]")
+    for i, tool in enumerate(all_tools, 1):
+        mark = "[green]x[/green]" if tool.name in detected else " "
+        note = " [dim](detected)[/dim]" if tool.name in detected else ""
+        console.print(
+            f"  \\[{mark}] [{BRIGHT}]{i:2d}[/{BRIGHT}]. {tool.display_name}{note}"
+        )
+    default = ",".join(str(i) for i, t in enumerate(all_tools, 1) if t.name in detected)
+    console.print("[dim]Numbers separated by commas, or 'all'.[/dim]")
+    choice = typer.prompt("Tools", default=default or None).strip().lower()
+
+    if choice == "all":
+        return [t.name for t in all_tools]
+    selected: list[str] = []
+    for part in choice.split(","):
+        part = part.strip()
+        if part.isdigit() and 1 <= int(part) <= len(all_tools):
+            selected.append(all_tools[int(part) - 1].name)
+        elif part in AGENT_REGISTRY:
+            selected.append(part)
+        elif part:
+            console.print(f"[yellow]Skipping unknown choice: {part}[/yellow]")
+    return list(dict.fromkeys(selected))
+
+
+def _choose_agent(assume_yes: bool) -> str:
+    """Pick the Memanto agent the tools share; default is the most recently created."""
+    client = get_client()
+    agents = sorted(
+        client.list_agents().get("agents", []),
+        key=lambda a: a.get("created_at") or "",
+        reverse=True,
+    )
+    ids: list[str] = [str(a["agent_id"]) for a in agents if a.get("agent_id")]
+
+    if assume_yes and ids:
+        return ids[0]
+    if not assume_yes:
+        console.print()
+        console.print(
+            f"[{BOLD_PRIMARY}]Which agent should these tools share?[/{BOLD_PRIMARY}]"
+        )
+        for i, agent_id in enumerate(ids, 1):
+            console.print(f"  [{BRIGHT}]{i:2d}[/{BRIGHT}]. {agent_id}")
+        console.print(f"  [{BRIGHT}] n[/{BRIGHT}]. Create a new agent")
+        choice: str = typer.prompt("Agent", default="1" if ids else "n").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(ids):
+            return ids[int(choice) - 1]
+        if choice in ids:
+            return choice
+        if choice.lower() != "n":
+            _error(f"Unknown choice: {choice}")
+
+    name = (
+        DEFAULT_AGENT_ID
+        if assume_yes
+        else typer.prompt("New agent name", default=DEFAULT_AGENT_ID).strip()
+    )
+    if name in ids:
+        return name
+    try:
+        client.create_agent(name, pattern="tool")
+    except Exception as e:
+        _error(f"Could not create agent '{name}': {e}")
+    console.print(f"[green]Created agent '{name}'.[/green]")
+    return name
+
+
+@connect_app.callback(invoke_without_command=True)
+def connect_interactive(
+    ctx: typer.Context,
+    project_dir: str = typer.Option(
+        ".", "--project-dir", "-p", help="Target project directory"
+    ),
+    is_global: bool = typer.Option(False, "--global", "-g", help="Install globally"),
+    assume_yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Accept defaults: detected tools, most recent agent (or create 'my-agent').",
+    ),
+):
+    """Set up Memanto in your coding tools.
+
+    With no tool name: signs in to Memanto Cloud if needed, lets you pick the
+    tools (detected ones are pre-selected) and the agent they share, then
+    connects them all. Name a tool to connect just that one.
+
+    Examples:
+        memanto connect
+        memanto connect --yes
+        memanto connect claude-code
+    """
+    if ctx.invoked_subcommand is not None:
+        return
+
+    _ensure_signed_in()
+    project_path = Path(project_dir).resolve()
+    if not is_global and project_path == Path.home().resolve():
+        _error(
+            "Cannot install as a local project in your home directory.",
+            hint="Use the --global / -g flag instead to install globally.",
+        )
+
+    tools = _choose_tools(project_path, assume_yes)
+    if not tools:
+        console.print("[yellow]No tools selected.[/yellow]")
+        raise typer.Exit(0)
+    agent_id = _choose_agent(assume_yes)
+
+    console.print()
+    connected: list[str] = []
+    for name in tools:
+        tool = AGENT_REGISTRY[name]
+        result = install_agent(name, project_dir, is_global, mcp_agent_id=agent_id)
+        if result["errors"]:
+            console.print(f"  [red]x[/red] {tool.display_name}")
+            for err in result["errors"]:
+                console.print(f"    [red]{err}[/red]")
+        else:
+            console.print(f"  [green]✓[/green] {tool.display_name}")
+            connected.append(tool.display_name)
+
+    _activate_for_hooks(agent_id, replace_active=True)
+
+    if not connected:
+        _error("No tools were connected.")
+    lines = [f"[bold green]Connected to agent '{agent_id}'.[/bold green]\n"]
+    lines += [f"Open a new {display} session to start." for display in connected]
+    if config_manager.get_backend() == Backend.MEMANTO_CLOUD:
+        lines.append(
+            f"\n[dim]See your connections at {MEMANTO_CONSOLE_URL}/memory/connections[/dim]"
+        )
+    console.print()
+    console.print(Panel("\n".join(lines), title="Done", border_style=SUCCESS))

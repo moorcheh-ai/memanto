@@ -77,7 +77,11 @@ def _first_run_setup() -> None:
     console.print()
 
     backend = _prompt_backend_choice()
-    if backend == Backend.ON_PREM:
+    if backend == Backend.MEMANTO_CLOUD:
+        from memanto.cli.commands.auth import sign_in
+
+        sign_in()
+    elif backend == Backend.ON_PREM:
         _onprem_setup()
     else:
         _cloud_setup()
@@ -94,13 +98,20 @@ def _first_run_setup() -> None:
     _settings.MEMANTO_BACKEND = backend.value
     _singleton.reset_client()
 
-    backend_label = "Cloud" if backend == Backend.CLOUD else "On-Prem"
-    extras = (
-        "[dim]API Key:[/dim] [green]●[/green] configured"
-        if backend == Backend.CLOUD
-        else f"[dim]Server:[/dim] {config_manager.get_onprem_config()['url']}\n"
-        f"[dim]Embedding:[/dim] {config_manager.get_onprem_config()['embedding_provider'] or 'unknown'}"
-    )
+    backend_label = {
+        Backend.MEMANTO_CLOUD: "Memanto Cloud",
+        Backend.CLOUD: "Moorcheh key",
+        Backend.ON_PREM: "On-Prem",
+    }[backend]
+    if backend == Backend.MEMANTO_CLOUD:
+        extras = "[dim]Next:[/dim] memanto connect"
+    elif backend == Backend.CLOUD:
+        extras = "[dim]API Key:[/dim] [green]●[/green] configured"
+    else:
+        extras = (
+            f"[dim]Server:[/dim] {config_manager.get_onprem_config()['url']}\n"
+            f"[dim]Embedding:[/dim] {config_manager.get_onprem_config()['embedding_provider'] or 'unknown'}"
+        )
     console.print(
         Panel(
             "[bold green]Setup complete![/bold green]\n\n"
@@ -115,11 +126,25 @@ def _first_run_setup() -> None:
 
 
 def _prompt_backend_choice() -> Backend:
-    """Ask the user which backend they want. Default: Cloud."""
-    console.print(f"[{BOLD_BRIGHT}]Choose your backend[/{BOLD_BRIGHT}]")
+    """Ask the user which backend they want. Default: Memanto Cloud."""
+    console.print(f"[{BOLD_BRIGHT}]Where should Memanto keep memories?[/{BOLD_BRIGHT}]")
     console.print(
-        f"  [{BRIGHT}]1[/{BRIGHT}]  Moorcheh Cloud  "
-        "[dim](instant, needs API key, all features)[/dim]"
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Memanto Cloud  "
+        "[dim](recommended: sign in with your browser, nothing to install)[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]2[/{BRIGHT}]  Advanced  "
+        "[dim](your own Moorcheh API key, or self-hosted on-prem)[/dim]"
+    )
+    choice = typer.prompt("  Enter 1 or 2", default="1")
+    console.print()
+    if str(choice).strip() != "2":
+        return Backend.MEMANTO_CLOUD
+
+    console.print(f"[{BOLD_BRIGHT}]Advanced setup[/{BOLD_BRIGHT}]")
+    console.print(
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Moorcheh key  "
+        "[dim](instant, needs a Moorcheh API key)[/dim]"
     )
     console.print(
         f"  [{BRIGHT}]2[/{BRIGHT}]  Moorcheh On-Prem  "
