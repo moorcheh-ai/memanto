@@ -47,7 +47,11 @@ class _FakeSdkClient:
 @pytest.fixture
 def lifecycle(fake_api_key: str, monkeypatch: pytest.MonkeyPatch) -> MemantoLifecycle:
     _FakeSdkClient.instances.clear()
-    monkeypatch.setattr(lifecycle_module, "SdkClient", _FakeSdkClient)
+    monkeypatch.setattr(
+        lifecycle_module,
+        "build_client",
+        lambda moorcheh_api_key=None: _FakeSdkClient(moorcheh_api_key),
+    )
     return MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
 
 
@@ -228,7 +232,10 @@ def test_ensure_ready_uses_distinct_clients_per_agent(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Different MCP agents must not share SdkClient session state."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = set()
@@ -255,7 +262,10 @@ def test_repeated_agent_reuses_its_scoped_client(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Repeated calls for one agent should reuse that agent's client."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = set()
@@ -273,7 +283,10 @@ def test_missing_agent_is_created_with_scoped_client(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Auto-create should happen on the same scoped client returned later."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = {"agent-a"}
     FakeSdkClient.fail_activate_agents = set()
@@ -292,7 +305,10 @@ def test_failed_first_activation_does_not_cache_new_client(
     fake_api_key: str, monkeypatch
 ) -> None:
     """A failed readiness check should not leave a new scoped client cached."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = {"agent-a"}
@@ -316,7 +332,10 @@ def test_batch_remember_validates_before_lifecycle_side_effects(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Invalid batch payloads should fail before creating or activating agents."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = set()
@@ -341,7 +360,10 @@ def test_auto_create_is_limited_to_default_agent(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Only the configured default agent can be auto-created; arbitrary IDs fail."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = {"project-agent", "attacker-agent"}
     FakeSdkClient.fail_activate_agents = set()

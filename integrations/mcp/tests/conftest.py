@@ -21,6 +21,10 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         if var.startswith(("MOORCHEH_", "MEMANTO_")):
             monkeypatch.delenv(var, raising=False)
     monkeypatch.chdir(tmp_path)
+    # Credentials validation reads the backend from ~/.memanto/config.yaml;
+    # point home at an empty dir so the developer's real config is ignored.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
 
 @pytest.fixture

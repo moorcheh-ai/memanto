@@ -26,6 +26,7 @@ from memanto.app.utils.errors import (
     AgentNotFoundError,
     SessionError,
 )
+from memanto.cli.client.factory import build_client
 from memanto.cli.client.sdk_client import SdkClient
 
 if TYPE_CHECKING:
@@ -53,11 +54,15 @@ class MemantoLifecycle:
         """Initialize administrative and per-agent client state."""
 
         self._settings = settings
-        self._admin_client = SdkClient(api_key=settings.api_key_value())
+        self._admin_client = self._new_client()
         self._session_clients: dict[str, SdkClient] = {}
         self._agent_locks: dict[str, threading.Lock] = {}
         self._ensured_agents: set[str] = set()
         self._lock = threading.Lock()
+
+    def _new_client(self) -> SdkClient:
+        """A client for the backend in ``~/.memanto/config.yaml`` (shared CLI factory)."""
+        return build_client(moorcheh_api_key=self._settings.api_key_value() or None)
 
     # ------------------------------------------------------------------ #
     # Public API used by tools
@@ -115,7 +120,7 @@ class MemantoLifecycle:
                         f"({self._MAX_SESSION_CLIENTS}); reuse an existing agent_id "
                         "or restart the server to clear idle session clients."
                     )
-                client = SdkClient(api_key=self._settings.api_key_value())
+                client = self._new_client()
                 self._session_clients[agent_id] = client
                 self._agent_locks[agent_id] = threading.Lock()
             agent_lock = self._agent_locks[agent_id]
