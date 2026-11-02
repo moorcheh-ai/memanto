@@ -1,12 +1,14 @@
 """
 Backend selection and protocol for Memanto's Moorcheh client.
 
-Memanto can talk to two backends:
-- ``cloud``   - Moorcheh Cloud via the ``moorcheh_sdk`` package (API key).
+Memanto can talk to three backends:
+- ``cloud``   - Moorcheh Cloud via the ``moorcheh_sdk`` package (Moorcheh key).
 - ``on-prem`` - A local ``moorcheh`` server (Docker) via the ``moorcheh-client``
   package. No Moorcheh API key needed.
+- ``memanto-cloud`` - the hosted Memanto Cloud API (``mk_`` key). The CLI talks
+  to it through ``HostedClient`` over HTTP; it never reaches a Moorcheh client.
 
-Both clients expose the same ``namespaces / documents / similarity_search /
+The first two expose the same ``namespaces / documents / similarity_search /
 answer / files / vectors`` shape, so service code never branches on backend.
 """
 
@@ -20,6 +22,7 @@ class Backend(str, Enum):
 
     CLOUD = "cloud"
     ON_PREM = "on-prem"
+    MEMANTO_CLOUD = "memanto-cloud"
 
 
 def parse_backend(value: str | None) -> Backend:

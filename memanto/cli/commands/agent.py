@@ -180,6 +180,9 @@ def agent_delete(
     on_prem = config_manager.get_backend() == Backend.ON_PREM
     if delete_memories is not None:
         keep_cloud = not delete_memories
+    elif config_manager.get_backend() == Backend.MEMANTO_CLOUD:
+        # Memanto Cloud deletes an agent's memories with the agent.
+        keep_cloud = False
     elif on_prem:
         console.print()
         op = config_manager.get_onprem_config()

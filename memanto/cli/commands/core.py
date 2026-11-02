@@ -675,6 +675,34 @@ def main_callback(
 # ============================================================================
 
 
+def _add_memanto_cloud_rows(table: Table) -> None:
+    """Add Memanto Cloud API URL, account, plan and usage-left rows to *table*."""
+    from memanto.cli.client.hosted_client import HostedClient
+
+    table.add_row("Memanto Cloud API", config_manager.get_memanto_api_url())
+    try:
+        account = HostedClient(
+            config_manager.get_memanto_api_key() or "",
+            base_url=config_manager.get_memanto_api_url(),
+        ).get_account()
+    except Exception as e:
+        table.add_row("Account", f"[red]● {e}[/red]")
+        return
+    if account is None:
+        table.add_row("Account", "[dim]not reported by this server[/dim]")
+        return
+
+    table.add_row("Account", account.get("email") or account.get("user_id") or "—")
+    table.add_row("Plan", account.get("plan") or "—")
+    for meter, label in (("api_calls", "API calls"), ("agentic_ops", "Agentic ops")):
+        usage = (account.get("usage") or {}).get(meter) or {}
+        used, limit = usage.get("used", 0), usage.get("limit")
+        if limit is None:
+            table.add_row(f"{label} used", f"{used:,}")
+        else:
+            table.add_row(f"{label} left", f"{max(limit - used, 0):,} of {limit:,}")
+
+
 @app.command()
 def status():
     """Show comprehensive MEMANTO scenario dashboard.
@@ -735,8 +763,10 @@ def status():
     server_url = config_manager.get_server_url()
     if is_configured:
         cfg_table.add_row("Local REST API URL", server_url)
-        if backend == Backend.CLOUD:
+        if backend in (Backend.CLOUD, Backend.MEMANTO_CLOUD):
             cfg_table.add_row("API Key", "[green]● configured[/green]")
+        if backend == Backend.MEMANTO_CLOUD:
+            _add_memanto_cloud_rows(cfg_table)
     else:
         cfg_table.add_row("Local REST API URL", "[dim]not set[/dim]")
         cfg_table.add_row("API Key", "[red]● not configured[/red]")
