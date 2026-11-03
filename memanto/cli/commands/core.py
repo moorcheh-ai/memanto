@@ -671,6 +671,33 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
+# Commands that are themselves about Memanto Cloud: no notice after them.
+_CLOUD_NOTICE_SKIP = {"login", "logout", "use"}
+
+
+def _stdout_is_terminal() -> bool:
+    return sys.stdout is not None and sys.stdout.isatty()
+
+
+def _show_cloud_notice_once() -> None:
+    """Once per install, after a command on a local backend: point at Memanto Cloud.
+
+    Only on a terminal, so hook output (e.g. ``memanto memory sync`` injected
+    into a coding tool's context) never carries it.
+    """
+    if not _stdout_is_terminal() or config_manager.get("cloud_notice_shown"):
+        return
+    if not config_manager.get("backend"):
+        return
+    if config_manager.get_backend() == Backend.MEMANTO_CLOUD:
+        return
+    config_manager.set("cloud_notice_shown", True)
+    console.print(
+        "\n[dim]New: Memanto Cloud keeps your memories in sync across tools and "
+        f"computers. Try it: [/dim][{BRIGHT}]memanto login[/{BRIGHT}]"
+    )
+
+
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
@@ -683,6 +710,8 @@ def main_callback(
     ),
 ):
     """MEMANTO CLI - Memory that AI Agents Love!"""
+    if ctx.invoked_subcommand and ctx.invoked_subcommand not in _CLOUD_NOTICE_SKIP:
+        ctx.call_on_close(_show_cloud_notice_once)
     if ctx.invoked_subcommand is None:
         # Print logo
         print_logo()

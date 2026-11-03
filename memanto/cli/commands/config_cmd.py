@@ -70,7 +70,8 @@ def config_show():
 def config_backend(
     name: str = typer.Argument(
         None,
-        help="Backend to switch to: 'cloud' or 'on-prem'. Omit to show the current backend.",
+        help="Backend to switch to: 'cloud' (Moorcheh key), 'on-prem' or "
+        "'memanto-cloud'. Omit to show the current backend.",
     ),
 ):
     """Show or switch the active Moorcheh backend.
@@ -89,13 +90,22 @@ def config_backend(
         return
 
     target = name.strip().lower()
-    if target not in {"cloud", "on-prem"}:
+    if target not in {"cloud", "on-prem", "memanto-cloud"}:
         _error(
             f"Unknown backend '{name}'.",
-            hint="Use: memanto config backend cloud  OR  memanto config backend on-prem",
+            hint="Use: memanto config backend cloud | on-prem | memanto-cloud",
         )
 
-    target_backend = Backend(target)
+    switch_to_backend(Backend(target))
+
+
+def switch_to_backend(target_backend: Backend) -> None:
+    """Make *target_backend* active, running its setup (or sign-in) first if needed.
+
+    Clears the active agent session. Switching to Memanto Cloud remembers the
+    current backend so 'memanto logout' can restore it.
+    """
+    target = target_backend.value
     current = config_manager.get_backend()
     if target_backend == current:
         console.print(
@@ -104,7 +114,15 @@ def config_backend(
         return
 
     # Run the backend-specific setup if not already configured.
-    if target_backend == Backend.CLOUD:
+    if target_backend == Backend.MEMANTO_CLOUD:
+        if not config_manager.get_memanto_api_key():
+            from memanto.cli.commands.auth import sign_in
+
+            sign_in()  # Signs in, offers to move memories, and switches.
+            return
+        if config_manager.get("backend"):
+            config_manager.set("previous_backend", current.value)
+    elif target_backend == Backend.CLOUD:
         if not config_manager.get_api_key():
             from memanto.cli.commands.core import _cloud_setup
 

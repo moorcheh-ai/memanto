@@ -19,6 +19,7 @@ __all__ = ["build_client"]
 def build_client(
     config_manager: ConfigManager | None = None,
     moorcheh_api_key: str | None = None,
+    backend: Backend | None = None,
 ) -> SdkClient:
     """Return a client for the active backend.
 
@@ -26,6 +27,8 @@ def build_client(
         config_manager: Config to read; defaults to ``~/.memanto``.
         moorcheh_api_key: Moorcheh key to use on the ``cloud`` backend instead
             of the one in ``~/.memanto/.env`` (memanto-mcp passes its own).
+        backend: Build for this backend instead of the active one (moving
+            memories reads from the old backend after switching).
 
     Returns:
         ``HostedClient`` on ``memanto-cloud``, otherwise ``SdkClient``.
@@ -34,7 +37,7 @@ def build_client(
         AuthenticationError: If the active backend has no credentials.
     """
     cm = config_manager or ConfigManager()
-    backend = cm.get_backend()
+    backend = backend or cm.get_backend()
 
     if backend == Backend.MEMANTO_CLOUD:
         from memanto.cli.client.hosted_client import HostedClient

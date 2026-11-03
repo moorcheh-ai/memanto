@@ -347,6 +347,24 @@ class HostedClient(SdkClient):
             json=_compact({"memories": memories, "source": source}),
         )
 
+    def import_memories(
+        self, agent_id: str, memories: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Move up to 100 memories in from another store, keeping each ``created_at``.
+
+        Same result shape as ``batch_remember``; results are in input order.
+        Needs no active agent, and does not count against API calls.
+        """
+        if not memories:
+            raise ValueError("Batch must contain at least one memory")
+        if len(memories) > 100:
+            raise ValueError(f"Batch size {len(memories)} exceeds maximum of 100")
+        return self._request(
+            "POST",
+            self._agent_path(agent_id, "/batch-remember"),
+            json={"memories": memories, "import": True},
+        )
+
     def update_memory(
         self, agent_id: str, memory_id: str, updates: dict[str, Any]
     ) -> dict[str, Any]:

@@ -27,10 +27,14 @@ from typing import Any, cast
 
 import typer
 from rich.panel import Panel
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 from rich.table import Table
 
+from memanto.app.clients.backend import Backend
 from memanto.app.utils.errors import (
+    AuthenticationError,
     InvalidSessionTokenError,
+    MemoryOperationError,
     SessionError,
     SessionExpiredError,
 )
@@ -1298,3 +1302,156 @@ def migrate_langfuse(
             border_style=border,
         )
     )
+
+
+# Memanto Cloud: move a local backend's memories up
+
+_LOCAL_BACKEND_LABELS = {Backend.CLOUD: "Moorcheh key", Backend.ON_PREM: "On-Prem"}
+
+
+def run_cloud_move(source: Backend) -> None:
+    """Move every agent's memories from the local *source* backend to Memanto Cloud.
+
+    Resumable: re-running continues from ``~/.memanto/migrate/cloud-state.json``.
+    Local data is left as it is. Exits with an error if either side is unreachable.
+    """
+    from memanto.app.clients.moorcheh import moorcheh_client
+    from memanto.app.config import settings
+    from memanto.cli.client.factory import build_client
+    from memanto.cli.migrate import cloud_move
+
+    label = _LOCAL_BACKEND_LABELS[source]
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]Moving memories: {label} -> Memanto Cloud[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    # The local client reads the backend from process settings, which may
+    # already say memanto-cloud: point it at the source for the move.
+    saved_backend = settings.MEMANTO_BACKEND
+    settings.MEMANTO_BACKEND = source.value
+    moorcheh_client.reset_client()
+    try:
+        local = build_client(config_manager, backend=source)
+        hosted = build_client(config_manager, backend=Backend.MEMANTO_CLOUD)
+        with Progress(
+            TextColumn("  {task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=console,
+        ) as bar:
+            tasks: dict[str, Any] = {}
+
+            def on_progress(agent_id: str, done: int, total: int) -> None:
+                if agent_id not in tasks:
+                    tasks[agent_id] = bar.add_task(agent_id, total=total)
+                bar.update(tasks[agent_id], completed=done)
+
+            report = cloud_move.move_to_cloud(
+                local,
+                hosted,
+                cloud_move.state_path(config_manager.config_dir),
+                source.value,
+                on_progress=on_progress,
+            )
+    except (AuthenticationError, MemoryOperationError, ConnectionError, OSError) as e:
+        _error(
+            f"Could not move memories: {e}",
+            hint="Fix the problem, then run: memanto migrate to-cloud (it resumes)",
+        )
+    finally:
+        settings.MEMANTO_BACKEND = saved_backend
+        moorcheh_client.reset_client()
+
+    table = Table(show_header=True, header_style=BOLD_PRIMARY)
+    table.add_column("Local agent")
+    table.add_column("On Memanto Cloud")
+    table.add_column("Moved", justify="right")
+    table.add_column("Failed", justify="right")
+    for move in report.agents:
+        table.add_row(
+            move.local_id,
+            move.cloud_id or "",
+            str(move.moved + move.already_moved),
+            str(len(move.failed)),
+        )
+    console.print(table)
+
+    if report.empty:
+        console.print(
+            f"[dim]No memories in {label}, not moved: {', '.join(report.empty)}[/dim]"
+        )
+    failures = [(m.local_id, mid, why) for m in report.agents for mid, why in m.failed]
+    for agent_id, mid, why in failures[:5]:
+        console.print(f"  [red]Failed[/red] {agent_id}/{mid}: {why}")
+    if report.not_moved:
+        _warn(
+            f"Agent limit reached ({report.stop_reason}). Not moved: "
+            f"{', '.join(report.not_moved)}. Free up agents, then run: "
+            "memanto migrate to-cloud"
+        )
+    if failures:
+        console.print(
+            "[dim]Retry the failed memories with: memanto migrate to-cloud[/dim]"
+        )
+    elif not report.not_moved:
+        console.print(
+            "[green]All memories moved.[/green] [dim]Your local copy is unchanged.[/dim]"
+        )
+
+
+@migrate_app.command("to-cloud")
+def migrate_to_cloud(
+    source: str | None = typer.Option(
+        None,
+        "--from",
+        help="Local backend to move from: 'moorcheh' (Moorcheh key) or 'on-prem'. "
+        "Defaults to the one you used before signing in to Memanto Cloud.",
+    ),
+):
+    """Move your local memories to Memanto Cloud (resumable, keeps local data).
+
+    Each agent becomes a Memanto Cloud agent (named <id>-local if the id is
+    taken) and keeps its memories' type, tags, confidence, provenance and
+    creation time. Re-running after an interruption continues where it stopped
+    and never sends a memory twice. Needs 'memanto login' first.
+
+    Examples:
+        memanto migrate to-cloud
+        memanto migrate to-cloud --from on-prem
+    """
+    from memanto.cli.migrate import cloud_move
+
+    if not config_manager.get_memanto_api_key():
+        _error("Not signed in to Memanto Cloud.", hint="Run: memanto login")
+
+    if source is not None:
+        names = {"moorcheh": Backend.CLOUD, "on-prem": Backend.ON_PREM}
+        if source not in names:
+            _error(
+                f"Unknown backend '{source}'.",
+                hint="Use --from moorcheh or --from on-prem",
+            )
+        backend = names[source]
+    else:
+        saved = cloud_move.load_state(
+            cloud_move.state_path(config_manager.config_dir)
+        ).get("source_backend") or config_manager.get("previous_backend")
+        current = config_manager.get_backend()
+        if saved:
+            backend = Backend(saved)
+        elif current != Backend.MEMANTO_CLOUD:
+            backend = current
+        else:
+            _error(
+                "No local backend to move from.",
+                hint="Use --from moorcheh or --from on-prem",
+            )
+    if backend == Backend.MEMANTO_CLOUD:
+        _error(
+            "Already on Memanto Cloud.", hint="Use --from moorcheh or --from on-prem"
+        )
+
+    run_cloud_move(backend)
