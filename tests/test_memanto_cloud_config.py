@@ -96,10 +96,22 @@ def test_build_client_keeps_sdk_client_for_moorcheh_key(cm):
 
 
 @pytest.fixture
-def cli_cm(cm: ConfigManager, monkeypatch) -> ConfigManager:
+def signed_out() -> list[str]:
+    """Keys passed to POST /cli/logout, in order."""
+    return []
+
+
+@pytest.fixture
+def cli_cm(cm: ConfigManager, monkeypatch, signed_out: list[str]) -> ConfigManager:
     """Point the auth commands at the temp config and keep the real active agent untouched."""
     monkeypatch.setattr(auth_module, "config_manager", cm)
     monkeypatch.setattr(cm, "clear_active_session", lambda: None)
+
+    def sign_out_device(self: HostedClient) -> bool:
+        signed_out.append(self._http.headers["x-api-key"])
+        return True
+
+    monkeypatch.setattr(HostedClient, "sign_out_device", sign_out_device)
     return cm
 
 
@@ -158,6 +170,88 @@ def test_logout_restores_previous_backend(cli_cm):
     assert cli_cm.get_backend() == Backend.ON_PREM
     assert cli_cm.get("previous_backend") is None
     assert cli_cm.get_memanto_api_key() is None
+
+
+def test_logout_signs_computer_out_on_server(cli_cm, signed_out):
+    _write_config(cli_cm, "memanto:\n  backend: memanto-cloud\n")
+    cli_cm.set_memanto_api_key("mk_device")
+
+    result = CliRunner().invoke(app, ["logout"])
+
+    assert result.exit_code == 0, result.output
+    assert signed_out == ["mk_device"]
+    assert "still active" not in result.output
+
+
+def test_logout_keeps_console_key_active_and_says_so(cli_cm, monkeypatch):
+    _write_config(cli_cm, "memanto:\n  backend: memanto-cloud\n")
+    cli_cm.set_memanto_api_key("mk_console")
+    monkeypatch.setattr(HostedClient, "sign_out_device", lambda self: False)
+
+    result = CliRunner().invoke(app, ["logout"])
+
+    assert result.exit_code == 0, result.output
+    assert "still active" in result.output
+    assert cli_cm.get_memanto_api_key() is None
+
+
+@pytest.mark.parametrize(
+    ("error", "warned"),
+    [(AuthenticationError("gone"), False), (ConnectionError("offline"), True)],
+)
+def test_logout_clears_locally_even_if_server_call_fails(
+    cli_cm, monkeypatch, error, warned
+):
+    _write_config(cli_cm, "memanto:\n  backend: memanto-cloud\n")
+    cli_cm.set_memanto_api_key("mk_device")
+
+    def fail(self):
+        raise error
+
+    monkeypatch.setattr(HostedClient, "sign_out_device", fail)
+
+    result = CliRunner().invoke(app, ["logout"])
+
+    assert result.exit_code == 0, result.output
+    assert cli_cm.get_memanto_api_key() is None
+    assert ("still listed" in result.output) is warned
+
+
+def test_login_again_retires_previous_key(cli_cm, monkeypatch, signed_out):
+    _write_config(cli_cm, "memanto:\n  backend: memanto-cloud\n")
+    cli_cm.set_memanto_api_key("mk_old")
+    monkeypatch.setattr(HostedClient, "get_account", lambda self: {"email": "a@b.c"})
+
+    result = CliRunner().invoke(app, ["login", "--key", "mk_new"])
+
+    assert result.exit_code == 0, result.output
+    assert signed_out == ["mk_old"]
+    assert cli_cm.get_memanto_api_key() == "mk_new"
+
+
+def test_login_with_same_key_keeps_it(cli_cm, monkeypatch, signed_out):
+    cli_cm.set_memanto_api_key("mk_same")
+    monkeypatch.setattr(HostedClient, "get_account", lambda self: {"email": "a@b.c"})
+
+    result = CliRunner().invoke(app, ["login", "--key", "mk_same"])
+
+    assert result.exit_code == 0, result.output
+    assert signed_out == []
+
+
+def test_failed_login_keeps_previous_key(cli_cm, monkeypatch, signed_out):
+    cli_cm.set_memanto_api_key("mk_old")
+
+    def reject(self):
+        raise AuthenticationError("rejected")
+
+    monkeypatch.setattr(HostedClient, "get_account", reject)
+
+    result = CliRunner().invoke(app, ["login", "--key", "mk_bad"])
+
+    assert result.exit_code == 1
+    assert signed_out == []
+    assert cli_cm.get_memanto_api_key() == "mk_old"
 
 
 def test_logout_when_not_signed_in(cli_cm):

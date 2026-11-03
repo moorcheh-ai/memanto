@@ -143,6 +143,10 @@ class HostedClient(SdkClient):
         except ValueError:
             return response.text.strip() or f"HTTP {response.status_code}"
         if isinstance(body, dict):
+            # Public services nest errors: {"detail": {"error": ..., "message": ...}}.
+            detail = body.get("detail")
+            if isinstance(detail, dict):
+                body = detail
             for key in ("message", "error", "detail"):
                 value = body.get(key)
                 if isinstance(value, str) and value:
@@ -185,6 +189,18 @@ class HostedClient(SdkClient):
             return self._request("GET", "/me")
         except ValueError:
             return None
+
+    def sign_out_device(self) -> bool:
+        """``POST /cli/logout``: delete this key if ``memanto login`` created it.
+
+        Returns False, leaving the key active, when it was created in the console.
+        Raises AuthenticationError when the key is already signed out.
+        """
+        try:
+            self._request("POST", "/cli/logout")
+        except ValueError:
+            return False
+        return True
 
     # Agent Management
 

@@ -9,6 +9,7 @@ from memanto.app.utils.errors import AuthenticationError
 from memanto.cli.commands._shared import (
     BRIGHT,
     _error,
+    _warn,
     app,
     config_manager,
     console,
@@ -43,6 +44,23 @@ def _verify_key(key: str) -> dict | None:
     return account
 
 
+def _retire_key(key: str) -> str:
+    """Delete *key* on Memanto Cloud if 'memanto login' created it, so this computer leaves the Computers list.
+
+    Returns "signed_out", "console_key" (left active), "already" (no longer valid)
+    or "unreachable".
+    """
+    from memanto.cli.client.hosted_client import HostedClient
+
+    client = HostedClient(key, base_url=config_manager.get_memanto_api_url())
+    try:
+        return "signed_out" if client.sign_out_device() else "console_key"
+    except AuthenticationError:
+        return "already"
+    except Exception:
+        return "unreachable"
+
+
 def _browser_sign_in() -> tuple[str, str | None]:
     """Sign in through the console in a browser; return ``(device key, email)``."""
     from memanto.cli.client.device_auth import DeviceLoginError, device_login
@@ -71,8 +89,11 @@ def sign_in(key: str | None = None) -> None:
     """Sign in to Memanto Cloud (browser, or *key* when given) and make it the active backend.
 
     The key is stored in ~/.memanto/.env. The previous backend is remembered
-    so 'memanto logout' can restore it. Exits on failure.
+    so 'memanto logout' can restore it. A key from an earlier 'memanto login'
+    on this computer is deleted once the new one is in place, so signing in
+    again replaces this computer instead of adding another. Exits on failure.
     """
+    old_key = config_manager.get_memanto_api_key()
     if key is not None:
         key = key.strip()
         if not key:
@@ -91,6 +112,12 @@ def sign_in(key: str | None = None) -> None:
 
     who = f" as [bold]{email}[/bold]" if email else ""
     console.print(f"[green]Signed in to Memanto Cloud{who}.[/green]")
+
+    if old_key and old_key != key and _retire_key(old_key) == "unreachable":
+        console.print(
+            "[dim]Could not remove this computer's previous sign-in. "
+            f"Sign it out at {MEMANTO_CONSOLE_URL}/api-keys[/dim]"
+        )
 
 
 @app.command()
@@ -124,16 +151,21 @@ def login(
 def logout():
     """Sign out of Memanto Cloud and switch back to your previous backend.
 
-    Removes the Memanto Cloud key from ~/.memanto/.env. Memories stay on
-    Memanto Cloud.
+    Signs this computer out on Memanto Cloud (its key stops working and it
+    leaves the Computers list) and removes the key from ~/.memanto/.env.
+    A key created in the console (memanto login --key) stays active.
+    Memories stay on Memanto Cloud.
 
     Examples:
         memanto logout
     """
-    if not config_manager.get_memanto_api_key():
+    key = config_manager.get_memanto_api_key()
+    if not key:
         console.print("[yellow]Not signed in to Memanto Cloud.[/yellow]")
         raise typer.Exit(0)
 
+    with console.status("Signing out of Memanto Cloud...", spinner="dots"):
+        outcome = _retire_key(key)
     config_manager.clear_memanto_api_key()
     previous = config_manager.get("previous_backend")
     if config_manager.get_backend() == Backend.MEMANTO_CLOUD:
@@ -144,6 +176,16 @@ def logout():
         )
     else:
         console.print("[green]Signed out of Memanto Cloud.[/green]")
+    if outcome == "console_key":
+        console.print(
+            "[dim]The API key you signed in with is still active. "
+            f"Manage it at {MEMANTO_CONSOLE_URL}/api-keys[/dim]"
+        )
+    elif outcome == "unreachable":
+        _warn(
+            "Could not reach Memanto Cloud, so this computer is still listed. "
+            f"Sign it out at {MEMANTO_CONSOLE_URL}/api-keys"
+        )
     if previous is not None:
         data = config_manager.load_yaml()
         data.pop("previous_backend", None)

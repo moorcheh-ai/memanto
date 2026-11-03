@@ -350,6 +350,40 @@ def test_get_account_returns_none_when_server_has_no_me(client):
     assert client.get_account() is None
 
 
+def test_nested_detail_error_message_is_shown(client, api):
+    api.routes[("GET", "/agents")] = httpx.Response(
+        422,
+        json={
+            "detail": {"error": "ValidationError", "message": "agent_id is required"}
+        },
+    )
+
+    with pytest.raises(ValueError, match="agent_id is required"):
+        client.list_agents()
+
+
+def test_sign_out_device_deletes_key(client, api):
+    api.routes[("POST", "/cli/logout")] = {"message": "Signed out"}
+
+    assert client.sign_out_device() is True
+    assert api.requests[-1].headers["x-api-key"] == "mk_test"
+
+
+def test_sign_out_device_leaves_console_key(client, api):
+    api.routes[("POST", "/cli/logout")] = httpx.Response(
+        400, json={"detail": {"error": "NotADeviceKey", "message": "console key"}}
+    )
+
+    assert client.sign_out_device() is False
+
+
+def test_sign_out_device_with_dead_key_raises(client, api):
+    api.routes[("POST", "/cli/logout")] = httpx.Response(401, json={"detail": "no"})
+
+    with pytest.raises(AuthenticationError):
+        client.sign_out_device()
+
+
 def test_local_moorcheh_paths_are_blocked(client):
     with pytest.raises(
         MemoryOperationError, match="Not available on Memanto Cloud yet"
