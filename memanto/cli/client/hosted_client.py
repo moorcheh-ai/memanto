@@ -56,6 +56,14 @@ _RETRY_STATUSES = {429, 502, 503, 504}
 _ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
 
 
+class HostedRequestError(ValueError):
+    """A 400 / 404 / 422 from Memanto Cloud; ``status_code`` tells them apart."""
+
+    def __init__(self, message: str, status_code: int) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
 def _not_available(what: str) -> NoReturn:
     raise MemoryOperationError(f"Not available on Memanto Cloud yet: {what}")
 
@@ -170,7 +178,7 @@ class HostedClient(SdkClient):
         if status == 409:
             raise AgentAlreadyExistsError(message)
         if status in (400, 404, 422):
-            raise ValueError(message)
+            raise HostedRequestError(message, status)
         if status >= 500 or status == 429:
             raise ConnectionError(f"Memanto Cloud error (HTTP {status}): {message}")
         raise MemoryOperationError(f"Memanto Cloud error (HTTP {status}): {message}")
@@ -194,12 +202,15 @@ class HostedClient(SdkClient):
         """``POST /cli/logout``: delete this key if ``memanto login`` created it.
 
         Returns False, leaving the key active, when it was created in the console.
-        Raises AuthenticationError when the key is already signed out.
+        Raises AuthenticationError when the key is already signed out, and
+        HostedRequestError (404) when the server has no ``/cli/logout``.
         """
         try:
             self._request("POST", "/cli/logout")
-        except ValueError:
-            return False
+        except HostedRequestError as e:
+            if e.status_code == 400:
+                return False
+            raise
         return True
 
     # Agent Management

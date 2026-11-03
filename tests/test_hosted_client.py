@@ -377,6 +377,12 @@ def test_sign_out_device_leaves_console_key(client, api):
     assert client.sign_out_device() is False
 
 
+def test_sign_out_device_on_server_without_route_raises(client):
+    with pytest.raises(hosted_module.HostedRequestError) as info:
+        client.sign_out_device()
+    assert info.value.status_code == 404
+
+
 def test_sign_out_device_with_dead_key_raises(client, api):
     api.routes[("POST", "/cli/logout")] = httpx.Response(401, json={"detail": "no"})
 
