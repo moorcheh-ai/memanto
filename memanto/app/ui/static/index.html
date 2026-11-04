@@ -7003,6 +7003,21 @@
         // Same engine as `memanto migrate to-cloud`: resumable, local copy kept.
         async function loadCloudMove() {
             S.cloudMove = S.cloudMove || { includeExpired: false };
+            const cm = S.cloudMove;
+            // A move started earlier (or before a refresh) is still running:
+            // show its progress instead of re-reading the store it is using.
+            if (!cm.running) {
+                try {
+                    const job = await api('GET', '/api/ui/cloud-move/progress');
+                    if (job.running) {
+                        cm.running = true;
+                        cm.progress = job;
+                        renderCloudMoveInPlace();
+                        await followCloudMove();
+                        return;
+                    }
+                } catch (e) { /* progress is optional; fall through to the overview */ }
+            }
             try {
                 S.cloudMove.data = await api('GET', '/api/ui/cloud-move');
                 S.cloudMove.error = null;
@@ -7019,6 +7034,12 @@
 
         function renderCloudMoveCard() {
             const cm = S.cloudMove;
+            if (cm && cm.running && !cm.data) {
+                return `<div class="card" id="cloudMoveCard" style="margin-bottom:18px">
+                    <div class="card-label" style="margin-bottom:6px">Move to Memanto Cloud</div>
+                    ${renderCloudMoveProgress()}
+                </div>`;
+            }
             if (!cm || (!cm.data && !cm.error)) {
                 return `<div class="card" id="cloudMoveCard"><p style="font-size:13px;color:var(--text-dim);margin:0">Reading this computer's memories...</p></div>`;
             }
@@ -7073,7 +7094,39 @@
                 <div style="display:flex;justify-content:flex-end">
                     <button class="btn btn-primary" onclick="runCloudMove()" ${canMove ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>${cm.running ? 'Moving...' : 'Move to Memanto Cloud'}</button>
                 </div>
+                ${cm.running ? renderCloudMoveProgress() : ''}
                 ${cm.result ? renderCloudMoveResult(cm.result) : ''}
+            </div>`;
+        }
+
+        // Live progress while a move runs. Agents not started yet count with
+        // the sizes the overview read, so the bar covers the whole move.
+        function renderCloudMoveProgress() {
+            const cm = S.cloudMove;
+            const p = cm.progress || { agents: {} };
+            let planned = ((cm.data && cm.data.agents) || [])
+                .map(a => [a.agent_id, a.active + (cm.includeExpired ? a.expired : 0)])
+                .filter(([, n]) => n > 0);
+            if (!planned.length) planned = Object.entries(p.agents).map(([id, a]) => [id, a.total]);
+            let done = 0, total = 0;
+            for (const [id, n] of planned) {
+                const seen = p.agents[id];
+                done += seen ? seen.done : 0;
+                total += seen ? seen.total : n;
+            }
+            const pct = total ? Math.min(100, Math.round(done / total * 100)) : 0;
+            const started = Object.keys(p.agents).length;
+            const cur = p.current && p.agents[p.current];
+            const line = cur
+                ? `Moving <strong style="font-family:var(--font-mono);overflow-wrap:anywhere">${escHtml(p.current)}</strong> · ${cur.done} of ${cur.total} · agent ${started} of ${planned.length}`
+                : 'Reading memories from this computer...';
+            return `<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px" aria-live="polite">
+                <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:8px">
+                    <span>${line}</span>
+                    <span style="font-family:var(--font-mono);color:var(--text-dim);white-space:nowrap">${done} / ${total} · ${pct}%</span>
+                </div>
+                <div class="mig-bar ${started ? '' : 'indeterminate'}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="mig-bar-fill" style="${started ? `width:${pct}%` : ''}"></div></div>
+                <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Keep this page open. If it stops, moving again continues where it left off.</div>
             </div>`;
         }
 
@@ -7141,15 +7194,38 @@
             if (!ok) return;
             cm.running = true;
             cm.result = null;
+            cm.progress = null;
             renderCloudMoveInPlace();
             try {
-                cm.result = await api('POST', '/api/ui/cloud-move', { include_expired: cm.includeExpired });
-                toast('Memories moved to Memanto Cloud', 'success');
+                await api('POST', '/api/ui/cloud-move', { include_expired: cm.includeExpired });
             } catch (e) {
+                cm.running = false;
                 toast('Move failed: ' + e.message, 'error');
+                renderCloudMoveInPlace();
+                return;
+            }
+            await followCloudMove();
+        }
+
+        // The move runs on the server; poll its progress until it finishes.
+        async function followCloudMove() {
+            const cm = S.cloudMove;
+            let job = null;
+            try {
+                for (;;) {
+                    await new Promise(r => setTimeout(r, 800));
+                    job = await api('GET', '/api/ui/cloud-move/progress');
+                    cm.progress = job;
+                    if (!job.running) break;
+                    renderCloudMoveInPlace();
+                }
+                if (job.error) toast('Move failed: ' + job.error, 'error');
+                else toast('Memories moved to Memanto Cloud', 'success');
+            } catch (e) {
+                toast('Lost track of the move: ' + e.message, 'error');
             }
             cm.running = false;
-            const result = cm.result;
+            const result = job && job.report;
             await loadCloudMove();
             cm.result = result;
             renderCloudMoveInPlace();

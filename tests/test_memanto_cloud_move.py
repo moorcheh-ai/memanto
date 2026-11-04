@@ -549,6 +549,19 @@ def ui(cm, monkeypatch):
     return TestClient(app_), hosted, built
 
 
+def _ui_move(client, body: dict[str, Any]) -> dict[str, Any]:
+    """Start a move from the UI and poll until it finishes; returns the last progress."""
+    import time
+
+    assert client.post("/api/ui/cloud-move", json=body).json() == {"started": True}
+    for _ in range(200):
+        progress = client.get("/api/ui/cloud-move/progress").json()
+        if not progress["running"]:
+            return progress
+        time.sleep(0.02)
+    raise AssertionError("move did not finish")
+
+
 def test_ui_overview_counts_active_expired_and_moved(ui):
     client, _, built = ui
 
@@ -571,11 +584,11 @@ def test_ui_move_active_only_then_expired_too(ui, cm):
     client, hosted, _ = ui
     cm.set_memanto_api_key("mk_abc")
 
-    first = client.post("/api/ui/cloud-move", json={}).json()
+    first = _ui_move(client, {})["report"]
     assert first["expired_skipped"] == 1
     assert [i["content"] for i in hosted.imported["work-local"]] == ["memory w1"]
 
-    second = client.post("/api/ui/cloud-move", json={"include_expired": True}).json()
+    second = _ui_move(client, {"include_expired": True})["report"]
     assert second["agents"][0]["moved"] == 1
     assert second["agents"][0]["already_moved"] == 1
     assert hosted.imported["work-local"][1]["status"] == "expired"
@@ -601,7 +614,7 @@ def test_ui_moves_from_previous_backend_once_on_memanto_cloud(ui, cm, monkeypatc
         True,
     )
 
-    report = client.post("/api/ui/cloud-move", json={}).json()
+    report = _ui_move(client, {})["report"]
     assert report["agents"][0]["moved"] == 1
     assert hosted.imported["work-local"][0]["content"] == "memory w1"
     assert settings.MEMANTO_BACKEND == "memanto-cloud"  # restored after reading
@@ -701,3 +714,40 @@ def test_ui_browser_sign_in_never_replaces_an_account(ui, cm, device):
     assert response.status_code == 409
     assert device.instances == []
     assert cm.get_memanto_api_key() == "mk_existing"
+
+
+def test_ui_move_reports_progress_per_agent(ui, cm):
+    client, _, _ = ui
+    cm.set_memanto_api_key("mk_abc")
+
+    progress = _ui_move(client, {"include_expired": True})
+
+    assert progress["error"] is None
+    assert progress["current"] == "work"
+    assert progress["agents"] == {"work": {"done": 2, "total": 2}}
+
+
+def test_ui_move_needs_sign_in_and_reports_failures(ui, cm, monkeypatch):
+    client, hosted, _ = ui
+
+    assert client.post("/api/ui/cloud-move", json={}).status_code == 401
+
+    cm.set_memanto_api_key("mk_abc")
+    hosted.fail_on_batch = 1
+    progress = _ui_move(client, {})
+
+    assert progress["report"] is None
+    assert "network dropped" in progress["error"]
+    assert "continues where it stopped" in progress["error"]
+
+
+def test_ui_command_opens_console_on_memanto_cloud(cm, monkeypatch):
+    opened: list[str] = []
+    monkeypatch.setattr(core_module.webbrowser, "open_new", opened.append)
+    cm.set_backend(Backend.MEMANTO_CLOUD)
+
+    result = CliRunner().invoke(app, ["ui"])
+
+    assert result.exit_code == 0, result.output
+    assert opened == [f"{core_module.MEMANTO_CONSOLE_URL}/memory"]
+    assert "memanto ui --local" in result.output

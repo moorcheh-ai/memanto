@@ -39,6 +39,7 @@ from memanto.cli.commands._shared import (
     print_logo,
     show_welcome_banner,
 )
+from memanto.cli.config.manager import MEMANTO_CONSOLE_URL
 
 
 def _notify_exposed_deployment(host: str) -> None:
@@ -1184,8 +1185,29 @@ def _open_dashboard_window(url: str) -> None:
 def ui(
     host: str = typer.Option(None, "--host", help="Server host (defaults to config)"),
     port: int = typer.Option(None, "--port", help="Server port (defaults to config)"),
+    local: bool = typer.Option(
+        False,
+        "--local",
+        help="On Memanto Cloud: start this computer's dashboard anyway, at its "
+        "Migrate page, to move Memanto local memories up.",
+    ),
 ):
-    """Start MEMANTO server and open the Web UI Dashboard."""
+    """Start MEMANTO server and open the Web UI Dashboard.
+
+    On Memanto Cloud, opens the Memanto console instead: your memories live
+    there. 'memanto ui --local' still starts this computer's dashboard.
+    """
+    on_cloud = config_manager.get_backend() == Backend.MEMANTO_CLOUD
+    if on_cloud and not local:
+        url = f"{MEMANTO_CONSOLE_URL}/memory"
+        console.print(
+            f"You're on Memanto Cloud. Opening the console: [{BRIGHT}]{url}[/{BRIGHT}]"
+        )
+        console.print(
+            "[dim]To move memories from Memanto local: memanto ui --local[/dim]"
+        )
+        webbrowser.open_new(url)
+        return
 
     server_cfg = config_manager.get_server_config()
     host = host or server_cfg.get("url", "0.0.0.0")
@@ -1217,7 +1239,7 @@ def ui(
     port_in_use = sock.connect_ex(("localhost", port)) == 0
     sock.close()
 
-    ui_url = f"http://localhost:{port}/ui"
+    ui_url = f"http://localhost:{port}/ui" + ("/migrate" if on_cloud else "")
 
     if port_in_use:
         console.print(f"\n[green]Server already running on port {port}.[/green]")

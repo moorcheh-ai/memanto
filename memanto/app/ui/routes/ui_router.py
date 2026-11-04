@@ -2057,40 +2057,90 @@ def cloud_move_sign_in_poll(_: None = Depends(_require_local)):
     return {"status": "signed_in", "email": result.get("user_email")}
 
 
-@router.post("/api/ui/cloud-move")
-def cloud_move_run(body: dict, _: None = Depends(_require_local)):
-    """Move every agent's memories to Memanto Cloud; resumable, local data kept.
+# The running (or last) move, read by the progress endpoint. A move can take
+# minutes for large agents, so it runs on a thread and the page polls.
+_cloud_move_job: dict[str, Any] = {"running": False}
 
-    Body: ``{include_expired?: bool}`` (default: active memories only).
-    """
+
+def _run_cloud_move_job(source: Backend, include_expired: bool) -> None:
     from dataclasses import asdict
 
     from memanto.app.utils.errors import AuthenticationError
     from memanto.cli.client.factory import build_client
     from memanto.cli.migrate import cloud_move
 
-    source = _cloud_move_source()
-    with _cloud_move_lock, cloud_move.reading_from(source.value):
-        local = _cloud_move_local_client(source)
-        try:
+    job = _cloud_move_job
+
+    def on_progress(agent_id: str, done: int, total: int) -> None:
+        job["current"] = agent_id
+        job["agents"][agent_id] = {"done": done, "total": total}
+
+    try:
+        with _cloud_move_lock, cloud_move.reading_from(source.value):
+            local = _cloud_move_local_client(source)
             hosted = build_client(_config_manager, backend=Backend.MEMANTO_CLOUD)
             report = cloud_move.move_to_cloud(
                 local,
                 hosted,
                 cloud_move.state_path(_config_manager.config_dir),
                 source.value,
-                include_expired=body.get("include_expired") is True,
+                on_progress=on_progress,
+                include_expired=include_expired,
             )
-        except AuthenticationError as e:
-            raise HTTPException(status_code=401, detail=str(e))
-        except Exception as e:
-            raise HTTPException(
-                status_code=502,
-                detail=redact_sensitive_text(
-                    f"Move stopped: {e}. Moving again continues where it stopped."
-                ),
-            )
-    return asdict(report)
+        job["report"] = asdict(report)
+    except HTTPException as e:
+        job["error"] = str(e.detail)
+    except AuthenticationError as e:
+        job["error"] = str(e)
+    except Exception as e:
+        job["error"] = redact_sensitive_text(
+            f"Move stopped: {e}. Moving again continues where it stopped."
+        )
+    finally:
+        job["running"] = False
+
+
+@router.post("/api/ui/cloud-move")
+def cloud_move_run(body: dict, _: None = Depends(_require_local)):
+    """Start moving every agent's memories to Memanto Cloud; resumable, local data kept.
+
+    Body: ``{include_expired?: bool}`` (default: active memories only). Returns
+    at once; poll ``GET /api/ui/cloud-move/progress`` for progress and the result.
+    """
+    global _cloud_move_job
+
+    source = _cloud_move_source()
+    if not _config_manager.get_memanto_api_key():
+        raise HTTPException(status_code=401, detail="Sign in to Memanto Cloud first.")
+    if _cloud_move_job.get("running"):
+        raise HTTPException(status_code=409, detail="A move is already running.")
+    _cloud_move_job = {
+        "running": True,
+        "current": None,
+        "agents": {},
+        "report": None,
+        "error": None,
+    }
+    threading.Thread(
+        target=_run_cloud_move_job,
+        args=(source, body.get("include_expired") is True),
+        daemon=True,
+    ).start()
+    return {"started": True}
+
+
+@router.get("/api/ui/cloud-move/progress")
+def cloud_move_progress(_: None = Depends(_require_local)):
+    """The current or last move: ``running``, per-agent ``{done, total}``,
+    the agent being moved, and ``report`` or ``error`` once it finished."""
+    job = _cloud_move_job
+    return {
+        "running": bool(job.get("running")),
+        "current": job.get("current"),
+        "agents": dict(job.get("agents") or {}),
+        "report": job.get("report"),
+        "error": job.get("error"),
+    }
 
 
 def get_ui_router():

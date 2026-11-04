@@ -194,7 +194,8 @@ def move_to_cloud(
         hosted_client: ``HostedClient`` for Memanto Cloud.
         state_file: Progress file; reused when it belongs to the same source.
         source_backend: The local backend's config value, stored in the state.
-        on_progress: Called as ``(local agent id, sent so far, total)``.
+        on_progress: Called as ``(local agent id, sent so far, total)`` when
+            an agent starts and after each batch.
         include_expired: Also move expired memories (default: active only).
 
     Returns:
@@ -258,6 +259,8 @@ def move_to_cloud(
             pending.append((mid, item))
 
         total = move.already_moved + len(pending)
+        if on_progress:
+            on_progress(local_id, move.already_moved, total)
         for start in range(0, len(pending), BATCH_SIZE):
             chunk = pending[start : start + BATCH_SIZE]
             result = hosted_client.import_memories(
