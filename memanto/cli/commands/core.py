@@ -20,7 +20,7 @@ import typer
 from rich.panel import Panel
 from rich.table import Table
 
-from memanto.app.clients.backend import BACKEND_LABELS, Backend
+from memanto.app.clients.backend import BACKEND_LABELS, BACKEND_NAMES, Backend
 from memanto.app.config import is_loopback_host, settings
 from memanto.cli.commands._shared import (
     ACCENT,
@@ -794,7 +794,7 @@ def status():
     cfg_table.add_row("Config Dir", str(config_manager.config_dir))
 
     backend = config_manager.get_backend()
-    cfg_table.add_row("Backend", backend.value)
+    cfg_table.add_row("Backend", BACKEND_NAMES[backend])
     if backend == Backend.ON_PREM:
         op = config_manager.get_onprem_config()
         cfg_table.add_row("On-Prem URL", op.get("url", ""))

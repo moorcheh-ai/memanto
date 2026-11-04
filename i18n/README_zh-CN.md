@@ -94,7 +94,7 @@ macOS、Linux、Windows。`memanto ui` 打开覆盖整个资产的本地仪表�
 
 **它可以迁移。** `memanto migrate` 可从 Mem0、Letta、Supermemory、Zep、Hindsight 或任意 OKF 包导入，反向同样适用。OKF 是任何框架或供应商（包括我们的竞争对手）都能实现的开放交换格式。
 
-**它在你的机器上运行。** 本地 Docker + Ollama，无需账户和 API 密钥，内容不会离开你的基础设施；也可以使用免费云或自托管。`memanto config backend` 一条命令切换，资产随你而行。
+**它在你的机器上运行。** 本地 Docker + Ollama，无需账户和 API 密钥，内容不会离开你的基础设施；也可以使用免费云或自托管。`memanto use` 一条命令切换，资产随你而行。
 
 **MIT。** 没有等待锁住有用部分的 open-core 层，没有功能开关、席位限制或突然撤走的服务。
 
@@ -230,7 +230,7 @@ memanto           # 选择 "Cloud"；粘贴免费 API 密钥
 ```
 免费密钥位于 [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)：100K 次免费操作。
 
-随时切换：`memanto config backend`
+随时切换：`memanto use`
 </details>
 
 <details><summary><strong>架构</strong></summary>

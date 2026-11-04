@@ -90,7 +90,7 @@ macOS、Linux、Windows に対応。`memanto ui` は資産全体を閲覧、検�
 
 **移動します。** `memanto migrate` は Mem0、Letta、Supermemory、Zep、Hindsight、または任意の OKF バンドルからインポートし、逆方向にも動作します。OKF は競合他社を含む誰もが実装できるオープンな交換形式です。
 
-**自分のマシンで動きます。** ローカル Docker + Ollama ならアカウントも API キーも不要で、インフラ外へ出ません。無料クラウドや自前ホストも選べ、`memanto config backend` で切り替え、資産を持ち運べます。
+**自分のマシンで動きます。** ローカル Docker + Ollama ならアカウントも API キーも不要で、インフラ外へ出ません。無料クラウドや自前ホストも選べ、`memanto use` で切り替え、資産を持ち運べます。
 
 **MIT。** open-core の壁、機能フラグ、席数制限、突然の撤回はありません。ロックするものがないためロックインもありません。
 
@@ -221,7 +221,7 @@ memanto           # "Cloud" を選択。無料 API キーを貼り付け
 ```
 無料キーは [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) から。100K 回の無料操作。
 
-いつでも切り替え：`memanto config backend`
+いつでも切り替え：`memanto use`
 </details>
 
 <details><summary><strong>アーキテクチャ</strong></summary>

@@ -1,17 +1,14 @@
 """
-MEMANTO CLI - Config commands (show, backend).
+MEMANTO CLI - Config commands (show) and backend switching for `memanto use`.
 """
 
-import typer
 from rich.panel import Panel
 from rich.table import Table
 
-from memanto.app.clients.backend import Backend
+from memanto.app.clients.backend import BACKEND_NAMES, Backend
 from memanto.cli.commands._shared import (
     BRIGHT,
-    PRIMARY,
     SUCCESS,
-    _error,
     config_app,
     config_manager,
     console,
@@ -34,7 +31,7 @@ def config_show():
     table.add_column("Value", style="white")
 
     backend = config_manager.get_backend()
-    table.add_row("Backend", backend.value)
+    table.add_row("Backend", BACKEND_NAMES[backend])
     if backend == Backend.ON_PREM:
         op = config_manager.get_onprem_config()
         table.add_row("On-Prem URL", op.get("url", ""))
@@ -66,46 +63,13 @@ def config_show():
     console.print(table)
 
 
-@config_app.command("backend")
-def config_backend(
-    name: str = typer.Argument(
-        None,
-        help="Backend to switch to: 'cloud' (Moorcheh key), 'on-prem' or "
-        "'memanto-cloud'. Omit to show the current backend.",
-    ),
-):
-    """Show or switch the active Moorcheh backend.
-
-    Switching to a backend that has never been set up will run its setup flow.
-    Switching always clears the active agent session - cloud and on-prem store
-    data in separate directories so sessions do not cross over.
-    """
-    if name is None:
-        current = config_manager.get_backend()
-        body = f"Active backend: [{BRIGHT}]{current.value}[/{BRIGHT}]"
-        if current == Backend.ON_PREM:
-            op = config_manager.get_onprem_config()
-            body += f"\nServer: {op.get('url', '')}\nEmbedding: {op.get('embedding_provider') or '—'}"
-        console.print(Panel(body, title="Backend", border_style=PRIMARY))
-        return
-
-    target = name.strip().lower()
-    if target not in {"cloud", "on-prem", "memanto-cloud"}:
-        _error(
-            f"Unknown backend '{name}'.",
-            hint="Use: memanto config backend cloud | on-prem | memanto-cloud",
-        )
-
-    switch_to_backend(Backend(target))
-
-
 def switch_to_backend(target_backend: Backend) -> None:
     """Make *target_backend* active, running its setup (or sign-in) first if needed.
 
     Clears the active agent session. Switching to Memanto Cloud remembers the
     current backend so 'memanto logout' can restore it.
     """
-    target = target_backend.value
+    target = BACKEND_NAMES[target_backend]
     current = config_manager.get_backend()
     if target_backend == current:
         console.print(
@@ -146,7 +110,7 @@ def switch_to_backend(target_backend: Backend) -> None:
 
     console.print(
         Panel(
-            f"[bold green]Switched backend to {target_backend.value}.[/bold green]\n"
+            f"[bold green]Switched backend to {target}.[/bold green]\n"
             f"[dim]Active session was cleared.[/dim]",
             title="Backend",
             border_style=SUCCESS,

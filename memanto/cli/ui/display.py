@@ -14,7 +14,7 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from memanto.app.clients.backend import Backend
+from memanto.app.clients.backend import BACKEND_NAMES, Backend
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.ui.theme import (
     BOLD_BRIGHT,
@@ -122,7 +122,7 @@ def show_welcome_banner(config_manager: ConfigManager) -> None:
     status_table.add_column("Value")
 
     # Backend
-    status_table.add_row("  Backend", backend.value)
+    status_table.add_row("  Backend", BACKEND_NAMES[backend])
     if backend == Backend.ON_PREM:
         op = config_manager.get_onprem_config()
         status_table.add_row("  On-Prem URL", op.get("url", ""))

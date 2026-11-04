@@ -751,3 +751,24 @@ def test_ui_command_opens_console_on_memanto_cloud(cm, monkeypatch):
     assert result.exit_code == 0, result.output
     assert opened == [f"{core_module.MEMANTO_CONSOLE_URL}/memory"]
     assert "memanto ui --local" in result.output
+
+
+def test_switching_names_the_backend_as_moorcheh_cloud(cm):
+    cm.set_backend(Backend.MEMANTO_CLOUD)
+    cm.set_api_key("mk_moorcheh")
+
+    switched = CliRunner().invoke(app, ["use", "moorcheh"])
+    again = CliRunner().invoke(app, ["use", "moorcheh-cloud"])
+    shown = CliRunner().invoke(app, ["config", "show"])
+
+    assert switched.exit_code == 0, switched.output
+    assert "Switched backend to moorcheh-cloud." in switched.output
+    assert cm.get_backend() == Backend.CLOUD
+    assert "Backend is already 'moorcheh-cloud'." in again.output
+    assert "moorcheh-cloud" in shown.output
+
+
+def test_config_backend_command_is_gone(cm):
+    result = CliRunner().invoke(app, ["config", "backend"])
+
+    assert result.exit_code != 0

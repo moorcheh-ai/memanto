@@ -106,7 +106,7 @@ This is the part that matters in two years, and it's the part every platform-nat
 
 **It moves.** `memanto migrate` imports from Mem0, Letta, Supermemory, Zep, Hindsight, or any OKF bundle. The same command works in reverse. OKF is an open interchange format any framework or vendor can implement — including ours' competitors, deliberately.
 
-**It runs on your machine.** Local Docker + Ollama, no account, no API key, nothing leaves your infrastructure. Or free cloud, or your own hosting. `memanto config backend` switches between them in one command, and the estate comes with you.
+**It runs on your machine.** Local Docker + Ollama, no account, no API key, nothing leaves your infrastructure. Or free cloud, or your own hosting. `memanto use` switches between them in one command, and the estate comes with you.
 
 **MIT.** No open-core tier waiting to gate the useful half. No feature flags, no seat limits, no rug pull.
 
@@ -264,7 +264,7 @@ memanto           # choose "Cloud" — paste your free API key
 
 Free key at [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) — 100K free operations.
 
-Switch any time: `memanto config backend`
+Switch any time: `memanto use moorcheh | on-prem | cloud`
 
 </details>
 

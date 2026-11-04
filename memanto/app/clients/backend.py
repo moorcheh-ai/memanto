@@ -25,6 +25,14 @@ class Backend(str, Enum):
     MEMANTO_CLOUD = "memanto-cloud"
 
 
+# Short name shown wherever the CLI prints the backend. The config value stays
+# as it is ("cloud" means Moorcheh Cloud), so existing configs keep working.
+BACKEND_NAMES = {
+    Backend.MEMANTO_CLOUD: "memanto-cloud",
+    Backend.CLOUD: "moorcheh-cloud",
+    Backend.ON_PREM: "moorcheh-on-prem",
+}
+
 # How each backend is named to users (CLI and local UI).
 BACKEND_LABELS = {
     Backend.MEMANTO_CLOUD: "Memanto Cloud",

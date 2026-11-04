@@ -6,7 +6,7 @@ import sys
 
 import typer
 
-from memanto.app.clients.backend import BACKEND_LABELS, Backend
+from memanto.app.clients.backend import BACKEND_LABELS, BACKEND_NAMES, Backend
 from memanto.app.utils.errors import AuthenticationError
 from memanto.cli.commands._shared import (
     BRIGHT,
@@ -228,7 +228,7 @@ def logout():
         restored = Backend(previous) if previous else Backend.CLOUD
         _switch_backend(restored)
         console.print(
-            f"[green]Signed out of Memanto Cloud.[/green] Backend: {restored.value}"
+            f"[green]Signed out of Memanto Cloud.[/green] Backend: {BACKEND_NAMES[restored]}"
         )
     else:
         console.print("[green]Signed out of Memanto Cloud.[/green]")
@@ -253,6 +253,8 @@ _USE_TARGETS = {
     "moorcheh": Backend.CLOUD,
     "on-prem": Backend.ON_PREM,
     "local": Backend.ON_PREM,
+    # The names the CLI prints for each backend work too.
+    **{name: backend for backend, name in BACKEND_NAMES.items()},
 }
 
 

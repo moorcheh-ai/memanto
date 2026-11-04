@@ -5443,7 +5443,7 @@
                     toast('No sessions found on that day.', 'warning');
                     loadDaySummaryPanel(key);
                 } else if (status === 'skipped_on_prem') {
-                    toast('Daily summary is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    toast('Daily summary is cloud-only — switch backend with: memanto use moorcheh', 'error');
                     loadDaySummaryPanel(key);
                 } else {
                     toast(`Regeneration finished with status: ${status}`, 'warning');
@@ -5472,7 +5472,7 @@
                     toast('No sessions found on that day.', 'warning');
                     if (btn) { btn.disabled = false; btn.innerHTML = prev; }
                 } else if (status === 'skipped_on_prem') {
-                    toast('Daily summary is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    toast('Daily summary is cloud-only — switch backend with: memanto use moorcheh', 'error');
                     if (btn) { btn.disabled = false; btn.innerHTML = prev; }
                 } else {
                     toast(`Summary finished with status: ${status}`, 'warning');
@@ -5601,7 +5601,7 @@
                 <tr><td>Embedding</td><td>${onPremCfg.embedding_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.embedding_provider)}${onPremCfg.embedding_model ? ' / ' + escHtml(onPremCfg.embedding_model) : ''}</code>` : '—'}</td></tr>
                 <tr><td>LLM</td><td>${onPremCfg.llm_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.llm_provider)}${onPremCfg.llm_model ? ' / ' + escHtml(onPremCfg.llm_model) : ''}</code>` : '—'}</td></tr>
                 </tbody></table>
-                <p style="color:var(--text-dim);font-size:12px;margin-top:8px">Switch backends via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto config backend cloud</code></p>
+                <p style="color:var(--text-dim);font-size:12px;margin-top:8px">Switch backends via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto use moorcheh</code></p>
             </div>
             ` : `
             <div class="panel">
@@ -6053,7 +6053,7 @@
                 } else if (status === 'no_sessions') {
                     toast('No sessions found for the selected date.', 'warning');
                 } else if (status === 'skipped_on_prem') {
-                    toast('Conflict detection is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    toast('Conflict detection is cloud-only — switch backend with: memanto use moorcheh', 'error');
                 } else {
                     toast(`Conflict detection finished with status: ${status}`, 'warning');
                 }

@@ -374,7 +374,7 @@ def _update_onprem_answer(ans: dict) -> None:
     if not embedding_provider or not embedding_model:
         raise HTTPException(
             status_code=400,
-            detail="On-prem not onboarded — run `memanto config backend on-prem` first.",
+            detail="On-prem not onboarded — run `memanto use on-prem` first.",
         )
 
     # Provider may be omitted (model-only change); reuse the currently
@@ -517,7 +517,7 @@ async def _do_restart_onprem_backend(_asyncio, subprocess, _httpx):
     if not embedding_provider or not embedding_model:
         raise HTTPException(
             status_code=400,
-            detail="On-prem not onboarded — run `memanto config backend on-prem` first.",
+            detail="On-prem not onboarded — run `memanto use on-prem` first.",
         )
     embedding_key = _recover_moorcheh_api_key("embedding", embedding_provider)
 
