@@ -3,9 +3,10 @@ Move memories from a local backend (Moorcheh key or on-prem) to Memanto Cloud.
 
 Used by ``memanto login`` ("Move memories") and ``memanto migrate to-cloud``.
 For each local agent: create a Memanto Cloud agent (``<id>-local`` when the id is
-taken), read every active memory from the local store, and send them in batches
-of 100 with ``import: true`` so each keeps its type, tags, confidence,
-provenance, source and ``created_at``. Local data is never changed or deleted.
+taken), read its memories from the local store (active only, or also expired
+ones when asked), and send them in batches of 100 with ``import: true`` so each
+keeps its type, tags, confidence, provenance, source, ``created_at`` and, for an
+expired memory, its expiry. Local data is never changed or deleted.
 
 Progress is saved after every batch to ``~/.memanto/migrate/cloud-state.json``:
 
@@ -83,9 +84,11 @@ class AgentMove:
 @dataclass
 class MoveReport:
     agents: list[AgentMove] = field(default_factory=list)
-    # Local agents with no active memories in this store: no cloud agent created.
+    # Local agents with nothing to move in this store: no cloud agent created.
     # (The local agent registry is shared by all backends.)
     empty: list[str] = field(default_factory=list)
+    # Expired memories left behind because only active ones were moved.
+    expired_skipped: int = 0
     # Local agents not moved because the plan's agent limit was reached.
     not_moved: list[str] = field(default_factory=list)
     stop_reason: str | None = None
@@ -105,13 +108,18 @@ def to_import_item(memory: dict[str, Any]) -> dict[str, Any] | None:
             item[key] = value
     if memory.get("created_at"):
         item["created_at"] = memory["created_at"]
+    if memory.get("status") == "expired":
+        item["status"] = "expired"
+        for key in ("expired_at", "expired_by"):
+            if memory.get(key):
+                item[key] = memory[key]
     return item
 
 
 def read_local_memories(local_client: Any, agent_id: str) -> list[dict[str, Any]]:
-    """Every active memory of a local agent, oldest first (no session needed)."""
+    """Every memory of a local agent, active and expired, oldest first (no session needed)."""
     result = local_client._get_read_service().search_recent(
-        agent_id=agent_id, limit=None, status="active"
+        agent_id=agent_id, limit=None, status="all"
     )
     memories: list[dict[str, Any]] = list(result.get("results", []))
     memories.reverse()
@@ -139,8 +147,9 @@ def move_to_cloud(
     state_file: Path,
     source_backend: str,
     on_progress: Callable[[str, int, int], None] | None = None,
+    include_expired: bool = False,
 ) -> MoveReport:
-    """Move every local agent's active memories to Memanto Cloud; resumable.
+    """Move every local agent's memories to Memanto Cloud; resumable.
 
     Args:
         local_client: ``SdkClient`` for the local backend (read only).
@@ -148,6 +157,7 @@ def move_to_cloud(
         state_file: Progress file; reused when it belongs to the same source.
         source_backend: The local backend's config value, stored in the state.
         on_progress: Called as ``(local agent id, sent so far, total)``.
+        include_expired: Also move expired memories (default: active only).
 
     Returns:
         What was moved, what failed, and agents left behind by the plan limit.
@@ -164,6 +174,10 @@ def move_to_cloud(
 
     for local_id in local_ids:
         memories = read_local_memories(local_client, local_id)
+        if not include_expired:
+            active = [m for m in memories if m.get("status") != "expired"]
+            report.expired_skipped += len(memories) - len(active)
+            memories = active
         entry = state["agents"].get(local_id)
         if entry is None:
             if not memories:

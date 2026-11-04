@@ -30,7 +30,7 @@ from rich.panel import Panel
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 from rich.table import Table
 
-from memanto.app.clients.backend import Backend
+from memanto.app.clients.backend import BACKEND_LABELS, Backend
 from memanto.app.utils.errors import (
     AuthenticationError,
     InvalidSessionTokenError,
@@ -1306,11 +1306,11 @@ def migrate_langfuse(
 
 # Memanto Cloud: move a local backend's memories up
 
-_LOCAL_BACKEND_LABELS = {Backend.CLOUD: "Moorcheh key", Backend.ON_PREM: "On-Prem"}
 
-
-def run_cloud_move(source: Backend) -> None:
+def run_cloud_move(source: Backend, include_expired: bool = False) -> None:
     """Move every agent's memories from the local *source* backend to Memanto Cloud.
+
+    Moves active memories only unless *include_expired*.
 
     Resumable: re-running continues from ``~/.memanto/migrate/cloud-state.json``.
     Local data is left as it is. Exits with an error if either side is unreachable.
@@ -1320,7 +1320,7 @@ def run_cloud_move(source: Backend) -> None:
     from memanto.cli.client.factory import build_client
     from memanto.cli.migrate import cloud_move
 
-    label = _LOCAL_BACKEND_LABELS[source]
+    label = BACKEND_LABELS[source]
     console.print(
         Panel.fit(
             f"[{BOLD_PRIMARY}]Moving memories: {label} -> Memanto Cloud[/{BOLD_PRIMARY}]",
@@ -1355,6 +1355,7 @@ def run_cloud_move(source: Backend) -> None:
                 cloud_move.state_path(config_manager.config_dir),
                 source.value,
                 on_progress=on_progress,
+                include_expired=include_expired,
             )
     except (AuthenticationError, MemoryOperationError, ConnectionError, OSError) as e:
         _error(
@@ -1381,7 +1382,12 @@ def run_cloud_move(source: Backend) -> None:
 
     if report.empty:
         console.print(
-            f"[dim]No memories in {label}, not moved: {', '.join(report.empty)}[/dim]"
+            f"[dim]Nothing to move in {label}, not moved: {', '.join(report.empty)}[/dim]"
+        )
+    if report.expired_skipped:
+        console.print(
+            f"[dim]{report.expired_skipped} expired memories stay local. "
+            "To move them too: memanto migrate to-cloud --include-expired[/dim]"
         )
     failures = [(m.local_id, mid, why) for m in report.agents for mid, why in m.failed]
     for agent_id, mid, why in failures[:5]:
@@ -1407,20 +1413,27 @@ def migrate_to_cloud(
     source: str | None = typer.Option(
         None,
         "--from",
-        help="Local backend to move from: 'moorcheh' (Moorcheh key) or 'on-prem'. "
+        help="Local backend to move from: 'moorcheh' (Memanto local with Moorcheh "
+        "Cloud) or 'on-prem' (Memanto local with Moorcheh on-prem). "
         "Defaults to the one you used before signing in to Memanto Cloud.",
+    ),
+    include_expired: bool = typer.Option(
+        False,
+        "--include-expired",
+        help="Also move expired memories (they stay expired). Default: active only.",
     ),
 ):
     """Move your local memories to Memanto Cloud (resumable, keeps local data).
 
     Each agent becomes a Memanto Cloud agent (named <id>-local if the id is
     taken) and keeps its memories' type, tags, confidence, provenance and
-    creation time. Re-running after an interruption continues where it stopped
+    creation time. Only active memories move unless --include-expired. Re-running after an interruption continues where it stopped
     and never sends a memory twice. Needs 'memanto login' first.
 
     Examples:
         memanto migrate to-cloud
         memanto migrate to-cloud --from on-prem
+        memanto migrate to-cloud --include-expired
     """
     from memanto.cli.migrate import cloud_move
 
@@ -1454,4 +1467,4 @@ def migrate_to_cloud(
             "Already on Memanto Cloud.", hint="Use --from moorcheh or --from on-prem"
         )
 
-    run_cloud_move(backend)
+    run_cloud_move(backend, include_expired=include_expired)

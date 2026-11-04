@@ -6984,6 +6984,132 @@
             S.migrate = S.migrate || migrateInitialState();
             if (!S.migrate.lf) S.migrate.lf = migrateInitialState().lf;
             renderMigrate();
+            loadCloudMove();
+        }
+
+        // ----- Move to Memanto Cloud ------------------------------------
+        // Same engine as `memanto migrate to-cloud`: resumable, local copy kept.
+        async function loadCloudMove() {
+            S.cloudMove = S.cloudMove || { includeExpired: false };
+            if (S.config && S.config.backend === 'memanto-cloud') {
+                S.cloudMove.data = null;
+                return;
+            }
+            try {
+                S.cloudMove.data = await api('GET', '/api/ui/cloud-move');
+                S.cloudMove.error = null;
+            } catch (e) {
+                S.cloudMove.error = e.message;
+            }
+            renderCloudMoveInPlace();
+        }
+
+        function renderCloudMoveInPlace() {
+            const el = document.getElementById('cloudMoveCard');
+            if (el) el.outerHTML = renderCloudMoveCard();
+        }
+
+        function renderCloudMoveCard() {
+            const cm = S.cloudMove;
+            if (!cm || (!cm.data && !cm.error)) return '<div id="cloudMoveCard"></div>';
+            if (cm.error) {
+                return `<div class="card" id="cloudMoveCard" style="margin-bottom:18px">
+                    <div class="card-label" style="margin-bottom:8px">Move to Memanto Cloud</div>
+                    <div class="mig-error-banner">${escHtml(cm.error)}</div>
+                </div>`;
+            }
+            const d = cm.data;
+            const agents = d.agents || [];
+            const activeTotal = agents.reduce((n, a) => n + a.active, 0);
+            const expiredTotal = agents.reduce((n, a) => n + a.expired, 0);
+            const rows = agents.map(a => `
+                <tr>
+                    <td style="font-family:var(--font-mono)">${escHtml(a.agent_id)}${a.cloud_agent_id && a.cloud_agent_id !== a.agent_id ? ` <span style="color:var(--text-dim)">→ ${escHtml(a.cloud_agent_id)}</span>` : ''}</td>
+                    <td style="text-align:right">${a.active}</td>
+                    <td style="text-align:right">${a.expired}</td>
+                    <td style="text-align:right">${a.moved}</td>
+                </tr>`).join('') || '<tr><td colspan="4" style="color:var(--text-dim)">No agents on this computer.</td></tr>';
+            const signIn = d.signed_in ? '' : `
+                <div style="margin:14px 0">
+                    <label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px">Sign in to Memanto Cloud with an API key</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <input id="cloudMoveKey" type="password" placeholder="mk_..." style="flex:1;min-width:200px;font-family:var(--font-mono);font-size:12px">
+                        <button class="btn btn-secondary" onclick="cloudMoveSignIn()">Sign in</button>
+                    </div>
+                    <p style="font-size:12px;color:var(--text-dim);margin:6px 0 0">Create a key at <a href="${escHtml(d.console_url)}/api-keys" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${escHtml(d.console_url.replace(/^https?:\/\//, ''))}/api-keys</a>, or run <code>memanto login</code> in a terminal.</p>
+                </div>`;
+            const choice = `
+                <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;margin:14px 0">
+                    <label style="display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-family:inherit;text-transform:none;letter-spacing:0;color:var(--text-primary);cursor:pointer"><input type="radio" name="cloudMoveWhich" style="width:auto;margin:0" ${cm.includeExpired ? '' : 'checked'} onchange="S.cloudMove.includeExpired=false"> Active memories only <span style="color:var(--text-dim)">(${activeTotal})</span></label>
+                    <label style="display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-family:inherit;text-transform:none;letter-spacing:0;color:var(--text-primary);cursor:pointer"><input type="radio" name="cloudMoveWhich" style="width:auto;margin:0" ${cm.includeExpired ? 'checked' : ''} onchange="S.cloudMove.includeExpired=true"> All, including expired <span style="color:var(--text-dim)">(${activeTotal + expiredTotal})</span></label>
+                </div>`;
+            const canMove = d.signed_in && !cm.running && (activeTotal + expiredTotal) > 0;
+            return `<div class="card" id="cloudMoveCard" style="margin-bottom:18px">
+                <div class="card-label" style="margin-bottom:6px">Move to Memanto Cloud</div>
+                <p style="font-size:13px;color:var(--text-dim);margin:0 0 12px">Copy this computer's memories from ${escHtml(d.backend_label)} to Memanto Cloud, so every tool and computer shares them. Your local copy stays. Moving again only sends what is new.</p>
+                <div class="table-wrap"><table>
+                    <thead><tr><th>Agent</th><th style="text-align:right">Active</th><th style="text-align:right">Expired</th><th style="text-align:right">Moved</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table></div>
+                ${signIn}
+                ${choice}
+                <div style="display:flex;justify-content:flex-end">
+                    <button class="btn btn-primary" onclick="runCloudMove()" ${canMove ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>${cm.running ? 'Moving...' : 'Move to Memanto Cloud'}</button>
+                </div>
+                ${cm.result ? renderCloudMoveResult(cm.result) : ''}
+            </div>`;
+        }
+
+        function renderCloudMoveResult(r) {
+            const moved = (r.agents || []).reduce((n, a) => n + a.moved + a.already_moved, 0);
+            const failed = (r.agents || []).flatMap(a => a.failed.map(([id, why]) => `${a.local_id}/${id}: ${why}`));
+            const notes = [];
+            if (r.expired_skipped) notes.push(`${r.expired_skipped} expired memories stayed local.`);
+            if (r.not_moved && r.not_moved.length) notes.push(`Agent limit reached (${r.stop_reason}). Not moved: ${r.not_moved.join(', ')}.`);
+            return `<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;font-size:13px">
+                <div style="color:${failed.length ? 'var(--warning)' : 'var(--success)'};font-weight:600">${moved} memories on Memanto Cloud${failed.length ? `, ${failed.length} failed (move again to retry)` : ''}.</div>
+                ${failed.slice(0, 5).map(f => `<div style="font-size:12px;color:var(--error);font-family:var(--font-mono);margin-top:4px">${escHtml(f)}</div>`).join('')}
+                ${notes.map(n => `<div style="color:var(--text-dim);margin-top:4px">${escHtml(n)}</div>`).join('')}
+                <div style="color:var(--text-dim);margin-top:8px">To use Memanto Cloud from your tools, run <code>memanto use cloud</code>. See them in the <a href="${escHtml(S.cloudMove.data.console_url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">console</a>.</div>
+            </div>`;
+        }
+
+        async function cloudMoveSignIn() {
+            const input = document.getElementById('cloudMoveKey');
+            const key = input ? input.value.trim() : '';
+            if (!key) { toast('Enter a Memanto Cloud API key', 'error'); return; }
+            try {
+                const res = await api('PUT', '/api/ui/cloud-move/key', { api_key: key });
+                toast(res.email ? `Signed in as ${res.email}` : 'Signed in to Memanto Cloud', 'success');
+                S.cloudMove.data.signed_in = true;
+                renderCloudMoveInPlace();
+            } catch (e) {
+                toast('Sign-in failed: ' + e.message, 'error');
+            }
+        }
+
+        async function runCloudMove() {
+            const cm = S.cloudMove;
+            const ok = await confirmDialog({
+                title: 'Move to Memanto Cloud?',
+                message: `This copies ${cm.includeExpired ? 'all memories, including expired ones,' : 'active memories'} from ${cm.data.backend_label} to Memanto Cloud. An agent whose name is taken there gets "-local" added. Your local copy is not changed.`,
+                confirmLabel: 'Move',
+            });
+            if (!ok) return;
+            cm.running = true;
+            cm.result = null;
+            renderCloudMoveInPlace();
+            try {
+                cm.result = await api('POST', '/api/ui/cloud-move', { include_expired: cm.includeExpired });
+                toast('Memories moved to Memanto Cloud', 'success');
+            } catch (e) {
+                toast('Move failed: ' + e.message, 'error');
+            }
+            cm.running = false;
+            const result = cm.result;
+            await loadCloudMove();
+            cm.result = result;
+            renderCloudMoveInPlace();
         }
 
         function renderMigrate() {
@@ -7006,6 +7132,7 @@
             const preview = st.preview ? renderMigratePreview(st.preview) : '';
 
             root.innerHTML = `
+                ${renderCloudMoveCard()}
                 ${agentBanner}
                 <div class="card" style="margin-bottom:18px">
                     <div class="card-label" style="margin-bottom:14px">1. Choose source</div>

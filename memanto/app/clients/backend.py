@@ -25,6 +25,14 @@ class Backend(str, Enum):
     MEMANTO_CLOUD = "memanto-cloud"
 
 
+# How each backend is named to users (CLI and local UI).
+BACKEND_LABELS = {
+    Backend.MEMANTO_CLOUD: "Memanto Cloud",
+    Backend.CLOUD: "Memanto local with Moorcheh Cloud",
+    Backend.ON_PREM: "Memanto local with Moorcheh on-prem",
+}
+
+
 def parse_backend(value: str | None) -> Backend:
     """Coerce a string (env / yaml) into a Backend, defaulting to cloud."""
     if not value:

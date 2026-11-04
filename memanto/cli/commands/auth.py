@@ -6,7 +6,7 @@ import sys
 
 import typer
 
-from memanto.app.clients.backend import Backend
+from memanto.app.clients.backend import BACKEND_LABELS, Backend
 from memanto.app.utils.errors import AuthenticationError
 from memanto.cli.commands._shared import (
     BRIGHT,
@@ -17,12 +17,6 @@ from memanto.cli.commands._shared import (
     console,
 )
 from memanto.cli.config.manager import MEMANTO_CONSOLE_URL
-
-BACKEND_LABELS = {
-    Backend.MEMANTO_CLOUD: "Memanto Cloud",
-    Backend.CLOUD: "Moorcheh key",
-    Backend.ON_PREM: "On-Prem",
-}
 
 
 def _stdin_is_terminal() -> bool:
@@ -38,25 +32,32 @@ def _local_backend_in_use() -> bool:
     )
 
 
-def _ask_about_local_memories(local: Backend) -> str:
-    """Ask what to do with *local*'s memories: "move", "fresh" or "keep"."""
+def _ask_to_move(local: Backend) -> bool:
+    """Ask whether to move *local*'s memories to Memanto Cloud."""
     label = BACKEND_LABELS[local]
     console.print()
-    console.print(f"You're using {label}. What should happen to its memories?")
+    console.print(f"You were using {label}. What about its memories?")
     console.print(
         f"  [{BRIGHT}]1[/{BRIGHT}]  Move them to Memanto Cloud  "
         "[dim](recommended; your local copy stays)[/dim]"
     )
     console.print(
-        f"  [{BRIGHT}]2[/{BRIGHT}]  Start fresh on Memanto Cloud  "
-        f"[dim](they stay in {label})[/dim]"
+        f"  [{BRIGHT}]2[/{BRIGHT}]  Continue on Memanto Cloud without them  "
+        "[dim](move later with: memanto migrate to-cloud)[/dim]"
     )
+    answer: str = typer.prompt("  Enter 1 or 2", default="1")
+    return answer.strip() != "2"
+
+
+def _ask_include_expired() -> bool:
+    """Ask whether the move also takes expired memories."""
+    console.print("Which memories?")
     console.print(
-        f"  [{BRIGHT}]3[/{BRIGHT}]  Keep using {label} for now  "
-        "[dim](switch later with: memanto use cloud)[/dim]"
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Active memories only  [dim](recommended)[/dim]"
     )
-    choice = typer.prompt("  Enter 1, 2 or 3", default="1").strip()
-    return {"2": "fresh", "3": "keep"}.get(choice, "move")
+    console.print(f"  [{BRIGHT}]2[/{BRIGHT}]  All, including expired ones")
+    answer: str = typer.prompt("  Enter 1 or 2", default="1")
+    return answer.strip() == "2"
 
 
 def _switch_backend(backend: Backend) -> None:
@@ -134,8 +135,9 @@ def sign_in(key: str | None = None) -> None:
     so 'memanto logout' can restore it. A key from an earlier 'memanto login'
     on this computer is deleted once the new one is in place, so signing in
     again replaces this computer instead of adding another. When a local
-    backend is in use and stdin is a terminal, asks whether to move its
-    memories, start fresh, or keep using it. Exits on failure.
+    backend was in use and stdin is a terminal, asks whether to move its
+    memories (active only, or including expired) before continuing on
+    Memanto Cloud. Exits on failure.
     """
     old_key = config_manager.get_memanto_api_key()
     if key is not None:
@@ -159,24 +161,17 @@ def sign_in(key: str | None = None) -> None:
             f"Sign it out at {MEMANTO_CONSOLE_URL}/api-keys[/dim]"
         )
 
-    choice = (
-        _ask_about_local_memories(local) if local and _stdin_is_terminal() else "fresh"
-    )
-    if choice == "keep" and local:
-        console.print(
-            f"Still using {BACKEND_LABELS[local]}. "
-            f"Switch any time: [{BRIGHT}]memanto use cloud[/{BRIGHT}]"
-        )
-        return
+    move = local is not None and _stdin_is_terminal() and _ask_to_move(local)
+    include_expired = move and _ask_include_expired()
 
     if current != Backend.MEMANTO_CLOUD:
         if config_manager.get("backend"):
             config_manager.set("previous_backend", current.value)
         _switch_backend(Backend.MEMANTO_CLOUD)
-    if choice == "move" and local:
+    if move and local:
         from memanto.cli.commands.migrate import run_cloud_move
 
-        run_cloud_move(local)
+        run_cloud_move(local, include_expired=include_expired)
 
 
 @app.command()
@@ -194,8 +189,8 @@ def login(
     to copy. Over SSH, open the printed link on any device. With --key, signs
     in with an existing API key instead (headless / CI).
     Your previous backend is remembered so 'memanto logout' can restore it.
-    If you use a Moorcheh key or on-prem today, you can move those memories
-    to Memanto Cloud, start fresh, or keep your current setup.
+    If you use Memanto local today (with Moorcheh Cloud or on-prem), you can
+    move those memories to Memanto Cloud or continue without them.
 
     Examples:
         memanto login
@@ -265,8 +260,8 @@ _USE_TARGETS = {
 def use(
     target: str = typer.Argument(
         ...,
-        help="cloud (Memanto Cloud), moorcheh (your Moorcheh key), "
-        "or on-prem (self-hosted; alias: local).",
+        help="cloud (Memanto Cloud), moorcheh (Memanto local with Moorcheh "
+        "Cloud), or on-prem (Memanto local with Moorcheh on-prem; alias: local).",
     ),
 ):
     """Switch where Memanto keeps memories. Connected tools follow automatically.

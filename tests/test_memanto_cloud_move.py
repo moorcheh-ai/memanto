@@ -121,7 +121,7 @@ def test_moves_every_field_oldest_first_and_renames_clashes(state_file):
 
     assert hosted.created == ["work-local", "notes"]
     assert report.empty == ["empty"]
-    assert local.status_asked == ["active", "active", "active"]
+    assert local.status_asked == ["all", "all", "all"]
     work = hosted.imported["work-local"]
     assert [i["content"] for i in work] == ["memory m1", "memory m2"]
     assert work[1] == {
@@ -141,6 +141,54 @@ def test_moves_every_field_oldest_first_and_renames_clashes(state_file):
     state = json.loads(state_file.read_text())
     assert state["source_backend"] == "on-prem"
     assert state["agents"]["work"]["complete"] is True
+
+
+def _expired_fixture() -> FakeLocal:
+    return FakeLocal(
+        {
+            "a": [
+                _memory("live", "2025-01-02T00:00:00Z", status="active"),
+                _memory(
+                    "old",
+                    "2025-01-01T00:00:00Z",
+                    status="expired",
+                    expired_at="2025-03-01T00:00:00Z",
+                    expired_by="ttl",
+                ),
+            ],
+            "only_expired": [_memory("x", "2025-01-01T00:00:00Z", status="expired")],
+        }
+    )
+
+
+def test_active_only_by_default_counts_expired_left_behind(state_file):
+    hosted = FakeHosted()
+
+    report = cloud_move.move_to_cloud(_expired_fixture(), hosted, state_file, "cloud")
+
+    assert [i["content"] for i in hosted.imported["a"]] == ["memory live"]
+    assert "status" not in hosted.imported["a"][0]
+    assert report.expired_skipped == 2
+    assert report.empty == ["only_expired"]
+    assert hosted.created == ["a"]
+
+
+def test_include_expired_moves_them_with_their_expiry(state_file):
+    hosted = FakeHosted()
+
+    report = cloud_move.move_to_cloud(
+        _expired_fixture(), hosted, state_file, "cloud", include_expired=True
+    )
+
+    old = hosted.imported["a"][0]
+    assert (old["content"], old["status"], old["expired_at"], old["expired_by"]) == (
+        "memory old",
+        "expired",
+        "2025-03-01T00:00:00Z",
+        "ttl",
+    )
+    assert hosted.imported["only_expired"][0]["status"] == "expired"
+    assert report.expired_skipped == 0
 
 
 def test_title_only_memory_moves_title_and_blank_one_is_reported(state_file):
@@ -264,9 +312,13 @@ def cm(tmp_path: Path, monkeypatch) -> ConfigManager:
 
 
 @pytest.fixture
-def moves(monkeypatch) -> list[Backend]:
-    calls: list[Backend] = []
-    monkeypatch.setattr(migrate_module, "run_cloud_move", calls.append)
+def moves(monkeypatch) -> list[tuple[Backend, bool]]:
+    calls: list[tuple[Backend, bool]] = []
+    monkeypatch.setattr(
+        migrate_module,
+        "run_cloud_move",
+        lambda source, include_expired=False: calls.append((source, include_expired)),
+    )
     return calls
 
 
@@ -275,30 +327,26 @@ def _on_prem(cm: ConfigManager) -> None:
 
 
 @pytest.mark.parametrize(
-    ("answer", "backend", "moved"),
+    ("answers", "moved"),
     [
-        ("1", Backend.MEMANTO_CLOUD, [Backend.ON_PREM]),
-        ("2", Backend.MEMANTO_CLOUD, []),
-        ("3", Backend.ON_PREM, []),
+        ("1\n1\n", [(Backend.ON_PREM, False)]),
+        ("1\n2\n", [(Backend.ON_PREM, True)]),
+        ("2\n", []),
     ],
 )
-def test_login_on_local_backend_asks_what_to_do(
-    cm, moves, monkeypatch, answer, backend, moved
-):
+def test_login_on_local_backend_asks_to_move(cm, moves, monkeypatch, answers, moved):
     _on_prem(cm)
     monkeypatch.setattr(auth_module, "_stdin_is_terminal", lambda: True)
 
-    result = CliRunner().invoke(app, ["login", "--key", "mk_new"], input=f"{answer}\n")
+    result = CliRunner().invoke(app, ["login", "--key", "mk_new"], input=answers)
 
     assert result.exit_code == 0, result.output
-    assert "What should happen to its memories?" in result.output
-    assert cm.get_backend() == backend
+    assert "Memanto local with Moorcheh on-prem" in result.output
+    assert ("Which memories?" in result.output) == bool(moved)
+    assert cm.get_backend() == Backend.MEMANTO_CLOUD
+    assert cm.get("previous_backend") == "on-prem"
     assert moves == moved
     assert cm.get_memanto_api_key() == "mk_new"
-    if backend == Backend.MEMANTO_CLOUD:
-        assert cm.get("previous_backend") == "on-prem"
-    else:
-        assert "memanto use cloud" in result.output
 
 
 def test_login_without_terminal_switches_without_asking(cm, moves):
@@ -307,7 +355,7 @@ def test_login_without_terminal_switches_without_asking(cm, moves):
     result = CliRunner().invoke(app, ["login", "--key", "mk_new"])
 
     assert result.exit_code == 0, result.output
-    assert "What should happen" not in result.output
+    assert "What about its memories?" not in result.output
     assert cm.get_backend() == Backend.MEMANTO_CLOUD
     assert moves == []
 
@@ -375,7 +423,7 @@ def test_migrate_to_cloud_moves_from_previous_backend(cm, moves):
     result = CliRunner().invoke(app, ["migrate", "to-cloud"])
 
     assert result.exit_code == 0, result.output
-    assert moves == [Backend.CLOUD]
+    assert moves == [(Backend.CLOUD, False)]
 
 
 def test_migrate_to_cloud_from_flag_and_nothing_to_move(cm, moves):
@@ -383,10 +431,12 @@ def test_migrate_to_cloud_from_flag_and_nothing_to_move(cm, moves):
     cm.set_memanto_api_key("mk_abc")
 
     assert CliRunner().invoke(app, ["migrate", "to-cloud"]).exit_code == 1
-    result = CliRunner().invoke(app, ["migrate", "to-cloud", "--from", "on-prem"])
+    result = CliRunner().invoke(
+        app, ["migrate", "to-cloud", "--from", "on-prem", "--include-expired"]
+    )
 
     assert result.exit_code == 0, result.output
-    assert moves == [Backend.ON_PREM]
+    assert moves == [(Backend.ON_PREM, True)]
 
 
 def test_run_cloud_move_reads_through_the_source_backend(cm, monkeypatch):
@@ -396,15 +446,16 @@ def test_run_cloud_move_reads_through_the_source_backend(cm, monkeypatch):
     cm.set_memanto_api_key("mk_abc")
     seen: list[str] = []
 
-    def fake_move(local, hosted, path, source, on_progress=None):
+    def fake_move(local, hosted, path, source, on_progress=None, include_expired=False):
         seen.append(settings.MEMANTO_BACKEND)
+        assert include_expired is True
         assert isinstance(hosted, HostedClient)
         return cloud_move.MoveReport()
 
     monkeypatch.setattr(cloud_move, "move_to_cloud", fake_move)
     monkeypatch.setattr(settings, "MEMANTO_BACKEND", "memanto-cloud")
 
-    migrate_module.run_cloud_move(Backend.ON_PREM)
+    migrate_module.run_cloud_move(Backend.ON_PREM, include_expired=True)
 
     assert seen == ["on-prem"]
     assert settings.MEMANTO_BACKEND == "memanto-cloud"
@@ -458,3 +509,111 @@ def test_no_notice_when_output_is_not_a_terminal(cm):
 
     assert NOTICE not in result.output
     assert cm.get("cloud_notice_shown") is None
+
+
+# Local UI: Migrate page card
+
+
+@pytest.fixture
+def ui(cm, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from memanto.app.ui.routes import ui_router
+    from memanto.cli.client import factory
+
+    local = FakeLocal(
+        {
+            "work": [
+                _memory("w1", "2025-01-01T00:00:00Z"),
+                _memory("w2", "2025-01-02T00:00:00Z", status="expired"),
+            ],
+            "empty": [],
+        }
+    )
+    hosted = FakeHosted(existing=["work"])
+    built: list[Backend] = []
+
+    def fake_build(config_manager=None, moorcheh_api_key=None, backend=None):
+        built.append(backend)
+        return hosted if backend == Backend.MEMANTO_CLOUD else local
+
+    monkeypatch.setattr(ui_router, "_config_manager", cm)
+    monkeypatch.setattr(factory, "build_client", fake_build)
+    app_ = FastAPI()
+    app_.include_router(ui_router.router)
+    app_.dependency_overrides[ui_router._require_local] = lambda: None
+    cm.set_backend(Backend.ON_PREM)
+    return TestClient(app_), hosted, built
+
+
+def test_ui_overview_counts_active_expired_and_moved(ui):
+    client, _, built = ui
+
+    data = client.get("/api/ui/cloud-move").json()
+
+    assert data["backend"] == "on-prem"
+    assert data["backend_label"] == "Memanto local with Moorcheh on-prem"
+    assert data["signed_in"] is False
+    assert data["agents"][0] == {
+        "agent_id": "work",
+        "active": 1,
+        "expired": 1,
+        "moved": 0,
+        "cloud_agent_id": None,
+    }
+    assert built == [Backend.ON_PREM]
+
+
+def test_ui_move_active_only_then_expired_too(ui, cm):
+    client, hosted, _ = ui
+    cm.set_memanto_api_key("mk_abc")
+
+    first = client.post("/api/ui/cloud-move", json={}).json()
+    assert first["expired_skipped"] == 1
+    assert [i["content"] for i in hosted.imported["work-local"]] == ["memory w1"]
+
+    second = client.post("/api/ui/cloud-move", json={"include_expired": True}).json()
+    assert second["agents"][0]["moved"] == 1
+    assert second["agents"][0]["already_moved"] == 1
+    assert hosted.imported["work-local"][1]["status"] == "expired"
+
+    overview = client.get("/api/ui/cloud-move").json()
+    assert overview["agents"][0]["moved"] == 2
+    assert overview["agents"][0]["cloud_agent_id"] == "work-local"
+
+
+def test_ui_move_refused_on_memanto_cloud(ui, cm):
+    client, _, _ = ui
+    cm.set_backend(Backend.MEMANTO_CLOUD)
+
+    response = client.post("/api/ui/cloud-move", json={})
+
+    assert response.status_code == 400
+    assert "memanto migrate to-cloud" in response.json()["detail"]
+
+
+def test_ui_sign_in_checks_key_and_never_replaces_one(ui, cm, monkeypatch):
+    from memanto.app.utils.errors import AuthenticationError
+
+    client, _, _ = ui
+
+    def reject(self):
+        raise AuthenticationError("bad key")
+
+    monkeypatch.setattr(HostedClient, "get_account", reject)
+    assert (
+        client.put("/api/ui/cloud-move/key", json={"api_key": "mk_bad"}).status_code
+        == 401
+    )
+    assert cm.get_memanto_api_key() is None
+
+    monkeypatch.setattr(HostedClient, "get_account", lambda self: {"email": "a@b.c"})
+    ok = client.put("/api/ui/cloud-move/key", json={"api_key": "mk_good"})
+    assert ok.json() == {"signed_in": True, "email": "a@b.c"}
+    assert cm.get_memanto_api_key() == "mk_good"
+    assert cm.get_backend() == Backend.ON_PREM
+
+    again = client.put("/api/ui/cloud-move/key", json={"api_key": "mk_other"})
+    assert again.status_code == 409
+    assert cm.get_memanto_api_key() == "mk_good"

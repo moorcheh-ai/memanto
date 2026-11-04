@@ -20,7 +20,7 @@ import typer
 from rich.panel import Panel
 from rich.table import Table
 
-from memanto.app.clients.backend import Backend
+from memanto.app.clients.backend import BACKEND_LABELS, Backend
 from memanto.app.config import is_loopback_host, settings
 from memanto.cli.commands._shared import (
     ACCENT,
@@ -98,11 +98,7 @@ def _first_run_setup() -> None:
     _settings.MEMANTO_BACKEND = backend.value
     _singleton.reset_client()
 
-    backend_label = {
-        Backend.MEMANTO_CLOUD: "Memanto Cloud",
-        Backend.CLOUD: "Moorcheh key",
-        Backend.ON_PREM: "On-Prem",
-    }[backend]
+    backend_label = BACKEND_LABELS[backend]
     if backend == Backend.MEMANTO_CLOUD:
         extras = "[dim]Next:[/dim] memanto connect"
     elif backend == Backend.CLOUD:
@@ -133,21 +129,21 @@ def _prompt_backend_choice() -> Backend:
         "[dim](recommended: sign in with your browser, nothing to install)[/dim]"
     )
     console.print(
-        f"  [{BRIGHT}]2[/{BRIGHT}]  Advanced  "
-        "[dim](your own Moorcheh API key, or self-hosted on-prem)[/dim]"
+        f"  [{BRIGHT}]2[/{BRIGHT}]  Memanto local  "
+        "[dim](with your own Moorcheh API key, or Moorcheh on-prem)[/dim]"
     )
     choice = typer.prompt("  Enter 1 or 2", default="1")
     console.print()
     if str(choice).strip() != "2":
         return Backend.MEMANTO_CLOUD
 
-    console.print(f"[{BOLD_BRIGHT}]Advanced setup[/{BOLD_BRIGHT}]")
+    console.print(f"[{BOLD_BRIGHT}]Memanto local setup[/{BOLD_BRIGHT}]")
     console.print(
-        f"  [{BRIGHT}]1[/{BRIGHT}]  Moorcheh key  "
+        f"  [{BRIGHT}]1[/{BRIGHT}]  {BACKEND_LABELS[Backend.CLOUD]}  "
         "[dim](instant, needs a Moorcheh API key)[/dim]"
     )
     console.print(
-        f"  [{BRIGHT}]2[/{BRIGHT}]  Moorcheh On-Prem  "
+        f"  [{BRIGHT}]2[/{BRIGHT}]  {BACKEND_LABELS[Backend.ON_PREM]}  "
         "[dim](~5-10 min install, Docker required, no API key)[/dim]"
     )
     choice = typer.prompt("  Enter 1 or 2", default="1")
