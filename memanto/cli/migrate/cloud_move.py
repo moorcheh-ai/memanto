@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -68,6 +69,43 @@ def save_state(path: Path, state: dict[str, Any]) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
     os.replace(tmp, path)
+
+
+def default_source(config_manager: Any) -> str | None:
+    """The local backend to move from when none is named, or None.
+
+    An unfinished move's source first, then the backend used before signing
+    in to Memanto Cloud, then the current backend if it is a local one.
+    """
+    saved = load_state(state_path(config_manager.config_dir)).get("source_backend")
+    for candidate in (
+        saved,
+        config_manager.get("previous_backend"),
+        config_manager.get_backend().value,
+    ):
+        if candidate and candidate != "memanto-cloud":
+            return str(candidate)
+    return None
+
+
+@contextmanager
+def reading_from(source_backend: str) -> Iterator[None]:
+    """Point this process's storage client at *source_backend* for the block.
+
+    The local client follows the process-wide backend setting, which says
+    memanto-cloud once signed in; moving reads from the old local store.
+    """
+    from memanto.app.clients.moorcheh import moorcheh_client
+    from memanto.app.config import settings
+
+    saved = settings.MEMANTO_BACKEND
+    settings.MEMANTO_BACKEND = source_backend
+    moorcheh_client.reset_client()
+    try:
+        yield
+    finally:
+        settings.MEMANTO_BACKEND = saved
+        moorcheh_client.reset_client()
 
 
 @dataclass

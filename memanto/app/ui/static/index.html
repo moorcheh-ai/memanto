@@ -3524,8 +3524,12 @@
             <section class="page" id="page-migrate">
                 <div class="page-header">
                     <h2>Migrate</h2>
-                    <p>Import memories from Mem0, Letta, Supermemory, Zep, Hindsight, an OKF bundle, or Langfuse into your active Memanto agent.</p>
+                    <p>Move this computer's memories to Memanto Cloud, or import memories from Mem0, Letta, Supermemory, Zep, Hindsight, an OKF bundle, or Langfuse.</p>
                     <button class="btn btn-secondary btn-sm page-refresh" onclick="refreshPage('migrate', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36M21 3v6h-6" /></svg> Refresh</button>
+                </div>
+                <div class="mig-source-tabs" id="migrateTabs" role="tablist" aria-label="What to migrate">
+                    <button class="mig-source-tab active" id="migTab-cloud" role="tab" aria-selected="true" onclick="setMigrateTab('cloud')">Memanto Cloud</button>
+                    <button class="mig-source-tab" id="migTab-other" role="tab" aria-selected="false" onclick="setMigrateTab('other')">Other sources</button>
                 </div>
                 <div id="migrateContent"></div>
             </section>
@@ -4011,14 +4015,14 @@
                     : `<button class="btn btn-sm btn-primary" onclick="activateAgent('${a.agent_id}', this)">Activate</button>`;
                 const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteAgent('${a.agent_id}', this)">Delete</button>`;
                 html += `<tr${isActive ? ' style="background:var(--accent-glow)"' : ''}>
-                    <td style="color:var(--text-primary);font-weight:600">${escHtml(a.agent_id)}</td>
+                    <td style="color:var(--text-primary);font-weight:600;overflow-wrap:anywhere;min-width:120px">${escHtml(a.agent_id)}</td>
                     <td><span class="badge badge-accent">${escHtml(a.pattern || '—')}</span></td>
-                    <td style="font-size:12px">${escHtml(trunc(a.description || '—', 60))}</td>
+                    <td style="font-size:12px;overflow-wrap:anywhere;min-width:120px">${escHtml(trunc(a.description || '—', 60))}</td>
                     <td>${a.memory_count ?? '—'}</td>
                     <td>${a.session_count ?? 0}</td>
                     <td style="white-space:nowrap">${escHtml(fmtDate(a.created_at))}</td>
                     <td>${statusBadge}</td>
-                    <td style="text-align:right;white-space:nowrap">${actions} ${deleteBtn}</td>
+                    <td style="text-align:right"><div style="display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:6px">${actions}${deleteBtn}</div></td>
                 </tr>`;
             });
             html += '</tbody></table></div>';
@@ -6983,18 +6987,22 @@
         function openMigrate() {
             S.migrate = S.migrate || migrateInitialState();
             if (!S.migrate.lf) S.migrate.lf = migrateInitialState().lf;
+            S.migrateTab = S.migrateTab || 'cloud';
             renderMigrate();
             loadCloudMove();
+        }
+
+        // Two kinds of migration: this computer's Memanto local memories up to
+        // Memanto Cloud, or memories from another tool into an agent.
+        function setMigrateTab(tab) {
+            S.migrateTab = tab;
+            renderMigrate();
         }
 
         // ----- Move to Memanto Cloud ------------------------------------
         // Same engine as `memanto migrate to-cloud`: resumable, local copy kept.
         async function loadCloudMove() {
             S.cloudMove = S.cloudMove || { includeExpired: false };
-            if (S.config && S.config.backend === 'memanto-cloud') {
-                S.cloudMove.data = null;
-                return;
-            }
             try {
                 S.cloudMove.data = await api('GET', '/api/ui/cloud-move');
                 S.cloudMove.error = null;
@@ -7011,7 +7019,9 @@
 
         function renderCloudMoveCard() {
             const cm = S.cloudMove;
-            if (!cm || (!cm.data && !cm.error)) return '<div id="cloudMoveCard"></div>';
+            if (!cm || (!cm.data && !cm.error)) {
+                return `<div class="card" id="cloudMoveCard"><p style="font-size:13px;color:var(--text-dim);margin:0">Reading this computer's memories...</p></div>`;
+            }
             if (cm.error) {
                 return `<div class="card" id="cloudMoveCard" style="margin-bottom:18px">
                     <div class="card-label" style="margin-bottom:8px">Move to Memanto Cloud</div>
@@ -7024,19 +7034,23 @@
             const expiredTotal = agents.reduce((n, a) => n + a.expired, 0);
             const rows = agents.map(a => `
                 <tr>
-                    <td style="font-family:var(--font-mono)">${escHtml(a.agent_id)}${a.cloud_agent_id && a.cloud_agent_id !== a.agent_id ? ` <span style="color:var(--text-dim)">→ ${escHtml(a.cloud_agent_id)}</span>` : ''}</td>
+                    <td style="font-family:var(--font-mono);word-break:break-all">${escHtml(a.agent_id)}${a.cloud_agent_id && a.cloud_agent_id !== a.agent_id ? ` <span style="color:var(--text-dim)">→ ${escHtml(a.cloud_agent_id)}</span>` : ''}</td>
                     <td style="text-align:right">${a.active}</td>
                     <td style="text-align:right">${a.expired}</td>
                     <td style="text-align:right">${a.moved}</td>
                 </tr>`).join('') || '<tr><td colspan="4" style="color:var(--text-dim)">No agents on this computer.</td></tr>';
+            const pending = cm.signIn;
             const signIn = d.signed_in ? '' : `
-                <div style="margin:14px 0">
-                    <label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px">Sign in to Memanto Cloud with an API key</label>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <input id="cloudMoveKey" type="password" placeholder="mk_..." style="flex:1;min-width:200px;font-family:var(--font-mono);font-size:12px">
-                        <button class="btn btn-secondary" onclick="cloudMoveSignIn()">Sign in</button>
-                    </div>
-                    <p style="font-size:12px;color:var(--text-dim);margin:6px 0 0">Create a key at <a href="${escHtml(d.console_url)}/api-keys" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${escHtml(d.console_url.replace(/^https?:\/\//, ''))}/api-keys</a>, or run <code>memanto login</code> in a terminal.</p>
+                <div style="margin:14px 0;padding:14px;border:1px solid var(--border);border-radius:8px">
+                    ${pending ? `
+                        <div style="font-size:13px">Approve this computer in the Memanto console. Code: <strong style="font-family:var(--font-mono)">${escHtml(pending.user_code)}</strong></div>
+                        <div style="font-size:12px;color:var(--text-dim);margin-top:6px">Waiting for approval... <a href="${escHtml(pending.verification_uri_complete)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Open the page again</a></div>
+                    ` : `
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                            <div style="font-size:13px">Sign in to Memanto Cloud to move your memories.<div style="font-size:12px;color:var(--text-dim);margin-top:4px">New to Memanto Cloud? You can create an account on the same page.</div></div>
+                            <button class="btn btn-secondary" onclick="cloudMoveSignIn()">Sign in with browser</button>
+                        </div>
+                    `}
                 </div>`;
             const choice = `
                 <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;margin:14px 0">
@@ -7044,10 +7058,13 @@
                     <label style="display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-family:inherit;text-transform:none;letter-spacing:0;color:var(--text-primary);cursor:pointer"><input type="radio" name="cloudMoveWhich" style="width:auto;margin:0" ${cm.includeExpired ? 'checked' : ''} onchange="S.cloudMove.includeExpired=true"> All, including expired <span style="color:var(--text-dim)">(${activeTotal + expiredTotal})</span></label>
                 </div>`;
             const canMove = d.signed_in && !cm.running && (activeTotal + expiredTotal) > 0;
+            const intro = d.on_cloud
+                ? `You're on Memanto Cloud. Bring over the memories still in ${escHtml(d.backend_label)} on this computer.`
+                : `Copy this computer's memories from ${escHtml(d.backend_label)} to Memanto Cloud, so every tool and computer shares them.`;
             return `<div class="card" id="cloudMoveCard" style="margin-bottom:18px">
                 <div class="card-label" style="margin-bottom:6px">Move to Memanto Cloud</div>
-                <p style="font-size:13px;color:var(--text-dim);margin:0 0 12px">Copy this computer's memories from ${escHtml(d.backend_label)} to Memanto Cloud, so every tool and computer shares them. Your local copy stays. Moving again only sends what is new.</p>
-                <div class="table-wrap"><table>
+                <p style="font-size:13px;color:var(--text-dim);margin:0 0 12px">${intro} Your local copy stays. Moving again only sends what is new.</p>
+                <div class="table-wrap" style="max-height:320px;overflow-y:auto"><table>
                     <thead><tr><th>Agent</th><th style="text-align:right">Active</th><th style="text-align:right">Expired</th><th style="text-align:right">Moved</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table></div>
@@ -7070,21 +7087,47 @@
                 <div style="color:${failed.length ? 'var(--warning)' : 'var(--success)'};font-weight:600">${moved} memories on Memanto Cloud${failed.length ? `, ${failed.length} failed (move again to retry)` : ''}.</div>
                 ${failed.slice(0, 5).map(f => `<div style="font-size:12px;color:var(--error);font-family:var(--font-mono);margin-top:4px">${escHtml(f)}</div>`).join('')}
                 ${notes.map(n => `<div style="color:var(--text-dim);margin-top:4px">${escHtml(n)}</div>`).join('')}
-                <div style="color:var(--text-dim);margin-top:8px">To use Memanto Cloud from your tools, run <code>memanto use cloud</code>. See them in the <a href="${escHtml(S.cloudMove.data.console_url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">console</a>.</div>
+                <div style="color:var(--text-dim);margin-top:8px">${S.cloudMove.data.on_cloud ? '' : 'To use Memanto Cloud from your tools, run <code>memanto use cloud</code>. '}See them in the <a href="${escHtml(S.cloudMove.data.console_url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">console</a>.</div>
             </div>`;
         }
 
+        // Browser sign-in, as `memanto login` does: the console approves this
+        // computer (or creates an account first) and the server stores the key.
         async function cloudMoveSignIn() {
-            const input = document.getElementById('cloudMoveKey');
-            const key = input ? input.value.trim() : '';
-            if (!key) { toast('Enter a Memanto Cloud API key', 'error'); return; }
+            const cm = S.cloudMove;
+            // Open the tab now, while the click still allows pop-ups.
+            const win = window.open('', '_blank');
+            let start;
             try {
-                const res = await api('PUT', '/api/ui/cloud-move/key', { api_key: key });
-                toast(res.email ? `Signed in as ${res.email}` : 'Signed in to Memanto Cloud', 'success');
-                S.cloudMove.data.signed_in = true;
-                renderCloudMoveInPlace();
+                start = await api('POST', '/api/ui/cloud-move/sign-in');
             } catch (e) {
+                if (win) win.close();
                 toast('Sign-in failed: ' + e.message, 'error');
+                return;
+            }
+            if (win) win.location = start.verification_uri_complete;
+            cm.signIn = start;
+            renderCloudMoveInPlace();
+            let wait = (start.interval || 5) * 1000;
+            while (cm.signIn === start) {
+                await new Promise(r => setTimeout(r, wait));
+                if (cm.signIn !== start) return;
+                try {
+                    const res = await api('POST', '/api/ui/cloud-move/sign-in/poll');
+                    if (res.status === 'signed_in') {
+                        cm.signIn = null;
+                        cm.data.signed_in = true;
+                        toast(res.email ? `Signed in as ${res.email}` : 'Signed in to Memanto Cloud', 'success');
+                        renderCloudMoveInPlace();
+                        return;
+                    }
+                    wait = (res.interval || 5) * 1000;
+                } catch (e) {
+                    cm.signIn = null;
+                    toast('Sign-in failed: ' + e.message, 'error');
+                    renderCloudMoveInPlace();
+                    return;
+                }
             }
         }
 
@@ -7131,8 +7174,19 @@
             const sourceForm = st.provider ? renderMigrateSource(st) : '';
             const preview = st.preview ? renderMigratePreview(st.preview) : '';
 
+            const tab = S.migrateTab || 'cloud';
+            for (const t of ['cloud', 'other']) {
+                const btn = document.getElementById('migTab-' + t);
+                if (!btn) continue;
+                btn.classList.toggle('active', t === tab);
+                btn.setAttribute('aria-selected', String(t === tab));
+            }
+            if (tab === 'cloud') {
+                root.innerHTML = renderCloudMoveCard();
+                return;
+            }
+
             root.innerHTML = `
-                ${renderCloudMoveCard()}
                 ${agentBanner}
                 <div class="card" style="margin-bottom:18px">
                     <div class="card-label" style="margin-bottom:14px">1. Choose source</div>

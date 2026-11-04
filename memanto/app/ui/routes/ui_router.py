@@ -1917,18 +1917,27 @@ async def migrate_import(body: dict, _: None = Depends(_require_local)):
 
 
 # Move this computer's memories to Memanto Cloud (same engine as
-# 'memanto migrate to-cloud', so progress is shared and resumable).
+# 'memanto migrate to-cloud', so progress is shared and resumable). Works
+# before and after switching to Memanto Cloud: the source is the local backend
+# in use, or the one used before signing in.
+
+# Reads switch the process-wide storage backend for their duration, so only
+# one cloud-move request runs at a time.
+_cloud_move_lock = threading.Lock()
+# Browser sign-in started from the UI and not yet finished (one at a time).
+_pending_sign_in: Any = None
 
 
 def _cloud_move_source() -> Backend:
-    backend = _config_manager.get_backend()
-    if backend == Backend.MEMANTO_CLOUD:
+    from memanto.cli.migrate import cloud_move
+
+    source = cloud_move.default_source(_config_manager)
+    if source is None:
         raise HTTPException(
             status_code=400,
-            detail="Already on Memanto Cloud. To move memories from a local "
-            "backend run: memanto migrate to-cloud",
+            detail="No Memanto local setup on this computer to move memories from.",
         )
-    return backend
+    return Backend(source)
 
 
 def _cloud_move_local_client(source: Backend):
@@ -1945,84 +1954,107 @@ def _cloud_move_local_client(source: Backend):
 def cloud_move_overview(_: None = Depends(_require_local)):
     """What a move to Memanto Cloud would take from this computer.
 
-    Returns the local backend, whether Memanto Cloud is signed in, and per
-    agent: active and expired memory counts and how many were already moved.
+    Returns the local backend to move from, whether Memanto Cloud is signed
+    in and active, and per agent: active and expired memory counts and how
+    many were already moved.
     """
     from memanto.app.clients.backend import BACKEND_LABELS
     from memanto.cli.config.manager import MEMANTO_CONSOLE_URL
     from memanto.cli.migrate import cloud_move
 
     source = _cloud_move_source()
-    local = _cloud_move_local_client(source)
     state = cloud_move.load_state(cloud_move.state_path(_config_manager.config_dir))
     progress = (
         state.get("agents", {}) if state.get("source_backend") == source.value else {}
     )
     agents = []
-    try:
-        for entry in local.list_agents().get("agents", []):
-            agent_id = entry["agent_id"]
-            memories = cloud_move.read_local_memories(local, agent_id)
-            expired = sum(1 for m in memories if m.get("status") == "expired")
-            moved = progress.get(agent_id, {})
-            agents.append(
-                {
-                    "agent_id": agent_id,
-                    "active": len(memories) - expired,
-                    "expired": expired,
-                    "moved": len(moved.get("moved_ids", [])),
-                    "cloud_agent_id": moved.get("cloud_agent_id"),
-                }
+    with _cloud_move_lock, cloud_move.reading_from(source.value):
+        local = _cloud_move_local_client(source)
+        try:
+            for entry in local.list_agents().get("agents", []):
+                agent_id = entry["agent_id"]
+                memories = cloud_move.read_local_memories(local, agent_id)
+                expired = sum(1 for m in memories if m.get("status") == "expired")
+                moved = progress.get(agent_id, {})
+                agents.append(
+                    {
+                        "agent_id": agent_id,
+                        "active": len(memories) - expired,
+                        "expired": expired,
+                        "moved": len(moved.get("moved_ids", [])),
+                        "cloud_agent_id": moved.get("cloud_agent_id"),
+                    }
+                )
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=redact_sensitive_text(f"Could not read local memories: {e}"),
             )
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=redact_sensitive_text(f"Could not read local memories: {e}"),
-        )
     return {
         "backend": source.value,
         "backend_label": BACKEND_LABELS[source],
+        "on_cloud": _config_manager.get_backend() == Backend.MEMANTO_CLOUD,
         "signed_in": bool(_config_manager.get_memanto_api_key()),
         "console_url": MEMANTO_CONSOLE_URL,
         "agents": agents,
     }
 
 
-@router.put("/api/ui/cloud-move/key")
-def cloud_move_sign_in(body: dict, _: None = Depends(_require_local)):
-    """Save a Memanto Cloud API key (``mk_...``) after checking it.
+@router.post("/api/ui/cloud-move/sign-in")
+def cloud_move_sign_in_start(_: None = Depends(_require_local)):
+    """Start browser sign-in to Memanto Cloud, as 'memanto login' does.
 
-    Only when none is saved yet, so a page on loopback cannot swap the
-    account an existing sign-in points at. Does not switch backend.
+    Returns the console approval link and code; the page opens the link and
+    polls ``/api/ui/cloud-move/sign-in/poll``. New accounts can sign up on
+    the same page. Only when not signed in yet, so a page on loopback cannot
+    swap the account an existing sign-in points at. Does not switch backend.
     """
-    from memanto.app.utils.errors import AuthenticationError
-    from memanto.cli.client.hosted_client import HostedClient
+    global _pending_sign_in
+    from memanto.cli.client.device_auth import DeviceLogin, DeviceLoginError
 
-    key = str(body.get("api_key") or "").strip()
-    if not key:
-        raise HTTPException(status_code=400, detail="API key cannot be empty")
     if _config_manager.get_memanto_api_key():
         raise HTTPException(
             status_code=409,
             detail="Already signed in to Memanto Cloud. To change account run: "
             "memanto logout, then memanto login",
         )
-    client = HostedClient(key, base_url=_config_manager.get_memanto_api_url())
+    login = DeviceLogin(_config_manager.get_memanto_api_url())
     try:
-        account = client.get_account()
-        if account is None:
-            client.list_agents()  # Server without /me: any call checks the key.
-    except AuthenticationError:
-        raise HTTPException(
-            status_code=401, detail="Memanto Cloud rejected this API key."
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=redact_sensitive_text(f"Could not reach Memanto Cloud: {e}"),
-        )
-    _config_manager.set_memanto_api_key(key)
-    return {"signed_in": True, "email": (account or {}).get("email")}
+        code = login.start()
+    except DeviceLoginError as e:
+        login.close()
+        raise HTTPException(status_code=502, detail=str(e))
+    if _pending_sign_in is not None:
+        _pending_sign_in.close()
+    _pending_sign_in = login
+    return {
+        "verification_uri_complete": code["verification_uri_complete"],
+        "user_code": code["user_code"],
+        "interval": login.interval,
+    }
+
+
+@router.post("/api/ui/cloud-move/sign-in/poll")
+def cloud_move_sign_in_poll(_: None = Depends(_require_local)):
+    """Check the browser sign-in once: ``pending`` or ``signed_in`` (key saved)."""
+    global _pending_sign_in
+    from memanto.cli.client.device_auth import DeviceLoginError
+
+    login = _pending_sign_in
+    if login is None:
+        raise HTTPException(status_code=400, detail="No sign-in in progress.")
+    try:
+        result = login.poll()
+    except DeviceLoginError as e:
+        login.close()
+        _pending_sign_in = None
+        raise HTTPException(status_code=400, detail=str(e))
+    if result is None:
+        return {"status": "pending", "interval": login.interval}
+    login.close()
+    _pending_sign_in = None
+    _config_manager.set_memanto_api_key(result["api_key"])
+    return {"status": "signed_in", "email": result.get("user_email")}
 
 
 @router.post("/api/ui/cloud-move")
@@ -2038,25 +2070,26 @@ def cloud_move_run(body: dict, _: None = Depends(_require_local)):
     from memanto.cli.migrate import cloud_move
 
     source = _cloud_move_source()
-    local = _cloud_move_local_client(source)
-    try:
-        hosted = build_client(_config_manager, backend=Backend.MEMANTO_CLOUD)
-        report = cloud_move.move_to_cloud(
-            local,
-            hosted,
-            cloud_move.state_path(_config_manager.config_dir),
-            source.value,
-            include_expired=body.get("include_expired") is True,
-        )
-    except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=redact_sensitive_text(
-                f"Move stopped: {e}. Moving again continues where it stopped."
-            ),
-        )
+    with _cloud_move_lock, cloud_move.reading_from(source.value):
+        local = _cloud_move_local_client(source)
+        try:
+            hosted = build_client(_config_manager, backend=Backend.MEMANTO_CLOUD)
+            report = cloud_move.move_to_cloud(
+                local,
+                hosted,
+                cloud_move.state_path(_config_manager.config_dir),
+                source.value,
+                include_expired=body.get("include_expired") is True,
+            )
+        except AuthenticationError as e:
+            raise HTTPException(status_code=401, detail=str(e))
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=redact_sensitive_text(
+                    f"Move stopped: {e}. Moving again continues where it stopped."
+                ),
+            )
     return asdict(report)
 
 

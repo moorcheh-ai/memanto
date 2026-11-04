@@ -538,6 +538,8 @@ def ui(cm, monkeypatch):
         built.append(backend)
         return hosted if backend == Backend.MEMANTO_CLOUD else local
 
+    # Importing the app loads ~/.memanto/.env; keep a real sign-in out of the test.
+    monkeypatch.setenv("MEMANTO_API_KEY", "")
     monkeypatch.setattr(ui_router, "_config_manager", cm)
     monkeypatch.setattr(factory, "build_client", fake_build)
     app_ = FastAPI()
@@ -583,37 +585,119 @@ def test_ui_move_active_only_then_expired_too(ui, cm):
     assert overview["agents"][0]["cloud_agent_id"] == "work-local"
 
 
-def test_ui_move_refused_on_memanto_cloud(ui, cm):
+def test_ui_moves_from_previous_backend_once_on_memanto_cloud(ui, cm, monkeypatch):
+    from memanto.app.config import settings
+
+    client, hosted, _ = ui
+    cm.set_backend(Backend.MEMANTO_CLOUD)
+    cm.set("previous_backend", "on-prem")
+    cm.set_memanto_api_key("mk_abc")
+    monkeypatch.setattr(settings, "MEMANTO_BACKEND", "memanto-cloud")
+
+    overview = client.get("/api/ui/cloud-move").json()
+    assert (overview["backend"], overview["on_cloud"], overview["signed_in"]) == (
+        "on-prem",
+        True,
+        True,
+    )
+
+    report = client.post("/api/ui/cloud-move", json={}).json()
+    assert report["agents"][0]["moved"] == 1
+    assert hosted.imported["work-local"][0]["content"] == "memory w1"
+    assert settings.MEMANTO_BACKEND == "memanto-cloud"  # restored after reading
+
+
+def test_ui_move_needs_a_local_backend(ui, cm):
     client, _, _ = ui
     cm.set_backend(Backend.MEMANTO_CLOUD)
 
     response = client.post("/api/ui/cloud-move", json={})
 
     assert response.status_code == 400
-    assert "memanto migrate to-cloud" in response.json()["detail"]
+    assert "No Memanto local setup" in response.json()["detail"]
 
 
-def test_ui_sign_in_checks_key_and_never_replaces_one(ui, cm, monkeypatch):
-    from memanto.app.utils.errors import AuthenticationError
+class FakeDeviceLogin:
+    """DeviceLogin stand-in: approved after ``pending`` polls, or raises ``error``."""
 
+    instances: list["FakeDeviceLogin"] = []
+    pending = 1
+    error: Exception | None = None
+
+    def __init__(self, base_url: str) -> None:
+        self.interval = 5.0
+        self.polls = 0
+        self.closed = False
+        FakeDeviceLogin.instances.append(self)
+
+    def start(self) -> dict[str, Any]:
+        return {
+            "verification_uri_complete": "https://console/cli/authorize?code=AB-CD",
+            "user_code": "AB-CD",
+        }
+
+    def poll(self) -> dict[str, Any] | None:
+        self.polls += 1
+        if self.error:
+            raise self.error
+        if self.polls <= self.pending:
+            return None
+        return {"api_key": "mk_device", "user_email": "a@b.c"}
+
+    def close(self) -> None:
+        self.closed = True
+
+
+@pytest.fixture
+def device(monkeypatch):
+    from memanto.app.ui.routes import ui_router
+    from memanto.cli.client import device_auth
+
+    FakeDeviceLogin.instances = []
+    FakeDeviceLogin.pending = 1
+    FakeDeviceLogin.error = None
+    monkeypatch.setattr(device_auth, "DeviceLogin", FakeDeviceLogin)
+    monkeypatch.setattr(ui_router, "_pending_sign_in", None)
+    return FakeDeviceLogin
+
+
+def test_ui_browser_sign_in_saves_the_key_without_switching(ui, cm, device):
     client, _, _ = ui
 
-    def reject(self):
-        raise AuthenticationError("bad key")
+    start = client.post("/api/ui/cloud-move/sign-in").json()
+    assert start["user_code"] == "AB-CD"
+    assert "api_key" not in start and "device_code" not in start
 
-    monkeypatch.setattr(HostedClient, "get_account", reject)
-    assert (
-        client.put("/api/ui/cloud-move/key", json={"api_key": "mk_bad"}).status_code
-        == 401
-    )
+    assert client.post("/api/ui/cloud-move/sign-in/poll").json()["status"] == "pending"
+    done = client.post("/api/ui/cloud-move/sign-in/poll").json()
+
+    assert done == {"status": "signed_in", "email": "a@b.c"}
+    assert cm.get_memanto_api_key() == "mk_device"
+    assert cm.get_backend() == Backend.ON_PREM
+    assert device.instances[0].closed
+    assert client.post("/api/ui/cloud-move/sign-in/poll").status_code == 400
+
+
+def test_ui_browser_sign_in_reports_denial(ui, cm, device):
+    from memanto.cli.client.device_auth import DeviceLoginError
+
+    client, _, _ = ui
+    device.error = DeviceLoginError("Sign-in was denied.")
+    client.post("/api/ui/cloud-move/sign-in")
+
+    response = client.post("/api/ui/cloud-move/sign-in/poll")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Sign-in was denied."
     assert cm.get_memanto_api_key() is None
 
-    monkeypatch.setattr(HostedClient, "get_account", lambda self: {"email": "a@b.c"})
-    ok = client.put("/api/ui/cloud-move/key", json={"api_key": "mk_good"})
-    assert ok.json() == {"signed_in": True, "email": "a@b.c"}
-    assert cm.get_memanto_api_key() == "mk_good"
-    assert cm.get_backend() == Backend.ON_PREM
 
-    again = client.put("/api/ui/cloud-move/key", json={"api_key": "mk_other"})
-    assert again.status_code == 409
-    assert cm.get_memanto_api_key() == "mk_good"
+def test_ui_browser_sign_in_never_replaces_an_account(ui, cm, device):
+    client, _, _ = ui
+    cm.set_memanto_api_key("mk_existing")
+
+    response = client.post("/api/ui/cloud-move/sign-in")
+
+    assert response.status_code == 409
+    assert device.instances == []
+    assert cm.get_memanto_api_key() == "mk_existing"
