@@ -104,13 +104,31 @@ def _project_dir(payload: dict) -> str:
     return os.getcwd()
 
 
+def _catch_up_lines(out: str) -> str:
+    """The "Since your last session" block `memory sync --catch-up` printed, or ""."""
+    import re
+
+    match = re.search(
+        r"^Since your last session[^\n]*\n(?:- [^\n]*(?:\n|$))+", out, re.MULTILINE
+    )
+    return match.group(0).rstrip() if match else ""
+
+
 def sync_memory(project_dir: str) -> str | None:
-    """Run `memanto memory sync`. Returns a one-line summary, or None if unavailable."""
+    """Run `memanto memory sync --catch-up`.
+
+    Returns a one-line summary, followed by the memories saved since the last
+    session (by any tool) when there are some, or None if unavailable.
+    """
     try:
         result = subprocess.run(
-            ["memanto", "memory", "sync", "--project-dir", project_dir],
+            ["memanto", "memory", "sync", "--project-dir", project_dir, "--catch-up"],
             capture_output=True,
-            text=True,
+            # Memories can hold any text: have the child write UTF-8 and read
+            # it as UTF-8, not the Windows console code page.
+            encoding="utf-8",
+            errors="replace",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             timeout=SYNC_TIMEOUT,
         )
     except FileNotFoundError:
@@ -127,17 +145,19 @@ def sync_memory(project_dir: str) -> str | None:
     import re
 
     out = result.stdout or ""
+    catch_up = _catch_up_lines(out)
     if re.search(r"No active dynamic memories", out):
-        return "Memory refreshed — no active standing memories."
-    match = re.search(r"Recalled\s+(\d+)\s+dynamic memor", out)
-    if not match:
-        return "Memory refreshed."
-    count = int(match.group(1))
-    return (
-        f"Memory refreshed — {count} active "
-        + ("memory" if count == 1 else "memories")
-        + " loaded."
-    )
+        summary = "Memory refreshed — no active standing memories."
+    elif match := re.search(r"Recalled\s+(\d+)\s+dynamic memor", out):
+        count = int(match.group(1))
+        summary = (
+            f"Memory refreshed — {count} active "
+            + ("memory" if count == 1 else "memories")
+            + " loaded."
+        )
+    else:
+        summary = "Memory refreshed."
+    return f"{summary}\n{catch_up}" if catch_up else summary
 
 
 def _settings_path() -> Path:
@@ -227,9 +247,12 @@ def main() -> None:
     try:
         summary = sync_memory(project_dir)
         if summary:
+            first, _, catch_up = summary.partition("\n")
             lines.append(
-                f"{MARK} {summary} Use `memanto recall` for anything not already in your memory context."
+                f"{MARK} {first} Use `memanto recall` for anything not already in your memory context."
             )
+            if catch_up:
+                lines.append(catch_up)
     except Exception:
         # Ignore errors syncing memory in session start hook
         pass

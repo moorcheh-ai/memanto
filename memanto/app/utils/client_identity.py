@@ -23,6 +23,7 @@ back as fact.
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -257,3 +258,38 @@ def detect_client() -> ClientIdentity:
             return ClientIdentity(tool=tool, display=display, project_dir=project_dir)
 
     return replace(UNKNOWN_CLIENT, project_dir=project_dir)
+
+
+# Memories written on Memanto Cloud carry a ``project_<name>`` tag so one agent
+# can be shared across projects and still be filtered to one of them. Letters,
+# digits and "_" only: Moorcheh's tag filter ignores tags containing "-".
+PROJECT_TAG_PREFIX = "project_"
+_MAX_TAG_CHARS = 64
+
+
+def project_name(project_dir: str | None = None) -> str | None:
+    """Name of the project a call comes from: its git root's folder name.
+
+    Uses *project_dir*, else ``CLAUDE_PROJECT_DIR``, else the working
+    directory; without a git root, that folder itself. ``None`` for the home
+    directory or a filesystem root, which name no project.
+    """
+    from pathlib import Path
+
+    try:
+        start = Path(
+            project_dir or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+        ).resolve()
+        home = Path.home().resolve()
+    except (OSError, RuntimeError):
+        return None
+    root = next((d for d in (start, *start.parents) if (d / ".git").exists()), start)
+    if root == home or root.parent == root:
+        return None
+    return root.name
+
+
+def project_tag(name: str | None) -> str | None:
+    """``project_<slug>`` for a project name, or ``None`` when it has no letters/digits."""
+    slug = re.sub(r"[^a-z0-9]+", "_", (name or "").lower()).strip("_")
+    return (PROJECT_TAG_PREFIX + slug)[:_MAX_TAG_CHARS] if slug else None

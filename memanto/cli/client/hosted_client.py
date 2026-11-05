@@ -21,6 +21,7 @@ using a different store.
 """
 
 import logging
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,11 @@ from typing import Any, NoReturn, cast
 
 import httpx
 
+from memanto.app.utils.client_identity import (
+    detect_client,
+    project_name,
+    project_tag,
+)
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
@@ -71,6 +77,55 @@ def _not_available(what: str) -> NoReturn:
 def _compact(data: dict[str, Any]) -> dict[str, Any]:
     """Drop ``None`` values so the server applies its own defaults."""
     return {k: v for k, v in data.items() if v is not None}
+
+
+def _caller(source: str | None) -> str | None:
+    """The ``source`` a read sends: the caller's own, else the detected tool.
+
+    Memanto Cloud records the tool behind each call from ``source`` (the
+    console's Connections page), so a recall from Claude Code without
+    ``--source`` still counts as Claude Code.
+    """
+    if source:
+        return source
+    identity = detect_client()
+    return identity.tool if identity.is_known else None
+
+
+def _plain_memory(memory: Any) -> Any:
+    """Give a recalled memory its plain ``content``, as local backends do.
+
+    Memanto Cloud returns ``content`` as the stored card: a ``[TYPE] title``
+    line, the body, and a ``Tags: a, b`` footer, separated by blank lines.
+    Keep only the body; a memory that does not start with its own type header
+    is returned unchanged.
+    """
+    if not isinstance(memory, dict) or not isinstance(memory.get("content"), str):
+        return memory
+    head, sep, body = memory["content"].partition("\n\n")
+    header = re.match(r"^\[([A-Za-z]+)\] ", head)
+    mem_type = str(memory.get("type") or "")
+    if not sep or not header or header.group(1).lower() != mem_type.lower():
+        return memory
+    tags = [str(t).strip() for t in memory.get("tags") or []]
+    if tags:
+        before, marker, footer = body.rpartition("\n\nTags: ")
+        if marker and [t.strip() for t in footer.split(",")] == tags:
+            body = before
+    return {**memory, "content": body}
+
+
+def _plain_memories(result: dict[str, Any]) -> list[Any]:
+    return [_plain_memory(m) for m in result.get("memories", [])]
+
+
+def _with_project_tag(tags: list[str] | None) -> list[str]:
+    """*tags* plus this project's ``project_<name>`` tag, when there is one."""
+    tags = list(tags or [])
+    tag = project_tag(project_name())
+    if tag and tag not in tags and len(tags) < 20:
+        tags.append(tag)
+    return tags
 
 
 class HostedClient(SdkClient):
@@ -314,7 +369,7 @@ class HostedClient(SdkClient):
                     "title": title or None,
                     "content": content,
                     "confidence": confidence,
-                    "tags": tags or [],
+                    "tags": _with_project_tag(tags),
                     "source": source,
                     "provenance": provenance,
                 }
@@ -558,14 +613,14 @@ class HostedClient(SdkClient):
                     else None,
                     "min_confidence": min_confidence,
                     "status": status,
-                    "source": source,
+                    "source": _caller(source),
                 }
             ),
         )
         return {
             "agent_id": agent_id,
             "query": query,
-            "memories": result.get("memories", []),
+            "memories": _plain_memories(result),
             "count": result.get("count", 0),
         }
 
@@ -600,13 +655,13 @@ class HostedClient(SdkClient):
                 "limit": limit,
                 "type": type,
                 "tags": tags,
-                "source": source,
+                "source": _caller(source),
             },
         )
         return {
             "agent_id": agent_id,
             "as_of_date": as_of,
-            "memories": result.get("memories", []),
+            "memories": _plain_memories(result),
             "count": result.get("count", 0),
         }
 
@@ -630,13 +685,13 @@ class HostedClient(SdkClient):
                 "type": type,
                 "tags": tags,
                 "status": status,
-                "source": source,
+                "source": _caller(source),
             },
         )
         return {
             "agent_id": agent_id,
             "since_date": since,
-            "memories": result.get("memories", []),
+            "memories": _plain_memories(result),
             "count": result.get("count", 0),
         }
 
@@ -658,12 +713,12 @@ class HostedClient(SdkClient):
                 "type": type,
                 "tags": tags,
                 "status": status,
-                "source": source,
+                "source": _caller(source),
             },
         )
         return {
             "agent_id": agent_id,
-            "memories": result.get("memories", []),
+            "memories": _plain_memories(result),
             "count": result.get("count", 0),
         }
 
@@ -709,7 +764,7 @@ class HostedClient(SdkClient):
                     "kiosk_mode": kiosk_mode,
                     "header_prompt": header_prompt,
                     "footer_prompt": footer_prompt,
-                    "source": source,
+                    "source": _caller(source),
                     "stream": False,
                 }
             ),

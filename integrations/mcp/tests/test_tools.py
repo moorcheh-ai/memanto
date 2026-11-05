@@ -340,6 +340,31 @@ def test_recall_delegates_min_similarity_to_the_backend() -> None:
     assert lifecycle.client.recall.call_args.kwargs["min_similarity"] == 0.4
 
 
+def test_recall_project_filters_by_the_project_tag() -> None:
+    mcp = FakeMCP()
+    lifecycle = FakeLifecycle()
+    register_tools(mcp, lifecycle)  # type: ignore[arg-type]
+
+    mcp.tools["recall"](query="build steps", project="Memanto-Cloud")
+    assert lifecycle.client.recall.call_args.kwargs["tags"] == ["project_memanto_cloud"]
+
+    mcp.tools["recall"](query="build steps")
+    assert lifecycle.client.recall.call_args.kwargs["tags"] is None
+
+    result = mcp.tools["recall"](query="build steps", project="--")
+    assert result.status == "error"
+
+
+def test_recall_project_tag_matches_memanto() -> None:
+    """The MCP filter must name the tag Memanto Cloud writes."""
+    from memanto.app.utils.client_identity import project_tag
+
+    from memanto_mcp.tools import _project_tags
+
+    for name in ("memanto", "Memanto-Cloud", "my.app v2", "x" * 100):
+        assert _project_tags(name) == [project_tag(name)]
+
+
 def test_answer_leaves_kiosk_mode_to_server_config_by_default() -> None:
     """An explicit False would silently override a configured kiosk_mode."""
     mcp = FakeMCP()

@@ -285,6 +285,20 @@ def _format_exception(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+def _project_tags(project: str | None) -> list[str] | None:
+    """Tag filter for one project: ``project_<slug>``, as Memanto Cloud writes it.
+
+    Mirrors ``memanto.app.utils.client_identity.project_tag``; kept here so
+    this package still works with memanto releases that predate it.
+    """
+    if project is None:
+        return None
+    slug = re.sub(r"[^a-z0-9]+", "_", project.lower()).strip("_")
+    if not slug:
+        raise ValueError("project must contain letters or digits")
+    return [("project_" + slug)[:64]]
+
+
 def _sanitize_source(raw: Any) -> str | None:
     """Coerce a client-supplied name into a valid Memanto source label.
 
@@ -718,6 +732,19 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 ),
             ),
         ] = None,
+        project: Annotated[
+            str | None,
+            Field(
+                default=None,
+                max_length=200,
+                description=(
+                    "Optional: only memories saved from this project (its git "
+                    "folder name, e.g. 'memanto'). Memanto Cloud tags each "
+                    "memory with the project it was saved from. Omit to search "
+                    "every project."
+                ),
+            ),
+        ] = None,
         agent_id: AgentIdField = None,
         ctx: Context | None = None,
     ) -> RecallResult:
@@ -732,6 +759,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     query=query,
                     limit=limit,
                     type=list(type) if type else None,
+                    tags=_project_tags(project),
                     min_similarity=min_similarity,
                     source=resolved_source,
                 )

@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from memanto.app.services.session_service import SessionService
+from memanto.app.utils.client_identity import UNKNOWN_CLIENT, client_from_tool
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
@@ -56,6 +57,10 @@ def api() -> FakeApi:
 @pytest.fixture
 def client(api: FakeApi, tmp_path: Path, monkeypatch) -> HostedClient:
     monkeypatch.setattr(hosted_module.time, "sleep", lambda _s: None)
+    # Not run from any tool or project unless a test says so (CI and a
+    # developer's shell inside Claude Code must see the same requests).
+    monkeypatch.setattr(hosted_module, "detect_client", lambda: UNKNOWN_CLIENT)
+    monkeypatch.setattr(hosted_module, "project_name", lambda: None)
     c = HostedClient("mk_test", base_url=BASE, transport=httpx.MockTransport(api))
     c._session_service = SessionService(  # type: ignore[assignment]
         secret_key="test-secret-key-for-hosted-client-tests",
@@ -194,6 +199,44 @@ def test_temporal_recall_routes(active, api, method, kwargs, route, expected_bod
 
     assert api.last_json() == {"limit": 3, **expected_body}
     assert result["memories"] == [] and result["count"] == 0
+
+
+# Tool and project attribution (console Connections reads `source`)
+
+
+def test_reads_send_the_detected_tool_as_source(active, api, monkeypatch):
+    monkeypatch.setattr(
+        hosted_module, "detect_client", lambda: client_from_tool("cursor")
+    )
+    empty = {"count": 0, "memories": []}
+    api.routes[("POST", f"/agents/{AGENT}/recall")] = empty
+    api.routes[("POST", f"/agents/{AGENT}/recall/changed-since")] = empty
+    api.routes[("POST", f"/agents/{AGENT}/answer")] = {"answer": "a"}
+
+    active.recall(AGENT, "q", limit=3)
+    assert api.last_json()["source"] == "cursor"
+    active.recall_changed_since(AGENT, "2026-01-01", limit=3)
+    assert api.last_json()["source"] == "cursor"
+    active.answer(AGENT, "q?")
+    assert api.last_json()["source"] == "cursor"
+
+    active.recall(AGENT, "q", limit=3, source="codex")
+    assert api.last_json()["source"] == "codex"
+
+
+def test_remember_tags_the_project(active, api, monkeypatch):
+    monkeypatch.setattr(hosted_module, "project_name", lambda: "My-App")
+    api.routes[("POST", f"/agents/{AGENT}/remember")] = {"memory_id": "m1"}
+
+    active.remember(AGENT, "fact", "t", "c", tags=["a"])
+    assert api.last_json()["tags"] == ["a", "project_my_app"]
+
+    active.remember(AGENT, "fact", "t", "c", tags=["project_my_app"])
+    assert api.last_json()["tags"] == ["project_my_app"]
+
+    full = [f"t{i}" for i in range(20)]
+    active.remember(AGENT, "fact", "t", "c", tags=full)
+    assert api.last_json()["tags"] == full
 
 
 def test_answer_lets_server_choose_model(active, api):
@@ -409,3 +452,40 @@ def test_delete_agent_deletes_and_clears_session(active, api):
 
     assert result == {"status": "deleted", "agent_id": AGENT, "memories_deleted": True}
     assert active.agent_id is None
+
+
+def test_recall_returns_plain_content_not_the_stored_card(active, api):
+    card = (
+        "[DECISION] Prices\n\nPrices are stored in cents\n\nTags: billing, project_shop"
+    )
+    api.routes[("POST", f"/agents/{AGENT}/recall")] = {
+        "memories": [
+            {
+                "id": "a",
+                "type": "decision",
+                "content": card,
+                "tags": ["billing", "project_shop"],
+            },
+            {
+                "id": "b",
+                "type": "fact",
+                "content": "[FACT] T\n\nBody\n\nTags: other",
+                "tags": [],
+            },
+            {"id": "c", "type": "fact", "content": "Plain text, no card"},
+            {
+                "id": "d",
+                "type": "fact",
+                "content": "[NOTE] x\n\nnot this type's header",
+            },
+        ]
+    }
+
+    memories = active.recall(AGENT, "q", limit=5)["memories"]
+
+    assert [m["content"] for m in memories] == [
+        "Prices are stored in cents",
+        "Body\n\nTags: other",
+        "Plain text, no card",
+        "[NOTE] x\n\nnot this type's header",
+    ]
