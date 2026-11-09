@@ -334,7 +334,7 @@ class MemoryReadService:
             # Apply pagination (offset + limit) and format ONLY the final slice.
             # Avoids running expensive presentation formatting (regex text parsing,
             # tag stripping, object allocations) on candidates discarded by post-filters.
-            paginated_raw = candidate_items[offset: offset + limit]
+            paginated_raw = candidate_items[offset : offset + limit]
             has_more = len(candidate_items) > offset + limit
             paginated_results = [
                 self._format_memory_item(item) for item in paginated_raw
