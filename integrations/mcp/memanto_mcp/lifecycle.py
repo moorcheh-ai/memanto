@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
@@ -27,6 +27,12 @@ from memanto.app.utils.errors import (
     SessionError,
 )
 from memanto.cli.client.sdk_client import SdkClient
+
+from memanto_mcp.cloud_client import (
+     DEFAULT_PUBLIC_API_URL,
+    CloudPublicApiClient,
+    PublicApiUnauthorizedError,
+)
 
 if TYPE_CHECKING:
     from memanto_mcp.config import MCPServerSettings
@@ -53,19 +59,54 @@ class MemantoLifecycle:
         """Initialize administrative and per-agent client state."""
 
         self._settings = settings
-        self._admin_client = SdkClient(api_key=settings.api_key_value())
-        self._session_clients: dict[str, SdkClient] = {}
+        initial_key = settings.api_key_value()
+        self._active_api_key: str = initial_key
+        self._admin_client: Any = (
+            self._build_backend_client(initial_key) if initial_key else None
+        )
+        self._session_clients: dict[str, Any] = {}
         self._agent_locks: dict[str, threading.Lock] = {}
         self._ensured_agents: set[str] = set()
+        self._auto_creatable_agents: set[str] = (
+            {settings.default_agent_id} if settings.default_agent_id else set()
+        )
         self._lock = threading.Lock()
+
+    def _build_backend_client(self, api_key: str) -> Any:
+        """Create CloudPublicApiClient for mk_... keys (memanto-cloud), or SdkClient for legacy keys."""
+        if api_key.startswith("mk_"):
+            base_url = (
+                getattr(self._settings, "public_api_url", None)
+                or DEFAULT_PUBLIC_API_URL
+            )
+            return CloudPublicApiClient(api_key=api_key, base_url=base_url)
+        return SdkClient(api_key=api_key)
+
+    def _require_api_key(self) -> str:
+        key = self._settings.api_key_value()
+        if not key:
+            raise PublicApiUnauthorizedError()
+        with self._lock:
+            if key != self._active_api_key:
+                self._active_api_key = key
+                self._admin_client = self._build_backend_client(key)
+                self._session_clients.clear()
+                self._agent_locks.clear()
+                self._ensured_agents.clear()
+        return key
 
     # ------------------------------------------------------------------ #
     # Public API used by tools
     # ------------------------------------------------------------------ #
 
     @property
-    def client(self) -> SdkClient:
+    def client(self) -> Any:
         """The shared administrative client for agent CRUD operations."""
+        if self._admin_client is None:
+            key = self._require_api_key()
+            with self._lock:
+                if self._admin_client is None:
+                    self._admin_client = self._build_backend_client(key)
         return self._admin_client
 
     @property
@@ -73,22 +114,37 @@ class MemantoLifecycle:
         """The server settings driving this lifecycle."""
         return self._settings
 
-    def resolve_agent_id(self, agent_id: str | None) -> str:
-        """Pick the explicit ``agent_id`` if given, else fall back to default.
+    def resolve_agent_id(
+        self,
+        agent_id: str | None,
+        *,
+        client_agent_id: str | None = None,
+    ) -> str:
+        """Pick the explicit ``agent_id`` if given, else fall back to default or IDE handshake.
 
         Raises:
-            NoAgentConfiguredError: If neither was provided.
+            NoAgentConfiguredError: If none was provided.
         """
+        connection_default = self._settings.default_agent_id or (
+            client_agent_id.strip()
+            if client_agent_id and client_agent_id.strip()
+            else None
+        )
+        if connection_default:
+            with self._lock:
+                if len(self._auto_creatable_agents) < self._MAX_SESSION_CLIENTS:
+                    self._auto_creatable_agents.add(connection_default)
+
         if agent_id and agent_id.strip():
             return agent_id.strip()
-        if self._settings.default_agent_id:
-            return self._settings.default_agent_id
+        if connection_default:
+            return connection_default
         raise NoAgentConfiguredError(
             "No agent_id was supplied and no MEMANTO_DEFAULT_AGENT_ID is "
             "configured. Either pass agent_id explicitly or set the env var."
         )
 
-    def ensure_ready(self, agent_id: str) -> SdkClient:
+    def ensure_ready(self, agent_id: str) -> Any:
         """Make sure the agent exists and a session is active for it.
 
         Returns an agent-scoped SDK client. ``SdkClient`` stores the active
@@ -98,13 +154,14 @@ class MemantoLifecycle:
         """
         return self.client_for(agent_id)
 
-    def client_for(self, agent_id: str) -> SdkClient:
+    def client_for(self, agent_id: str) -> Any:
         """Return a ready client whose session is isolated to ``agent_id``.
 
         ``SdkClient`` stores the active agent as mutable instance state. Keeping
         one client per agent prevents a concurrent call for another agent from
         replacing that state between readiness checks and the actual operation.
         """
+        effective_key = self._require_api_key()
         with self._lock:
             client = self._session_clients.get(agent_id)
             is_new_client = client is None
@@ -115,7 +172,7 @@ class MemantoLifecycle:
                         f"({self._MAX_SESSION_CLIENTS}); reuse an existing agent_id "
                         "or restart the server to clear idle session clients."
                     )
-                client = SdkClient(api_key=self._settings.api_key_value())
+                client = self._build_backend_client(effective_key)
                 self._session_clients[agent_id] = client
                 self._agent_locks[agent_id] = threading.Lock()
             agent_lock = self._agent_locks[agent_id]
@@ -169,7 +226,13 @@ class MemantoLifecycle:
                 f"{agent_id}` or via the create_agent tool."
             )
 
-        if agent_id != self._settings.default_agent_id:
+        with self._lock:
+            is_auto_creatable = (
+                agent_id == self._settings.default_agent_id
+                or agent_id in self._auto_creatable_agents
+            )
+
+        if not is_auto_creatable:
             raise AgentNotFoundError(
                 f"Agent '{agent_id}' does not exist. Only the configured default agent "
                 "may be auto-created; create other agents explicitly with "

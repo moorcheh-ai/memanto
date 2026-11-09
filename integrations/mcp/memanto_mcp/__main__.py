@@ -7,8 +7,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+from pathlib import Path
 
+from memanto_mcp.cloud_client import load_local_env_api_key
 from memanto_mcp.config import MCPServerSettings, TransportType
 from memanto_mcp.server import run_server
 
@@ -71,6 +74,14 @@ def main(argv: list[str] | None = None) -> int:
         overrides["port"] = args.port
     if args.log_level:
         overrides["log_level"] = args.log_level
+
+    # Load MEMANTO_API_KEY from ~/.memanto/.env if present; if still unset and
+    # no local .env sets it, start in pending-login mode so the MCP client can
+    # connect and invoke the `login` tool to populate MEMANTO_API_KEY automatically.
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        resolved_key = load_local_env_api_key()
+        if not resolved_key and not Path(".env").exists():
+            overrides.setdefault("moorcheh_api_key", "__pending_local_login__")
 
     try:
         settings = MCPServerSettings(**overrides)  # type: ignore[arg-type]

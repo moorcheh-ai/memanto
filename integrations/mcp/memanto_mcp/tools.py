@@ -47,6 +47,12 @@ from memanto.app.utils.errors import (
 from memanto.app.utils.validation import InputLimits
 from pydantic import BaseModel, Field
 
+from memanto_mcp.cloud_client import (
+    DEFAULT_PUBLIC_API_URL,
+    CloudPublicApiClient,
+    local_login_manager,
+    persist_local_api_key,
+)
 from memanto_mcp.lifecycle import MemantoLifecycle, NoAgentConfiguredError
 
 logger = logging.getLogger(__name__)
@@ -263,6 +269,42 @@ class AgentListResult(BaseModel):
     message: str | None = None
 
 
+class LoginResult(BaseModel):
+    """Local device-code sign-in status returned by the ``login`` tool."""
+
+    status: str = Field(
+        description="'pending' while waiting for browser approval, 'authenticated' once signed in, or 'error'."
+    )
+    verification_uri: str | None = Field(
+        default=None,
+        description="Memanto Console verification URL opened in the user's browser.",
+    )
+    user_code: str | None = Field(
+        default=None,
+        description="8-letter device verification code shown in the console.",
+    )
+    browser_opened: bool = Field(
+        default=False,
+        description="True if the default browser was opened automatically.",
+    )
+    user_email: str | None = Field(
+        default=None,
+        description="Signed-in account email once approved.",
+    )
+    plan: str | None = Field(
+        default=None,
+        description="Active Memanto plan once approved.",
+    )
+    env_configured: bool = Field(
+        default=False,
+        description="True when MEMANTO_API_KEY has been set in the environment and ~/.memanto/.env.",
+    )
+    message: str | None = Field(
+        default=None,
+        description="Instructions or confirmation to show the user.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Error shaping
 # ---------------------------------------------------------------------------
@@ -288,12 +330,19 @@ def _format_exception(exc: Exception) -> str:
 def _sanitize_source(raw: Any) -> str | None:
     """Coerce a client-supplied name into a valid Memanto source label.
 
-    Client names are free text ("Visual Studio Code", "Claude Code"), so fold
-    them to the bounded label shape instead of dropping the attribution.
+    Client names are free text ("Visual Studio Code", "Claude Code",
+    "cursor-vscode"), so normalize known IDE/client names to their canonical
+    tool slug ("github-copilot", "claude-code", "cursor", ...) before falling
+    back to the bounded label shape.
     """
     if not raw:
         return None
     token = _SOURCE_SANITIZE_RE.sub("-", str(raw).strip().lower()).strip("-")
+    if not token:
+        return None
+    normalized = normalize_tool(token)
+    if normalized and normalized != "unknown":
+        token = normalized
     return token[:SOURCE_MAX_LENGTH] or None
 
 
@@ -1019,6 +1068,110 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 agent_id=agent_id or settings.default_agent_id or "",
                 question=question,
             )
+
+    # ============================================================ #
+    # login (Local Device-Code Auth -> Auto-Sets MEMANTO_API_KEY)
+    # ============================================================ #
+    @mcp.tool(
+        name="login",
+        description=(
+            "Sign in to Memanto via the browser when no MEMANTO_API_KEY is "
+            "configured or when a tool returns Unauthorized. Opens the Memanto "
+            "Console approval page in the user's browser, polls for approval "
+            "in the background, and AUTOMATICALLY saves MEMANTO_API_KEY to the "
+            "environment (os.environ, ~/.memanto/.env, and user OS env) as soon "
+            "as the user approves—no manual API key copy-pasting needed."
+        ),
+    )
+    def login(ctx: Context | None = None) -> LoginResult:
+        """Start or complete a local device-code sign-in and auto-configure MEMANTO_API_KEY."""
+        from memanto_mcp import __version__
+
+        public_api_url = (
+            getattr(settings, "public_api_url", None) or DEFAULT_PUBLIC_API_URL
+        )
+
+        # 1. If a local device-code flow is already running, poll it now.
+        existing_state = local_login_manager.poll_once(force=True)
+        if existing_state is not None:
+            if existing_state.get("status") == "approved":
+                return LoginResult(
+                    status="authenticated",
+                    user_email=existing_state.get("user_email"),
+                    plan=existing_state.get("plan"),
+                    env_configured=True,
+                    message=(
+                        "Authenticated! MEMANTO_API_KEY has been automatically "
+                        "configured in the environment and ~/.memanto/.env."
+                    ),
+                )
+            if existing_state.get("status") == "pending":
+                verify_url = existing_state.get("verification_uri_complete")
+                code = existing_state.get("user_code")
+                return LoginResult(
+                    status="pending",
+                    verification_uri=verify_url,
+                    user_code=code,
+                    browser_opened=bool(existing_state.get("browser_opened")),
+                    message=(
+                        f"Ask the user to approve code {code} at {verify_url}. "
+                        "As soon as they click Approve, MEMANTO_API_KEY will be "
+                        "set automatically in the environment."
+                    ),
+                )
+
+        # 2. Check if already authenticated with a valid MEMANTO_API_KEY.
+        current_key = (
+            settings.api_key_value()
+            if hasattr(settings, "api_key_value")
+            else os.environ.get("MEMANTO_API_KEY", "").strip()
+        )
+        if current_key and current_key.startswith("mk_"):
+            try:
+                cloud = CloudPublicApiClient(
+                    api_key=current_key, base_url=public_api_url
+                )
+                account = cloud.verify_auth(use_cache=False)
+                persist_local_api_key(current_key)
+                return LoginResult(
+                    status="authenticated",
+                    user_email=account.get("email"),
+                    plan=account.get("plan"),
+                    env_configured=True,
+                    message="Already authenticated with a valid MEMANTO_API_KEY.",
+                )
+            except Exception:
+                pass
+
+        # 3. Start a new local device-code flow (opens browser + starts background poller).
+        try:
+            client_source = _client_source(ctx, default_source)
+            state = local_login_manager.start(
+                base_url=public_api_url,
+                client_name=f"memanto-mcp ({client_source})",
+                cli_version=__version__,
+            )
+            verify_url = state["verification_uri_complete"]
+            code = state["user_code"]
+            opened_note = (
+                "Opened the Memanto Console in the user's browser."
+                if state.get("browser_opened")
+                else f"Ask the user to open {verify_url} in their browser."
+            )
+            return LoginResult(
+                status="pending",
+                verification_uri=verify_url,
+                user_code=code,
+                browser_opened=bool(state.get("browser_opened")),
+                message=(
+                    f"{opened_note} Ask them to approve code {code} at {verify_url}. "
+                    "A background poller is running and will automatically set "
+                    "MEMANTO_API_KEY in the environment as soon as they click Approve."
+                ),
+            )
+        except Exception as exc:
+            logger.exception("login failed")
+            return LoginResult(status="error", message=_format_exception(exc))
 
     # ============================================================ #
     # Optional agent administration tools

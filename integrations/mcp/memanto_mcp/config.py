@@ -7,10 +7,13 @@ surfaces immediately at startup rather than on the first tool call.
 
 from __future__ import annotations
 
+import os
 from enum import Enum
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from memanto_mcp.cloud_client import DEFAULT_PUBLIC_API_URL, local_login_manager
 
 
 class TransportType(str, Enum):
@@ -55,13 +58,21 @@ class MCPServerSettings(BaseSettings):
         env_prefix="",
         extra="ignore",
         case_sensitive=False,
+        populate_by_name=True,
     )
 
     # ---- Memanto credentials & agent ----
     moorcheh_api_key: SecretStr = Field(
         ...,
-        validation_alias="MOORCHEH_API_KEY",
-        description="Moorcheh API key. Create one at https://console.moorcheh.ai/api-keys",
+        validation_alias=AliasChoices(
+            "MEMANTO_API_KEY", "MOORCHEH_API_KEY", "moorcheh_api_key"
+        ),
+        description="Memanto or Moorcheh API key.",
+    )
+    public_api_url: str = Field(
+        default=DEFAULT_PUBLIC_API_URL,
+        validation_alias="MEMANTO_PUBLIC_API_URL",
+        description="Base URL for the Memanto Cloud Public API Gateway.",
     )
     default_agent_id: str | None = Field(
         default=None,
@@ -159,4 +170,16 @@ class MCPServerSettings(BaseSettings):
 
     # Convenience accessor — never logged.
     def api_key_value(self) -> str:
-        return self.moorcheh_api_key.get_secret_value()
+        polled = local_login_manager.poll_once(force=False)
+        if polled and polled.get("status") == "approved" and polled.get("api_key"):
+            return str(polled["api_key"]).strip()
+        env_memanto = os.environ.get("MEMANTO_API_KEY", "").strip()
+        if env_memanto and env_memanto != "__pending_local_login__":
+            return env_memanto
+        val = self.moorcheh_api_key.get_secret_value()
+        if val != "__pending_local_login__":
+            return val
+        env_moorcheh = os.environ.get("MOORCHEH_API_KEY", "").strip()
+        if env_moorcheh and env_moorcheh != "__pending_local_login__":
+            return env_moorcheh
+        return ""

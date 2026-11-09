@@ -37,7 +37,8 @@
     { "name": "recall_recent", "description": "Get the newest memories, no query needed." },
     { "name": "recall_as_of", "description": "Recall what was known at a point in time." },
     { "name": "recall_changed_since", "description": "Recall what changed since a given time." },
-    { "name": "answer", "description": "Answer a question grounded in the agent's memories." }
+    { "name": "answer", "description": "Answer a question grounded in the agent's memories." },
+    { "name": "login", "description": "Sign in to Memanto via the browser and automatically set MEMANTO_API_KEY in your environment." }
   ],
   "user_config": {
     "moorcheh_api_key": {

@@ -11,14 +11,24 @@ from memanto_mcp.config import MCPServerSettings, TransportType
 def test_missing_api_key_raises() -> None:
     with pytest.raises(ValidationError) as exc:
         MCPServerSettings()  # type: ignore[call-arg]
-    assert "moorcheh_api_key" in str(exc.value).lower()
+    assert "memanto_api_key" in str(exc.value).lower()
 
 
 def test_empty_api_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOORCHEH_API_KEY", "   ")
     with pytest.raises(ValidationError) as exc:
         MCPServerSettings()  # type: ignore[call-arg]
-    assert "moorcheh_api_key" in str(exc.value).lower()
+    assert "moorcheh_api_key" in str(exc.value).lower() or "memanto_api_key" in str(exc.value).lower()
+
+
+def test_memanto_api_key_primary_with_moorcheh_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mk_fallback")
+    assert MCPServerSettings().api_key_value() == "mk_fallback"  # type: ignore[call-arg]
+
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_primary")
+    assert MCPServerSettings().api_key_value() == "mk_primary"  # type: ignore[call-arg]
 
 
 def test_minimal_valid_settings(fake_api_key: str) -> None:

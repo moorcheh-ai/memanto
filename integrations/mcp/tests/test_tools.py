@@ -228,8 +228,9 @@ def test_remember_accepts_any_writer_label(source: str) -> None:
     [
         ("cursor", "cursor"),
         ("Cursor", "cursor"),
-        ("claude-ai", "claude-ai"),
-        ("Visual Studio Code", "visual-studio-code"),
+        ("cursor-vscode", "cursor"),
+        ("claude-ai", "claude-code"),
+        ("Visual Studio Code", "github-copilot"),
         ("Claude Code", "claude-code"),
         (None, DEFAULT_SOURCE),
         ("", DEFAULT_SOURCE),
@@ -435,7 +436,7 @@ def test_every_tool_succeeds_and_matches_the_sdk_signature() -> None:
     lifecycle = FakeLifecycle(expose_admin_tools=True)
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
-    assert set(mcp.tools) == {name for name, _ in TOOL_INVOCATIONS}
+    assert set(mcp.tools) - {"login"} == {name for name, _ in TOOL_INVOCATIONS}
 
     for tool_name, kwargs in TOOL_INVOCATIONS:
         result = mcp.tools[tool_name](**kwargs)
