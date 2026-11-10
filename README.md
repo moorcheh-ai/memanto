@@ -73,11 +73,21 @@ Memanto isn't a library you call. It's a second agent that runs beside your flee
 
 ## 60 seconds to a managed fleet
 
+**Let your coding agent set it up.** Paste this into Claude Code, Cursor, Codex, or any coding agent:
+
+```text
+Read https://memanto.ai/start.md and set me up on Memanto
+```
+
+Or by hand:
+
 ```bash
 pip install memanto
-memanto                            # "On-Prem" (Docker, no account) or "Cloud" (free key)
+memanto login                      # Memanto Cloud: approve in your browser, no key to copy
 memanto connect claude-code        # also: cursor, codex, windsurf, cline, goose, copilot…
 ```
+
+Prefer local? Run `memanto` and pick **Memanto local** (on-prem with Docker, or a free Moorcheh key).
 
 Your agents now share one managed estate. No code changes, no wrapper, no rewrite of your agent loop.
 
@@ -242,24 +252,31 @@ Complete reference: [CLI User Guide](https://docs.memanto.ai/cli)
 </details>
 
 <details>
-<summary><strong>Install options — fully local vs. free cloud</strong></summary>
+<summary><strong>Install options — Memanto Cloud vs. Memanto local</strong></summary>
 
 <br>
 
-**Fully local. No account, no API key, nothing leaves your machine:**
+**Memanto Cloud (default). Sign in with your browser, no key to copy:**
 
 ```bash
 pip install memanto
-memanto           # choose "On-Prem" — guides through Docker + Ollama setup
+memanto login     # or let your agent do it: "Read https://memanto.ai/start.md and set me up on Memanto"
+```
+
+**Memanto local, fully on-prem. No account, no API key, nothing leaves your machine:**
+
+```bash
+pip install memanto
+memanto           # choose "Memanto local", then "Moorcheh on-prem" — guides through Docker + Ollama setup
 ```
 
 Requires Docker.
 
-**Free cloud. No card, ~60 seconds:**
+**Memanto local with Moorcheh Cloud. Free key, no card:**
 
 ```bash
 pip install memanto
-memanto           # choose "Cloud" — paste your free API key
+memanto           # choose "Memanto local", then "Moorcheh Cloud" — paste your free API key
 ```
 
 Free key at [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) — 100K free operations.

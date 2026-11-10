@@ -73,11 +73,21 @@ Memanto no es una biblioteca a la que llamas. Es un segundo agente que trabaja j
 
 ## 60 segundos para una flota gestionada
 
+**Deja que tu agente de código lo configure.** Pega esto en Claude Code, Cursor, Codex o cualquier agente de código:
+
+```text
+Read https://memanto.ai/start.md and set me up on Memanto
+```
+
+O a mano:
+
 ```bash
 pip install memanto
-memanto                            # "On-Prem" (Docker, sin cuenta) o "Cloud" (clave gratuita)
+memanto login                      # Memanto Cloud: aprueba en tu navegador, sin clave que copiar
 memanto connect claude-code        # también: cursor, codex, windsurf, cline, goose, copilot…
 ```
+
+¿Prefieres local? Ejecuta `memanto` y elige **Memanto local** (on-prem con Docker o una clave gratuita de Moorcheh).
 
 Tus agentes ahora comparten un patrimonio gestionado. Sin cambios de código, sin wrapper, sin reescribir el ciclo de tus agentes.
 
@@ -241,24 +251,31 @@ Referencia completa: [Guía de usuario de la CLI](https://docs.memanto.ai/cli)
 </details>
 
 <details>
-<summary><strong>Opciones de instalación: completamente local frente a nube gratuita</strong></summary>
+<summary><strong>Opciones de instalación: Memanto Cloud frente a Memanto local</strong></summary>
 
 <br>
 
-**Completamente local. Sin cuenta, sin clave de API; nada sale de tu máquina:**
+**Memanto Cloud (predeterminado). Inicia sesión con tu navegador, sin clave que copiar:**
 
 ```bash
 pip install memanto
-memanto           # elige "On-Prem"; guía la configuración de Docker + Ollama
+memanto login     # o deja que tu agente lo haga: "Read https://memanto.ai/start.md and set me up on Memanto"
+```
+
+**Memanto local, completamente on-prem. Sin cuenta, sin clave de API; nada sale de tu máquina:**
+
+```bash
+pip install memanto
+memanto           # elige "Memanto local" y luego "Moorcheh on-prem"; guía la configuración de Docker + Ollama
 ```
 
 Requiere Docker.
 
-**Nube gratuita. Sin tarjeta, ~60 segundos:**
+**Memanto local con Moorcheh Cloud. Clave gratuita, sin tarjeta:**
 
 ```bash
 pip install memanto
-memanto           # elige "Cloud"; pega tu clave de API gratuita
+memanto           # elige "Memanto local" y luego "Moorcheh Cloud"; pega tu clave de API gratuita
 ```
 
 Clave gratuita en [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys): 100K operaciones gratuitas.

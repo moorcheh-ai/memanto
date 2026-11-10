@@ -65,11 +65,21 @@ Memanto は呼び出すライブラリではありません。あなたのフリ
 ---
 ## 60 秒で管理されたフリートへ
 
+**コーディングエージェントに任せる。** Claude Code、Cursor、Codex などのコーディングエージェントに次を貼り付けます：
+
+```text
+Read https://memanto.ai/start.md and set me up on Memanto
+```
+
+手動の場合：
+
 ```bash
 pip install memanto
-memanto                            # "On-Prem"（Docker、アカウント不要）または "Cloud"（無料キー）
+memanto login                      # Memanto Cloud：ブラウザで承認、キーのコピー不要
 memanto connect claude-code        # cursor, codex, windsurf, cline, goose, copilot… も対応
 ```
+
+ローカルがよい場合は `memanto` を実行し **Memanto local** を選択します（Docker による on-prem、または無料の Moorcheh キー）。
 コード変更も wrapper もエージェントループの書き換えも不要で、エージェントは管理された一つの資産を共有します。
 
 ```bash
@@ -203,21 +213,28 @@ memanto recall "user communication style" --type preference
 完全な参照：[CLI User Guide](https://docs.memanto.ai/cli)
 </details>
 
-<details><summary><strong>インストールオプション：完全ローカルと無料クラウド</strong></summary>
+<details><summary><strong>インストールオプション：Memanto Cloud と Memanto local</strong></summary>
 <br>
-**完全ローカル。アカウント、API キー不要。何もマシン外へ出ません：**
+**Memanto Cloud（デフォルト）。ブラウザでサインイン、キーのコピー不要：**
 
 ```bash
 pip install memanto
-memanto           # "On-Prem" を選択。Docker + Ollama セットアップを案内
+memanto login     # またはエージェントに任せる："Read https://memanto.ai/start.md and set me up on Memanto"
+```
+
+**Memanto local、完全 on-prem。アカウント、API キー不要。何もマシン外へ出ません：**
+
+```bash
+pip install memanto
+memanto           # "Memanto local"、次に "Moorcheh on-prem" を選択。Docker + Ollama セットアップを案内
 ```
 Docker が必要です。
 
-**無料クラウド。カード不要、約 60 秒：**
+**Memanto local + Moorcheh Cloud。無料キー、カード不要：**
 
 ```bash
 pip install memanto
-memanto           # "Cloud" を選択。無料 API キーを貼り付け
+memanto           # "Memanto local"、次に "Moorcheh Cloud" を選択。無料 API キーを貼り付け
 ```
 無料キーは [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) から。100K 回の無料操作。
 
