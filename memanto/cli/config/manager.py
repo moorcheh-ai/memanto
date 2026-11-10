@@ -27,7 +27,7 @@ yaml = importlib.import_module("yaml")
 # Memanto Cloud public API gateway (x-api-key auth). Override with MEMANTO_API_URL.
 DEFAULT_MEMANTO_API_URL = "https://memanto-saas-public-gw-33wzz25k.ue.gateway.dev"
 # Memanto Cloud console, used in hints (where to get a key, upgrade a plan).
-MEMANTO_CONSOLE_URL = "https://memanto-frontend--memanto-saas.us-east4.hosted.app"
+MEMANTO_CONSOLE_URL = "https://console.memanto.ai"
 
 
 def _normalize_duplicated_api_key(key: str) -> str:
