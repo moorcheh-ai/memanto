@@ -3,6 +3,7 @@ MEMANTO CLI - Memanto Cloud sign-in and backend switching (login, logout, use).
 """
 
 import sys
+import time
 
 import typer
 
@@ -108,7 +109,18 @@ def _browser_sign_in() -> tuple[str, str | None]:
     """Sign in through the console in a browser; return ``(device key, email)``."""
     from memanto.cli.client.device_auth import DeviceLoginError, device_login
 
+    # Spinner with a live countdown while waiting; plain line when not a terminal.
+    status = console.status("", spinner="dots", spinner_style=BRIGHT)
+    deadline = time.monotonic()
+
+    def tick() -> None:
+        left = max(0, int(deadline - time.monotonic()))
+        status.update(
+            f"[dim]Waiting for approval in your browser · {left // 60}:{left % 60:02d} left · Ctrl-C to cancel[/dim]"
+        )
+
     def show_code(code: dict, opened: bool) -> None:
+        nonlocal deadline
         console.print("To sign in, approve this computer in the Memanto console:")
         console.print(f"  [{BRIGHT}]{code['verification_uri_complete']}[/{BRIGHT}]")
         console.print(f"  Code: [bold]{code['user_code']}[/bold]")
@@ -116,15 +128,32 @@ def _browser_sign_in() -> tuple[str, str | None]:
             console.print(
                 "[dim]Could not open a browser here. Open the link on any device.[/dim]"
             )
-        console.print("[dim]Waiting for approval... (Ctrl-C to cancel)[/dim]")
+        if not console.is_terminal:
+            console.print("[dim]Waiting for approval... (Ctrl-C to cancel)[/dim]")
+            return
+        deadline = time.monotonic() + float(code.get("expires_in", 600))
+        tick()
+        status.start()
+
+    def wait(seconds: float) -> None:
+        """Sleep between polls, refreshing the countdown every second."""
+        end = time.monotonic() + seconds
+        while (remaining := end - time.monotonic()) > 0:
+            time.sleep(min(1.0, remaining))
+            tick()
 
     try:
-        result = device_login(config_manager.get_memanto_api_url(), on_code=show_code)
+        result = device_login(
+            config_manager.get_memanto_api_url(), on_code=show_code, sleep=wait
+        )
     except KeyboardInterrupt:
+        status.stop()
         console.print("\n[yellow]Sign-in cancelled.[/yellow]")
         raise typer.Exit(1)
     except DeviceLoginError as e:
+        status.stop()
         _error(str(e))
+    status.stop()
     return result["api_key"], result.get("user_email")
 
 
