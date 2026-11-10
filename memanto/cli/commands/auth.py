@@ -109,8 +109,15 @@ def _browser_sign_in() -> tuple[str, str | None]:
     """Sign in through the console in a browser; return ``(device key, email)``."""
     from memanto.cli.client.device_auth import DeviceLoginError, device_login
 
-    # Spinner with a live countdown while waiting; plain line when not a terminal.
-    status = console.status("", spinner="dots", spinner_style=BRIGHT)
+    # Spinner from the moment the command runs (getting a code, opening the
+    # browser), then a live countdown while waiting; plain line when not a terminal.
+    status = console.status(
+        "[dim]Opening the Memanto console in your browser...[/dim]",
+        spinner="dots",
+        spinner_style=BRIGHT,
+    )
+    if console.is_terminal:
+        status.start()
     deadline = time.monotonic()
 
     def tick() -> None:
@@ -133,7 +140,6 @@ def _browser_sign_in() -> tuple[str, str | None]:
             return
         deadline = time.monotonic() + float(code.get("expires_in", 600))
         tick()
-        status.start()
 
     def wait(seconds: float) -> None:
         """Sleep between polls, refreshing the countdown every second."""
