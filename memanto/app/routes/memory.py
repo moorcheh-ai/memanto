@@ -1091,6 +1091,7 @@ async def recall(
             else None,
             status=request.status,
             limit=limit,
+            _adaptive_fetch=True,
         )
 
         memories = result.get("results", [])

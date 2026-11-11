@@ -1037,6 +1037,107 @@ class TestMEMANTOCLI:
         read_service.search_as_of.assert_not_called()
         read_service.search_changed_since.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "client_class_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    def test_recall_enables_adaptive_fetch_on_active_queries(self, client_class_path):
+        """DirectClient.recall and SdkClient.recall opt into adaptive fetching."""
+        module_name, class_name = client_class_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client_class = getattr(module, class_name)
+
+        rows = (
+            [
+                {
+                    "id": f"early-{i}",
+                    "text": f"[FACT] Early {i}\n\nActive note {i}",
+                    "memory_type": "fact",
+                    "status": "active",
+                    "score": 0.95 - i * 0.01,
+                }
+                for i in range(2)
+            ]
+            + [
+                {
+                    "id": f"exp-{i}",
+                    "text": f"[FACT] Expired {i}\n\nStale {i}",
+                    "memory_type": "fact",
+                    "status": "expired",
+                    "score": 0.9 - i * 0.01,
+                }
+                for i in range(23)
+            ]
+            + [
+                {
+                    "id": f"tail-{i}",
+                    "text": f"[FACT] Tail {i}\n\nLate active {i}",
+                    "memory_type": "fact",
+                    "status": "active",
+                    "score": 0.6 - i * 0.01,
+                }
+                for i in range(10)
+            ]
+        )
+        calls: list[int] = []
+        fake_moorcheh = MagicMock()
+        fake_moorcheh.similarity_search.query.side_effect = lambda **kwargs: (
+            calls.append(kwargs["top_k"]),
+            {"results": rows[: kwargs["top_k"]], "execution_time": 0},
+        )[1]
+
+        client = client_class.__new__(client_class)
+        client.api_key = "test-api-key"
+        client._moorcheh = fake_moorcheh
+        client._read_service = None
+
+        with (
+            patch.object(
+                client_class,
+                "_get_validated_session_for_agent",
+                return_value=MagicMock(),
+            ),
+            patch(
+                f"{module_name}.ConfigManager.get_recall_config",
+                return_value={"limit": 10, "min_similarity": None},
+            ),
+        ):
+            # Sufficient active items on first batch -> 1 call at top_k=25.
+            enough_result = client.recall(
+                agent_id="test-agent",
+                query="active",
+                limit=2,
+                status="active",
+            )
+            assert enough_result["count"] == 2
+            assert [m["id"] for m in enough_result["memories"]] == [
+                "early-0",
+                "early-1",
+            ]
+            assert calls == [25]
+
+            # Fewer than requested active items in full 25-row initial batch -> retries at 100.
+            calls.clear()
+            retry_result = client.recall(
+                agent_id="test-agent",
+                query="active",
+                limit=5,
+                status="active",
+            )
+
+        assert retry_result["count"] == 5
+        assert [m["id"] for m in retry_result["memories"]] == [
+            "early-0",
+            "early-1",
+            "tail-0",
+            "tail-1",
+            "tail-2",
+        ]
+        assert calls == [25, 100]
+
     def test_forget_force(self, mock_all_clients):
         """Test 'memanto forget --force' deletes a memory without prompting."""
         mock_all_clients.delete_memory.return_value = {

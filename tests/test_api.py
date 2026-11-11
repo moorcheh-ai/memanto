@@ -918,6 +918,182 @@ class TestMEMANTOAPI:
         assert [memory["id"] for memory in memories] == ["new-memory"]
 
     @pytest.mark.asyncio
+    async def test_recall_active_status_uses_adaptive_fetch_and_retries_once(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """HTTP /recall opts into adaptive fetching for active-only queries."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        enough_rows = [
+            {
+                "id": f"active-{i}",
+                "text": f"[FACT] Active {i}\n\nContent {i}",
+                "memory_type": "fact",
+                "status": "active",
+                "score": 1.0 - i * 0.01,
+            }
+            for i in range(40)
+        ]
+
+        def _query_rows(**kwargs):
+            return {"results": enough_rows[: kwargs["top_k"]], "execution_time": 0}
+
+        mock_moorcheh.similarity_search.query.side_effect = _query_rows
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers=headers,
+            json={"query": "active notes", "limit": 5, "status": "active"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 5
+        assert [m["id"] for m in data["memories"]] == [f"active-{i}" for i in range(5)]
+        assert [
+            c.kwargs["top_k"]
+            for c in mock_moorcheh.similarity_search.query.call_args_list
+        ] == [25]
+
+        # Now return a full first batch of 25 rows with only 2 active items,
+        # followed by more active items beyond position 25 -> one retry at 100.
+        mock_moorcheh.similarity_search.query.reset_mock()
+        expired_heavy_rows = (
+            [
+                {
+                    "id": f"early-{i}",
+                    "text": f"[FACT] Early {i}\n\nContent {i}",
+                    "memory_type": "fact",
+                    "status": "active",
+                    "score": 0.99 - i * 0.01,
+                }
+                for i in range(2)
+            ]
+            + [
+                {
+                    "id": f"exp-{i}",
+                    "text": f"[FACT] Expired {i}\n\nOld {i}",
+                    "memory_type": "fact",
+                    "status": "expired",
+                    "score": 0.9 - i * 0.01,
+                }
+                for i in range(23)
+            ]
+            + [
+                {
+                    "id": f"tail-{i}",
+                    "text": f"[FACT] Tail {i}\n\nContent {i}",
+                    "memory_type": "fact",
+                    "status": "active",
+                    "score": 0.6 - i * 0.01,
+                }
+                for i in range(10)
+            ]
+        )
+        mock_moorcheh.similarity_search.query.side_effect = lambda **kwargs: {
+            "results": expired_heavy_rows[: kwargs["top_k"]],
+            "execution_time": 0,
+        }
+
+        retry_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers=headers,
+            json={"query": "active notes", "limit": 5, "status": "active"},
+        )
+
+        assert retry_response.status_code == 200
+        retry_data = retry_response.json()
+        assert retry_data["count"] == 5
+        assert [m["id"] for m in retry_data["memories"]] == [
+            "early-0",
+            "early-1",
+            "tail-0",
+            "tail-1",
+            "tail-2",
+        ]
+        assert [
+            c.kwargs["top_k"]
+            for c in mock_moorcheh.similarity_search.query.call_args_list
+        ] == [25, 100]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("retry_outcome", "expected_message"),
+        [
+            (
+                RuntimeError("Moorcheh backend unavailable"),
+                "Failed to search memories: Moorcheh backend unavailable",
+            ),
+            (
+                {"results": "not-a-list"},
+                "Data corruption detected: Received malformed search result array from storage layer.",
+            ),
+        ],
+    )
+    async def test_recall_adaptive_retry_failure_returns_500_without_partial_results(
+        self, client, auth_headers, mock_moorcheh, retry_outcome, expected_message
+    ):
+        """HTTP /recall returns HTTP 500 rather than partial batch-1 results when retry fails."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        first_batch = [
+            {
+                "id": f"early-{i}",
+                "text": f"[FACT] Early {i}\n\nContent {i}",
+                "memory_type": "fact",
+                "status": "active",
+                "score": 0.99 - i * 0.01,
+            }
+            for i in range(2)
+        ] + [
+            {
+                "id": f"exp-{i}",
+                "text": f"[FACT] Expired {i}\n\nOld {i}",
+                "memory_type": "fact",
+                "status": "expired",
+                "score": 0.9 - i * 0.01,
+            }
+            for i in range(23)
+        ]
+        mock_moorcheh.similarity_search.query.side_effect = [
+            {"results": first_batch, "execution_time": 0},
+            retry_outcome,
+        ]
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers=headers,
+            json={"query": "active notes", "limit": 5, "status": "active"},
+        )
+
+        assert response.status_code == 500
+        detail = response.json()["detail"]
+        assert detail["error"] == "MemoryOperationError"
+        assert detail["message"] == expected_message
+        assert [
+            c.kwargs["top_k"]
+            for c in mock_moorcheh.similarity_search.query.call_args_list
+        ] == [25, 100]
+
+    @pytest.mark.asyncio
     async def test_get_agent(self, client, auth_headers):
         """Test getting agent details"""
         await client.post(

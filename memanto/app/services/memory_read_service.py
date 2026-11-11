@@ -138,6 +138,8 @@ class MemoryReadService:
         created_after: str | None = None,
         created_before: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        *,
+        _adaptive_fetch: bool = False,
     ) -> dict[str, Any]:
         """
         Search memories with filters leveraging Moorcheh's native metadata filtering
@@ -146,6 +148,15 @@ class MemoryReadService:
         and kiosk_mode for score-based filtering.
 
         Supports pagination via limit/offset parameters.
+
+        Args:
+            _adaptive_fetch: Internal flag enabling two-step candidate fetching
+                for simple ``status="active"`` recalls (when ``offset == 0`` and
+                no temporal, confidence, or multi-type filters apply). When
+                adaptive fetching stops early on an initial batch smaller than
+                ``MOORCHEH_MAX_TOP_K``, the returned ``total_available`` and
+                ``has_more`` fields reflect only the fetched candidate pool and
+                may be incomplete.
         """
         try:
             # Determine namespaces to search
@@ -193,14 +204,31 @@ class MemoryReadService:
             # to be lost entirely (timeline amnesia / poor recall).
             # We over-fetch up to Moorcheh's hard cap only when a post-processing
             # filter is actually requested to avoid the p95 latency penalty of
-            # over-fetching on simple recall queries.
+            # over-fetching on simple recall queries. For opt-in single-query
+            # active-only recall at offset=0 without temporal/confidence filters,
+            # start with a smaller adaptive pool and fall back to MOORCHEH_MAX_TOP_K
+            # once only if the full initial batch yielded too few active rows.
+            use_adaptive_fetch = (
+                _adaptive_fetch is True
+                and status == "active"
+                and created_after is None
+                and created_before is None
+                and min_confidence is None
+                and offset == 0
+                and len(enhanced_queries) == 1
+            )
             needs_post_filter = (
                 created_after is not None
                 or created_before is not None
                 or min_confidence is not None
                 or status != "all"
             )
-            if needs_post_filter:
+            if use_adaptive_fetch:
+                top_k = min(
+                    max(requested_limit * 2, 25),
+                    MOORCHEH_MAX_TOP_K,
+                )
+            elif needs_post_filter:
                 top_k = min(
                     max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
                 )
@@ -213,19 +241,34 @@ class MemoryReadService:
             # kiosk_mode + threshold=0.0 still filters everything out.
             use_kiosk = min_similarity_score is not None and min_similarity_score > 0
 
-            def _dispatch(enhanced_query: str) -> Any:
+            def _dispatch(enhanced_query: str, batch_top_k: int = top_k) -> Any:
                 """Run one exact-filter search with the shared request options."""
                 return self.client.similarity_search.query(
                     query=enhanced_query,
                     namespaces=namespaces,
-                    top_k=top_k,
+                    top_k=batch_top_k,
                     threshold=min_similarity_score if use_kiosk else None,
                     kiosk_mode=use_kiosk,
                 )
 
             dispatch_start = monotonic()
+            active_candidates: list[dict[str, Any]] | None = None
             if len(enhanced_queries) == 1:
-                search_results = [_dispatch(enhanced_queries[0])]
+                search_items = self._extract_search_items(
+                    [_dispatch(enhanced_queries[0], top_k)]
+                )
+                if use_adaptive_fetch and top_k < MOORCHEH_MAX_TOP_K:
+                    active_candidates = self._filter_by_status(search_items, status)
+                    if (
+                        len(search_items) == top_k
+                        and len(active_candidates) < requested_limit
+                    ):
+                        # Replace rather than append so ranking stays identical
+                        # and no candidate from the initial batch is duplicated.
+                        search_items = self._extract_search_items(
+                            [_dispatch(enhanced_queries[0], MOORCHEH_MAX_TOP_K)]
+                        )
+                        active_candidates = None
             else:
                 # The variants are independent network calls. Dispatch them in
                 # parallel so the latency of a multi-type union is bounded by
@@ -235,55 +278,12 @@ class MemoryReadService:
                 # service callers that pass every supported type.
                 max_workers = min(len(enhanced_queries), 8)
                 with ThreadPoolExecutor(max_workers=max_workers) as pool:
-                    search_results = list(pool.map(_dispatch, enhanced_queries))
+                    search_items = self._extract_search_items(
+                        list(pool.map(_dispatch, enhanced_queries))
+                    )
             execution_time = monotonic() - dispatch_start
 
-            search_items: list[Any] = []
-            for search_result in search_results:
-                if not isinstance(search_result, dict):
-                    try:
-                        search_result = dict(search_result)
-                    except (TypeError, ValueError):
-                        raise MemoryOperationError(
-                            message=(
-                                "Data corruption detected: Received malformed "
-                                "search result from storage layer."
-                            ),
-                            details={"result_preview": str(search_result)[:100]},
-                        )
-
-                result_items = search_result.get("results", [])
-                if not isinstance(result_items, list):
-                    raise MemoryOperationError(
-                        message=(
-                            "Data corruption detected: Received malformed "
-                            "search result array from storage layer."
-                        ),
-                        details={"items_preview": str(result_items)[:100]},
-                    )
-                search_items.extend(result_items)
-
-            # Validate raw items for data corruption upfront before filtering
-            for item in search_items:
-                if not isinstance(item, dict):
-                    raise MemoryOperationError(
-                        message=(
-                            "Data corruption detected: Received malformed "
-                            "memory item from storage layer."
-                        ),
-                        details={"item_preview": str(item)[:100]},
-                    )
-                metadata = item.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    raise MemoryOperationError(
-                        message=(
-                            "Data corruption detected: Received malformed "
-                            "metadata from storage layer."
-                        ),
-                        details={"item_preview": str(item)[:100]},
-                    )
-
-            candidate_items = search_items
+            candidate_items: list[dict[str, Any]] = search_items
 
             if len(enhanced_queries) > 1:
                 # Scores from the per-type searches share the same backend
@@ -324,7 +324,11 @@ class MemoryReadService:
             # above already does this server-side for a single-status request,
             # but records written before the lifecycle field carry no status,
             # so re-apply it here to keep the two paths in agreement.
-            candidate_items = self._filter_by_status(candidate_items, status)
+            candidate_items = (
+                active_candidates
+                if active_candidates is not None
+                else self._filter_by_status(candidate_items, status)
+            )
 
             if min_confidence is not None:
                 candidate_items = self._filter_by_min_confidence(
@@ -334,6 +338,8 @@ class MemoryReadService:
             # Apply pagination (offset + limit) and format ONLY the final slice.
             # Avoids running expensive presentation formatting (regex text parsing,
             # tag stripping, object allocations) on candidates discarded by post-filters.
+            # Note: total_available and has_more reflect only the fetched candidate pool
+            # (and may be incomplete when _adaptive_fetch=True stops early below 100).
             paginated_raw = candidate_items[offset : offset + limit]
             has_more = len(candidate_items) > offset + limit
             paginated_results = [
@@ -806,6 +812,56 @@ class MemoryReadService:
             joined = " ".join(filter_parts)
             return f"{base} {joined}".strip() if base else joined
         return base
+
+    @staticmethod
+    def _extract_search_items(search_results: list[Any]) -> list[dict[str, Any]]:
+        """Validate raw storage responses and return flat candidate item dicts."""
+        search_items: list[dict[str, Any]] = []
+        for search_result in search_results:
+            if not isinstance(search_result, dict):
+                try:
+                    search_result = dict(search_result)
+                except (TypeError, ValueError):
+                    raise MemoryOperationError(
+                        message=(
+                            "Data corruption detected: Received malformed "
+                            "search result from storage layer."
+                        ),
+                        details={"result_preview": str(search_result)[:100]},
+                    )
+
+            result_items = search_result.get("results", [])
+            if not isinstance(result_items, list):
+                raise MemoryOperationError(
+                    message=(
+                        "Data corruption detected: Received malformed "
+                        "search result array from storage layer."
+                    ),
+                    details={"items_preview": str(result_items)[:100]},
+                )
+            search_items.extend(result_items)
+
+        # Validate raw items for data corruption upfront before filtering
+        for item in search_items:
+            if not isinstance(item, dict):
+                raise MemoryOperationError(
+                    message=(
+                        "Data corruption detected: Received malformed "
+                        "memory item from storage layer."
+                    ),
+                    details={"item_preview": str(item)[:100]},
+                )
+            metadata = item.get("metadata", {})
+            if not isinstance(metadata, dict):
+                raise MemoryOperationError(
+                    message=(
+                        "Data corruption detected: Received malformed "
+                        "metadata from storage layer."
+                    ),
+                    details={"item_preview": str(item)[:100]},
+                )
+
+        return search_items
 
     @staticmethod
     def _extract_candidate_field(

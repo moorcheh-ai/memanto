@@ -1170,6 +1170,7 @@ class SdkClient:
                 created_before=created_before.isoformat() if created_before else None,
                 status=status,
                 limit=limit,
+                _adaptive_fetch=True,
             )
 
         return {
