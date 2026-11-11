@@ -431,6 +431,11 @@ def test_adaptive_retry_preserves_memory_operation_error_without_rewrapping():
             "result_preview",
         ),
         (
+            {"error": "backend unavailable"},
+            "Data corruption detected: Missing 'results' key in search result from storage layer.",
+            "result_preview",
+        ),
+        (
             {"results": "not-a-list"},
             "Data corruption detected: Received malformed search result array from storage layer.",
             "items_preview",

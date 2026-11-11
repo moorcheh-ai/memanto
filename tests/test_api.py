@@ -1037,6 +1037,10 @@ class TestMEMANTOAPI:
                 {"results": "not-a-list"},
                 "Data corruption detected: Received malformed search result array from storage layer.",
             ),
+            (
+                {"error": "backend unavailable"},
+                "Data corruption detected: Missing 'results' key in search result from storage layer.",
+            ),
         ],
     )
     async def test_recall_adaptive_retry_failure_returns_500_without_partial_results(

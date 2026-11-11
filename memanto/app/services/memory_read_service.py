@@ -830,7 +830,16 @@ class MemoryReadService:
                         details={"result_preview": str(search_result)[:100]},
                     )
 
-            result_items = search_result.get("results", [])
+            if "results" not in search_result:
+                raise MemoryOperationError(
+                    message=(
+                        "Data corruption detected: Missing 'results' key in "
+                        "search result from storage layer."
+                    ),
+                    details={"result_preview": str(search_result)[:100]},
+                )
+
+            result_items = search_result["results"]
             if not isinstance(result_items, list):
                 raise MemoryOperationError(
                     message=(
