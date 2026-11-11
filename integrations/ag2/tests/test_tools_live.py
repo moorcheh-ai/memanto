@@ -11,16 +11,22 @@ from memanto.app.config import settings
 from memanto.cli.client.sdk_client import SdkClient
 
 
+def _live_key() -> str:
+    return (
+        os.environ.get("MEMANTO_API_KEY", "").strip()
+        or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        or (settings.MOORCHEH_API_KEY or "").strip()
+    )
+
+
 def _live_key_configured() -> bool:
-    key = (
-        os.environ.get("MOORCHEH_API_KEY") or settings.MOORCHEH_API_KEY or ""
-    ).strip()
+    key = _live_key()
     return bool(key) and key != "test-api-key"
 
 
 pytestmark = pytest.mark.skipif(
     not _live_key_configured(),
-    reason="MOORCHEH_API_KEY required for live AG2 smoke test",
+    reason="MEMANTO_API_KEY or MOORCHEH_API_KEY required for live AG2 smoke test",
 )
 
 
@@ -29,9 +35,7 @@ def test_remember_recall_survives_tool_calls():
     marker = f"ag2-live-{suffix}-teal"
     agent_id = f"ag2-live-{suffix}"
 
-    client = SdkClient(
-        api_key=os.environ.get("MOORCHEH_API_KEY") or settings.MOORCHEH_API_KEY
-    )
+    client = SdkClient(api_key=_live_key())
     tools = create_memanto_tools(client, agent_id, source="ag2-live-test")
     remember = next(t for t in tools if t.__name__ == "memanto_remember")
     recall = next(t for t in tools if t.__name__ == "memanto_recall")

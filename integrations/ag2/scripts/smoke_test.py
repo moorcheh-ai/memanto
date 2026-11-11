@@ -50,13 +50,15 @@ from memanto.cli.client.sdk_client import SdkClient  # noqa: E402
 
 def _resolve_api_key() -> str:
     key = (
-        os.environ.get("MOORCHEH_API_KEY") or settings.MOORCHEH_API_KEY or ""
-    ).strip()
+        os.environ.get("MEMANTO_API_KEY", "").strip()
+        or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        or (settings.MOORCHEH_API_KEY or "").strip()
+    )
     if not key or key == "test-api-key":
         print(
-            "FAIL: MOORCHEH_API_KEY is missing or is the placeholder 'test-api-key'.\n"
-            "  Set it in PowerShell:  $env:MOORCHEH_API_KEY = 'your-key'\n"
-            "  Or run: memanto   (wizard writes ~/.memanto/.env)"
+            "FAIL: MEMANTO_API_KEY (or MOORCHEH_API_KEY) is missing or is the placeholder 'test-api-key'.\n"
+            "  Set it in PowerShell:  $env:MEMANTO_API_KEY = 'mk_...'\n"
+            "  Or run: memanto login"
         )
         sys.exit(1)
     return key

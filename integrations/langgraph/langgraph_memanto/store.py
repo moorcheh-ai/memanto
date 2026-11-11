@@ -43,6 +43,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import threading
 import time
 from collections.abc import Iterable
@@ -60,7 +61,10 @@ from langgraph.store.base import (
     SearchOp,
 )
 
+from memanto.app.utils.errors import AuthenticationError
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 logger = logging.getLogger(__name__)
 
@@ -112,17 +116,48 @@ class MemantoStore(BaseStore):
     # nodes) from burning rate-limit budget on identical queries.
     _CACHE_TTL_S = 30.0
 
-    def __init__(self, api_key: str, *, strict_namespace_binding: bool = False) -> None:
-        """Initialize MemantoStore with an API key.
+    def __init__(
+        self, api_key: str | None = None, *, strict_namespace_binding: bool = False
+    ) -> None:
+        """Initialize MemantoStore with an API key or environment/CLI credentials.
 
         Args:
-            api_key: Memanto / Moorcheh API key.
+            api_key: Memanto Cloud (``mk_...``) or Moorcheh API key. When omitted,
+                reads ``MEMANTO_API_KEY``, ``MOORCHEH_API_KEY``, or the active
+                ``~/.memanto`` configuration (``memanto login``).
             strict_namespace_binding: Refuse agents created before namespace
                 binding existed. Such agents have no record of which namespace
                 tuple they belong to, so a colliding tuple could still reach
                 them. Off by default so existing stores keep their memories.
         """
-        self.api_key = api_key
+        self._is_cloud_key = False
+        self._use_factory = False
+        if api_key is not None and api_key.strip():
+            self.api_key = api_key.strip()
+            self._is_cloud_key = self.api_key.startswith("mk_")
+        elif os.environ.get("MEMANTO_API_KEY", "").strip():
+            self.api_key = os.environ["MEMANTO_API_KEY"].strip()
+            self._is_cloud_key = True
+        elif os.environ.get("MOORCHEH_API_KEY", "").strip():
+            self.api_key = os.environ["MOORCHEH_API_KEY"].strip()
+        else:
+            # Check if ~/.memanto is configured via build_client
+            resolved_client = None
+            try:
+                from memanto.cli.client.factory import build_client
+
+                resolved_client = build_client()
+            except (ImportError, AuthenticationError):
+                pass
+            if resolved_client is not None:
+                self.api_key = resolved_client.api_key
+                self._use_factory = True
+            else:
+                raise ValueError(
+                    "No Memanto API key found: pass api_key=..., set MEMANTO_API_KEY "
+                    "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+                )
+
         self._strict_namespace_binding = strict_namespace_binding
         self._lock = threading.RLock()
         self._key_locks: dict[tuple[tuple[str, ...], str], threading.Lock] = {}
@@ -132,6 +167,25 @@ class MemantoStore(BaseStore):
         self._agent_prefix = "langgraph_"
         # (namespace, query, limit, tags, type, min_sim, min_conf) -> (timestamp, items)
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
+
+    def _new_client(self) -> SdkClient:
+        if SdkClient is not _ORIG_SDK_CLIENT:
+            return SdkClient(api_key=self.api_key)
+        if self._use_factory:
+            from memanto.cli.client.factory import build_client
+
+            return build_client()
+        if self._is_cloud_key:
+            try:
+                from memanto.cli.client.hosted_client import HostedClient
+            except ImportError:
+                pass
+            else:
+                base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+                if base_url:
+                    return HostedClient(self.api_key, base_url=base_url)
+                return HostedClient(self.api_key)
+        return SdkClient(api_key=self.api_key)
 
     def _agent_id_for(self, namespace: tuple[str, ...]) -> str:
         ns_str = "_".join(namespace) or "default"
@@ -180,7 +234,7 @@ class MemantoStore(BaseStore):
 
             from memanto.app.utils.errors import AgentAlreadyExistsError
 
-            client = SdkClient(api_key=self.api_key)
+            client = self._new_client()
             try:
                 client.create_agent(
                     agent_id=agent_id,
@@ -474,7 +528,7 @@ class MemantoStore(BaseStore):
 
     def _do_list_namespaces(self, op: ListNamespacesOp) -> list[tuple[str, ...]]:
         """List namespaces by fetching all Memanto agents with the prefix."""
-        client = SdkClient(api_key=self.api_key)
+        client = self._new_client()
         try:
             agents = client.list_agents()
         except Exception as e:

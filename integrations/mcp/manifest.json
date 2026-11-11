@@ -4,7 +4,7 @@
   "display_name": "Memanto",
   "version": "0.1.5",
   "description": "Persistent semantic memory for AI agents. Remember facts, preferences and decisions, and recall them across sessions.",
-  "long_description": "Memanto gives your AI assistant long-term memory. It saves typed memories (facts, preferences, decisions, goals, instructions and more) to a Moorcheh memory space and recalls them by meaning in later chats, so you don't have to repeat yourself. Needs a Moorcheh API key (free tier available at https://console.moorcheh.ai/api-keys).",
+  "long_description": "Memanto gives your AI assistant long-term memory. It saves typed memories (facts, preferences, decisions, goals, instructions and more) to your Memanto memory space and recalls them by meaning in later chats, so you don't have to repeat yourself. Sign in at https://console.memanto.ai/sign-in to get a Memanto API key (or run `memanto login`).",
   "author": {
     "name": "Memanto",
     "email": "info@memanto.ai",
@@ -25,6 +25,7 @@
       "command": "uv",
       "args": ["run", "--directory", "${__dirname}", "memanto-mcp"],
       "env": {
+        "MEMANTO_API_KEY": "${user_config.memanto_api_key}",
         "MOORCHEH_API_KEY": "${user_config.moorcheh_api_key}",
         "MEMANTO_DEFAULT_AGENT_ID": "${user_config.agent_id}"
       }
@@ -40,12 +41,19 @@
     { "name": "answer", "description": "Answer a question grounded in the agent's memories." }
   ],
   "user_config": {
+    "memanto_api_key": {
+      "type": "string",
+      "title": "Memanto Cloud API key (recommended)",
+      "description": "Sign in at https://console.memanto.ai/sign-in to create a key (or leave blank if signed in with `memanto login`)",
+      "sensitive": true,
+      "required": false
+    },
     "moorcheh_api_key": {
       "type": "string",
-      "title": "Moorcheh API key",
-      "description": "Create one at https://console.moorcheh.ai/api-keys",
+      "title": "Moorcheh API key (optional local fallback)",
+      "description": "Only needed if using Memanto local instead of Memanto Cloud (https://console.moorcheh.ai/api-keys)",
       "sensitive": true,
-      "required": true
+      "required": false
     },
     "agent_id": {
       "type": "string",

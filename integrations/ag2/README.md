@@ -25,18 +25,18 @@ pip install "memanto-ag2[ag2]"        # optional: AG2 runtime for examples
 > **Package name:** install **`ag2`** (AI agents), not **`a2g`** (unrelated bioinformatics tool).  
 > **Version:** use **`ag2>=0.9,<1`** — `ag2` 1.x is a new framework; this integration uses `from autogen import AssistantAgent` (0.9.x).
 
-Set your Moorcheh API key:
+Set your Memanto API key (from [console.memanto.ai](https://console.memanto.ai/sign-in), or run `memanto login`):
 
 ```bash
-export MOORCHEH_API_KEY=your_key
+export MEMANTO_API_KEY=mk_xxxxxxxxxxxxxxxxxx
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 ## Quick start
 
 ```python
-import os
 from autogen import AssistantAgent, UserProxyAgent
-from memanto.cli.client.sdk_client import SdkClient
 from memanto_ag2 import openai_llm_config, register_memanto_tools
 
 llm_config = openai_llm_config("gpt-4o-mini")
@@ -48,11 +48,10 @@ assistant = AssistantAgent(
 )
 user_proxy = UserProxyAgent(name="user", human_input_mode="NEVER")
 
-client = SdkClient(api_key=os.environ["MOORCHEH_API_KEY"])
+# Automatically uses MEMANTO_API_KEY, ~/.memanto (`memanto login`), or MOORCHEH_API_KEY
 register_memanto_tools(
     assistant,
     executor=user_proxy,
-    client=client,
     agent_id="my-ag2-team",
 )
 
@@ -111,7 +110,7 @@ python -m pytest integrations/ag2/tests/test_tools.py -q
 From the repository root (no `PYTHONPATH` needed):
 
 ```bash
-export MOORCHEH_API_KEY=your-moorcheh-api-key
+export MEMANTO_API_KEY=mk_...  # or MOORCHEH_API_KEY for local
 python integrations/ag2/scripts/smoke_test.py
 ```
 
@@ -124,14 +123,14 @@ Optional Step 6 runs a real AG2 chat when `OPENAI_API_KEY` is set and `ag2` is i
 From the repository root:
 
 ```bash
-export MOORCHEH_API_KEY=your-moorcheh-api-key
+export MEMANTO_API_KEY=mk_...  # or MOORCHEH_API_KEY for local
 python -m pytest integrations/ag2/tests/test_tools_live.py -q
 ```
 
 ## Requirements
 
 - Python 3.10+
-- `memanto` with valid `MOORCHEH_API_KEY`
+- `memanto` with `MEMANTO_API_KEY` (`memanto login`) or `MOORCHEH_API_KEY`
 - AG2 >= 0.9.0 for runtime examples (`pip install ag2`)
 
 ## Related

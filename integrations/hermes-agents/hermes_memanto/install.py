@@ -86,7 +86,9 @@ def main(argv=None) -> int:
     print(f"Installed the Memanto memory plugin at {target}")
     print("Next steps:")
     print("  1. pip install memanto")
-    print("  2. export MOORCHEH_API_KEY=...   (https://console.moorcheh.ai/api-keys)")
+    print(
+        "  2. export MEMANTO_API_KEY=mk_...   (https://console.memanto.ai/sign-in, or MOORCHEH_API_KEY for local)"
+    )
     print("  3. hermes config set memory.provider memanto")
     print("     (or run: hermes memory setup  →  select 'memanto')")
     return 0

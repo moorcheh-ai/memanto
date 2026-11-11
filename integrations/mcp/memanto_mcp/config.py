@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,7 +30,9 @@ class MCPServerSettings(BaseSettings):
     """Server settings loaded from env / ``.env``.
 
     Required:
-        moorcheh_api_key: Moorcheh API key.
+        moorcheh_api_key: Memanto Cloud API key (``MEMANTO_API_KEY``) or
+            Moorcheh API key (``MOORCHEH_API_KEY``), unless signed in to
+            Memanto Cloud via ``memanto login`` (``~/.memanto``).
 
     Optional:
         default_agent_id: When set, callers may omit ``agent_id`` from tool
@@ -58,10 +60,21 @@ class MCPServerSettings(BaseSettings):
     )
 
     # ---- Memanto credentials & agent ----
-    moorcheh_api_key: SecretStr = Field(
-        ...,
+    memanto_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="MEMANTO_API_KEY",
+        description=(
+            "Memanto Cloud API key (recommended). Create one at "
+            "https://console.memanto.ai/sign-in or sign in with `memanto login`."
+        ),
+    )
+    moorcheh_api_key: SecretStr | None = Field(
+        default=None,
         validation_alias="MOORCHEH_API_KEY",
-        description="Moorcheh API key. Create one at https://console.moorcheh.ai/api-keys",
+        description=(
+            "Moorcheh API key for Memanto local fallback. Create one at "
+            "https://console.moorcheh.ai/api-keys."
+        ),
     )
     default_agent_id: str | None = Field(
         default=None,
@@ -146,17 +159,31 @@ class MCPServerSettings(BaseSettings):
             )
         return upper
 
-    @field_validator("moorcheh_api_key")
-    @classmethod
-    def _validate_api_key(cls, v: SecretStr) -> SecretStr:
-        if not v.get_secret_value().strip():
-            raise ValueError(
-                "MOORCHEH_API_KEY is required. Create one at "
-                "https://console.moorcheh.ai/api-keys and set it in your "
-                "environment or MCP client config."
-            )
-        return v
+    @model_validator(mode="after")
+    def _require_credentials(self) -> MCPServerSettings:
+        if self.api_key_value().strip():
+            return self
+        try:
+            from memanto.cli.config.manager import ConfigManager
 
-    # Convenience accessor — never logged.
+            if getattr(ConfigManager().get_backend(), "value", None) == "memanto-cloud":
+                return self
+        except Exception:
+            pass
+        raise ValueError(
+            "MEMANTO_API_KEY or MOORCHEH_API_KEY is required. Sign in at "
+            "https://console.memanto.ai/sign-in (or https://console.moorcheh.ai/api-keys) "
+            "and set it in your environment or MCP client config, or run `memanto login`."
+        )
+
+    # Convenience accessor — never logged. Prefers non-empty MEMANTO_API_KEY, then MOORCHEH_API_KEY.
     def api_key_value(self) -> str:
-        return self.moorcheh_api_key.get_secret_value()
+        if self.memanto_api_key is not None:
+            val = self.memanto_api_key.get_secret_value().strip()
+            if val:
+                return val
+        if self.moorcheh_api_key is not None:
+            val = self.moorcheh_api_key.get_secret_value().strip()
+            if val:
+                return val
+        return ""

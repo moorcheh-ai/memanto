@@ -18,6 +18,7 @@ network calls.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from typing import TYPE_CHECKING
 
@@ -27,6 +28,8 @@ from memanto.app.utils.errors import (
     SessionError,
 )
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 if TYPE_CHECKING:
     from memanto_mcp.config import MCPServerSettings
@@ -53,11 +56,37 @@ class MemantoLifecycle:
         """Initialize administrative and per-agent client state."""
 
         self._settings = settings
-        self._admin_client = SdkClient(api_key=settings.api_key_value())
+        self._admin_client = self._new_client()
         self._session_clients: dict[str, SdkClient] = {}
         self._agent_locks: dict[str, threading.Lock] = {}
         self._ensured_agents: set[str] = set()
         self._lock = threading.Lock()
+
+    def _new_client(self) -> SdkClient:
+        """Build a client for the configured backend (Memanto Cloud or local Moorcheh)."""
+        key = self._settings.api_key_value()
+        if SdkClient is not _ORIG_SDK_CLIENT:
+            return SdkClient(api_key=key)
+
+        is_cloud_key = key.startswith("mk_") or (
+            bool(key) and key == os.environ.get("MEMANTO_API_KEY", "").strip()
+        )
+        if is_cloud_key:
+            try:
+                from memanto.cli.client.hosted_client import HostedClient
+            except ImportError:
+                pass
+            else:
+                base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+                if base_url:
+                    return HostedClient(key, base_url=base_url)
+                return HostedClient(key)
+
+        try:
+            from memanto.cli.client.factory import build_client
+        except ImportError:
+            return SdkClient(api_key=key)
+        return build_client(moorcheh_api_key=key or None)
 
     # ------------------------------------------------------------------ #
     # Public API used by tools
@@ -115,7 +144,7 @@ class MemantoLifecycle:
                         f"({self._MAX_SESSION_CLIENTS}); reuse an existing agent_id "
                         "or restart the server to clear idle session clients."
                     )
-                client = SdkClient(api_key=self._settings.api_key_value())
+                client = self._new_client()
                 self._session_clients[agent_id] = client
                 self._agent_locks[agent_id] = threading.Lock()
             agent_lock = self._agent_locks[agent_id]

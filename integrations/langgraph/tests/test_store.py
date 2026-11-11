@@ -22,6 +22,22 @@ def test_memanto_store_init():
     assert store._client_pool == {}
 
 
+def test_memanto_store_init_from_memanto_api_key_env(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_cloud_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    store = MemantoStore()
+    assert store.api_key == "mk_cloud_key"
+
+
+def test_memanto_store_init_without_key_raises(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        MemantoStore()
+
+
 def test_ensure_client_creates_and_activates(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
 

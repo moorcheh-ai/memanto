@@ -11,16 +11,22 @@ from memanto.app.config import settings
 from memanto.cli.client.sdk_client import SdkClient
 
 
+def _live_key() -> str:
+    return (
+        os.environ.get("MEMANTO_API_KEY", "").strip()
+        or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        or (settings.MOORCHEH_API_KEY or "").strip()
+    )
+
+
 def _live_key_configured() -> bool:
-    key = (
-        os.environ.get("MOORCHEH_API_KEY") or settings.MOORCHEH_API_KEY or ""
-    ).strip()
+    key = _live_key()
     return bool(key) and key != "test-api-key"
 
 
 pytestmark = pytest.mark.skipif(
     not _live_key_configured(),
-    reason="MOORCHEH_API_KEY required for live AgentCore adapter smoke test",
+    reason="MEMANTO_API_KEY or MOORCHEH_API_KEY required for live AgentCore adapter smoke test",
 )
 
 
@@ -30,9 +36,7 @@ async def test_memory_survives_runtime_session_churn():
     marker = f"agentcore-live-{suffix}"
     user_id = f"live-user-{suffix}"
 
-    client = SdkClient(
-        api_key=os.environ.get("MOORCHEH_API_KEY") or settings.MOORCHEH_API_KEY
-    )
+    client = SdkClient(api_key=_live_key())
     adapter = MemantoRuntimeAdapter(
         client,
         agent_name="agentcore-smoke",

@@ -29,7 +29,7 @@ Both CrewAI agents share the **same Memanto agent ID** (`crewai-research-team`),
 ## Prerequisites
 
 - Python 3.10+
-- A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month)
+- A [Memanto Cloud account](https://console.memanto.ai/sign-in) (`MEMANTO_API_KEY` or `memanto login`) — or Memanto local with a [Moorcheh API key](https://console.moorcheh.ai/api-keys) / on-prem
 - An [OpenRouter API key](https://openrouter.ai/keys) (for CrewAI's LLM — free tier available)
 
 ## Setup
@@ -48,7 +48,7 @@ pip install -r requirements.txt
 
 # 4. Configure API keys
 cp .env.example .env
-# Edit .env and add your MOORCHEH_API_KEY and OPENROUTER_API_KEY
+# Edit .env and add your MEMANTO_API_KEY (or run `memanto login`) and OPENROUTER_API_KEY
 ```
 
 ## Quick Start
@@ -117,11 +117,10 @@ crew = Crew(
 ### After: Memanto Memory (Persistent)
 
 ```python
-from memanto.cli.client.sdk_client import SdkClient
 from crewai_memanto import MemantoSetup, create_memanto_tools
 
-# 1. Set up Memanto (one-time per session)
-setup = MemantoSetup(api_key="your-moorcheh-key")
+# 1. Set up Memanto (reads MEMANTO_API_KEY, ~/.memanto `memanto login`, or MOORCHEH_API_KEY)
+setup = MemantoSetup()
 client = setup.setup(agent_id="my-crew")
 
 # 2. Create memory tools bound to your agent
@@ -198,13 +197,14 @@ This creates `.cursor/rules/memanto.mdc` (memory instructions) and `.cursor/skil
 
 ## Troubleshooting
 
-- **"MOORCHEH_API_KEY not set"**: Copy `.env.example` to `.env` and add your key
+- **"No Memanto API key found"**: Set `MEMANTO_API_KEY` (from [console.memanto.ai](https://console.memanto.ai)), run `memanto login`, or set `MOORCHEH_API_KEY` in `.env`
 - **"No active session"**: The setup manager handles this automatically; check your API key is valid
 - **"Agent already exists"**: This is normal -- the setup reuses existing agents
 - **CrewAI LLM errors**: Ensure `OPENROUTER_API_KEY` is set, or override with `CREWAI_LLM` env var
 
 ## Learn More
 
+- [Memanto Console](https://console.memanto.ai/sign-in)
 - [Memanto Documentation](https://docs.memanto.ai)
 - [CrewAI Documentation](https://docs.crewai.com)
 - [Moorcheh API Keys](https://console.moorcheh.ai/api-keys)

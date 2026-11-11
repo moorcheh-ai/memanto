@@ -105,10 +105,23 @@ def test_register_memanto_tools_wires_ag2_agents():
     assert executor.register_for_execution.call_count == 3
 
 
-def test_register_requires_api_key_without_client(monkeypatch):
+def test_register_requires_api_key_without_client(monkeypatch, tmp_path):
     from memanto_ag2.config import reset_config
 
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    reset_config()
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
+
+
+def test_register_accepts_memanto_api_key_env(monkeypatch):
+    from memanto_ag2.config import reset_config
+
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_test_key")
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
     reset_config()
-    with pytest.raises(ValueError, match="MOORCHEH_API_KEY"):
-        register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
+    tools = register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
+    assert len(tools) == 3

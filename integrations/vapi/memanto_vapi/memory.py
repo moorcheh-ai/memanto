@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -29,9 +30,12 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
+    AuthenticationError,
     SessionError,
 )
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 logger = logging.getLogger(__name__)
 
@@ -114,13 +118,59 @@ class _FocusedExtraction(ConversationMemoryExtractionService):
         )
 
 
+def _instantiate_client(api_key: str, *, is_cloud_key: bool = False) -> SdkClient:
+    if SdkClient is not _ORIG_SDK_CLIENT:
+        return SdkClient(api_key=api_key)
+    if is_cloud_key or api_key.startswith("mk_"):
+        try:
+            from memanto.cli.client.hosted_client import HostedClient
+        except ImportError:
+            pass
+        else:
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(api_key, base_url=base_url)
+            return HostedClient(api_key)
+    return SdkClient(api_key=api_key)
+
+
+def _build_memanto_client(api_key: str | None = None) -> SdkClient:
+    if api_key is not None and api_key.strip():
+        clean = api_key.strip()
+        return _instantiate_client(clean, is_cloud_key=clean.startswith("mk_"))
+
+    memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    if memanto_key:
+        return _instantiate_client(memanto_key, is_cloud_key=True)
+
+    moorcheh_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
+    if moorcheh_key:
+        return _instantiate_client(moorcheh_key, is_cloud_key=False)
+
+    try:
+        from memanto.cli.client.factory import build_client
+    except ImportError:
+        pass
+    else:
+        try:
+            return build_client()
+        except AuthenticationError:
+            pass
+
+    raise ValueError(
+        "No Memanto API key found: pass client=..., api_key=..., set MEMANTO_API_KEY "
+        "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+    )
+
+
 class VapiMemory:
     """Recall at call start, memory tools during the call, learning after it."""
 
     def __init__(
         self,
-        client: SdkClient,
+        client: SdkClient | None = None,
         *,
+        api_key: str | None = None,
         agent_id: str,
         scope: Scope = "shared",
         caller_salt: str | None = None,
@@ -138,7 +188,7 @@ class VapiMemory:
                 "caller_salt is required for scope='caller': phone numbers are "
                 "guessable, so an unsalted hash would not protect them"
             )
-        self._client = client
+        self._client = client if client is not None else _build_memanto_client(api_key)
         self.agent_id = agent_id
         self.scope: Scope = scope
         self._salt = (caller_salt or "").encode("utf-8")
@@ -462,18 +512,34 @@ class VapiMemory:
         tag: str | None,
         call_id: str | None,
     ) -> list[dict[str, Any]]:
-        extractor = _FocusedExtraction(self._client._get_moorcheh(), focus)
-        try:
-            candidates = extractor.extract(
-                namespace="",  # extraction runs the raw LLM; no namespace is read
-                messages=conversation,
-                max_memories=self._extract_max_memories,
-            )
-        except ValueError as exc:
-            # Raised both when the call held nothing worth keeping and when the
-            # LLM output was unusable; the two are indistinguishable here.
-            logger.info("Extraction for call %s returned nothing: %s", call_id, exc)
-            return []
+        if type(self._client).__name__ == "HostedClient":
+            try:
+                extracted = self._run(
+                    lambda: self._client.extract_memories_from_conversation(
+                        self.agent_id,
+                        messages=[{"role": "system", "content": focus}, *conversation],
+                        dry_run=True,
+                        max_memories=self._extract_max_memories,
+                        source=SOURCE,
+                    )
+                )
+                candidates = list(extracted.get("candidates") or [])
+            except ValueError as exc:
+                logger.info("Extraction for call %s returned nothing: %s", call_id, exc)
+                return []
+        else:
+            extractor = _FocusedExtraction(self._client._get_moorcheh(), focus)
+            try:
+                candidates = extractor.extract(
+                    namespace="",  # extraction runs the raw LLM; no namespace is read
+                    messages=conversation,
+                    max_memories=self._extract_max_memories,
+                )
+            except ValueError as exc:
+                # Raised both when the call held nothing worth keeping and when the
+                # LLM output was unusable; the two are indistinguishable here.
+                logger.info("Extraction for call %s returned nothing: %s", call_id, exc)
+                return []
         return [
             {**candidate, "tags": _retention_tags(tag, call_id), "source": SOURCE}
             for candidate in candidates

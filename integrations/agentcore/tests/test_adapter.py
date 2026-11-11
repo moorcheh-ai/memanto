@@ -107,3 +107,19 @@ def test_resolve_fails_without_user_id():
     ctx = TurnContext(runtime_session_id="x", user_id="  ", agent_name="support")
     with pytest.raises(AgentResolutionError):
         adapter.resolve_agent_id(ctx)
+
+
+def test_adapter_builds_client_from_memanto_api_key(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_test_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    adapter = MemantoRuntimeAdapter(agent_name="support")
+    assert adapter._client.api_key == "mk_test_key"
+
+
+def test_adapter_requires_client_or_api_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        MemantoRuntimeAdapter(agent_name="support")

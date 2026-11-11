@@ -8,6 +8,8 @@ from langchain_core.runnables import RunnableConfig
 from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
+_ORIG_SDK_CLIENT = SdkClient
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,16 +44,28 @@ class _PerAgentClientCache:
 
     def __init__(self, template_client: SdkClient) -> None:
         """Initialise cache, extracting the API key from *template_client*."""
+        self._template_client = template_client
         self._api_key = template_client.api_key
         self._clients: dict[str, tuple[SdkClient, threading.Lock]] = {}
         self._lock = threading.Lock()
+
+    def _clone_client(self) -> SdkClient:
+        if SdkClient is not _ORIG_SDK_CLIENT:
+            return SdkClient(api_key=self._api_key)
+        cls = type(self._template_client)
+        if cls.__name__ == "HostedClient":
+            base_url = getattr(self._template_client, "base_url", None)
+            if base_url:
+                return cls(self._api_key, base_url=base_url)
+            return cls(self._api_key)
+        return SdkClient(api_key=self._api_key)
 
     def get(self, agent_id: str) -> tuple[SdkClient, threading.Lock]:
         """Return the SdkClient and setup lock for *agent_id*, creating them on first access."""
         with self._lock:
             if agent_id not in self._clients:
                 self._clients[agent_id] = (
-                    SdkClient(api_key=self._api_key),
+                    self._clone_client(),
                     threading.Lock(),
                 )
             return self._clients[agent_id]

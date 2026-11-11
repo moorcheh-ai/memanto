@@ -5,13 +5,16 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from memanto.app.utils.errors import SessionError
+from memanto.app.utils.errors import AuthenticationError, SessionError
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 logger = logging.getLogger(__name__)
 
@@ -101,13 +104,59 @@ def _truncate_title(text: str, max_len: int = 100) -> str:
     return text[: max_len - 3] + "..."
 
 
+def _instantiate_client(api_key: str, *, is_cloud_key: bool = False) -> SdkClient:
+    if SdkClient is not _ORIG_SDK_CLIENT:
+        return SdkClient(api_key=api_key)
+    if is_cloud_key or api_key.startswith("mk_"):
+        try:
+            from memanto.cli.client.hosted_client import HostedClient
+        except ImportError:
+            pass
+        else:
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(api_key, base_url=base_url)
+            return HostedClient(api_key)
+    return SdkClient(api_key=api_key)
+
+
+def _build_memanto_client(api_key: str | None = None) -> SdkClient:
+    if api_key is not None and api_key.strip():
+        clean = api_key.strip()
+        return _instantiate_client(clean, is_cloud_key=clean.startswith("mk_"))
+
+    memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    if memanto_key:
+        return _instantiate_client(memanto_key, is_cloud_key=True)
+
+    moorcheh_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
+    if moorcheh_key:
+        return _instantiate_client(moorcheh_key, is_cloud_key=False)
+
+    try:
+        from memanto.cli.client.factory import build_client
+    except ImportError:
+        pass
+    else:
+        try:
+            return build_client()
+        except AuthenticationError:
+            pass
+
+    raise ValueError(
+        "No Memanto API key found: pass client=..., api_key=..., set MEMANTO_API_KEY "
+        "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+    )
+
+
 class MemantoRuntimeAdapter:
     """Recall → execute → retain cycle for ephemeral AgentCore Runtime sessions."""
 
     def __init__(
         self,
-        client: SdkClient,
+        client: SdkClient | None = None,
         *,
+        api_key: str | None = None,
         agent_name: str | None = None,
         agent_id_resolver: Callable[[TurnContext], str] | None = None,
         recall_limit: int = 10,
@@ -115,7 +164,7 @@ class MemantoRuntimeAdapter:
         retain_memory_type: str = "event",
         retain_source: str = "agentcore-runtime",
     ) -> None:
-        self._client = client
+        self._client = client if client is not None else _build_memanto_client(api_key)
         self._default_agent_name = agent_name
         self._agent_id_resolver = agent_id_resolver or default_agent_id_resolver
         self._recall_limit = recall_limit

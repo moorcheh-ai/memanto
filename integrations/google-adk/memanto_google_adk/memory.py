@@ -42,9 +42,12 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
+    AuthenticationError,
     SessionError,
 )
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 if TYPE_CHECKING:
     from google.adk.events.event import Event
@@ -59,6 +62,7 @@ USER_TAG_PREFIX = "user-"
 SESSION_TAG_PREFIX = "session-"
 # Marks the last event a stored batch covered, so it is never extracted twice.
 RETAINED_TAG_PREFIX = "retained-"
+MEMANTO_API_KEY_ENV = "MEMANTO_API_KEY"
 API_KEY_ENV = "MOORCHEH_API_KEY"
 
 _TITLE_MAX = 100
@@ -131,7 +135,9 @@ class MemantoMemoryService(BaseMemoryService):
     """ADK memory service backed by Memanto.
 
     Args:
-        api_key: Moorcheh API key. Defaults to ``$MOORCHEH_API_KEY``.
+        api_key: Memanto Cloud (``mk_...``) or Moorcheh API key. Defaults to
+            ``$MEMANTO_API_KEY``, ``$MOORCHEH_API_KEY``, or the active
+            ``~/.memanto`` sign-in (``memanto login``).
         agent_id: Memanto agent to use for every app. By default each ADK app
             gets its own agent, ``adk-<app_name>``.
         recall_limit: Maximum memories ``search_memory`` returns.
@@ -146,16 +152,38 @@ class MemantoMemoryService(BaseMemoryService):
         recall_limit: int = 10,
         extract_max_memories: int = 20,
     ) -> None:
-        api_key = api_key or os.environ.get(API_KEY_ENV, "")
-        if not api_key.strip():
-            raise ValueError(f"api_key is required (or set ${API_KEY_ENV})")
+        self._is_cloud_key = False
+        self._use_factory = False
+        if api_key is not None and api_key.strip():
+            resolved_key = api_key.strip()
+            self._is_cloud_key = resolved_key.startswith("mk_")
+        elif os.environ.get(MEMANTO_API_KEY_ENV, "").strip():
+            resolved_key = os.environ[MEMANTO_API_KEY_ENV].strip()
+            self._is_cloud_key = True
+        elif os.environ.get(API_KEY_ENV, "").strip():
+            resolved_key = os.environ[API_KEY_ENV].strip()
+        else:
+            factory_client = None
+            try:
+                from memanto.cli.client.factory import build_client
+
+                factory_client = build_client()
+            except (ImportError, AuthenticationError):
+                pass
+            if factory_client is not None:
+                resolved_key = factory_client.api_key
+                self._use_factory = True
+            else:
+                raise ValueError(
+                    f"api_key is required (or set ${MEMANTO_API_KEY_ENV} / ${API_KEY_ENV} or run `memanto login`)"
+                )
         if not 1 <= recall_limit <= _MAX_RECALL:
             raise ValueError(f"recall_limit must be between 1 and {_MAX_RECALL}")
         if not 1 <= extract_max_memories <= _MAX_EXTRACT:
             raise ValueError(
                 f"extract_max_memories must be between 1 and {_MAX_EXTRACT}"
             )
-        self._api_key = api_key
+        self._api_key = resolved_key
         self._agent_id = agent_id
         self._recall_limit = recall_limit
         self._extract_max_memories = extract_max_memories
@@ -264,21 +292,43 @@ class MemantoMemoryService(BaseMemoryService):
         marker of its own last event, so a failure part-way through resumes
         from the last chunk that was stored.
         """
-        extractor = ConversationMemoryExtractionService(agent.client._get_moorcheh())
+        is_hosted = type(agent.client).__name__ == "HostedClient"
+        extractor = (
+            None
+            if is_hosted
+            else ConversationMemoryExtractionService(agent.client._get_moorcheh())
+        )
         for chunk in _chunks(_messages(events)):
             conversation = [message for _, message in chunk]
             if not any(m["role"] == "user" for m in conversation):
                 continue
             try:
-                candidates = extractor.extract(
-                    namespace="",  # extraction runs the raw LLM; no namespace is read
-                    messages=conversation,
-                    max_memories=self._extract_max_memories,
-                )
+                if is_hosted:
+                    extracted = agent.run(
+                        lambda client, conv=conversation: (
+                            client.extract_memories_from_conversation(
+                                agent.agent_id,
+                                messages=conv,
+                                dry_run=True,
+                                max_memories=self._extract_max_memories,
+                                source=SOURCE,
+                            )
+                        )
+                    )
+                    candidates = list(extracted.get("candidates") or [])
+                else:
+                    assert extractor is not None
+                    candidates = extractor.extract(
+                        namespace="",  # extraction runs the raw LLM; no namespace is read
+                        messages=conversation,
+                        max_memories=self._extract_max_memories,
+                    )
             except ValueError as exc:
                 # Raised both when the turn held nothing worth keeping and when
                 # the LLM output was unusable; the two are indistinguishable here.
                 logger.info("Memory extraction returned nothing: %s", exc)
+                continue
+            if not candidates:
                 continue
             tags = [tag, SOURCE, self._marker(tag, chunk[-1][0])]
             if session_tag:
@@ -377,11 +427,30 @@ class MemantoMemoryService(BaseMemoryService):
     # Helpers
     # ------------------------------------------------------------------ #
 
+    def _new_client(self) -> SdkClient:
+        if SdkClient is not _ORIG_SDK_CLIENT:
+            return SdkClient(self._api_key)
+        if self._use_factory:
+            from memanto.cli.client.factory import build_client
+
+            return build_client()
+        if self._is_cloud_key:
+            try:
+                from memanto.cli.client.hosted_client import HostedClient
+            except ImportError:
+                pass
+            else:
+                base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+                if base_url:
+                    return HostedClient(self._api_key, base_url=base_url)
+                return HostedClient(self._api_key)
+        return SdkClient(self._api_key)
+
     def _agent(self, app_name: str) -> _Agent:
         agent_id = self._agent_id or default_agent_id(app_name)
         with self._agents_lock:
             if agent_id not in self._agents:
-                self._agents[agent_id] = _Agent(SdkClient(self._api_key), agent_id)
+                self._agents[agent_id] = _Agent(self._new_client(), agent_id)
             return self._agents[agent_id]
 
     @staticmethod

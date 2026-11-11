@@ -6,7 +6,10 @@ This package provides native LangGraph tools and a standalone memory layer for i
 
 ```bash
 pip install langgraph-memanto
+export MEMANTO_API_KEY=mk_xxxxxxxxxxxxxxxxxx  # from https://console.memanto.ai (or run `memanto login`)
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 ## Features
 
@@ -26,8 +29,8 @@ from langgraph_memanto import MemantoStore
 from langgraph.graph import StateGraph, MessagesState
 from langgraph.checkpoint.memory import MemorySaver
 
-# Initialize the MemantoStore (uses api_key instead of client object directly)
-store = MemantoStore(api_key="your_moorcheh_api_key")
+# Initialize MemantoStore (reads MEMANTO_API_KEY, ~/.memanto `memanto login`, or MOORCHEH_API_KEY, or pass api_key=...)
+store = MemantoStore()
 
 # Build your graph as normal
 builder = StateGraph(MessagesState)
@@ -50,8 +53,8 @@ graph = builder.compile(
 from langgraph_memanto import create_memanto_tools
 from memanto.cli.client.sdk_client import SdkClient
 
-# Initialize the Memanto SDK Client
-client = SdkClient(api_key="your_moorcheh_api_key")
+# Initialize the Memanto Client (or use build_client() when signed in via `memanto login`)
+client = SdkClient(api_key="your_api_key")
 
 # Get native LangChain tools
 # The tools will automatically ensure the agent is created and activated 
@@ -71,7 +74,7 @@ from langgraph_memanto import create_recall_node, create_remember_node
 from memanto.cli.client.sdk_client import SdkClient
 from langgraph.graph import StateGraph, MessagesState, START, END
 
-client = SdkClient(api_key="your_moorcheh_api_key")
+client = SdkClient(api_key="your_api_key")
 
 # Nodes can dynamically use an agent_id from the graph's config
 recall = create_recall_node(client=client, agent_id_from_config="agent_id")

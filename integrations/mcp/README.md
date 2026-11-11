@@ -10,9 +10,9 @@ This package exposes [Memanto's](https://memanto.ai) memory primitives —
 MCP client (Claude Desktop, Cursor, Windsurf, Cline, Continue, Goose,
 custom agents, …) can plug into long-term memory in a single config line.
 
-> One Moorcheh API key → typed semantic memory across every agent that
-> shares the namespace, with sub-90 ms retrieval, conflict detection, and
-> zero ingestion latency.
+> Sign in once with `memanto login` or a Memanto API key → typed semantic
+> memory across every agent that shares the namespace, with sub-90 ms
+> retrieval, conflict detection, and zero ingestion latency.
 
 ---
 
@@ -22,13 +22,12 @@ custom agents, …) can plug into long-term memory in a single config line.
 pip install memanto-mcp
 ```
 
-Requires Python 3.10+, `memanto>=0.2.13`, `mcp>=1.2,<2`, and a
-[Moorcheh API key](https://console.moorcheh.ai/api-keys)
-(free tier: 100K ops/month).
+Requires Python 3.10+, `memanto>=0.2.31`, `mcp>=1.2,<2`, and a
+[Memanto Cloud account](https://console.memanto.ai/sign-in) (`memanto login` or `MEMANTO_API_KEY`) — or a [Moorcheh API key](https://console.moorcheh.ai/api-keys) for Memanto local.
 
 ## Quick start (Claude Desktop)
 
-1. Get a Moorcheh API key from the [console](https://console.moorcheh.ai/api-keys).
+1. Sign in at [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in) to create a `MEMANTO_API_KEY` (or run `memanto login` in your terminal).
 2. Edit `claude_desktop_config.json` (Settings → Developer → Edit Config):
 
 ```json
@@ -37,7 +36,7 @@ Requires Python 3.10+, `memanto>=0.2.13`, `mcp>=1.2,<2`, and a
     "memanto": {
       "command": "memanto-mcp",
       "env": {
-        "MOORCHEH_API_KEY": "mch_xxxxxxxxxxxxxxxxxx",
+        "MEMANTO_API_KEY": "mk_xxxxxxxxxxxxxxxxxx",
         "MEMANTO_DEFAULT_AGENT_ID": "my-assistant"
       }
     }
@@ -63,7 +62,7 @@ The same JSON snippet works almost verbatim:
     "memanto": {
       "command": "memanto-mcp",
       "env": {
-        "MOORCHEH_API_KEY": "mch_xxxxxxxxxxxxxxxxxx",
+        "MEMANTO_API_KEY": "mk_xxxxxxxxxxxxxxxxxx",
         "MEMANTO_DEFAULT_AGENT_ID": "cursor-workspace"
       }
     }
@@ -137,7 +136,8 @@ All config is via environment variables (load order: process env →
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `MOORCHEH_API_KEY` | **yes** | — | Moorcheh API key. |
+| `MEMANTO_API_KEY` | **yes*** | — | Memanto Cloud API key from [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in) (*not needed if signed in with `memanto login` or using `MOORCHEH_API_KEY`). |
+| `MOORCHEH_API_KEY` | no | — | Moorcheh API key when using Memanto local (`moorcheh-cloud`). |
 | `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Default agent. When set, tool calls may omit `agent_id`. |
 | `MEMANTO_AGENT_PATTERN` | no | `tool` | Pattern (`support`/`project`/`tool`) used when auto-creating the default agent. |
 | `MEMANTO_AGENT_AUTO_CREATE` | no | `true` | Create the default agent on first use if missing. Explicit non-default agents must already exist. |

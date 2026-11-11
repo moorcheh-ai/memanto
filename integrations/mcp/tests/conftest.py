@@ -21,6 +21,8 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         if var.startswith(("MOORCHEH_", "MEMANTO_")):
             monkeypatch.delenv(var, raising=False)
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
 
 @pytest.fixture

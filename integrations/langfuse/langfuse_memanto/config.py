@@ -28,10 +28,15 @@ class HandlerSettings(BaseSettings):
         case_sensitive=False,
     )
 
+    memanto_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="MEMANTO_API_KEY",
+        description="Memanto Cloud API key (recommended). Never logged.",
+    )
     api_key: SecretStr | None = Field(
         default=None,
         validation_alias="MOORCHEH_API_KEY",
-        description="Memanto/Moorcheh API key. Never logged.",
+        description="Moorcheh API key for Memanto local fallback. Never logged.",
     )
     agent_id: str | None = Field(
         default=None,
@@ -99,4 +104,12 @@ class HandlerSettings(BaseSettings):
 
     def api_key_value(self) -> str | None:
         """The raw key, read only when constructing the Memanto client."""
-        return self.api_key.get_secret_value() if self.api_key else None
+        if self.memanto_api_key is not None:
+            val = self.memanto_api_key.get_secret_value().strip()
+            if val:
+                return val
+        if self.api_key is not None:
+            val = self.api_key.get_secret_value().strip()
+            if val:
+                return val
+        return None

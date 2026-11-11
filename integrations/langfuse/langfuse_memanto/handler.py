@@ -338,13 +338,38 @@ class MemantoLangfuseHandler(SpanProcessor):
 
     def _get_client(self) -> Any:
         if self._client is None:
+            from memanto.app.utils.errors import AuthenticationError
             from memanto.cli.client.sdk_client import SdkClient
 
-            if not self._api_key:
-                raise RuntimeError(
-                    "No Memanto API key. Pass api_key=... or set MOORCHEH_API_KEY."
+            if self._api_key:
+                clean = self._api_key.strip()
+                is_cloud = clean.startswith("mk_") or (
+                    clean == os.environ.get("MEMANTO_API_KEY", "").strip()
                 )
-            self._client = SdkClient(self._api_key)
+                if is_cloud:
+                    try:
+                        from memanto.cli.client.hosted_client import HostedClient
+                    except ImportError:
+                        self._client = SdkClient(clean)
+                    else:
+                        base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+                        self._client = (
+                            HostedClient(clean, base_url=base_url)
+                            if base_url
+                            else HostedClient(clean)
+                        )
+                else:
+                    self._client = SdkClient(clean)
+            else:
+                try:
+                    from memanto.cli.client.factory import build_client
+
+                    self._client = build_client()
+                except (ImportError, AuthenticationError) as exc:
+                    raise RuntimeError(
+                        "No Memanto API key. Pass api_key=..., set MEMANTO_API_KEY "
+                        "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+                    ) from exc
         return self._client
 
     def _requeue(self, batch: list[dict[str, Any]]) -> None:

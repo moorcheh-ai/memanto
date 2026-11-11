@@ -9,7 +9,7 @@ The integration connects Claude Code to Memanto via the **Model Context Protocol
 - Python 3.10 or later.
 - Claude Code.
 - A configured Memanto installation with an active agent (or an agent ID passed with `--agent-id`). Installing this package automatically installs `memanto>=0.2.30` and `memanto-mcp>=0.1.4`.
-- `MOORCHEH_API_KEY` configured in `~/.memanto/.env` (via `memanto` setup) or available in the environment.
+- Signed in to [Memanto Cloud](https://console.memanto.ai/sign-in) (`memanto login` or `MEMANTO_API_KEY` in `~/.memanto/.env` / environment), or `MOORCHEH_API_KEY` / on-prem configured for Memanto local.
 
 Install the package:
 
@@ -46,7 +46,7 @@ This manages the following project-local paths:
 | `.claude/settings.json` | Adds the Memanto lifecycle hooks (`SessionStart`, `PreCompact`, and `PostToolUse`). |
 | `.claude/settings.local.json` | Pre-approves the `memanto` project MCP server (`enabledMcpjsonServers`) and allows `mcp__memanto` so memory operations run seamlessly without permission prompts. |
 
-> **Note on API keys:** `MOORCHEH_API_KEY` is never written into `.mcp.json` or `~/.claude.json`. `memanto-mcp` reads your key directly from `~/.memanto/.env` (or the process environment).
+> **Note on API keys:** `MEMANTO_API_KEY` / `MOORCHEH_API_KEY` is never written into `.mcp.json` or `~/.claude.json`. `memanto-mcp` reads your credentials directly from `~/.memanto/.env` (or the process environment).
 
 **General Rule of Safety:** The integration is strictly non-destructive. Anything you do with this CLI will completely preserve whatever you already have configured in your project. It will never overwrite, delete, or modify your existing custom Claude Code configurations or user-managed MCP servers.
 

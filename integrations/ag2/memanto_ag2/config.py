@@ -33,7 +33,12 @@ def configure(
 def get_config() -> MemantoAg2Config:
     if _config is not None:
         return _config
-    return MemantoAg2Config(api_key=os.environ.get("MOORCHEH_API_KEY"))
+    key = (
+        os.environ.get("MEMANTO_API_KEY", "").strip()
+        or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        or None
+    )
+    return MemantoAg2Config(api_key=key)
 
 
 def reset_config() -> None:

@@ -169,3 +169,24 @@ def test_memanto_answer_tool_no_answer():
     result = tool._run(question="What is this?")
 
     assert "Answer: No answer could be generated." in result
+
+
+def test_memanto_setup_reads_memanto_api_key_from_env(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_cloud_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    assert MemantoSetup().client.api_key == "mk_cloud_key"
+
+
+def test_memanto_setup_reads_moorcheh_api_key_from_env(monkeypatch):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mch_key")
+    assert MemantoSetup().client.api_key == "mch_key"
+
+
+def test_memanto_setup_without_api_key_raises(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        MemantoSetup()

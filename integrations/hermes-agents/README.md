@@ -31,7 +31,7 @@ installer that drops it into place.
 
 - Python 3.10+
 - A running [Hermes agent](https://github.com/NousResearch/hermes-agent) install
-- A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month)
+- A [Memanto Cloud API key](https://console.memanto.ai/sign-in) (or a [Moorcheh API key](https://console.moorcheh.ai/api-keys) for Memanto local)
 
 ## Install
 
@@ -43,12 +43,12 @@ pip install hermes-memanto
 hermes-memanto-install
 
 # 3. Configure your key + select the provider
-export MOORCHEH_API_KEY=...          # https://console.moorcheh.ai/api-keys
+export MEMANTO_API_KEY=mk_...        # https://console.memanto.ai/sign-in
 hermes config set memory.provider memanto
 ```
 
 `hermes memory setup` will also list **memanto** once the plugin is installed,
-and writes `MOORCHEH_API_KEY` into `~/.hermes/.env` for you.
+and writes `MEMANTO_API_KEY` into `~/.hermes/.env` for you.
 
 ### From a source checkout
 
@@ -81,7 +81,8 @@ After install, settings live in `$HERMES_HOME/memanto.json`:
 
 | Environment variable | Description |
 |----------------------|-------------|
-| `MOORCHEH_API_KEY` | Moorcheh API key (required). |
+| `MEMANTO_API_KEY` | Memanto Cloud API key (recommended — [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in)). |
+| `MOORCHEH_API_KEY` | Moorcheh API key fallback when using Memanto local ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)). |
 | `MEMANTO_AGENT_ID` | Override the agent id (takes priority over the config file). |
 
 ## Tools exposed to Hermes
@@ -119,6 +120,7 @@ one is recallable from the others when they share an `agent_id`.
 
 ## Support
 
+- [Memanto Console](https://console.memanto.ai/sign-in)
 - [Memanto Documentation](https://docs.memanto.ai)
 - [Moorcheh API Keys](https://console.moorcheh.ai/api-keys)
 - [Hermes agent](https://github.com/NousResearch/hermes-agent)
