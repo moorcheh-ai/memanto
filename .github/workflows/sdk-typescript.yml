@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: sdks/typescript/package-lock.json
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Generate client from committed spec
         run: npm run openapi:generate

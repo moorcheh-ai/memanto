@@ -197,10 +197,31 @@ class TestOnPremClient:
         assert raw.files.uploaded_paths[0] != raw.files.uploaded_paths[1]
         assert {p.name for p in upload_root.iterdir()} != {"notes.txt"}
 
+    def test_docker_runtime_helpers_resolve_against_installed_moorcheh(self):
+        """The real import must resolve, not just the patched one.
+
+        Every other upload test patches ``_import_docker_runtime_helpers``,
+        so a wrong module path stays invisible until a user runs
+        ``memanto upload``. This exercises the unpatched call.
+        """
+        import pytest
+
+        pytest.importorskip("moorcheh")
+
+        from memanto.app.clients import onprem
+
+        ensure_upload_dir, host_path_to_container_upload_path = (
+            onprem._import_docker_runtime_helpers()
+        )
+        assert callable(ensure_upload_dir)
+        assert callable(host_path_to_container_upload_path)
+
 
 class TestSingletonDispatch:
     def test_dependency_wrappers_plain_calls_use_none_api_key(self):
-        """Plain calls must forward ``None`` (not FastAPI ``Header`` metadata)."""
+        """Plain calls must forward nothing — the server-configured key is
+        always used (MEM-02 / CodeRabbit: api_key parameter removed so FastAPI
+        cannot expose it as a ?api_key= query parameter)."""
         from memanto.app.clients import moorcheh as mclients
 
         sync_client = object()
@@ -221,8 +242,9 @@ class TestSingletonDispatch:
             assert mclients.get_moorcheh_client() is sync_client
             assert mclients.get_async_moorcheh_client() is async_client
 
-        sync_dispatcher.assert_called_once_with(api_key=None)
-        async_dispatcher.assert_called_once_with(api_key=None)
+        # No api_key forwarded: callers must never select backend credentials.
+        sync_dispatcher.assert_called_once_with()
+        async_dispatcher.assert_called_once_with()
 
     def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
         from memanto.app.clients import moorcheh as mclients

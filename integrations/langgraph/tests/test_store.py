@@ -37,7 +37,9 @@ def test_ensure_client_creates_and_activates(mock_sdk_client):
 
     mock_sdk_client.assert_called_once_with(api_key="test_key")
     client_instance.create_agent.assert_called_once_with(
-        agent_id="langgraph_test_ns", pattern="tool"
+        agent_id="langgraph_test_ns",
+        pattern="tool",
+        description='langgraph-namespace:["test","ns"]',
     )
     client_instance.activate_agent.assert_called_once_with(agent_id="langgraph_test_ns")
 

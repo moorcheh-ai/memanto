@@ -1,0 +1,90 @@
+$ python liberate.py --agent claude-real \
+    --claude ~/Documents/Personal-work/claude-data-export.zip \
+    --exclude-file .private-patterns --out okf_bundle
+
+Distilling claude conversations from ~/Documents/Personal-work/claude-data-export.zip...
+  [1] 'Optimizing Snowflake grants and user activity query' -> 5 memories
+  [2] 'Unspecified request for assistance' -> 5 memories
+  [3] 'MLOps on Kubernetes: comprehensive analysis across resources' -> 5 memories
+
+Privacy filter excluded 2 memory(ies): 1 artifact, 1 context
+  (titles withheld: a title that matched the pattern is sensitive)
+OKF v0.2: upgraded 14 document(s), rewrote 11 index file(s)
+
+OKF bundle: ~/Documents/Personal-work/memanto/examples/migrations/chatgpt-claude-okf/okf_bundle
+Memories:   13
+  artifact     1
+  context      2
+  decision     1
+  fact         1
+  goal         1
+  learning     3
+  observation  1
+  preference   3
+
+Next:  memanto migrate okf okf_bundle --dry-run
+
+$ memanto migrate okf ./okf_bundle --dry-run
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from okf_bundle
+  … Mapping OKF nodes onto Memanto schema...
+
+╭────────────────────────────── Dry run complete ──────────────────────────────╮
+│ OKF nodes: 13                                                                │
+│ Mapped memories: 13  (skipped 0)                                             │
+│ Type breakdown: artifact: 1, context: 2, decision: 1, fact: 1, goal: 1,      │
+│ learning: 3, observation: 1, preference: 3                                   │
+│                                                                              │
+│ Dry run — no writes performed.                                               │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/<run-id>                   │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/<run-id>/mapped_preview.json        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+$ memanto migrate okf ./okf_bundle --agent claude-real
+╭─────────────────────────╮
+│ OKF -> Memanto  Migrate │
+╰─────────────────────────╯
+  … Loading OKF bundle from okf_bundle
+  … Mapping OKF nodes onto Memanto schema...
+  … Importing batch 1/1 (13 memories)...
+
+╭────────────────────────────── Import complete ───────────────────────────────╮
+│ OKF nodes: 13                                                                │
+│ Mapped memories: 13  (skipped 0)                                             │
+│ Type breakdown: artifact: 1, context: 2, decision: 1, fact: 1, goal: 1,      │
+│ learning: 3, observation: 1, preference: 3                                   │
+│ Imported: 13  Failed: 0  Batches: 1                                          │
+│ Target agent: claude-real                                                    │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/<run-id>                   │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/<run-id>/mapped_preview.json        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+$ memanto memory export --okf --agent claude-real
+╭───────────────────────────────────────────────────────╮
+│ OKF Export                                            │
+│ Agent: claude-real  •  Split: auto  •  Limit: 25/type │
+╰───────────────────────────────────────────────────────╯
+
+   OKF Bundle Counts    
+┏━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Type         ┃ Count ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━┩
+│ Facts        │     1 │
+│ Decisions    │     1 │
+│ Goals        │     1 │
+│ Preferences  │     3 │
+│ Context      │     2 │
+│ Learnings    │     3 │
+│ Observations │     1 │
+│ Artifacts    │     1 │
+└──────────────┴───────┘
+
+OK Exported 13 memories to OKF bundle!
+Bundle: ~/.memanto/exports/claude-real_okf
+Completed in 10.63s

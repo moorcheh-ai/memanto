@@ -91,7 +91,7 @@ CrewAI offers two ways to plug in external memory:
 
 - **No dual memory risk**: We explicitly set `memory=False` on all Crews to prevent CrewAI from injecting its own LanceDB-backed memory tools alongside the Memanto tools. When `memory=True`, CrewAI auto-injects "Search memory" and "Save to memory" tools into every agent — running both systems would cause duplicate storage and retrieval confusion.
 
-> **Note**: Native `StorageBackend` integrations (like [Hindsight](https://hindsight.vectorize.io/) or [Mengram](https://community.crewai.com/t/mengram-human-like-memory-backend-for-crewai-pr-4595/7363)) work well when the external system accepts vector embeddings directly. Memanto's information-theoretic search operates on text, making the tool-based pattern the better fit.
+> **Note**: Native `StorageBackend` integrations (e.g. [Mengram](https://community.crewai.com/t/mengram-human-like-memory-backend-for-crewai-pr-4595/7363)) work well when the external system accepts vector embeddings directly. Memanto's information-theoretic search operates on text, making the tool-based pattern the better fit.
 
 ### Namespace Design
 

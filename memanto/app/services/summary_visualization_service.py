@@ -108,8 +108,12 @@ class SummaryVisualizationService:
         if not viz_markdown:
             return False
 
-        with open(summary_path, "a", encoding="utf-8") as f:
-            f.write(viz_markdown)
+        from memanto.app.utils.atomic_write import atomic_write_text
+
+        current_content = (
+            summary_path.read_text(encoding="utf-8") if summary_path.exists() else ""
+        )
+        atomic_write_text(summary_path, current_content + viz_markdown)
 
         return True
 

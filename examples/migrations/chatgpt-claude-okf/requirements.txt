@@ -1,0 +1,6 @@
+# Memanto itself, editable from this repo. Provides every service the adapter
+# uses: conversation extraction, memory classification and OKF export.
+-e ../../..
+
+# Judge for the round-trip recall check in validate.py, OpenRouter compatible.
+openai>=1.0

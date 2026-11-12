@@ -9,6 +9,9 @@ Mapping between abstractions
 
     BaseStore                         ->  Memanto
     namespace (tuple[str, ...])       ->  agent_id       (``langgraph_<p0>_<p1>...``)
+                                          (bound to the exact tuple via the
+                                          agent description; a colliding
+                                          tuple is refused)
     key (str)                         ->  reserved tag   ``lg:key:<key>``
     value["kind"] / value["type"]     ->  memory_type    (auto-parsed if absent)
     value["title"]                    ->  title          (auto-derived if absent)
@@ -38,6 +41,7 @@ Documented limitations
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import threading
 import time
@@ -63,6 +67,11 @@ logger = logging.getLogger(__name__)
 _KEY_TAG_PREFIX = "lg:key:"
 _ENCODED_KEY_TAG_PREFIX = "lg:key:v1:"
 _RESERVED_PREFIX = "lg:"
+# Stored as the agent description so each agent remembers the exact namespace
+# tuple it was created for. ``"_".join(namespace)`` is not injective (e.g.
+# ("acme", "bob_x") and ("acme_bob", "x") share one agent id), so the binding
+# is what keeps two colliding namespaces from reading each other's memories.
+_NAMESPACE_BINDING_PREFIX = "langgraph-namespace:"
 
 _VALID_MEMORY_TYPES = {
     "fact",
@@ -103,32 +112,101 @@ class MemantoStore(BaseStore):
     # nodes) from burning rate-limit budget on identical queries.
     _CACHE_TTL_S = 30.0
 
-    def __init__(self, api_key: str) -> None:
-        """Initialize MemantoStore with an API key."""
+    def __init__(self, api_key: str, *, strict_namespace_binding: bool = False) -> None:
+        """Initialize MemantoStore with an API key.
+
+        Args:
+            api_key: Memanto / Moorcheh API key.
+            strict_namespace_binding: Refuse agents created before namespace
+                binding existed. Such agents have no record of which namespace
+                tuple they belong to, so a colliding tuple could still reach
+                them. Off by default so existing stores keep their memories.
+        """
         self.api_key = api_key
+        self._strict_namespace_binding = strict_namespace_binding
         self._lock = threading.RLock()
         self._key_locks: dict[tuple[tuple[str, ...], str], threading.Lock] = {}
         self._client_pool: dict[str, SdkClient] = {}
+        # agent_id -> the namespace tuple its pooled client was bound for.
+        self._pool_namespaces: dict[str, tuple[str, ...]] = {}
         self._agent_prefix = "langgraph_"
         # (namespace, query, limit, tags, type, min_sim, min_conf) -> (timestamp, items)
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
 
-    def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
+    def _agent_id_for(self, namespace: tuple[str, ...]) -> str:
         ns_str = "_".join(namespace) or "default"
-        agent_id = f"{self._agent_prefix}{ns_str}"
+        return f"{self._agent_prefix}{ns_str}"
+
+    @staticmethod
+    def _namespace_binding(namespace: tuple[str, ...]) -> str:
+        return _NAMESPACE_BINDING_PREFIX + json.dumps(
+            list(namespace), ensure_ascii=False, separators=(",", ":")
+        )
+
+    @staticmethod
+    def _bound_namespace(description: Any) -> tuple[str, ...] | None:
+        """Return the namespace recorded in an agent description, if any."""
+        if not isinstance(description, str) or not description.startswith(
+            _NAMESPACE_BINDING_PREFIX
+        ):
+            return None
+        try:
+            parts = json.loads(description[len(_NAMESPACE_BINDING_PREFIX) :])
+        except ValueError:
+            return None
+        if not isinstance(parts, list) or not all(isinstance(p, str) for p in parts):
+            return None
+        return tuple(parts)
+
+    @staticmethod
+    def _namespace_collision(
+        namespace: tuple[str, ...], agent_id: str, bound: tuple[str, ...]
+    ) -> ValueError:
+        return ValueError(
+            f"LangGraph namespace {namespace!r} maps to Memanto agent "
+            f"'{agent_id}', which already belongs to namespace {bound!r}. "
+            "Refusing to share memories between different namespaces."
+        )
+
+    def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
+        namespace = tuple(namespace)
+        agent_id = self._agent_id_for(namespace)
         with self._lock:
             if agent_id in self._client_pool:
+                bound = self._pool_namespaces.get(agent_id, namespace)
+                if bound != namespace:
+                    raise self._namespace_collision(namespace, agent_id, bound)
                 return self._client_pool[agent_id], agent_id
 
             from memanto.app.utils.errors import AgentAlreadyExistsError
 
             client = SdkClient(api_key=self.api_key)
             try:
-                client.create_agent(agent_id=agent_id, pattern="tool")
+                client.create_agent(
+                    agent_id=agent_id,
+                    pattern="tool",
+                    description=self._namespace_binding(namespace),
+                )
             except AgentAlreadyExistsError:
-                pass
+                existing = client.get_agent(agent_id)
+                description = (
+                    existing.get("description") if isinstance(existing, dict) else None
+                )
+                bound = self._bound_namespace(description)
+                # Agents created before the binding existed carry no record of
+                # their namespace. By default keep serving them so existing
+                # memories stay reachable; strict mode refuses them instead.
+                if bound is None and self._strict_namespace_binding:
+                    raise ValueError(
+                        f"Memanto agent '{agent_id}' has no namespace binding, so "
+                        f"it cannot be verified to belong to {namespace!r}. "
+                        "Refusing it because strict_namespace_binding is enabled."
+                    )
+                if bound is not None and bound != namespace:
+                    raise self._namespace_collision(namespace, agent_id, bound)
             client.activate_agent(agent_id=agent_id)
             self._client_pool[agent_id] = client
+            self._pool_namespaces[agent_id] = namespace
             return client, agent_id
 
     # ------------------------------------------------------------------ #
@@ -427,7 +505,10 @@ class MemantoStore(BaseStore):
             agent_id = agent.get("agent_id") or agent.get("id") or ""
             if not isinstance(agent_id, str):
                 continue
-            if agent_id.startswith(self._agent_prefix):
+            bound = self._bound_namespace(agent.get("description"))
+            if bound is not None and self._agent_id_for(bound) == agent_id:
+                namespaces.append(bound)
+            elif agent_id.startswith(self._agent_prefix):
                 ns_str = agent_id[len(self._agent_prefix) :]
                 if ns_str == "default":
                     namespaces.append(())

@@ -1,0 +1,9 @@
+# Models for the /api/v2 and /health endpoints of the memanto REST server.
+# The spec is shared with the TypeScript SDK; the Web UI routes are excluded.
+package: api
+output: types.gen.go
+generate:
+  models: true
+output-options:
+  exclude-tags:
+    - Web UI

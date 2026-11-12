@@ -189,6 +189,25 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "MEMANTO Status" in result.stdout
 
+    @patch("memanto.cli.commands.core.httpx.get")
+    def test_status_lists_registered_agents(self, mock_get, mock_all_clients):
+        """list_agents() returns {"agents": [...]} — status must unwrap it."""
+        mock_get.side_effect = ConnectionError("offline")
+        mock_all_clients.get_session_info.return_value = {"agent_id": "test-agent"}
+        mock_all_clients.list_agents.return_value = {
+            "agents": [
+                {"agent_id": "test-agent", "pattern": "tool", "session_count": 2},
+                {"agent_id": "other-agent", "pattern": "tool", "session_count": 1},
+            ],
+            "count": 2,
+            "warnings": [],
+        }
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0, result.stdout
+        assert "Could not fetch agent list" not in result.stdout
+        assert "Registered Agents" in result.stdout
+        assert "other-agent" in result.stdout
+
     # ========================================================================
     # AGENT COMMANDS
     # ========================================================================
@@ -772,6 +791,53 @@ class TestMEMANTOCLI:
         assert client._cached_session is new_session
         session_service.validate_session.assert_called_once_with("new-token")
 
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_cache_hit_keeps_full_session(self, mock_all_clients, client_path):
+        from datetime import timedelta
+        from unittest.mock import MagicMock
+
+        from memanto.app.models.session import Session, SessionToken
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        session = Session(
+            session_id="sess-test",
+            session_token="test-token",
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            started_at=utc_now() - timedelta(minutes=5),
+            expires_at=utc_now() + timedelta(hours=1),
+            status="active",
+        )
+        session_service = MagicMock()
+        session_service.validate_session.return_value = SessionToken(
+            agent_id=session.agent_id,
+            namespace=session.namespace,
+            session_id=session.session_id,
+            started_at=session.started_at,
+            expires_at=session.expires_at,
+        )
+        session_service.check_and_auto_renew.return_value = None
+
+        client = Client("test-api-key")
+        client.agent_id = "test-agent"
+        client.session_token = "test-token"
+        client._cached_session = session
+        client._session_service = session_service
+
+        # Each cache hit must still validate the token, then serve the full
+        # Session; get_session_info() reads Session-only fields.
+        for _ in range(2):
+            info = client.get_session_info()
+            assert info["session_id"] == "sess-test"
+            assert info["time_remaining_seconds"] > 0
+        assert client._cached_session is session
+        assert session_service.validate_session.call_count == 2
+
     def test_upload_file_sdk_accepts_snake_case_file_size(
         self, tmp_path, mock_all_clients
     ):
@@ -1075,8 +1141,9 @@ class TestMEMANTOCLI:
         )
         assert result.exit_code == 0
         assert "deleted" in result.stdout.lower()
-        mock_all_clients.delete_agent.assert_called_once_with("test-agent")
-        mock_all_clients._get_moorcheh.return_value.namespaces.delete.assert_not_called()
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=False
+        )
 
     def test_agent_delete_purge_cloud(self, mock_all_clients):
         """Test 'memanto agent delete --force' also deleting cloud namespace"""
@@ -1084,18 +1151,44 @@ class TestMEMANTOCLI:
             "status": "deleted",
             "agent_id": "test-agent",
         }
-        mock_moorcheh = MagicMock()
-        mock_all_clients._get_moorcheh.return_value = mock_moorcheh
 
         # Answer "n" to delete cloud memories too
         result = runner.invoke(
             app, ["agent", "delete", "test-agent", "--force"], input="n\n"
         )
         assert result.exit_code == 0
-        assert "deleted" in result.stdout.lower()
-        mock_moorcheh.namespaces.delete.assert_called_once_with(
-            "memanto_agent_test-agent"
+        assert "cloud memories deleted" in result.stdout.lower()
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=True
         )
+
+    @pytest.mark.parametrize(
+        ("flag", "expected"),
+        [("--delete-memories", True), ("--keep-memories", False)],
+    )
+    def test_agent_delete_memories_flag_skips_prompt(
+        self, mock_all_clients, flag, expected
+    ):
+        """--delete-memories / --keep-memories answer the prompt for scripts."""
+        result = runner.invoke(app, ["agent", "delete", "test-agent", "--force", flag])
+        assert result.exit_code == 0
+        assert "Keep cloud memories" not in result.stdout
+        mock_all_clients.delete_agent.assert_called_once_with(
+            "test-agent", delete_memories=expected
+        )
+
+    def test_agent_delete_memories_failure_reports_agent_kept(self, mock_all_clients):
+        """A failed cloud delete is an error, not a 'deleted' message."""
+        from memanto.app.utils.errors import NamespaceError
+
+        mock_all_clients.delete_agent.side_effect = NamespaceError(
+            "Failed to delete namespace 'memanto_agent_test-agent' in Moorcheh: boom"
+        )
+        result = runner.invoke(
+            app, ["agent", "delete", "test-agent", "--force", "--delete-memories"]
+        )
+        assert result.exit_code != 0
+        assert "was not deleted" in result.stdout
 
     def test_agent_delete_not_found(self, mock_all_clients):
         """Test 'memanto agent delete' when agent does not exist"""
@@ -1457,16 +1550,16 @@ class TestMEMANTOCLI:
 
         session_mock.assert_not_called()
 
-    def test_memory_sync(self, mock_all_clients):
+    @patch("memanto.cli.connect.updater.inject_dynamic_memories")
+    def test_memory_sync(self, mock_inject, mock_all_clients):
         """Test 'memanto memory sync'"""
-        mock_all_clients.sync_memory_to_project.return_value = {
-            "total_memories": 5,
-            "source": "fresh",
-            "output_path": "project/memory.md",
+        mock_all_clients.recall.return_value = {
+            "memories": [{"type": "instruction", "content": "Test instruction"}] * 5
         }
+        mock_inject.return_value = {"updated": ["Injected successfully"]}
         result = runner.invoke(app, ["memory", "sync"])
         assert result.exit_code == 0
-        assert "Synced 5 memories" in result.stdout
+        assert "Recalled 5 dynamic memories" in result.stdout
 
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""

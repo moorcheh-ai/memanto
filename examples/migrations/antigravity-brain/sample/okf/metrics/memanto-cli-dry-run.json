@@ -1,0 +1,5 @@
+{
+  "command": "memanto migrate okf sample/okf --dry-run",
+  "exit_code": 0,
+  "writes_performed": false
+}

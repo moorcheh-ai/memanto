@@ -1,0 +1,72 @@
+[
+  {
+    "id": "qa_001",
+    "question": "What async I/O approach did Alice ask about for a Rust library using Tokio?",
+    "answer": "Alice asked whether to use spawn_blocking or tokio::fs for async file I/O in a Rust library where read_to_string calls were blocking.",
+    "source": "chatgpt",
+    "rationale": "ChatGPT conversation 'Implementing async Rust with Tokio' — the user message explicitly names both alternatives and the blocking symptom."
+  },
+  {
+    "id": "qa_002",
+    "question": "What Rust compiler error did Alice encounter while storing references inside a loop?",
+    "answer": "Alice hit error E0597: borrowed value does not live long enough, caused by storing references to a loop-local borrow.",
+    "source": "chatgpt",
+    "rationale": "ChatGPT conversation 'Debugging lifetime errors in Rust' — the user message quotes the exact error code and describes the loop pattern."
+  },
+  {
+    "id": "qa_003",
+    "question": "Which two embedding models was Alice comparing for a semantic search index over Rust docs?",
+    "answer": "Alice was comparing text-embedding-3-small and bge-m3.",
+    "source": "chatgpt",
+    "rationale": "ChatGPT conversation 'Comparing LLM embedding models' — the user message names both models and mentions the Rust docs corpus."
+  },
+  {
+    "id": "qa_004",
+    "question": "What three memory systems was Alice evaluating for persistent agent memory?",
+    "answer": "Alice was evaluating mem0, Memanto and a plain vector DB.",
+    "source": "chatgpt",
+    "rationale": "ChatGPT conversation 'Comparing agent memory systems: mem0, Memanto, and plain vector DB' — the user message explicitly lists all three systems by name."
+  },
+  {
+    "id": "qa_005",
+    "question": "What was the size of Alice's stripped Rust CLI binary when asking how to reduce it?",
+    "answer": "The binary was 8 MB stripped.",
+    "source": "claude",
+    "rationale": "Claude conversation 'Optimizing Rust binary size' — the user message states '8 MB stripped' as the starting point."
+  },
+  {
+    "id": "qa_006",
+    "question": "What type of tool did Alice want to open-source?",
+    "answer": "An LLM memory benchmarking tool.",
+    "source": "claude",
+    "rationale": "Claude conversation 'Open-sourcing an LLM memory benchmarking tool' — the user message says 'I want to open-source my LLM memory benchmarking tool'."
+  },
+  {
+    "id": "qa_007",
+    "question": "What chunking strategies did Alice ask about for building a RAG pipeline over a codebase?",
+    "answer": "Alice asked whether to chunk by file, by function, or by token window.",
+    "source": "claude",
+    "rationale": "Claude conversation 'Building a RAG pipeline for a codebase' — the user message lists all three chunking options."
+  },
+  {
+    "id": "qa_008",
+    "question": "Which open-source project did Alice ask how to make a first contribution to?",
+    "answer": "ripgrep.",
+    "source": "claude",
+    "rationale": "Claude conversation 'Contributing to ripgrep' — the user message asks specifically about contributing to ripgrep."
+  },
+  {
+    "id": "qa_009",
+    "question": "What provenance field values did Alice ask about for tracking agent-added vs migrated memories?",
+    "answer": "Alice asked about a provenance field to distinguish memories the agent added from those inherited via migration.",
+    "source": "claude",
+    "rationale": "Claude conversation 'Tracking memory provenance for AI agents' — the user message asks about a provenance field for this exact distinction."
+  },
+  {
+    "id": "qa_010",
+    "question": "How did Alice ask about setting up Qdrant locally with Docker and connecting from a Rust client?",
+    "answer": "Alice asked how to set up Qdrant locally with Docker and connect it from a Rust client.",
+    "source": "gemini",
+    "rationale": "Gemini activity entry 'How do I set up Qdrant locally with Docker and connect it from a Rust client?' — the full prompt is preserved in the title."
+  }
+]

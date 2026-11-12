@@ -21,6 +21,7 @@ class ScheduleManager:
     LEGACY_TASK_NAMES = ("MemantoDailySummary",)
 
     def __init__(self):
+        """Initialize the schedule manager with current platform detection."""
         self.os_type = platform.system()
         self.cli_main = Path(__file__).parent / "main.py"
         self.python_exe = sys.executable
@@ -55,21 +56,46 @@ class ScheduleManager:
                 pass
 
     def _command(self) -> str:
-        return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
+        """Build the quoted platform execution string for the scheduled CLI run."""
+        parts = [str(self.python_exe), str(self.cli_main.resolve()), "schedule", "_run"]
+        if self.os_type == "Windows":
+            return subprocess.list2cmdline(parts)
+        import shlex
+
+        cmd = shlex.join(parts)
+        return cmd.replace("%", r"\%")
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Enable the nightly scheduled job at the specified local time.
+
+        Args:
+            time_str: Scheduled time in HH:MM format.
+
+        Returns:
+            Dictionary containing operation status and message.
+        """
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._enable_windows(time_str)
         return self._enable_unix(time_str)
 
     def disable(self) -> dict[str, Any]:
+        """Disable and remove the scheduled nightly job.
+
+        Returns:
+            Dictionary containing operation status and message.
+        """
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._disable_windows()
         return self._disable_unix()
 
     def get_status(self) -> dict[str, Any]:
+        """Retrieve the current schedule status for the active platform.
+
+        Returns:
+            Dictionary indicating enabled status and details.
+        """
         if self.os_type == "Windows":
             return self._status_windows()
         return self._status_unix()
@@ -77,6 +103,7 @@ class ScheduleManager:
     # Windows (schtasks)
 
     def _enable_windows(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Configure Windows Task Scheduler task using schtasks."""
         try:
             schedule_time = normalize_schedule_time(time_str)
         except ValueError as e:
@@ -108,6 +135,7 @@ class ScheduleManager:
             }
 
     def _disable_windows(self) -> dict[str, Any]:
+        """Remove scheduled task from Windows Task Scheduler."""
         command = ["schtasks", "/delete", "/tn", self.TASK_NAME, "/f"]
         try:
             subprocess.run(command, capture_output=True, text=True, check=True)
@@ -121,6 +149,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to remove task: {e.stderr}"}
 
     def _status_windows(self) -> dict[str, Any]:
+        """Query task state from Windows Task Scheduler."""
         command = ["schtasks", "/query", "/tn", self.TASK_NAME, "/fo", "LIST"]
         try:
             result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -138,6 +167,7 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Add daily scheduled job entry to user's crontab."""
         try:
             hour, minute = parse_schedule_time(time_str)
             schedule_time = f"{hour:02d}:{minute:02d}"
@@ -162,6 +192,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}
 
     def _disable_unix(self) -> dict[str, Any]:
+        """Remove scheduled job entry from user's crontab."""
         marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
@@ -178,6 +209,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to disable: {str(e)}"}
 
     def _status_unix(self) -> dict[str, Any]:
+        """Query user's crontab for existing scheduled job marker."""
         marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(

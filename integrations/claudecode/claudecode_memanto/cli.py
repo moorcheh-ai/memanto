@@ -17,26 +17,56 @@ def main(argv: list[str] | None = None) -> int:
 
     p_install = sub.add_parser("install", help="Install the Memanto integration.")
     p_install.add_argument(
+        "-p",
+        "--project-dir",
+        default=".",
+        help="Target project directory (default: current directory).",
+    )
+    p_install.add_argument(
+        "-g",
         "--global",
         dest="global_scope",
         action="store_true",
-        help="Install into ~/.claude/settings.json instead of ./.claude/settings.json.",
+        help="Install globally into ~/.claude/ and ~/.claude.json instead of the current project.",
+    )
+    p_install.add_argument(
+        "-a",
+        "--agent-id",
+        dest="agent_id",
+        default=None,
+        help="Default Memanto agent ID to use for the MCP server (defaults to the active agent).",
     )
 
     p_uninstall = sub.add_parser("uninstall", help="Remove the Memanto integration.")
     p_uninstall.add_argument(
+        "-p",
+        "--project-dir",
+        default=".",
+        help="Target project directory (default: current directory).",
+    )
+    p_uninstall.add_argument(
+        "-g",
         "--global",
         dest="global_scope",
         action="store_true",
-        help="Uninstall from ~/.claude/settings.json instead of ./.claude/settings.json.",
+        help="Uninstall from ~/.claude/ and ~/.claude.json instead of the current project.",
     )
 
     args = parser.parse_args(argv)
 
     result = (
-        install_agent("claude-code", is_global=args.global_scope)
+        install_agent(
+            "claude-code",
+            project_dir=args.project_dir,
+            is_global=args.global_scope,
+            mcp_agent_id=args.agent_id,
+        )
         if args.command == "install"
-        else remove_agent("claude-code", is_global=args.global_scope)
+        else remove_agent(
+            "claude-code",
+            project_dir=args.project_dir,
+            is_global=args.global_scope,
+        )
     )
     for step in result["steps"]:
         print(step)

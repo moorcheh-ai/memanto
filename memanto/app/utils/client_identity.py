@@ -23,6 +23,8 @@ back as fact.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
 
@@ -47,6 +49,7 @@ _ENV_SIGNATURES: tuple[tuple[tuple[str, ...], str, str], ...] = (
 # common spellings onto registry slugs so a Cursor MCP write and a Cursor CLI
 # write land on the same connection instead of two lookalike rows.
 _TOOL_ALIASES: dict[str, str] = {
+    "claude": "claude-code",
     "claude-ai": "claude-code",
     "claude-code": "claude-code",
     "claude-desktop": "claude-desktop",
@@ -55,8 +58,12 @@ _TOOL_ALIASES: dict[str, str] = {
     "codex": "codex",
     "codex-cli": "codex",
     "windsurf": "windsurf",
+    "copilot": "github-copilot",
+    "copilot-cli": "github-copilot",
+    "github-copilot": "github-copilot",
     "visual-studio-code": "github-copilot",
     "vscode": "github-copilot",
+    "gemini": "gemini-cli",
     "gemini-cli": "gemini-cli",
     "goose": "goose",
     "opencode": "opencode",
@@ -68,6 +75,13 @@ _TOOL_ALIASES: dict[str, str] = {
 }
 
 UNKNOWN_TOOL = "unknown"
+
+# `source` values that name a person or generic role rather than a specific AI
+# coding tool. They fall through to environment/header detection instead of
+# putting "user", "agent", or "system" on the connected-tools diagram.
+_NON_TOOL_SOURCES = frozenset(
+    {"user", "agent", "human", "conversation", "system", "tool", "mcp-agent"}
+)
 
 
 @dataclass(frozen=True)
@@ -160,9 +174,9 @@ def client_from_tool(name: str) -> ClientIdentity:
     """Build an identity for a tool that named itself.
 
     An agent knows exactly what it is; environment sniffing only guesses. This
-    is the path a ``--tool`` flag or an ``X-Memanto-Client`` header takes, and
-    it is the only way tools that leave no distinctive environment marker can
-    be attributed at all.
+    is the path a ``--source`` flag, an API ``source`` field, or an
+    ``X-Memanto-Client`` header takes, and it is the only way tools that leave
+    no distinctive environment marker can be attributed at all.
     """
     slug = normalize_tool(name)
     try:
@@ -170,6 +184,51 @@ def client_from_tool(name: str) -> ClientIdentity:
     except OSError:
         project_dir = None
     return ClientIdentity(tool=slug, display=display_for(slug), project_dir=project_dir)
+
+
+def tool_from_source(source: str | None) -> str | None:
+    """Read the calling tool off ``--source`` / ``source``, when it names one."""
+    if source and source.strip().lower() not in _NON_TOOL_SOURCES:
+        return source.strip()
+    return None
+
+
+def _identity_for_tool(tool: str) -> ClientIdentity:
+    current = _current.get()
+    if current is not None:
+        slug = normalize_tool(tool)
+        return ClientIdentity(
+            tool=slug,
+            display=display_for(slug),
+            project_dir=current.project_dir,
+        )
+    return client_from_tool(tool)
+
+
+def bind_calling_tool(tool: str | None) -> None:
+    """Attribute this invocation to the tool that named itself, if any.
+
+    Used by one-shot CLI entry points and HTTP route handlers (where the HTTP
+    middleware resets the ContextVar at the end of the request). Long-lived
+    in-process clients should use :func:`calling_tool` instead so the identity
+    does not leak into subsequent calls that omit ``source``.
+    """
+    if not tool:
+        return
+    set_client(_identity_for_tool(tool))
+
+
+@contextmanager
+def calling_tool(tool: str | None) -> Iterator[None]:
+    """Scope *tool* to a single operation and restore the prior identity after."""
+    if not tool:
+        yield
+        return
+    token = set_client(_identity_for_tool(tool))
+    try:
+        yield
+    finally:
+        reset_client(token)
 
 
 def detect_client() -> ClientIdentity:

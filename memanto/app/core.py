@@ -7,16 +7,58 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 from memanto.app.constants import (
+    INJECTION_PATTERNS,
     MemoryType,
     ProvenanceType,
     StatusType,
 )
 
+# Tags are stored comma-joined and appended to the document text, so a comma
+# would split a tag and a line break or control character could forge
+# document structure. Everything else (e.g. ``lg:key:<key>``) is allowed.
+TAG_PATTERN = r"^[^,\x00-\x1f\x7f\x85\u2028\u2029]+$"
+
+_INJECTION_TAG_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS
+)
+
+
+def _reject_injection_shaped_tag(value: str) -> str:
+    """
+    Tags are comma-joined into the document text (``to_moorcheh_document``)
+    and rendered into session summaries and exports, so a tag must not carry
+    directive/override payloads or the documented ``#`` filter-token prefix
+    (see ``_sanitize_query_text``).
+    The extraction path enforces the same rule set
+    (``ConversationMemoryExtractionService._normalize_candidates``).
+    """
+    if value.startswith("#") or any(
+        pattern.search(value) for pattern in _INJECTION_TAG_PATTERNS
+    ):
+        raise ValueError(
+            "tag matches an injection directive or a '#'-prefixed filter token"
+        )
+    return value
+
+
 MemoryTag = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=64,
+        pattern=TAG_PATTERN,
+    ),
+    AfterValidator(_reject_injection_shaped_tag),
 ]
 BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
 
@@ -82,6 +124,12 @@ def agent_namespace(agent_id: str) -> str:
     return f"memanto_agent_{agent_id}"
 
 
+# Every code point that Python's str.splitlines(), Markdown renderers, and
+# LLMs treat as a line break. Titles are single-line labels, so all of them
+# must be folded -- a partial set lets a title forge document structure.
+_TITLE_LINE_BREAKS = "\n\r\u2028\u2029\x0b\x0c\x85"
+
+
 class MemoryRecord(BaseModel):
     """Structured memory record with standardized format"""
 
@@ -102,10 +150,16 @@ class MemoryRecord(BaseModel):
         into the recalled title and compounds on every update). Newline titles
         arrive from any caller, including the derived-title fallback that
         slices multi-line content.
+
+        The set of characters folded here must cover everything that
+        ``str.splitlines()``, Markdown renderers, and LLMs treat as a line
+        break -- not just ``\\n`` and ``\\r``. Folding only those two let
+        U+2028, U+2029, U+000B, U+000C and U+0085 through, which allowed a
+        title to forge standalone headings in the session summary.
         """
-        if isinstance(value, str) and ("\n" in value or "\r" in value):
-            return re.sub(r"[ \t]*[\r\n]+[ \t]*", " ", value).strip()
-        return value
+        if not isinstance(value, str):
+            return value
+        return re.sub(rf"[ \t]*[{_TITLE_LINE_BREAKS}]+[ \t]*", " ", value).strip()
 
     # Metadata fields
     agent_id: str

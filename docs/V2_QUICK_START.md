@@ -326,7 +326,9 @@ except httpx.HTTPStatusError as e:
 
 - **Full Documentation**: [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md)
 - **API Reference**: http://localhost:8000/docs
+- **Python SDK**: `from memanto import Memanto` — in-process client, no server needed ([reference](https://docs.memanto.ai/sdk/python))
 - **TypeScript SDK**: See [`@moorcheh-ai/memanto`](../sdks/typescript) for the Node.js/TypeScript client
+- **Go SDK**: See [`github.com/moorcheh-ai/memanto/sdks/go`](../sdks/go) for the Go client; it connects to this server or starts its own
 
 ---
 

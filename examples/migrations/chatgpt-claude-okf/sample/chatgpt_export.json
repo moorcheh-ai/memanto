@@ -1,0 +1,100 @@
+[
+  {
+    "title": "Bare-metal cluster ingress",
+    "conversation_id": "sample-conv-0001",
+    "create_time": 1750000000.0,
+    "current_node": "n3",
+    "mapping": {
+      "root": { "id": "root", "message": null, "parent": null, "children": ["n1"] },
+      "n1": {
+        "id": "n1",
+        "parent": "root",
+        "children": ["n2"],
+        "message": {
+          "id": "n1",
+          "author": { "role": "user" },
+          "create_time": 1750000001.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "My bare-metal k8s cluster has no cloud load balancer. I tried NodePort but the ports are ugly and I want real TLS on port 443."
+            ]
+          }
+        }
+      },
+      "n2": {
+        "id": "n2",
+        "parent": "n1",
+        "children": ["n3"],
+        "message": {
+          "id": "n2",
+          "author": { "role": "assistant" },
+          "create_time": 1750000002.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Use MetalLB in L2 mode to hand out a real external IP, then put ingress-nginx in front of it and terminate TLS with cert-manager."
+            ]
+          }
+        }
+      },
+      "n3": {
+        "id": "n3",
+        "parent": "n2",
+        "children": [],
+        "message": {
+          "id": "n3",
+          "author": { "role": "user" },
+          "create_time": 1750000003.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "That worked. I settled on MetalLB plus ingress-nginx and cert-manager with Let's Encrypt DNS-01, because HTTP-01 kept failing behind my router."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "title": "Postgres backups",
+    "conversation_id": "sample-conv-0002",
+    "create_time": 1751200000.0,
+    "current_node": "m2",
+    "mapping": {
+      "root2": { "id": "root2", "message": null, "parent": null, "children": ["m1"] },
+      "m1": {
+        "id": "m1",
+        "parent": "root2",
+        "children": ["m2"],
+        "message": {
+          "id": "m1",
+          "author": { "role": "user" },
+          "create_time": 1751200001.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I lost a staging database last week because my pg_dump cron was writing to the same node it was backing up. What should I do differently?"
+            ]
+          }
+        }
+      },
+      "m2": {
+        "id": "m2",
+        "parent": "m1",
+        "children": [],
+        "message": {
+          "id": "m2",
+          "author": { "role": "assistant" },
+          "create_time": 1751200002.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Ship dumps off-node to object storage and verify them by restoring into a scratch database on a schedule. An unverified backup is not a backup."
+            ]
+          }
+        }
+      }
+    }
+  }
+]

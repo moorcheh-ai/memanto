@@ -82,6 +82,20 @@ async def test_advertised_constraints_match_memanto_core(fake_api_key: str) -> N
     assert string_branch["pattern"] == SOURCE_PATTERN
     assert string_branch["maxLength"] == SOURCE_MAX_LENGTH
 
+    # batch_remember item schema exposes required fields to calling models
+    batch_schema = tools["batch_remember"].inputSchema
+    item_schema = batch_schema["$defs"]["BatchMemoryItem"]
+    assert set(item_schema["required"]) == {
+        "content",
+        "type",
+        "confidence",
+        "provenance",
+    }
+    assert set(item_schema["properties"]["type"]["enum"]) == VALID_MEMORY_TYPES
+    assert (
+        set(item_schema["properties"]["provenance"]["enum"]) == VALID_PROVENANCE_TYPES
+    )
+
 
 @pytest.mark.asyncio
 async def test_remember_records_the_connected_client_as_source(
@@ -106,7 +120,13 @@ async def test_remember_records_the_connected_client_as_source(
         ) as session:
             await session.initialize()
             result = await session.call_tool(
-                "remember", {"content": "Prefers concise answers."}
+                "remember",
+                {
+                    "content": "Prefers concise answers.",
+                    "type": "preference",
+                    "confidence": 0.9,
+                    "provenance": "explicit_statement",
+                },
             )
 
     assert not result.isError

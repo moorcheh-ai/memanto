@@ -266,12 +266,11 @@ def test_each_agent_gets_its_own_slug_in_skill_and_instructions():
         skill = get_skill_content(name)
         instruction = get_instruction_content(name)
 
-        # The skill is the command reference: it carries both identity flags.
-        assert f"--tool {name}" in skill, f"{name}/skill missing --tool"
+        # The skill is the command reference: it carries the identity flag.
         assert f"--source {name}" in skill, f"{name}/skill missing --source"
         # The instruction file defers syntax to the skill, but still has to
-        # tell the agent to identify itself on reads.
-        assert f"--tool {name}" in instruction, f"{name}/instruction missing --tool"
+        # tell the agent to identify itself.
+        assert f"--source {name}" in instruction, f"{name}/instruction missing --source"
 
         for label, text in (("skill", skill), ("instruction", instruction)):
             for stale in ("<agent_name>", "your_agent_name", "claude_code"):
@@ -286,8 +285,8 @@ def test_installed_skill_carries_the_agents_own_slug(tmp_path, monkeypatch):
     skill = (tmp_path / ".cursor" / "skills" / "memanto" / "SKILL.md").read_text(
         encoding="utf-8"
     )
-    assert "--tool cursor" in skill
-    assert "--tool claude-code" not in skill
+    assert "--source cursor" in skill
+    assert "--source claude-code" not in skill
 
 
 def setup_kimi_dirs(tmp_path, monkeypatch):

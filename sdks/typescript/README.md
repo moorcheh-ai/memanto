@@ -91,9 +91,10 @@ The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and 
 | `healthTimeoutMs` | `number` | `60000` | Health-check timeout. |
 | `verbose` | `boolean` | `false` | Stream server logs to the parent process. |
 
-When `baseUrl` points to an existing server, `apiKey` is sent as `X-Api-Key`
-on agent-management and activation requests. Session-scoped memory requests
-continue to use the server-issued session token.
+When `apiKey` is set it is sent as `X-Api-Key` on every request. A server
+reachable beyond loopback requires it for agent management, activation, and
+session renewal. Memory requests are still authorized by the server-issued
+session token.
 
 ### Methods
 
@@ -107,7 +108,7 @@ continue to use the server-issued session token.
 
 **Memory reads**
 
-- `recall({ query, limit?, minSimilarity?, type? })`
+- `recall({ query, limit?, minSimilarity?, type?, tags? })` — `tags` returns only memories carrying all of them.
 - `recallAsOf({ asOf, limit?, type? })` — point-in-time recall. `asOf` is `YYYY-MM-DD` or ISO 8601.
 - `recallChangedSince({ since, limit?, type? })` — what changed after `since`.
 - `recallRecent({ limit?, type? })` — newest-first.
@@ -125,7 +126,7 @@ continue to use the server-issued session token.
 - `listAgents()`
 - `getAgent()`
 - `createAgent({ pattern?, description? })` — explicit create (only needed when `autoCreate: false`).
-- `deleteAgent()`
+- `deleteAgent({ deleteMemories? })` — memories are kept in Moorcheh unless `deleteMemories: true`
 - `deactivate()` — end the current session (the next call rebootstraps).
 - `status()` — current session info.
 - `close()` — stop the spawned server.
@@ -140,6 +141,19 @@ if (!result.uvxAvailable) {
   console.error(result.hint);
 }
 ```
+
+## Framework Integrations
+
+The SDK ships pre-built memory tools (`recallMemory`, `rememberMemory`, `answerMemory`) for these agent frameworks, each behind its own subpath import so unused framework code never enters your bundle:
+
+| Framework | Import | Docs |
+| --- | --- | --- |
+| Vercel AI SDK | `@moorcheh-ai/memanto/ai-sdk` | [Vercel AI SDK](https://docs.memanto.ai/integrations/vercel-ai-sdk) |
+| Composio | `@moorcheh-ai/memanto/composio` | [Composio](https://docs.memanto.ai/integrations/composio) |
+| Eve | `@moorcheh-ai/memanto/eve` | [Eve](https://docs.memanto.ai/integrations/eve) |
+| Mastra | `@moorcheh-ai/memanto/mastra` | [Mastra](https://docs.memanto.ai/integrations/mastra) |
+| VoltAgent | `@moorcheh-ai/memanto/voltagent` | [VoltAgent](https://docs.memanto.ai/integrations/voltagent) |
+| OpenAI Node SDK | `@moorcheh-ai/memanto/openai` | [OpenAI](https://docs.memanto.ai/integrations/openai) |
 
 ## Versioning
 

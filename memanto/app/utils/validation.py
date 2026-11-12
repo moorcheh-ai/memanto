@@ -198,22 +198,31 @@ def validate_output_path(
 
     An authenticated caller who supplies ``output_path="/etc/cron.d/evil"`` could
     overwrite arbitrary files on the server.  This guard resolves the requested path
-    and ensures it remains inside *base_dir* (defaults to ``~/.memanto/``).
+    and ensures it remains inside *base_dir* (defaults to the configured data dir).
 
     Args:
         output_path: Raw path string from the API request, or ``None``.
-        base_dir: Allowed parent directory.  Defaults to ``~/.memanto``.
+        base_dir: Allowed parent directory. Defaults to ``get_data_dir()``.
 
     Returns:
         Resolved ``Path`` when *output_path* is provided, ``None`` otherwise.
 
     Raises:
-        HTTPException(400): When the resolved path escapes *base_dir*.
+        HTTPException(400): When the resolved path escapes *base_dir*, attempts
+            to overwrite the base directory itself, or targets sensitive internal
+            storage directories/files.
     """
     if output_path is None:
         return None
 
-    safe_base = (base_dir or Path.home() / ".memanto").resolve()
+    try:
+        from memanto.app.config import get_data_dir
+
+        default_base = get_data_dir()
+    except Exception:
+        default_base = Path.home() / ".memanto"
+
+    safe_base = (base_dir or default_base).resolve()
     try:
         candidate = Path(output_path)
         if not candidate.is_absolute():
@@ -223,7 +232,7 @@ def validate_output_path(
         raise HTTPException(status_code=400, detail="Invalid output_path")
 
     try:
-        resolved.relative_to(safe_base)
+        rel_path = resolved.relative_to(safe_base)
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -232,6 +241,31 @@ def validate_output_path(
                 "Absolute paths that escape it are not allowed."
             ),
         )
+
+    # Prevent targeting the root storage directory itself (e.g. output_path="." or empty)
+    if resolved == safe_base:
+        raise HTTPException(
+            status_code=400,
+            detail="output_path cannot be the root storage directory itself.",
+        )
+
+    # Protect internal application metadata when safe_base is the root data directory
+    # (e.g. agents/, sessions/, secret_key, config.json, .env)
+    RESERVED_ROOT_TARGETS = {
+        "agents",
+        "sessions",
+        "tokens",
+        "config.json",
+        "secret_key",
+        ".env",
+    }
+    rel_parts = rel_path.parts
+    if rel_parts and rel_parts[0].lower() in RESERVED_ROOT_TARGETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"output_path cannot target reserved internal path '{rel_parts[0]}'.",
+        )
+
     return resolved
 
 

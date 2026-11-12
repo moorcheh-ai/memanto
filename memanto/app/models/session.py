@@ -49,6 +49,14 @@ class SessionToken(BaseModel):
     started_at: datetime
     expires_at: datetime
 
+    def is_expired(self) -> bool:
+        """Check if session token is expired"""
+        return utc_now() > as_utc_aware(self.expires_at)
+
+    def is_active(self) -> bool:
+        """Check if session token is active (not expired)"""
+        return not self.is_expired()
+
 
 class Session(BaseModel):
     """Active session information"""

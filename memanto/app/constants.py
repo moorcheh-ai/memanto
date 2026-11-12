@@ -83,6 +83,21 @@ ALLOWED_UPDATE_FIELDS = {
 
 VALID_PATTERNS = {"support", "project", "tool"}
 
+# Directive/override shapes used to detect prompt-injection payloads.
+# Shared by memory extraction and tag validation so every write path enforces
+# the same rule set. Patterns are matched against lowercased text (they are
+# compiled with re.IGNORECASE as well).
+INJECTION_PATTERNS = (
+    r"\bignore\s+previous\s+instructions\b",
+    r"\bignore\s+prior\s+instructions\b",
+    r"\bsystem\s+override\b",
+    r"^system:\s*",
+    r"\bexfiltrate\b",
+    r"\bsend\s+all\s+memories\b",
+    r"\boverride\s+previous\b",
+    r"\bdisregard\s+previous\b",
+)
+
 # Trust fields removed from the schema. Must not be resurrected during update.
 REMOVED_TRUST_FIELDS = frozenset(
     {

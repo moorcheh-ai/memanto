@@ -1,0 +1,9 @@
+{"type":"entity","name":"MCP Memory Server Adapter","entityType":"project","observations":["Transforms the official MCP Memory Server JSONL knowledge graph into portable OKF Markdown.","Chosen after a repository search found no existing MCP Memory migration submission on 2026-07-27.","Uses one OKF document per entity and embeds exact source records for lossless reconstruction.","Runs offline with no third-party Python dependencies.","The initial LangGraph direction was discarded after active migration PRs were found."]}
+{"type":"entity","name":"Official MCP Memory Server","entityType":"tool","observations":["Stores entities and relations as newline-delimited JSON.","The package version pinned for this reproducible showcase is 2026.7.4."]}
+{"type":"entity","name":"Memanto OKF Loader","entityType":"component","observations":["Imports Markdown documents from the memories directory.","Preserves unknown OKF frontmatter in a Supporting data footer."]}
+{"type":"entity","name":"Memanto Bounty 1609","entityType":"bounty","observations":["Rewards a compelling reproducible migration showcase.","Path B gives highest engineering value to a new source adapter."]}
+{"type":"entity","name":"Portable OKF Bundle","entityType":"artifact","observations":["Keeps entity observations readable as Markdown.","Keeps graph relations navigable as typed links.","Copies the original memory.jsonl outside memories so Memanto does not re-ingest it."]}
+{"type":"relation","from":"MCP Memory Server Adapter","to":"Official MCP Memory Server","relationType":"reads"}
+{"type":"relation","from":"MCP Memory Server Adapter","to":"Portable OKF Bundle","relationType":"produces"}
+{"type":"relation","from":"Portable OKF Bundle","to":"Memanto OKF Loader","relationType":"is consumed by"}
+{"type":"relation","from":"MCP Memory Server Adapter","to":"Memanto Bounty 1609","relationType":"targets"}

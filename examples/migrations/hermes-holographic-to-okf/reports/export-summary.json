@@ -1,0 +1,31 @@
+{
+  "approx_canonical_content_tokens": 1625,
+  "bundle_file_count": 76,
+  "bundle_manifest_sha256": "a24cff32504576fd829409380952831557b76e7af524b5bc9c5503ff5ff6d2cd",
+  "derived_not_serialized": {
+    "facts_fts_present": true,
+    "hrr_vector_fact_count": 0,
+    "memory_bank_count": 0
+  },
+  "exported_memories": 72,
+  "fidelity_policy": {
+    "canonical": "preserve",
+    "derived": "rebuild",
+    "inferred": "validate-not-serialize"
+  },
+  "okf_bundle_bytes": 67703,
+  "per_type": {
+    "fact": 60,
+    "preference": 12
+  },
+  "source": "hermes-holographic",
+  "source_accounting": {
+    "canonical_content_bytes": 6497,
+    "canonical_tag_bytes": 2060,
+    "hrr_vector_bytes": 0,
+    "memory_bank_vector_bytes": 0
+  },
+  "source_facts": 72,
+  "source_sha256": "1e9b0fe92496ef5efa1d1c7f9b92c8d5a14ca430bae389c83e3c21a5bfb46348",
+  "source_sqlite_bytes": 110592
+}

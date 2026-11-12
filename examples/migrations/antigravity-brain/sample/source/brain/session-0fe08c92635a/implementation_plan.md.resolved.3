@@ -1,0 +1,64 @@
+# Implementation Plan - Tensor-Green Visual Overhaul
+
+## Goal
+Pivot the UI from "Retro ASCII" to a "Modern Engineering" / "Tensor-Green" aesthetic. The interface should feel like a high-end data processing tool with a deep charcoal background, mint green accents, and a mix of sans-serif and monospace typography.
+
+## User Review Required
+> [!IMPORTANT]
+> This is a complete visual pivot. The "Retro ASCII" elements (text borders, bracket buttons) will be removed in favor of modern CSS styling.
+
+## Proposed Changes
+
+### Design System ([src/index.css](file://[redacted-path]))
+- **Colors**:
+  - Background: `#0A0A0A` (Deep Charcoal)
+  - Surface: `#111111` (slightly lighter for panels)
+  - Accent Mint: `#4ade80` (Primary Action)
+  - Accent Slate: `#94a3b8` (Secondary/Muted)
+  - Border: `#333333` (Thin, crisp)
+- **Typography**:
+  - Global: System Sans-Serif (Inter/Roboto style) for UI labels and headings.
+  - Mono: `JetBrains Mono` / `Consolas` for data values, code, and IDs.
+- **Background Pattern**:
+  - Implement a subtle CSS linear-gradient grid.
+
+### Components
+
+#### [MODIFY] [src/components/ui/Card.jsx](file://[redacted-path])
+- Remove ASCII borders.
+- Implement "Panel" styling: Dark background, thin border.
+- Add "Corner Markers" (SVG or CSS pseudo-elements) for the technical look.
+
+#### [MODIFY] [src/components/ui/Button.jsx](file://[redacted-path])
+- Remove bracket style `[ LABEL ]`.
+- Implement sharp rectangular buttons.
+- Primary: Solid Mint text/bg or outline.
+- Secondary: Muted outline.
+
+#### [MODIFY] [src/components/game/ProgressBar.jsx](file://[redacted-path])
+- Remove ASCII text bar.
+- Implement CSS-based progress bar (container div + width-based filler div).
+- Use Mint Green for the fill.
+
+#### [MODIFY] [src/components/game/StatBlock.jsx](file://[redacted-path])
+- Update typography: Label in Sans-Serif, Value in Monospace.
+- Clean up spacing.
+
+### Pages
+
+#### [MODIFY] [src/pages/Dashboard.jsx](file://[redacted-path])
+- Implement "Bento Grid" layout (CSS Grid).
+- Group related metrics into distinct Panels.
+- Ensure strict alignment.
+
+#### [MODIFY] [src/components/ui/Layout.jsx](file://[redacted-path])
+- Update header/footer to match the new "Data Interface" look (less "Terminal").
+
+## Verification Plan
+### Automated Tests
+- Use `browser_subagent` to render the Dashboard and Landing Page.
+- Verify the absence of ASCII borders and presence of new CSS styles.
+
+### Manual Verification
+- Check contrast ratios (Mint on Charcoal).
+- Verify font hierarchy (Headers vs Data).

@@ -33,9 +33,9 @@ def cleanup_test_sessions():
 def reset_client_identity():
     """Clear the bound calling tool between tests.
 
-    ``memanto recall --tool X`` binds a ContextVar and never resets it - correct
+    ``memanto recall --source X`` binds a ContextVar and never resets it - correct
     for a CLI process that is about to exit, but inside pytest one test's
-    ``--tool`` would otherwise decide the attribution of every test after it.
+    ``--source`` would otherwise decide the attribution of every test after it.
     """
     from memanto.app.utils.client_identity import set_client, set_memanto_session
 

@@ -11,8 +11,66 @@ import re
 from typing import Any
 
 from memanto.app.clients.backend import get_active_llm_model
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import INJECTION_PATTERNS, VALID_MEMORY_TYPES
 from memanto.app.utils.json_extraction import iter_json_arrays
+
+PRIVATE_KEY_PATTERN = re.compile(
+    r"-----BEGIN [A-Z0-9_\- ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9_\- ]*PRIVATE KEY-----"
+)
+API_KEY_PATTERNS = [
+    re.compile(r"\b(?:sk-(?:proj-|ant-|live-)?[A-Za-z0-9_\-]{20,})\b"),
+    re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{36,}|github_pat_[A-Za-z0-9_]{22,})\b"),
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"\bxox[baprs]-[0-9A-Za-z\-]{10,}\b"),
+    re.compile(r"\bya29\.[0-9A-Za-z_\-]+\b"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
+]
+BEARER_PATTERN = re.compile(
+    r"(?i)\bBearer\s+[A-Za-z0-9_\-\.~+/]+={0,2}(?=[^\w\-\.~+/=]|$)"
+)
+URL_CREDENTIAL_PATTERN = re.compile(r"(?i)([a-z][a-z0-9+.-]*://[^:\s]+:)[^@\s/]+(@)")
+KV_CREDENTIAL_QUOTED = re.compile(
+    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)(['"])(?:(?!\2).){1,}\2"""
+)
+KV_CREDENTIAL_UNQUOTED = re.compile(
+    r"""(?i)\b((?:api[_-]?key|secret[_-]?key|secret[_-]?access[_-]?key|aws[_-]?secret[_-]?access[_-]?key|client[_-]?secret|password|passwd|auth[_-]?token)\s*[:=]\s*)[^\s,;'"}\]]{1,}"""
+)
+
+# Neutralize any case/whitespace variant of the closing tag (MEM-1852)
+_CLOSING_TAG_PATTERN = re.compile(
+    r"<\s*/\s*conversation_content(?![A-Za-z0-9_-])",
+    re.IGNORECASE,
+)
+
+
+def _defang_closing_tag(text: str) -> str:
+    """Neutralize closing tags so untrusted text cannot break out of <conversation_content>."""
+    return _CLOSING_TAG_PATTERN.sub("<\\\\/conversation_content", text)
+
+
+def redact_sensitive_data(text: str) -> str:
+    """Sanitize secrets, API keys, passwords, and tokens before persistence."""
+    if not text:
+        return text
+
+    text = PRIVATE_KEY_PATTERN.sub("[REDACTED_PRIVATE_KEY]", text)
+    text = BEARER_PATTERN.sub("Bearer [REDACTED_TOKEN]", text)
+    for pat in API_KEY_PATTERNS:
+        text = pat.sub("[REDACTED_API_KEY]", text)
+    text = URL_CREDENTIAL_PATTERN.sub(r"\g<1>[REDACTED_PASSWORD]\g<2>", text)
+    text = KV_CREDENTIAL_QUOTED.sub(r"\1\2[REDACTED_CREDENTIAL]\2", text)
+    text = KV_CREDENTIAL_UNQUOTED.sub(r"\1[REDACTED_CREDENTIAL]", text)
+
+    return text
+
+
+class NothingToExtractError(ValueError):
+    """The conversation held nothing worth remembering.
+
+    Subclasses ``ValueError`` so callers that catch a failed extraction as a
+    ``ValueError`` keep working, while callers that can store nothing (such as
+    a per-turn memory hook) can tell this case from unusable LLM output.
+    """
 
 
 class ConversationMemoryExtractionService:
@@ -65,6 +123,8 @@ class ConversationMemoryExtractionService:
         if not text:
             raise ValueError("Memory extraction returned an empty response")
 
+        empty_result: list[dict[str, Any]] | None = None
+        nothing_to_extract = False
         for parsed in iter_json_arrays(text):
             try:
                 normalized = self._normalize_candidates(
@@ -72,8 +132,19 @@ class ConversationMemoryExtractionService:
                 )
                 if normalized:
                     return normalized
+                empty_result = normalized
+            except NothingToExtractError:
+                nothing_to_extract = True
             except ValueError:
                 continue
+
+        if empty_result is not None:
+            return empty_result
+
+        if nothing_to_extract:
+            raise NothingToExtractError(
+                "The conversation held nothing worth remembering"
+            )
 
         raise ValueError("Memory extraction did not return valid JSON")
 
@@ -96,23 +167,31 @@ class ConversationMemoryExtractionService:
                 raise ValueError(f"Message {index} is missing non-empty content")
 
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
+        # 46 chars for the XML tags and newlines: len("<conversation_content>\n\n</conversation_content>") = 47
+        wrapper_len = len("<conversation_content>\n\n</conversation_content>")
+        budget = self.MAX_CONTENT_CHARS - wrapper_len
+
         lines: list[str] = []
         total = 0
         for i, message in enumerate(messages):
-            line = f"{message['role'].strip()}: {message['content'].strip()}"
+            # Escape the closing tag across case/whitespace variants to prevent breakouts (MEM-1852)
+            safe_role = _defang_closing_tag(message["role"])
+            safe_content = _defang_closing_tag(message["content"])
+            line = f"{safe_role.strip()}: {safe_content.strip()}"
             # Account for the newline separator that join() adds between
             # accepted messages.  Without this, two lines whose lengths sum
             # to exactly MAX_CONTENT_CHARS produce a query that exceeds it.
             separator_len = 1 if lines else 0
             total += len(line) + separator_len
-            if total > self.MAX_CONTENT_CHARS:
+            if total > budget:
                 # Always include at least the first message so the query is
                 # never empty.  Truncate it if it alone exceeds the budget.
                 if i == 0 and not lines:
-                    lines.append(line[: self.MAX_CONTENT_CHARS])
+                    lines.append(line[:budget])
                 break
             lines.append(line)
-        return "\n".join(lines)
+        content_block = "\n".join(lines)
+        return f"<conversation_content>\n{content_block}\n</conversation_content>"
 
     def _header_prompt(self, max_memories: int) -> str:
         memory_types = ", ".join(sorted(VALID_MEMORY_TYPES))
@@ -148,6 +227,23 @@ class ConversationMemoryExtractionService:
             content = str(item.get("content", "")).strip()
             if not content:
                 continue
+            # Defense-in-depth against indirect prompt injection.
+            # Drop candidates whose content or title looks like an
+            # embedded directive/override rather than a genuine memory.
+            # The patterns are shared with tag validation (``memanto.app.constants``).
+            title = str(item.get("title", "")).strip()
+
+            lowered_content = content.lower()
+            lowered_title = title.lower()
+
+            if any(
+                re.search(p, lowered_content) or re.search(p, lowered_title)
+                for p in INJECTION_PATTERNS
+            ):
+                # Skip attacker-controlled directives; do not persist them.
+                continue
+
+            content = redact_sensitive_data(content)
             if len(content) > self.MAX_MEMORY_CONTENT_CHARS:
                 content = content[: self.MAX_MEMORY_CONTENT_CHARS - 3].rstrip() + "..."
 
@@ -159,8 +255,8 @@ class ConversationMemoryExtractionService:
             else:
                 memory_type = None
 
-            title = str(item.get("title") or content[:80]).strip()
-            title = title[:100]
+            raw_title = str(item.get("title") or content[:80]).strip()
+            title = redact_sensitive_data(raw_title)[:100]
 
             try:
                 confidence = float(item.get("confidence", 0.8))
@@ -186,7 +282,9 @@ class ConversationMemoryExtractionService:
             if len(normalized) >= max_memories:
                 break
 
-        if not normalized:
-            raise ValueError("Memory extraction produced no usable candidates")
+        if not normalized and not parsed:
+            raise NothingToExtractError(
+                "Memory extraction produced no usable candidates"
+            )
 
         return normalized

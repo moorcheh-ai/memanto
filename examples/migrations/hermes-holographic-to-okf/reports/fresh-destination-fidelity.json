@@ -1,0 +1,18 @@
+{
+  "checked_fields": 1008,
+  "memanto_loader_mapper": {
+    "all_fact_text_present": true,
+    "checked": true,
+    "loaded_entries": 72,
+    "mapped_memories": 72,
+    "source_preserved": true
+  },
+  "mismatches": [],
+  "okf_memories": 72,
+  "per_type": {
+    "fact": 60,
+    "preference": 12
+  },
+  "source_facts": 72,
+  "status": "PASS"
+}
