@@ -15,6 +15,16 @@ matcher = "Bash"
 command = "\"${SYS_EXECUTABLE}\" \"${HOOKS_DIR}/notify.py\" --host kimi-code"
 timeout = 10
 
+[[hooks]]
+event = "PostToolUse"
+matcher = "mcp__memanto__.*"
+command = "\"${SYS_EXECUTABLE}\" \"${HOOKS_DIR}/notify.py\" --host kimi-code"
+timeout = 10
+
 [[permission.rules]]
 decision = "allow"
 pattern = "Bash(memanto *)"
+
+[[permission.rules]]
+decision = "allow"
+pattern = "mcp__memanto*"

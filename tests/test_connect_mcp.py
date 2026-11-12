@@ -219,6 +219,34 @@ def test_cursor_local_registers_and_removes(env):
     assert not (project / ".cursor" / "mcp.json").exists()
 
 
+# Kimi Code
+
+
+def test_kimi_code_local_and_global_mcp_registers_and_removes(env, monkeypatch):
+    """Verify Kimi Code registers memanto-mcp in .kimi-code/mcp.json and honors KIMI_CODE_HOME."""
+    home, project = env
+    monkeypatch.delenv("KIMI_CODE_HOME", raising=False)
+
+    engine.install_agent("kimi-code", str(project))
+    entry = read_json(project / ".kimi-code" / "mcp.json")["mcpServers"]["memanto"]
+    assert entry["command"] == MCP_PATH
+    assert entry["env"]["MEMANTO_DEFAULT_AGENT_ID"] == AGENT
+    assert entry["env"]["MEMANTO_DEFAULT_SOURCE"] == "kimi-code"
+    assert "MOORCHEH_API_KEY" not in json.dumps(entry)
+
+    engine.remove_agent("kimi-code", str(project))
+    assert not (project / ".kimi-code" / "mcp.json").exists()
+
+    kimi_home = home / "custom-kimi"
+    monkeypatch.setenv("KIMI_CODE_HOME", str(kimi_home))
+    engine.install_agent("kimi-code", str(project), is_global=True)
+    global_entry = read_json(kimi_home / "mcp.json")["mcpServers"]["memanto"]
+    assert global_entry["env"]["MEMANTO_DEFAULT_AGENT_ID"] == AGENT
+
+    engine.remove_agent("kimi-code", str(project), is_global=True)
+    assert not (kimi_home / "mcp.json").exists()
+
+
 # Skips
 
 

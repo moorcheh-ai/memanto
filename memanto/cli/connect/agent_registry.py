@@ -287,6 +287,7 @@ KIMI_CODE = AgentDef(
         hook_key="hooks",
         asset_file="kimi-hooks.toml",
     ),
+    mcp_client="kimi-code",
 )
 
 CODEX = AgentDef(

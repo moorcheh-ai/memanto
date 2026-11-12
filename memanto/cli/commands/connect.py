@@ -199,19 +199,24 @@ def connect_kimi_code(
     is_global: bool = typer.Option(
         False, "--global", "-g", help="Install globally to ~/.kimi-code/"
     ),
+    mcp_agent_id: str | None = typer.Option(
+        None, "--agent-id", "-a", help="Default Memanto agent ID to use for MCP"
+    ),
 ):
     """Connect MEMANTO to Kimi Code.
 
-    Adds MEMANTO instructions to AGENTS.md and deploys the skill. Hooks are
-    always installed to the user-level ~/.kimi-code/config.toml, even for
-    project installs — Kimi Code has no project-level hook configuration.
+    Adds MEMANTO instructions to AGENTS.md and registers the memanto MCP server
+    (or deploys the CLI skill fallback). Hooks are always installed to the
+    user-level ~/.kimi-code/config.toml, even for project installs — Kimi Code
+    has no project-level hook configuration.
 
     Examples:
         memanto connect kimi-code
         memanto connect kimi-code --project-dir ./my-project
         memanto connect kimi-code --global
+        memanto connect kimi-code --agent-id my-project-assistant
     """
-    _run_connect_for_agent("kimi-code", project_dir, is_global)
+    _run_connect_for_agent("kimi-code", project_dir, is_global, mcp_agent_id)
 
 
 @connect_app.command("pi")
