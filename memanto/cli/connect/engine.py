@@ -24,6 +24,9 @@ from memanto.cli.connect.templates import (
     get_skill_content,
 )
 
+TOML_HOOK_SENTINEL = "# >>> MEMANTO-MANAGED-SECTION >>>"
+TOML_HOOK_SENTINEL_END = "# <<< MEMANTO-MANAGED-SECTION <<<"
+
 
 def _assert_local_write_scope(
     project_path: Path, target: Path, is_global: bool
@@ -119,7 +122,7 @@ def install_agent(
     except Exception as e:
         errors.append(f"Skill deployment: {e}")
 
-    # Hook configuration (only Claude Code currently)
+    # Hook configuration
     if agent.supports_hooks and agent.hook_config:
         try:
             hook_result = _install_hooks(agent, project_path, is_global)
@@ -192,7 +195,7 @@ def remove_agent(
     except Exception as e:
         errors.append(f"Skill removal: {e}")
 
-    # Remove hook configuration (only Claude Code currently)
+    # Remove hook configuration
     if agent.supports_hooks and agent.hook_config:
         try:
             hook_result = _remove_hooks(agent, project_path, is_global)
@@ -572,7 +575,7 @@ def _remove_extension(
     return f"Removed extension from {_display_path(ext_path.parent, is_global)}"
 
 
-# Internal: Hook configuration (Claude Code)
+# Internal: Hook configuration
 
 
 def _is_memanto_hook(hook_group: dict) -> bool:
@@ -631,10 +634,12 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     if not agent.hook_config:
         return None
 
+    if agent.hook_config.settings_file.endswith(".toml"):
+        return _install_hooks_toml(agent, project_path, is_global)
+
     if is_global:
-        if agent.config_global_dir:
-            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
-        else:
+        config_dir = agent.resolve_config_global_dir()
+        if config_dir is None:
             return None
     else:
         if agent.config_local_dir:
@@ -704,10 +709,12 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
     if not agent.hook_config:
         return None
 
+    if agent.hook_config.settings_file.endswith(".toml"):
+        return _remove_hooks_toml(agent, project_path, is_global)
+
     if is_global:
-        if agent.config_global_dir:
-            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
-        else:
+        config_dir = agent.resolve_config_global_dir()
+        if config_dir is None:
             return None
     else:
         if agent.config_local_dir:
@@ -754,6 +761,182 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
     return None
 
 
+# Internal: TOML hook configuration (Kimi Code)
+#
+# Kimi Code reads hooks and permission rules from a user-level config.toml.
+# Instead of parsing and rewriting TOML (which would destroy user formatting
+# and comments), the managed entries live inside a sentinel-scoped text block
+# appended at end of file. `[[hooks]]` / `[[permission.rules]]` array-of-tables
+# appended at EOF are valid TOML and never disturb existing content.
+
+
+def _toml_escape_path(value: Path | str) -> str:
+    """Format a filesystem path for interpolation inside a TOML basic string."""
+    normalized = str(value).replace("\\", "/")
+    return json.dumps(normalized)[1:-1]
+
+
+def _strip_toml_managed_block(text: str) -> str:
+    """Remove the MEMANTO-managed sentinel block from TOML config text."""
+    pattern = (
+        r"\n*"
+        + re.escape(TOML_HOOK_SENTINEL)
+        + r".*?"
+        + re.escape(TOML_HOOK_SENTINEL_END)
+        + r"\n?"
+    )
+    stripped = re.sub(pattern, "\n", text, flags=re.DOTALL)
+    if stripped.strip():
+        return stripped.rstrip() + "\n"
+    return ""
+
+
+def _validate_toml(text: str) -> None:
+    """Raise if the merged TOML does not parse; skip when no parser exists."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ModuleNotFoundError:
+            return  # Python < 3.11 without tomli: skip validation
+    tomllib.loads(text)
+
+
+def _toml_settings_path(agent: AgentDef) -> Path | None:
+    """Resolve the agent's user-level TOML settings file.
+
+    Kimi Code has no project-level hook configuration, so hooks always land
+    in the global config directory even for project installs.
+    """
+    if not agent.hook_config:
+        return None
+    config_dir = agent.resolve_config_global_dir()
+    if config_dir is None:
+        return None
+    return config_dir / agent.hook_config.settings_file
+
+
+def _has_other_active_connections(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> bool:
+    """Check whether another project or global scope still uses this agent."""
+    if not is_global:
+        global_instr = agent.resolve_instruction_file(project_path, is_global=True)
+        if global_instr is not None and global_instr.is_file():
+            try:
+                if MEMANTO_SENTINEL in global_instr.read_text(encoding="utf-8"):
+                    return True
+            except OSError:
+                pass
+
+    try:
+        mgr = ConfigManager()
+        load_fn = getattr(mgr, "load_connections", None)
+        connections = load_fn() if callable(load_fn) else {}
+    except Exception:
+        connections = {}
+
+    entry = connections.get(agent.name) if isinstance(connections, dict) else None
+    if not isinstance(entry, dict):
+        return False
+
+    if not is_global and entry.get("installed_global"):
+        return True
+
+    resolved_current = str(project_path.resolve())
+    for proj in entry.get("projects", []):
+        proj_path = Path(str(proj)).resolve()
+        if not is_global and str(proj_path) == resolved_current:
+            continue
+        local_instr = agent.resolve_instruction_file(proj_path, is_global=False)
+        if local_instr is not None and local_instr.is_file():
+            try:
+                if MEMANTO_SENTINEL in local_instr.read_text(encoding="utf-8"):
+                    return True
+            except OSError:
+                pass
+    return False
+
+
+def _install_hooks_toml(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Append or update the sentinel-wrapped hook block in the agent's config.toml."""
+    if not agent.hook_config:
+        return None
+    settings_path = _toml_settings_path(agent)
+    if settings_path is None:
+        return None
+
+    assets_hooks_dir = Path(__file__).parent / "assets" / "hooks"
+    asset_file_name = agent.hook_config.asset_file or f"{agent.name}-hooks.toml"
+    asset_file_path = assets_hooks_dir / asset_file_name
+    if not asset_file_path.exists():
+        return None
+
+    raw = asset_file_path.read_text(encoding="utf-8")
+    raw = raw.replace("${SYS_EXECUTABLE}", _toml_escape_path(sys.executable))
+    raw = raw.replace("${HOOKS_DIR}", _toml_escape_path(assets_hooks_dir.absolute()))
+    raw = raw.replace("${CLAUDE_PLUGIN_ROOT}", _toml_escape_path(settings_path.parent))
+    raw = raw.replace("${PLUGIN_ROOT}", _toml_escape_path(settings_path.parent))
+    raw = raw.replace(
+        "${CLAUDE_PROJECT_DIR}", _toml_escape_path(project_path.absolute())
+    )
+
+    block = TOML_HOOK_SENTINEL + "\n" + raw.strip() + "\n" + TOML_HOOK_SENTINEL_END
+
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    existing = (
+        settings_path.read_text(encoding="utf-8") if settings_path.exists() else ""
+    )
+    if TOML_HOOK_SENTINEL in existing and TOML_HOOK_SENTINEL_END in existing:
+        in_place_pattern = (
+            re.escape(TOML_HOOK_SENTINEL) + r".*?" + re.escape(TOML_HOOK_SENTINEL_END)
+        )
+        merged = re.sub(
+            in_place_pattern,
+            lambda _: block,
+            existing,
+            count=1,
+            flags=re.DOTALL,
+        )
+    else:
+        base = _strip_toml_managed_block(existing).rstrip()
+        merged = (base + "\n\n" if base else "") + block + "\n"
+
+    _validate_toml(merged)
+
+    if merged == existing:
+        return None
+    settings_path.write_text(merged, encoding="utf-8")
+    return "Installed Memanto hooks"
+
+
+def _remove_hooks_toml(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Strip the sentinel block from config.toml, leaving user content intact.
+
+    The file itself is never deleted: config.toml is the user's central config.
+    Because user-level TOML hooks are shared across projects, they are kept
+    whenever another project or global installation for this agent remains active.
+    """
+    settings_path = _toml_settings_path(agent)
+    if settings_path is None or not settings_path.exists():
+        return None
+
+    if _has_other_active_connections(agent, project_path, is_global):
+        return None
+
+    existing = settings_path.read_text(encoding="utf-8")
+    if TOML_HOOK_SENTINEL not in existing:
+        return None
+
+    settings_path.write_text(_strip_toml_managed_block(existing), encoding="utf-8")
+    return "Removed Memanto hooks"
+
+
 # Internal: Permission configuration
 
 
@@ -770,9 +953,8 @@ def _install_permissions(
         return None
 
     if is_global:
-        if agent.config_global_dir:
-            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
-        else:
+        config_dir = agent.resolve_config_global_dir()
+        if config_dir is None:
             return None
         perm_path = config_dir / perm_file
     else:
@@ -821,9 +1003,8 @@ def _remove_permissions(
         return None
 
     if is_global:
-        if agent.config_global_dir:
-            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
-        else:
+        config_dir = agent.resolve_config_global_dir()
+        if config_dir is None:
             return None
         perm_path = config_dir / perm_file
     else:
