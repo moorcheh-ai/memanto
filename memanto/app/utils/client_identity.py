@@ -43,6 +43,7 @@ _ENV_SIGNATURES: tuple[tuple[tuple[str, ...], str, str], ...] = (
     (("CONTINUE_GLOBAL_DIR",), "continue", "Continue"),
     (("PI_AGENT", "PI_SESSION_ID"), "pi", "Pi (coding agent)"),
     (("ANTIGRAVITY_HOME",), "antigravity", "Antigravity (Google)"),
+    (("KIMI_CODE_HOME",), "kimi-code", "Kimi Code"),
 )
 
 # MCP clients name themselves freely in the initialize handshake. Fold the
@@ -53,6 +54,10 @@ _TOOL_ALIASES: dict[str, str] = {
     "claude-ai": "claude-code",
     "claude-code": "claude-code",
     "claude-desktop": "claude-desktop",
+    "kimi": "kimi-code",
+    "kimicode": "kimi-code",
+    "kimi-cli": "kimi-code",
+    "kimi-code": "kimi-code",
     "cursor": "cursor",
     "cursor-vscode": "cursor",
     "codex": "codex",
