@@ -23,8 +23,4 @@ timeout = 10
 
 [[permission.rules]]
 decision = "allow"
-pattern = "Bash(memanto *)"
-
-[[permission.rules]]
-decision = "allow"
-pattern = "mcp__memanto*"
+pattern = "mcp__memanto__*"

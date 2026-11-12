@@ -316,7 +316,7 @@ def test_kimi_code_install_remove_round_trip(tmp_path, monkeypatch):
     assert 'event = "SessionStart"' in config
     assert 'matcher = "startup|resume"' in config
     assert "--host kimi-code" in config
-    assert 'pattern = "Bash(memanto *)"' in config
+    assert 'pattern = "mcp__memanto__*"' in config
     assert "${SYS_EXECUTABLE}" not in config
     assert "${HOOKS_DIR}" not in config
 
@@ -402,7 +402,7 @@ def test_kimi_code_merged_config_parses_as_toml(tmp_path, monkeypatch):
     assert "PreCompact" in events
     assert "PostToolUse" in events
     rules = data["permission"]["rules"]
-    assert any(rule.get("pattern") == "Bash(memanto *)" for rule in rules)
+    assert any(rule.get("pattern") == "mcp__memanto__*" for rule in rules)
 
 
 def test_kimi_code_global_install_uses_kimi_code_home(tmp_path, monkeypatch):

@@ -43,7 +43,7 @@ This manages the following paths:
 | --- | --- |
 | `AGENTS.md` | Adds or updates the Memanto-managed instruction block. |
 | `.kimi-code/mcp.json` | Registers the `memanto` MCP server (`memanto-mcp`) with your default agent ID and `kimi-code` source attribution (or deploys `.kimi-code/skills/memanto/SKILL.md` when MCP is skipped). |
-| `~/.kimi-code/config.toml` | Adds the Memanto lifecycle hooks and `Bash(memanto *)` / `mcp__memanto*` permission allow-rules inside a clearly marked managed section. |
+| `~/.kimi-code/config.toml` | Adds the Memanto lifecycle hooks and the `mcp__memanto__*` permission allow-rule inside a clearly marked managed section. |
 
 > **Note on API keys:** `MOORCHEH_API_KEY` is never written into `.kimi-code/mcp.json`, `~/.kimi-code/mcp.json`, or `config.toml`. `memanto-mcp` reads your key directly from `~/.memanto/.env` (or the process environment).
 
@@ -102,7 +102,7 @@ The installer appends these hooks to the managed section of the user-level `~/.k
 | `PreCompact` | Before Kimi Code compacts the conversation | Runs `memanto memory sync --project-dir .` to re-sync dynamic context before earlier messages are summarized away. |
 | `PostToolUse` (matchers `Bash` and `mcp__memanto__.*`) | After Memanto CLI or MCP tool calls | Converts recognized Memanto operations into a short summary (e.g., `👾 Memanto · stored a decision`, `👾 Memanto · recalled 3 memories`). |
 
-The managed section also adds `Bash(memanto *)` and `mcp__memanto*` permission allow-rules so Memanto operations run seamlessly without permission prompts.
+The managed section also adds an `mcp__memanto__*` permission allow-rule so Memanto MCP tool operations run seamlessly without permission prompts.
 
 Hook commands use the resolved Python interpreter that installed Memanto and absolute paths to Memanto's bundled hook scripts. This avoids failures caused by a project's active virtual environment or by `python` and `python3` resolving differently on different machines.
 
