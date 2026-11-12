@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, get_args
 
 from memanto.app.constants import (
@@ -155,7 +155,7 @@ def _parse_dt(value: Any) -> datetime | None:
     """Best-effort parse of a timestamp from a source record into UTC datetime.
 
     Handles ISO 8601 strings (with/without ``Z``), Unix epoch ints/floats,
-    and already-parsed ``datetime`` objects. Returns ``None`` when nothing
+    and already-parsed ``datetime`` or ``date`` objects. Returns ``None`` when nothing
     sensible can be extracted — the caller falls back to the server default.
     """
     # ``bool`` subclasses ``int``; without this guard, YAML ``true`` becomes
@@ -166,6 +166,9 @@ def _parse_dt(value: Any) -> datetime | None:
         return None
     if isinstance(value, datetime):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, date):
+        # YAML loads an unquoted ``2024-01-15`` as a plain ``date``
+        return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
     if isinstance(value, (int, float)):
         try:
             return datetime.fromtimestamp(float(value), tz=timezone.utc)
