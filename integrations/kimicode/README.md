@@ -8,7 +8,7 @@ The integration combines managed `AGENTS.md` instructions, the `memanto-memory` 
 
 - Python 3.10 or later.
 - Kimi Code.
-- A configured Memanto installation. Installing this package automatically installs `memanto>=0.2.30` (install `memanto-mcp` as well if you want native MCP tools instead of the CLI skill).
+- A configured Memanto installation with an active agent (create and activate one with `memanto agent create <name>` or `memanto agent activate <name>`; `--agent-id <name>` can optionally override the agent used by MCP). Installing this package automatically installs `memanto>=0.2.30` (install `memanto-mcp` as well if you want native MCP tools instead of the CLI skill).
 - `MOORCHEH_API_KEY` configured in `~/.memanto/.env` (via `memanto` setup) or available in the environment.
 
 Install the package:
@@ -17,9 +17,10 @@ Install the package:
 pip install kimicode-memanto
 ```
 
-Verify your Memanto configuration and active agent before starting Kimi Code:
+Create or activate a Memanto agent and verify your configuration before starting Kimi Code:
 
 ```bash
+memanto agent create my-project-assistant
 memanto status
 ```
 

@@ -7985,9 +7985,21 @@
             }
         }
 
+        const CONNECTION_SOURCE_ALIASES = {
+            'claude-code': ['claude', 'claude-ai', 'claude-code', 'claude_code'],
+            'kimi-code': ['kimi', 'kimicode', 'kimi-cli', 'kimi-code', 'kimi_code'],
+            'cursor': ['cursor', 'cursor-vscode'],
+            'codex': ['codex', 'codex-cli'],
+            'github-copilot': ['copilot', 'copilot-cli', 'github-copilot', 'visual-studio-code', 'vscode'],
+            'gemini-cli': ['gemini', 'gemini-cli'],
+            'roo': ['roo', 'roo-code'],
+        };
+
         function sourceMatchesConnection(source, conn) {
             if (!source) return false;
             const s = String(source).toLowerCase();
+            const aliases = CONNECTION_SOURCE_ALIASES[conn.name] || [];
+            if (aliases.includes(s)) return true;
             const candidates = [
                 conn.name.toLowerCase(),
                 conn.display_name.toLowerCase(),
