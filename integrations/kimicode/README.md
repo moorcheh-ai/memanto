@@ -2,13 +2,13 @@
 
 `kimicode-memanto` installs [Memanto](https://memanto.ai) in [Kimi Code](https://www.kimi.com/code/). It is a convenience wrapper around the same connection engine used by `memanto connect kimi-code`, so both commands create and remove the exact same integration.
 
-The integration connects Kimi Code to Memanto via the **Model Context Protocol (`memanto-mcp`)** (or falls back to the `memanto-memory` CLI skill when MCP is unavailable), pairs it with managed `AGENTS.md` instructions, and installs lifecycle hooks for session synchronization and readable tool summaries.
+The integration combines managed `AGENTS.md` instructions, the `memanto-memory` CLI skill (or optional **Model Context Protocol (`memanto-mcp`)** server registration when `memanto-mcp` is installed), and lifecycle hooks for session synchronization and readable tool summaries.
 
 ## Requirements
 
 - Python 3.10 or later.
 - Kimi Code.
-- A configured Memanto installation with an active agent (or an agent ID passed with `--agent-id`). Installing this package automatically installs `memanto>=0.2.30` and `memanto-mcp>=0.1.4`.
+- A configured Memanto installation. Installing this package automatically installs `memanto>=0.2.30` (install `memanto-mcp` as well if you want native MCP tools instead of the CLI skill).
 - `MOORCHEH_API_KEY` configured in `~/.memanto/.env` (via `memanto` setup) or available in the environment.
 
 Install the package:
@@ -42,7 +42,8 @@ This manages the following paths:
 | Path | Purpose |
 | --- | --- |
 | `AGENTS.md` | Adds or updates the Memanto-managed instruction block. |
-| `.kimi-code/mcp.json` | Registers the `memanto` MCP server (`memanto-mcp`) with your default agent ID and `kimi-code` source attribution (or deploys `.kimi-code/skills/memanto/SKILL.md` when MCP is skipped). |
+| `.kimi-code/skills/memanto/SKILL.md` | Deploys the `memanto-memory` command and metadata reference skill (when `memanto-mcp` is not used). |
+| `.kimi-code/mcp.json` | Optional: when `memanto-mcp` is installed and an active agent is set, registers the `memanto` MCP server instead of the CLI skill. |
 | `~/.kimi-code/config.toml` | Adds the Memanto lifecycle hooks and the `mcp__memanto__*` permission allow-rule inside a clearly marked managed section. |
 
 > **Note on API keys:** `MOORCHEH_API_KEY` is never written into `.kimi-code/mcp.json`, `~/.kimi-code/mcp.json`, or `config.toml`. `memanto-mcp` reads your key directly from `~/.memanto/.env` (or the process environment).
@@ -65,9 +66,11 @@ Project and global installations are independent, so they can be used together w
 
 ## What Kimi Code Receives
 
-### `memanto` MCP Server (`memanto-mcp`)
+### `memanto-memory` Skill & Optional MCP Server (`memanto-mcp`)
 
-Kimi Code receives native MCP tools for reading and writing persistent memory:
+By default, the installer deploys the `memanto-memory` skill to `.kimi-code/skills/memanto/SKILL.md` (or `~/.kimi-code/skills/memanto/SKILL.md` with `--global`), giving Kimi Code full reference guidelines for `memanto remember`, `memanto recall`, `memanto answer`, `memanto edit`, `memanto forget`, and `memanto memory sync`.
+
+If `memanto-mcp` is installed (`pip install memanto-mcp` or `pip install "kimicode-memanto[mcp]"`), the installer registers the `memanto` MCP server in `.kimi-code/mcp.json` (or `~/.kimi-code/mcp.json`), providing native MCP tools for reading and writing persistent memory:
 
 | Tool | Purpose |
 | --- | --- |
