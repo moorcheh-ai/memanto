@@ -53,7 +53,13 @@ def _run_connect_for_agent(
         )
 
     if is_global:
-        scope_label = f"Global (~/{agent.config_global_dir or ''})"
+        resolved_global = agent.resolve_config_global_dir()
+        global_dir = (
+            str(resolved_global)
+            if resolved_global is not None
+            else (agent.config_global_dir or "~")
+        )
+        scope_label = f"Global ({global_dir})"
     else:
         path_obj = Path(project_dir).resolve()
         # Prevent treating the user's home directory as a local project

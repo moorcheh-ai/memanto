@@ -302,6 +302,7 @@ def setup_kimi_dirs(tmp_path, monkeypatch):
 
 
 def test_kimi_code_install_remove_round_trip(tmp_path, monkeypatch):
+    """Verify Kimi Code local install and removal round-trip cleanly."""
     home, project = setup_kimi_dirs(tmp_path, monkeypatch)
 
     install_result = engine.install_agent("kimi-code", str(project))
@@ -331,6 +332,7 @@ def test_kimi_code_install_remove_round_trip(tmp_path, monkeypatch):
 
 
 def test_kimi_code_preserves_existing_config_toml(tmp_path, monkeypatch):
+    """Verify existing user hooks and permission rules in config.toml are preserved."""
     home, project = setup_kimi_dirs(tmp_path, monkeypatch)
     kimi_dir = home / ".kimi-code"
     kimi_dir.mkdir()
@@ -364,6 +366,7 @@ def test_kimi_code_preserves_existing_config_toml(tmp_path, monkeypatch):
 
 
 def test_kimi_code_install_is_idempotent(tmp_path, monkeypatch):
+    """Verify repeated installs do not duplicate managed TOML or instruction blocks."""
     home, project = setup_kimi_dirs(tmp_path, monkeypatch)
 
     engine.install_agent("kimi-code", str(project))
@@ -379,6 +382,7 @@ def test_kimi_code_install_is_idempotent(tmp_path, monkeypatch):
 
 
 def test_kimi_code_merged_config_parses_as_toml(tmp_path, monkeypatch):
+    """Verify the merged config.toml is valid TOML with all expected hook events."""
     tomllib = pytest.importorskip("tomllib")
     home, project = setup_kimi_dirs(tmp_path, monkeypatch)
     kimi_dir = home / ".kimi-code"
@@ -402,6 +406,7 @@ def test_kimi_code_merged_config_parses_as_toml(tmp_path, monkeypatch):
 
 
 def test_kimi_code_global_install_uses_kimi_code_home(tmp_path, monkeypatch):
+    """Verify global install writes to ~/.kimi-code by default."""
     stub_config_manager(monkeypatch)
     monkeypatch.delenv("KIMI_CODE_HOME", raising=False)
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
@@ -456,3 +461,23 @@ def test_kimi_code_global_install_honors_kimi_code_home_env(tmp_path, monkeypatc
     assert engine.TOML_HOOK_SENTINEL not in remaining
     assert not (kimi_home / "AGENTS.md").exists()
     assert not (kimi_home / "skills" / "memanto").exists()
+
+
+def test_kimi_code_local_remove_preserves_shared_hooks_when_global_remains(
+    tmp_path, monkeypatch
+):
+    """Uninstalling a single project keeps shared config.toml hooks if global is active."""
+    home, project = setup_kimi_dirs(tmp_path, monkeypatch)
+
+    engine.install_agent("kimi-code", str(project), is_global=True)
+    engine.install_agent("kimi-code", str(project), is_global=False)
+
+    # Removing local project should leave global hooks in ~/.kimi-code/config.toml
+    engine.remove_agent("kimi-code", str(project), is_global=False)
+    config_path = home / ".kimi-code" / "config.toml"
+    assert engine.TOML_HOOK_SENTINEL in config_path.read_text(encoding="utf-8")
+    assert not (project / "AGENTS.md").exists()
+
+    # Removing global now strips the hooks
+    engine.remove_agent("kimi-code", str(project), is_global=True)
+    assert engine.TOML_HOOK_SENTINEL not in config_path.read_text(encoding="utf-8")

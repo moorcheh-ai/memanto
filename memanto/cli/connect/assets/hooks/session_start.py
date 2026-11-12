@@ -83,6 +83,7 @@ def _out(text: str) -> None:
 
 
 def _read_stdin() -> dict:
+    """Read and parse the JSON hook payload from stdin."""
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return {}
@@ -93,6 +94,7 @@ def _read_stdin() -> dict:
 
 
 def _project_dir(payload: dict) -> str:
+    """Determine the target project directory from the hook payload or cwd."""
     workspace = payload.get("workspace") or {}
     for value in (
         workspace.get("project_dir"),
@@ -154,10 +156,12 @@ def sync_memory(project_dir: str) -> str | None:
 
 
 def _settings_path() -> Path:
+    """Return the path to the user's Claude Code settings.json."""
     return Path(os.path.expanduser("~")) / ".claude" / "settings.json"
 
 
 def _statusline_script() -> Path:
+    """Return the path to the bundled statusline script."""
     return (Path(__file__).resolve().parent.parent / "statusline.py").resolve()
 
 
@@ -221,6 +225,7 @@ def install_statusline() -> str | None:
 
 
 def _touch(marker: Path) -> None:
+    """Write the statusline installation marker file."""
     try:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("1", encoding="utf-8")
@@ -230,6 +235,7 @@ def _touch(marker: Path) -> None:
 
 
 def main() -> None:
+    """Run session-start memory sync and optional Claude Code statusline setup."""
     payload = _read_stdin()
     project_dir = _project_dir(payload)
     host = _host(sys.argv[1:], payload)
@@ -249,7 +255,7 @@ def main() -> None:
         pass
 
     # The status line is a Claude Code feature; other hosts have no use for it.
-    if host not in ("kimi-code", "kimi_code_cli"):
+    if host == "claude-code":
         try:
             notice = install_statusline()
             if notice:

@@ -770,6 +770,12 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
 # appended at EOF are valid TOML and never disturb existing content.
 
 
+def _toml_escape_path(value: Path | str) -> str:
+    """Format a filesystem path for interpolation inside a TOML basic string."""
+    normalized = str(value).replace("\\", "/")
+    return json.dumps(normalized)[1:-1]
+
+
 def _strip_toml_managed_block(text: str) -> str:
     """Remove the MEMANTO-managed sentinel block from TOML config text."""
     pattern = (
@@ -779,7 +785,7 @@ def _strip_toml_managed_block(text: str) -> str:
         + re.escape(TOML_HOOK_SENTINEL_END)
         + r"\n?"
     )
-    stripped = re.sub(pattern, "", text, flags=re.DOTALL)
+    stripped = re.sub(pattern, "\n", text, flags=re.DOTALL)
     if stripped.strip():
         return stripped.rstrip() + "\n"
     return ""
@@ -790,7 +796,10 @@ def _validate_toml(text: str) -> None:
     try:
         import tomllib
     except ModuleNotFoundError:
-        return  # Python < 3.11 without tomllib: skip validation
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ModuleNotFoundError:
+            return  # Python < 3.11 without tomli: skip validation
     tomllib.loads(text)
 
 
@@ -808,10 +817,52 @@ def _toml_settings_path(agent: AgentDef) -> Path | None:
     return config_dir / agent.hook_config.settings_file
 
 
+def _has_other_active_connections(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> bool:
+    """Check whether another project or global scope still uses this agent."""
+    if not is_global:
+        global_instr = agent.resolve_instruction_file(project_path, is_global=True)
+        if global_instr is not None and global_instr.is_file():
+            try:
+                if MEMANTO_SENTINEL in global_instr.read_text(encoding="utf-8"):
+                    return True
+            except OSError:
+                pass
+
+    try:
+        mgr = ConfigManager()
+        load_fn = getattr(mgr, "load_connections", None)
+        connections = load_fn() if callable(load_fn) else {}
+    except Exception:
+        connections = {}
+
+    entry = connections.get(agent.name) if isinstance(connections, dict) else None
+    if not isinstance(entry, dict):
+        return False
+
+    if not is_global and entry.get("installed_global"):
+        return True
+
+    resolved_current = str(project_path.resolve())
+    for proj in entry.get("projects", []):
+        proj_path = Path(str(proj)).resolve()
+        if not is_global and str(proj_path) == resolved_current:
+            continue
+        local_instr = agent.resolve_instruction_file(proj_path, is_global=False)
+        if local_instr is not None and local_instr.is_file():
+            try:
+                if MEMANTO_SENTINEL in local_instr.read_text(encoding="utf-8"):
+                    return True
+            except OSError:
+                pass
+    return False
+
+
 def _install_hooks_toml(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
-    """Append the sentinel-wrapped hook block to the agent's config.toml."""
+    """Append or update the sentinel-wrapped hook block in the agent's config.toml."""
     if not agent.hook_config:
         return None
     settings_path = _toml_settings_path(agent)
@@ -825,16 +876,12 @@ def _install_hooks_toml(
         return None
 
     raw = asset_file_path.read_text(encoding="utf-8")
-    raw = raw.replace("${SYS_EXECUTABLE}", sys.executable.replace("\\", "/"))
+    raw = raw.replace("${SYS_EXECUTABLE}", _toml_escape_path(sys.executable))
+    raw = raw.replace("${HOOKS_DIR}", _toml_escape_path(assets_hooks_dir.absolute()))
+    raw = raw.replace("${CLAUDE_PLUGIN_ROOT}", _toml_escape_path(settings_path.parent))
+    raw = raw.replace("${PLUGIN_ROOT}", _toml_escape_path(settings_path.parent))
     raw = raw.replace(
-        "${HOOKS_DIR}", str(assets_hooks_dir.absolute()).replace("\\", "/")
-    )
-    raw = raw.replace(
-        "${CLAUDE_PLUGIN_ROOT}", str(settings_path.parent).replace("\\", "/")
-    )
-    raw = raw.replace("${PLUGIN_ROOT}", str(settings_path.parent).replace("\\", "/"))
-    raw = raw.replace(
-        "${CLAUDE_PROJECT_DIR}", str(project_path.absolute()).replace("\\", "/")
+        "${CLAUDE_PROJECT_DIR}", _toml_escape_path(project_path.absolute())
     )
 
     block = TOML_HOOK_SENTINEL + "\n" + raw.strip() + "\n" + TOML_HOOK_SENTINEL_END
@@ -843,8 +890,20 @@ def _install_hooks_toml(
     existing = (
         settings_path.read_text(encoding="utf-8") if settings_path.exists() else ""
     )
-    base = _strip_toml_managed_block(existing).rstrip()
-    merged = (base + "\n\n" if base else "") + block + "\n"
+    if TOML_HOOK_SENTINEL in existing and TOML_HOOK_SENTINEL_END in existing:
+        in_place_pattern = (
+            re.escape(TOML_HOOK_SENTINEL) + r".*?" + re.escape(TOML_HOOK_SENTINEL_END)
+        )
+        merged = re.sub(
+            in_place_pattern,
+            lambda _: block,
+            existing,
+            count=1,
+            flags=re.DOTALL,
+        )
+    else:
+        base = _strip_toml_managed_block(existing).rstrip()
+        merged = (base + "\n\n" if base else "") + block + "\n"
 
     _validate_toml(merged)
 
@@ -860,9 +919,14 @@ def _remove_hooks_toml(
     """Strip the sentinel block from config.toml, leaving user content intact.
 
     The file itself is never deleted: config.toml is the user's central config.
+    Because user-level TOML hooks are shared across projects, they are kept
+    whenever another project or global installation for this agent remains active.
     """
     settings_path = _toml_settings_path(agent)
     if settings_path is None or not settings_path.exists():
+        return None
+
+    if _has_other_active_connections(agent, project_path, is_global):
         return None
 
     existing = settings_path.read_text(encoding="utf-8")
