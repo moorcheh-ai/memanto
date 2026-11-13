@@ -1,0 +1,34 @@
+{
+  "name": "memanto",
+  "version": "0.1.0",
+  "description": "Persistent semantic memory for Kimi Code — store decisions, recall context across sessions, and synthesize grounded answers with Memanto.",
+  "author": {
+    "name": "Memanto",
+    "email": "info@memanto.ai"
+  },
+  "homepage": "https://docs.memanto.ai/integrations/kimi-code",
+  "license": "MIT",
+  "keywords": [
+    "memanto",
+    "moorcheh",
+    "memory",
+    "persistent-memory",
+    "agent-memory",
+    "semantic-search",
+    "rag",
+    "mcp"
+  ],
+  "skills": "./skills",
+  "commands": "./commands",
+  "systemPromptPath": "./SYSTEM.md",
+  "sessionStart": {
+    "skill": "memanto"
+  },
+  "interface": {
+    "displayName": "Memanto",
+    "shortDescription": "Persistent semantic memory across sessions and compactions",
+    "longDescription": "Connect Kimi Code to Memanto so it can store durable facts, architectural decisions, user preferences, and bug-fix learnings, and recall them semantically across sessions and context compactions.",
+    "developerName": "Moorcheh AI",
+    "websiteURL": "https://memanto.ai"
+  }
+}

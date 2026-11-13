@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      contents: read
+      contents: write # Required to attach plugin zip assets (e.g. memanto-kimi.zip) to integration releases
       id-token: write # Required for OIDC authentication to MCP Registry
 
     steps:
@@ -197,3 +197,21 @@ jobs:
           fi
         }
         echo "$OUTPUT"
+
+    - name: Package and attach Kimi Code plugin bundle
+      if: steps.info.outputs.integration == 'kimicode'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ steps.info.outputs.version }}
+        TAG: ${{ steps.info.outputs.tag }}
+      run: |
+        cd integrations/kimicode/plugin
+        jq --arg v "$VERSION" '.version = $v' kimi.plugin.json > kimi.plugin.tmp.json
+        mv kimi.plugin.tmp.json kimi.plugin.json
+        zip -r ../dist/memanto-kimi.zip kimi.plugin.json SYSTEM.md skills commands
+        cd ../dist
+        sha256sum memanto-kimi.zip | tee memanto-kimi.zip.sha256
+        if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" memanto-kimi.zip memanto-kimi.zip.sha256 --clobber
+        fi
+
