@@ -40,10 +40,12 @@ classifiers = [
 ]
 dependencies = [
     "memanto>=0.2.30",
-    "memanto-mcp>=0.1.4",
 ]
 
 [project.optional-dependencies]
+mcp = [
+    "memanto-mcp>=0.1.4",
+]
 dev = [
     "pytest>=8.2.0,<9",
     "pytest-mock>=3.12.0,<4",
