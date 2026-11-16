@@ -2,10 +2,7 @@
   "name": "memanto",
   "version": "0.1.0",
   "description": "Persistent semantic memory for Kimi Code — store decisions, recall context across sessions, and synthesize grounded answers with Memanto.",
-  "author": {
-    "name": "Memanto",
-    "email": "info@memanto.ai"
-  },
+  "author": "Moorcheh AI",
   "homepage": "https://docs.memanto.ai/integrations/kimi-code",
   "license": "MIT",
   "keywords": [

@@ -211,7 +211,12 @@ jobs:
         zip -r ../dist/memanto-kimi.zip kimi.plugin.json SYSTEM.md skills commands
         cd ../dist
         sha256sum memanto-kimi.zip | tee memanto-kimi.zip.sha256
-        if gh release view "$TAG" >/dev/null 2>&1; then
+        if VIEW_OUT=$(gh release view "$TAG" 2>&1); then
             gh release upload "$TAG" memanto-kimi.zip memanto-kimi.zip.sha256 --clobber
+        elif printf '%s' "$VIEW_OUT" | grep -qi "release not found"; then
+            echo "No GitHub Release for $TAG yet — skipping asset upload."
+        else
+            echo "$VIEW_OUT" >&2
+            exit 1
         fi
 
