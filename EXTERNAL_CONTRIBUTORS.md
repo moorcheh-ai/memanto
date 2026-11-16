@@ -133,3 +133,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @shaurya-1121
 - @rayulumukku
 - @goranai
+- @cmpadden
