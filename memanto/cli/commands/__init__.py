@@ -20,4 +20,5 @@ from memanto.cli.commands import (
     policy,  # noqa: F401  (show, presets, preset, apply, purge)
     schedule,  # noqa: F401  (enable, disable, status)
     session,  # noqa: F401  (info, extend)
+    widget,  # noqa: F401  (widget on/off)
 )

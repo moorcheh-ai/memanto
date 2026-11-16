@@ -948,6 +948,23 @@ class SessionService:
         """Public alias: clear the active-session marker without ending the session."""
         self._clear_active_session()
 
+    def join_session(self, agent_id: str) -> Session | None:
+        """Make *agent_id*'s live session the active one, without replacing it.
+
+        Unlike :meth:`create_session`, the agent's existing token stays valid,
+        so other clients using it are not signed out.
+
+        Returns:
+            The joined session, or None when the agent has no live session
+            (the caller should then activate it).
+        """
+        with self.lock_agent_lifecycle(agent_id):
+            session = self.get_session(agent_id)
+            if session is None or not session.is_active():
+                return None
+            self._set_active_session(agent_id)
+            return session
+
     def delete_session(self, agent_id: str) -> bool:
         """
         Remove persisted session state for an agent.
