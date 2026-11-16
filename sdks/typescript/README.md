@@ -155,6 +155,10 @@ The SDK ships pre-built memory tools (`recallMemory`, `rememberMemory`, `answerM
 | VoltAgent | `@moorcheh-ai/memanto/voltagent` | [VoltAgent](https://docs.memanto.ai/integrations/voltagent) |
 | OpenAI Node SDK | `@moorcheh-ai/memanto/openai` | [OpenAI](https://docs.memanto.ai/integrations/openai) |
 
+The eve adapter requires `eve >=1.0.0` and Node.js 24 or newer. `memantoMemory()` recalls on
+`turn.started`, exposes scope-bound `remember` and `recall` tools, and
+optionally captures on `turn.completed` (`capture: true`, off by default).
+
 ## Versioning
 
 The npm package version tracks the matching PyPI release of `memanto`. To pin a specific server build, pass `packageSpec: "memanto==<version>"`.
