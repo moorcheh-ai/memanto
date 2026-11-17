@@ -51,15 +51,11 @@ graph = builder.compile(
 
 ```python
 from langgraph_memanto import create_memanto_tools
-from memanto.cli.client.sdk_client import SdkClient
 
-# Initialize the Memanto Client (or use build_client() when signed in via `memanto login`)
-client = SdkClient(api_key="your_api_key")
-
-# Get native LangChain tools
+# Get native LangChain tools (resolves MEMANTO_API_KEY, ~/.memanto `memanto login`, or MOORCHEH_API_KEY)
 # The tools will automatically ensure the agent is created and activated 
 # the first time the LLM tries to call them!
-tools = create_memanto_tools(client, "my-langgraph-agent")
+tools = create_memanto_tools(agent_id="my-langgraph-agent")
 
 # Bind them to your LLM
 llm_with_tools = llm.bind_tools(tools)
@@ -71,15 +67,12 @@ Add `recall` and `remember` nodes to your graph for automatic memory retrieval b
 
 ```python
 from langgraph_memanto import create_recall_node, create_remember_node
-from memanto.cli.client.sdk_client import SdkClient
 from langgraph.graph import StateGraph, MessagesState, START, END
 
-client = SdkClient(api_key="your_api_key")
-
-# Nodes can dynamically use an agent_id from the graph's config
-recall = create_recall_node(client=client, agent_id_from_config="agent_id")
+# Nodes resolve MEMANTO_API_KEY, ~/.memanto `memanto login`, or MOORCHEH_API_KEY automatically
+# and can dynamically use an agent_id from the graph's config
+recall = create_recall_node(agent_id_from_config="agent_id")
 remember = create_remember_node(
-    client=client,
     agent_id_from_config="agent_id"
 )
 

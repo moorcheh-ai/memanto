@@ -364,3 +364,82 @@ func TestErrorsReturnNilResult(t *testing.T) {
 		t.Fatalf("want nil result and an error, got %v, %v", res, err)
 	}
 }
+
+func TestMemantoCloudMode(t *testing.T) {
+	var calls []recorded
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		calls = append(calls, recorded{
+			Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery,
+			Token: r.Header.Get("X-Session-Token"), APIKey: r.Header.Get("X-Api-Key"),
+			ContentType: r.Header.Get("Content-Type"), Body: body,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/agents/cloud-bot" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]any{"detail": "not found"})
+		case r.URL.Path == "/agents" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"agent_id": "cloud-bot"})
+		case r.URL.Path == "/agents/cloud-bot/remember" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"memory_id": "mem-c1", "agent_id": "cloud-bot", "session_id": "s",
+				"namespace": "cloud-bot", "status": "queued", "provenance": "explicit_statement", "confidence": 0.8,
+			})
+		case r.URL.Path == "/agents/cloud-bot/recall" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"agent_id": "cloud-bot", "session_id": "s", "query": "milk", "count": 1,
+				"memories": []map[string]any{{
+					"id":      "mem-c1",
+					"type":    "preference",
+					"tags":    []string{"diet", "coffee"},
+					"content": "[PREFERENCE] Milk preference\n\nAlex prefers oat milk.\n\nTags: diet, coffee",
+					"score":   0.95,
+				}},
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := New(Options{
+		AgentID: "cloud-bot",
+		APIKey:  "mk_live_secret",
+		BaseURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+
+	ctx := context.Background()
+	if _, err := c.Remember(ctx, RememberInput{Content: "Alex prefers oat milk."}); err != nil {
+		t.Fatal(err)
+	}
+	recalled, err := c.Recall(ctx, RecallInput{Query: "milk"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recalled.Memories) != 1 || recalled.Memories[0].Content == nil {
+		t.Fatalf("unexpected recall memories: %+v", recalled.Memories)
+	}
+	equal(t, *recalled.Memories[0].Content, "Alex prefers oat milk.")
+
+	var gotPaths []string
+	for _, call := range calls {
+		gotPaths = append(gotPaths, call.Method+" "+call.Path)
+		equal(t, call.APIKey, "mk_live_secret")
+		equal(t, call.Token, "")
+	}
+	equal(t, gotPaths, []string{
+		"GET /agents/cloud-bot",
+		"POST /agents",
+		"POST /agents/cloud-bot/remember",
+		"POST /agents/cloud-bot/recall",
+	})
+}
+

@@ -162,6 +162,7 @@ def test_resolve_api_key_on_prem_needs_no_key(monkeypatch):
     from memanto.app.clients.backend import Backend
     from memanto.client import _resolve_api_key
 
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
     with patch("memanto.cli.config.manager.ConfigManager") as cm:
         cm.return_value.get_backend.return_value = Backend.ON_PREM
@@ -173,20 +174,42 @@ def test_resolve_api_key_cloud(monkeypatch):
     from memanto.app.config import settings
     from memanto.client import _resolve_api_key
 
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "")
     with patch("memanto.cli.config.manager.ConfigManager") as cm:
         cm.return_value.get_backend.return_value = Backend.CLOUD
         cm.return_value.get_api_key.return_value = None
-        with pytest.raises(ValueError, match="No Moorcheh API key"):
+        with pytest.raises(ValueError, match="No Memanto API key"):
             _resolve_api_key(None)
 
+        monkeypatch.setenv("MEMANTO_API_KEY", "mk_cloud_key")
         monkeypatch.setenv("MOORCHEH_API_KEY", "from-env")
+        assert _resolve_api_key(None) == "mk_cloud_key"
+        assert settings.MOORCHEH_API_KEY == ""
+        monkeypatch.delenv("MEMANTO_API_KEY")
+
         assert _resolve_api_key(None) == "from-env"
         monkeypatch.delenv("MOORCHEH_API_KEY")
 
         cm.return_value.get_api_key.return_value = "saved"
         assert _resolve_api_key(None) == "saved"
+
+
+def test_instantiate_sdk_client_prefers_hosted_client_for_memanto_key(monkeypatch):
+    import sys
+    from types import ModuleType
+
+    from memanto.client import _instantiate_sdk_client
+
+    fake_hosted_mod = ModuleType("memanto.cli.client.hosted_client")
+    hosted_cls = MagicMock(name="HostedClient")
+    fake_hosted_mod.HostedClient = hosted_cls  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "memanto.cli.client.hosted_client", fake_hosted_mod)
+    monkeypatch.setenv("MEMANTO_API_URL", "https://api.memanto.example")
+
+    _instantiate_sdk_client("mk_live_123", explicit_api_key="mk_live_123")
+    hosted_cls.assert_called_once_with("mk_live_123", base_url="https://api.memanto.example")
 
 
 def test_explicit_key_does_not_leak_to_other_clients(monkeypatch):
@@ -197,6 +220,7 @@ def test_explicit_key_does_not_leak_to_other_clients(monkeypatch):
     from memanto.app.config import settings
     from memanto.client import _resolve_api_key
 
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
     monkeypatch.setenv("MOORCHEH_API_KEY", "good")
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "good")
     with patch("memanto.cli.config.manager.ConfigManager") as cm:
@@ -213,6 +237,7 @@ def test_explicit_key_fills_unset_global_key(monkeypatch):
     from memanto.app.config import settings
     from memanto.client import _resolve_api_key
 
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
     monkeypatch.setattr(settings, "MOORCHEH_API_KEY", "")
     with patch("memanto.cli.config.manager.ConfigManager") as cm:

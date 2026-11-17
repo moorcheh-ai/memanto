@@ -2,7 +2,7 @@
 
 Go client for [Memanto](https://github.com/moorcheh-ai/memanto) — memory that AI agents love.
 
-The client talks to a Memanto REST server. Point it at one you run (`BaseURL`), or leave `BaseURL` empty and it starts `uvx memanto serve` on first use, like the TypeScript SDK.
+Connects directly to **Memanto Cloud** ([console.memanto.ai/sign-in](https://console.memanto.ai/sign-in)) when given a `MEMANTO_API_KEY` (`mk_...`), or talks to a local Memanto REST server (`BaseURL` or `uvx memanto serve` on first use) when using **Memanto local** (`MOORCHEH_API_KEY` or Moorcheh on-prem).
 
 ## Install
 
@@ -10,17 +10,11 @@ The client talks to a Memanto REST server. Point it at one you run (`BaseURL`), 
 go get github.com/moorcheh-ai/memanto/sdks/go
 ```
 
-Requires Go 1.24+. To let the client start the server itself, install [uv](https://docs.astral.sh/uv/getting-started/installation/) (it ships `uvx`):
+Requires Go 1.24+.
 
-```bash
-# macOS / Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
+## Quick start (Memanto Cloud — recommended)
 
-# Windows
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-## Quick start
+Create a Memanto Cloud API key at [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in) and set `MEMANTO_API_KEY`:
 
 ```go
 package main
@@ -38,12 +32,12 @@ func main() {
 	ctx := context.Background()
 	client, err := memanto.New(memanto.Options{
 		AgentID: "my-agent",
-		APIKey:  os.Getenv("MOORCHEH_API_KEY"),
+		APIKey:  os.Getenv("MEMANTO_API_KEY"),
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer client.Close() // stops the server the client started
+	defer client.Close()
 
 	if _, err := client.Remember(ctx, memanto.RememberInput{
 		Content: "Alex prefers oat milk.",
@@ -70,9 +64,21 @@ func main() {
 }
 ```
 
-New writes take about a second to become searchable, so a `Recall` right after a `Remember` may not return the new memory yet.
+With a Memanto Cloud key (`mk_...` or `MEMANTO_API_KEY`), the Go client talks directly to the hosted Memanto Cloud API over HTTPS — no local `uvx` server is needed.
 
-On the first call the client:
+## Memanto local (`MOORCHEH_API_KEY` or On-Prem)
+
+To run locally against Moorcheh Cloud (`MOORCHEH_API_KEY` from [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or Moorcheh on-prem, install [uv](https://docs.astral.sh/uv/getting-started/installation/) (it ships `uvx`):
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+On the first call in local mode the client:
 
 1. Starts the server, unless `BaseURL` is set: picks a free port, runs `uvx memanto serve --host 127.0.0.1 --port <port>`, and waits for `/health`.
 2. Creates the agent if it does not exist (unless `DisableAutoCreate` is set).
@@ -80,9 +86,9 @@ On the first call the client:
 
 `Close` stops a server the client started. Go has no exit hooks, so always call it (`defer client.Close()`); otherwise the server keeps running after your program exits.
 
-Memanto allows one active session per agent: activating from this client signs out other clients (the CLI, MCP, another process) using the same agent, and the other way round.
+Memanto local allows one active session per agent: activating from this client signs out other clients (the CLI, MCP, another process) using the same agent, and the other way round.
 
-### Use a running server
+### Use a running local server
 
 ```go
 client, err := memanto.New(memanto.Options{
@@ -92,7 +98,7 @@ client, err := memanto.New(memanto.Options{
 })
 ```
 
-`APIKey` is sent as `X-Api-Key` on every request. A server reachable beyond loopback requires it for agent management and session activation.
+`APIKey` is sent as `X-Api-Key` on every request. A local server reachable beyond loopback requires it for agent management and session activation.
 
 ## Options
 
@@ -100,15 +106,15 @@ client, err := memanto.New(memanto.Options{
 | --- | --- | --- |
 | `AgentID` | — | **Required.** The agent this client works with. |
 | `DisableAutoCreate` | `false` | Do not create the agent when it is missing. |
-| `BaseURL` | — | A running server. When empty, the client starts one with `uvx`. |
-| `APIKey` | — | Moorcheh API key. Passed to a started server as `MOORCHEH_API_KEY` and sent as `X-Api-Key`. |
+| `BaseURL` | — | Override the Memanto Cloud API URL or connect to a running local server instead of starting one with `uvx`. |
+| `APIKey` | `MEMANTO_API_KEY` / `MOORCHEH_API_KEY` | Memanto Cloud API key (`mk_...`, recommended) or Moorcheh API key for local fallback. |
 | `HTTPClient` | `http.DefaultClient` | HTTP client for all requests. |
-| `Host` | `127.0.0.1` | Bind host of a started server. |
-| `Port` | free port | Port of a started server. |
-| `UvxPath` | `uvx` | Path to `uvx`. |
-| `PackageSpec` | `memanto` | Package passed to `uvx`. Use `memanto==0.2.3` to pin. |
-| `HealthTimeout` | `60s` | How long to wait for a started server to become healthy. |
-| `Verbose` | `false` | Stream a started server's logs to stdout/stderr. |
+| `Host` | `127.0.0.1` | Bind host of a started local server. |
+| `Port` | free port | Port of a started local server. |
+| `UvxPath` | `uvx` | Path to `uvx` (local mode). |
+| `PackageSpec` | `memanto` | Package passed to `uvx` (local mode). Use `memanto==0.2.3` to pin. |
+| `HealthTimeout` | `60s` | How long to wait for a started local server to become healthy. |
+| `Verbose` | `false` | Stream a started local server's logs to stdout/stderr. |
 
 For on-prem, configure Memanto once with `uvx memanto` and pick the on-prem backend; a started server inherits that config from `~/.memanto/`, so no `APIKey` is needed.
 

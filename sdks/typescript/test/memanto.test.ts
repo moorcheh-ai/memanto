@@ -467,4 +467,86 @@ describe("Memanto", () => {
       agent_id: agentId,
     });
   });
+
+  it("uses Memanto Cloud gateway routes and normalizes recall cards when given an mk_ key", async () => {
+    const recorded: Recorded[] = [];
+    const srv: Server = createServer((req, res) => {
+      collectBody(req).then((body) => {
+        recorded.push({
+          method: req.method ?? "",
+          url: req.url ?? "",
+          headers: req.headers,
+          body,
+        });
+        const reply = (status: number, payload: unknown) => {
+          res.writeHead(status, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(payload));
+        };
+        if (req.url === "/agents/cloud-agent" && req.method === "GET") {
+          return reply(404, { detail: "not found" });
+        }
+        if (req.url === "/agents" && req.method === "POST") {
+          return reply(201, { agent_id: "cloud-agent" });
+        }
+        if (req.url === "/agents/cloud-agent/remember" && req.method === "POST") {
+          return reply(200, {
+            memory_id: "mem-cloud-1",
+            agent_id: "cloud-agent",
+            status: "queued",
+          });
+        }
+        if (req.url === "/agents/cloud-agent/recall" && req.method === "POST") {
+          return reply(200, {
+            agent_id: "cloud-agent",
+            query: "milk",
+            count: 1,
+            memories: [
+              {
+                id: "mem-cloud-1",
+                type: "preference",
+                tags: ["diet", "coffee"],
+                content:
+                  "[PREFERENCE] Milk preference\n\nAlex prefers oat milk.\n\nTags: diet, coffee",
+              },
+            ],
+          });
+        }
+        return reply(404, { detail: "unknown cloud route" });
+      });
+    });
+
+    const cloudUrl = await new Promise<string>((resolve) => {
+      srv.listen(0, "127.0.0.1", () => {
+        const addr = srv.address() as AddressInfo;
+        resolve(`http://127.0.0.1:${addr.port}`);
+      });
+    });
+    cleanupFns.push(() => srv.close());
+
+    const m = new Memanto({
+      agentId: "cloud-agent",
+      apiKey: "mk_live_secret",
+      baseUrl: cloudUrl,
+    });
+    cleanupFns.push(() => m.close());
+
+    const rem = await m.remember({ content: "Alex prefers oat milk." });
+    expect(rem).toMatchObject({ memory_id: "mem-cloud-1", status: "queued" });
+
+    const rec = (await m.recall({ query: "milk" })) as {
+      memories: Array<{ content: string }>;
+    };
+    expect(rec.memories[0]?.content).toBe("Alex prefers oat milk.");
+
+    expect(recorded.map((r) => `${r.method} ${r.url}`)).toEqual([
+      "GET /agents/cloud-agent",
+      "POST /agents",
+      "POST /agents/cloud-agent/remember",
+      "POST /agents/cloud-agent/recall",
+    ]);
+    for (const r of recorded) {
+      expect(r.headers["x-api-key"]).toBe("mk_live_secret");
+      expect(r.headers["x-session-token"]).toBeUndefined();
+    }
+  });
 });

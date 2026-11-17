@@ -1,16 +1,62 @@
 import logging
+import os
 import threading
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
-from memanto.app.utils.errors import SessionError
+from memanto.app.utils.errors import AuthenticationError, SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
 _ORIG_SDK_CLIENT = SdkClient
 
 logger = logging.getLogger(__name__)
+
+
+def _instantiate_client(api_key: str, *, is_cloud_key: bool = False) -> SdkClient:
+    if SdkClient is not _ORIG_SDK_CLIENT:
+        return SdkClient(api_key=api_key)
+    if is_cloud_key or api_key.startswith("mk_"):
+        try:
+            from memanto.cli.client.hosted_client import HostedClient
+        except ImportError:
+            pass
+        else:
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(api_key, base_url=base_url)
+            return HostedClient(api_key)
+    return SdkClient(api_key=api_key)
+
+
+def _build_memanto_client(api_key: str | None = None) -> SdkClient:
+    if api_key is not None and api_key.strip():
+        clean = api_key.strip()
+        return _instantiate_client(clean, is_cloud_key=clean.startswith("mk_"))
+
+    memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    if memanto_key:
+        return _instantiate_client(memanto_key, is_cloud_key=True)
+
+    moorcheh_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
+    if moorcheh_key:
+        return _instantiate_client(moorcheh_key, is_cloud_key=False)
+
+    try:
+        from memanto.cli.client.factory import build_client
+    except ImportError:
+        pass
+    else:
+        try:
+            return build_client()
+        except AuthenticationError:
+            pass
+
+    raise ValueError(
+        "No Memanto API key found: pass client=..., api_key=..., set MEMANTO_API_KEY "
+        "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+    )
 
 
 def _extract_text_content(content: Any) -> str:
@@ -113,17 +159,20 @@ def _do_setup(
 
 
 def create_recall_node(
-    client: SdkClient,
+    client: SdkClient | None = None,
     agent_id: str | None = None,
     agent_id_from_config: str = "agent_id",
     output_key: str | None = None,
+    *,
+    api_key: str | None = None,
 ):
     """Create a LangGraph node that recalls memories based on the latest human message.
 
     This node extracts the query from the most recent human message in the state
     and retrieves relevant memories from Memanto.
     """
-    _cache = _PerAgentClientCache(client)
+    resolved_client = client if client is not None else _build_memanto_client(api_key)
+    _cache = _PerAgentClientCache(resolved_client)
 
     def recall_node(
         state: dict, config: RunnableConfig | None = None
@@ -212,17 +261,20 @@ def create_recall_node(
 
 
 def create_remember_node(
-    client: SdkClient,
+    client: SdkClient | None = None,
     agent_id: str | None = None,
     agent_id_from_config: str = "agent_id",
     remember_human: bool = True,
     remember_ai: bool = False,
+    *,
+    api_key: str | None = None,
 ):
     """Create a LangGraph node that stores conversation messages as memories.
 
     This node extracts the latest messages and stores them in Memanto.
     """
-    _cache = _PerAgentClientCache(client)
+    resolved_client = client if client is not None else _build_memanto_client(api_key)
+    _cache = _PerAgentClientCache(resolved_client)
 
     def remember_node(
         state: dict, config: RunnableConfig | None = None

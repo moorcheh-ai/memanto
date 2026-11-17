@@ -119,6 +119,7 @@ func TestSpawnReportsMissingUvx(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("PATH", "")
+			t.Setenv("MEMANTO_API_KEY", "")
 			c, _ := New(Options{AgentID: "a", UvxPath: uvxPath})
 			_, err := c.Recall(context.Background(), RecallInput{Query: "q"})
 			if err == nil || !strings.Contains(err.Error(), "install uv") {

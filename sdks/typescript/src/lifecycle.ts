@@ -12,7 +12,10 @@ export interface ServerOptions {
    * When set, lifecycle.start() resolves immediately without booting `uvx`.
    */
   baseUrl?: string;
-  /** Moorcheh API key passed to the server via env. */
+  /**
+   * Memanto Cloud API key (`mk_...`, from https://console.memanto.ai) or
+   * Moorcheh API key for local server fallback.
+   */
   apiKey?: string;
   /**
    * Path to the `uvx` binary. Defaults to `uvx`, resolved via PATH.
@@ -68,7 +71,13 @@ export class ServerLifecycle {
 
     const args = [spec, "serve", "--host", host, "--port", String(port)];
     const env: NodeJS.ProcessEnv = { ...process.env };
-    if (this.opts.apiKey) env.MOORCHEH_API_KEY = this.opts.apiKey;
+    if (this.opts.apiKey) {
+      if (this.opts.apiKey.startsWith("mk_")) {
+        env.MEMANTO_API_KEY = this.opts.apiKey;
+      } else {
+        env.MOORCHEH_API_KEY = this.opts.apiKey;
+      }
+    }
 
     const child = spawn(uvx, args, {
       env,
