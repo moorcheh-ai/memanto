@@ -374,6 +374,25 @@ leaked token remains useful to a caller who also has management access. Set
 `SESSION_AUTO_RECREATE_ENABLED=False` (or `auto_recreate_enabled: false`) where
 that matters.
 
+#### Auto-Activate the Last Agent
+
+When `auto_activate_enabled` is on (off by default), a client that finds no
+active agent resumes the last one instead of failing with "No active
+session". Everything that reads the active agent goes through
+`SessionService.get_active_session()`, so the CLI, coding-tool hooks, the MCP
+server, the desktop widget, the editor extensions and `GET /api/v2/status` all
+pick it up.
+
+- The last active agent is kept per backend in `sessions/last_active`, written
+  whenever an agent becomes active.
+- If that agent's session is still live it is joined, so other clients keep
+  their token; otherwise a fresh session is started.
+- `memanto agent deactivate` and `/deactivate` pause auto-activate until an
+  agent is activated again. Deleting the agent forgets it.
+
+Turn it on with `memanto agent auto-activate on`, the Settings page of
+`memanto ui`, or `SESSION_AUTO_ACTIVATE_ENABLED=True`.
+
 ### 3. Agent Isolation
 
 ```python
@@ -448,9 +467,11 @@ memanto:
     auto_renew_enabled: true
     auto_renew_interval_hours: 6  # Fresh session every 6 hours
     auto_recreate_enabled: true   # Fresh session on first request after expiry
+    auto_activate_enabled: false  # Resume the last active agent when none is active
 
-  # The two booleans above are overlaid onto the server settings at startup.
-  # An explicitly exported SESSION_AUTO_RENEW_ENABLED / SESSION_AUTO_RECREATE_ENABLED
+  # The three booleans above are overlaid onto the server settings at startup.
+  # An explicitly exported SESSION_AUTO_RENEW_ENABLED / SESSION_AUTO_RECREATE_ENABLED /
+  # SESSION_AUTO_ACTIVATE_ENABLED
   # wins, so containerised deployments stay environment-driven. The numeric
   # session fields are read by the CLI only; set them via SESSION_* env vars
   # to change server behaviour.

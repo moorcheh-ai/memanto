@@ -4,7 +4,8 @@ MCP tool calls are stateless from the model's perspective — the agent decides
 to call ``recall`` and expects it to "just work". This module owns:
 
 * Resolving which Memanto agent_id a given tool call targets (explicit arg
-  wins; otherwise the configured default).
+  wins; then the agent active on this computer, shared with the CLI, widget
+  and other tools; then the configured default).
 * Lazily creating the default agent on first use (if enabled).
 * Lazily creating one independently activated ``SdkClient`` per agent. The
   underlying ``SdkClient._get_validated_session_for_agent`` already auto-renews
@@ -21,6 +22,7 @@ import logging
 import threading
 from typing import TYPE_CHECKING
 
+from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
@@ -79,18 +81,25 @@ class MemantoLifecycle:
         return self._settings
 
     def resolve_agent_id(self, agent_id: str | None) -> str:
-        """Pick the explicit ``agent_id`` if given, else fall back to default.
+        """Pick the explicit ``agent_id``, else the active agent, else the default.
+
+        The active agent is the one the CLI, widget and other tools on this
+        computer share, so switching agents anywhere switches it here too.
 
         Raises:
-            NoAgentConfiguredError: If neither was provided.
+            NoAgentConfiguredError: If none of the three is available.
         """
         if agent_id and agent_id.strip():
             return agent_id.strip()
+        active = get_session_service().get_active_session()
+        if active is not None:
+            return active.agent_id
         if self._settings.default_agent_id:
             return self._settings.default_agent_id
         raise NoAgentConfiguredError(
-            "No agent_id was supplied and no MEMANTO_DEFAULT_AGENT_ID is "
-            "configured. Either pass agent_id explicitly or set the env var."
+            "No agent_id was supplied, no agent is active, and no "
+            "MEMANTO_DEFAULT_AGENT_ID is configured. Pass agent_id, run "
+            "`memanto agent activate <agent-id>`, or set the env var."
         )
 
     def ensure_ready(self, agent_id: str) -> SdkClient:
@@ -135,7 +144,10 @@ class MemantoLifecycle:
                     with self._lock:
                         self._ensured_agents.add(agent_id)
 
-                if client.agent_id != agent_id:
+                if (
+                    not self._adopt_live_session_locked(client, agent_id)
+                    and client.agent_id != agent_id
+                ):
                     self._activate_locked(client, agent_id)
             except Exception:
                 if is_new_client:
@@ -195,6 +207,24 @@ class MemantoLifecycle:
         except AgentAlreadyExistsError:
             # Race: another caller created it between our get_agent and create.
             logger.debug("Agent '%s' was created concurrently.", agent_id)
+
+    def _adopt_live_session_locked(self, client: SdkClient, agent_id: str) -> bool:
+        """Use the agent's live session from ``~/.memanto/sessions``, if it has one.
+
+        Memanto keeps one session per agent. Joining it instead of activating
+        keeps the CLI and other tools signed in, and picking up a session
+        another tool replaced (``memanto agent activate``) keeps this server
+        working without a restart.
+        """
+        session = get_session_service().get_session(agent_id)
+        if session is None or not session.is_active():
+            return False
+        if client.agent_id != agent_id or client.session_token != session.session_token:
+            client.agent_id = agent_id
+            client.session_token = session.session_token
+            client._cached_session = None
+            logger.info("Joined the live Memanto session for agent '%s'.", agent_id)
+        return True
 
     def _activate_locked(self, client: SdkClient, agent_id: str) -> None:
         """Activate a Memanto session on the provided agent-scoped client."""

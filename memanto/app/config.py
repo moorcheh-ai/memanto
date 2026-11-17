@@ -69,6 +69,7 @@ if _config_file.exists():
                 for _yaml_key, _env_key in (
                     ("auto_renew_enabled", "SESSION_AUTO_RENEW_ENABLED"),
                     ("auto_recreate_enabled", "SESSION_AUTO_RECREATE_ENABLED"),
+                    ("auto_activate_enabled", "SESSION_AUTO_ACTIVATE_ENABLED"),
                 ):
                     _toggle = _session.get(_yaml_key)
                     if isinstance(_toggle, bool):
@@ -118,6 +119,7 @@ class SessionConfig(BaseModel):
     auto_renew_enabled: bool = True
     auto_renew_interval_hours: int = 6
     auto_recreate_enabled: bool = True
+    auto_activate_enabled: bool = False
 
 
 class CLIConfig(BaseModel):
@@ -171,6 +173,8 @@ class Settings(BaseSettings):
     # an expired-but-not-terminated token. Gated behind management access.
 
     SESSION_AUTO_RECREATE_ENABLED: bool = True
+    # Resume the last active agent when none is active (opt-in).
+    SESSION_AUTO_ACTIVATE_ENABLED: bool = False
 
     # Memory Configuration
     DEFAULT_TTL_SECONDS: int = 3600  # 1 hour

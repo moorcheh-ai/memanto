@@ -123,6 +123,11 @@ def agent_activate(
         console.print(
             f"[dim]Activation expires: {result.get('expires_at', 'unknown')}[/dim]"
         )
+        if not config_manager.get_session_config().get("auto_activate_enabled"):
+            console.print(
+                "[dim]Tip: run 'memanto agent auto-activate on' to resume your last "
+                "agent automatically and skip this step next time.[/dim]"
+            )
 
     except Exception as e:
         msg = str(e)
@@ -141,9 +146,52 @@ def agent_deactivate():
         console.print("[yellow]No active agent[/yellow]")
         return
 
-    config_manager.clear_active_session()
+    config_manager.clear_active_session(pause_auto_activate=True)
 
     console.print(f"[green]OK Agent '{active_agent_id}' deactivated[/green]")
+    if config_manager.get_session_config().get("auto_activate_enabled"):
+        console.print(
+            "[dim]Auto-activate is paused until you activate an agent again.[/dim]"
+        )
+
+
+@agent_app.command("auto-activate")
+def agent_auto_activate(
+    state: str | None = typer.Argument(
+        None, help="on or off. Omit to show the current setting."
+    ),
+):
+    """Resume the last active agent automatically when no agent is active.
+
+    Applies to every tool on this computer that uses the active agent: the
+    CLI, Claude Code and other coding-tool hooks, the MCP server, the desktop
+    widget and the local UI.
+    """
+    from memanto.app.config import settings
+    from memanto.app.services.session_service import get_session_service
+
+    if state is None:
+        enabled = config_manager.get_session_config().get("auto_activate_enabled")
+        console.print(f"Auto-activate: {'on' if enabled else 'off'}")
+        last = get_session_service().get_last_active()
+        if last:
+            paused = " [dim](paused by deactivate)[/dim]" if last["paused"] else ""
+            console.print(f"Last active agent: {last['agent_id']}{paused}")
+        return
+
+    normalized = state.strip().lower()
+    if normalized not in ("on", "off"):
+        _error(f"Expected 'on' or 'off', got '{state}'.")
+    enabled = normalized == "on"
+    config_manager.set_session_config({"auto_activate_enabled": enabled})
+    settings.SESSION_AUTO_ACTIVATE_ENABLED = enabled
+    if enabled:
+        console.print(
+            "[green]OK Auto-activate on.[/green] [dim]Your last active agent resumes "
+            "automatically; 'memanto agent deactivate' pauses it.[/dim]"
+        )
+    else:
+        console.print("[green]OK Auto-activate off.[/green]")
 
 
 @agent_app.command("delete")

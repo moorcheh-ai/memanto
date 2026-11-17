@@ -35,9 +35,9 @@ class MCPServerSettings(BaseSettings):
             which uses ``MEMANTO_API_KEY`` from ``~/.memanto/.env`` instead.
 
     Optional:
-        default_agent_id: When set, callers may omit ``agent_id`` from tool
-            calls and this value is used. Strongly recommended in MCP setups
-            since most clients invoke a tool per turn with no shared state.
+        default_agent_id: Used when a tool call omits ``agent_id`` and no
+            agent is active on this computer (the active agent is shared with
+            the CLI, widget and other tools, and wins when there is one).
         agent_pattern: Pattern used when auto-creating the default agent
             (``support``, ``project``, or ``tool``).
         agent_auto_create: If True (default), the default agent is created
@@ -72,8 +72,8 @@ class MCPServerSettings(BaseSettings):
         default=None,
         validation_alias="MEMANTO_DEFAULT_AGENT_ID",
         description=(
-            "Default agent used when a tool call omits agent_id. "
-            "Set this to a stable per-project identifier."
+            "Agent used when a tool call omits agent_id and no agent is "
+            "active on this computer (`memanto agent activate`)."
         ),
     )
     default_source: str | None = Field(

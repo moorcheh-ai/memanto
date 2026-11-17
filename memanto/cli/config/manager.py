@@ -65,6 +65,7 @@ _SESSION_CONFIG_BOOLEANS = {
     "auto_extend",
     "auto_renew_enabled",
     "auto_recreate_enabled",
+    "auto_activate_enabled",
 }
 
 
@@ -527,6 +528,7 @@ class ConfigManager:
             "auto_renew_enabled": True,
             "auto_renew_interval_hours": 6,
             "auto_recreate_enabled": True,
+            "auto_activate_enabled": False,
         }
         defaults.update(self._dict_section(self.load_yaml(), "session"))
         return defaults
@@ -663,11 +665,13 @@ class ConfigManager:
             return None, None
         return session.agent_id, session.session_token
 
-    def clear_active_session(self) -> None:
-        """Clear the active-session marker."""
+    def clear_active_session(self, *, pause_auto_activate: bool = False) -> None:
+        """Clear the active-session marker (see ``SessionService.clear_active_session``)."""
         from memanto.app.services.session_service import get_session_service
 
-        get_session_service().clear_active_session()
+        get_session_service().clear_active_session(
+            pause_auto_activate=pause_auto_activate
+        )
 
     def set_server_config(self, url: str, port: int) -> None:
         """Set fallback server configuration."""

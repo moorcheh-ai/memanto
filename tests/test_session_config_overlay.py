@@ -96,3 +96,23 @@ def test_missing_or_malformed_config_keeps_defaults(home_with_session_config):
 
     not_a_mapping = home_with_session_config("memanto:\n  session: []\n")
     assert _run_probe(not_a_mapping) == (True, True)
+
+
+def test_yaml_auto_activate_reaches_settings(home_with_session_config):
+    """Fresh processes (hooks, MCP, widget) pick up the auto-activate toggle."""
+    probe = "from memanto.app.config import settings;print(settings.SESSION_AUTO_ACTIVATE_ENABLED)"
+
+    def run(home):
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
+        env.pop("SESSION_AUTO_ACTIVATE_ENABLED", None)
+        result = subprocess.run(
+            [sys.executable, "-c", probe], env=env, capture_output=True, text=True
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout.strip()
+
+    assert run(home_with_session_config("memanto:\n  session: {}\n")) == "False"
+    home = home_with_session_config(
+        "memanto:\n  session:\n    auto_activate_enabled: true\n"
+    )
+    assert run(home) == "True"

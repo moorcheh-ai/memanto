@@ -225,10 +225,23 @@ memanto agent activate code-assistant --duration-hours 8
 memanto agent deactivate
 ```
 
-Clears the active session pointer in local CLI configuration.
+Clears the active session pointer in local CLI configuration. With auto-activate on, this
+also pauses it until you activate an agent again.
 
 > Note: This local CLI action and API session termination are different layers.
 > To explicitly end a server-side API session, call `POST /api/v2/agents/{agent_id}/deactivate`.
+
+#### `agent auto-activate` - Resume the Last Agent Automatically
+
+```bash
+memanto agent auto-activate [on|off]
+```
+
+With auto-activate on, any tool that finds no active agent (the CLI, coding-tool hooks, the
+MCP server, the desktop widget, the editor extensions) resumes the last active agent, so you
+don't have to run `agent activate` each time. It joins that agent's session when it is still
+live and starts a fresh one otherwise. Off by default. Run it without an argument to see the
+setting and the last active agent. The same switch is on the Settings page of `memanto ui`.
 
 #### `agent delete` - Delete Agent
 
@@ -694,10 +707,12 @@ answer:
 # Recall configuration
 recall:
   limit: 10               # top-N results returned by `recall`
-
-active_agent_id: "code-assistant"
-active_session_token: "eyJhbGciOiJIUzI1NiI..."
 ```
+
+The active agent is not stored in `config.yaml`. It is the `~/.memanto/sessions/active`
+marker, shared by the CLI, coding-tool hooks, the MCP server, the desktop widget and the
+editor extensions. Run `memanto agent auto-activate on` to resume the last active agent
+automatically when none is active.
 
 ### Security
 

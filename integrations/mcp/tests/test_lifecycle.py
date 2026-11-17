@@ -384,3 +384,62 @@ def test_auto_create_is_limited_to_default_agent(
     client = lifecycle.ensure_ready("project-agent")
     assert client.created_agents == ["project-agent"]
     assert client.activated_agents == ["project-agent"]
+
+
+# --------------------------------------------------------------------------- #
+# Following the agent active on this computer
+# --------------------------------------------------------------------------- #
+
+
+def test_omitted_agent_follows_the_active_agent(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch, session_service
+) -> None:
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "connect-time-agent")
+    lc = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+    assert lc.resolve_agent_id(None) == "connect-time-agent"
+
+    session_service.create_session("cli-agent")
+    assert lc.resolve_agent_id(None) == "cli-agent"
+    assert lc.resolve_agent_id("explicit") == "explicit"
+
+
+def test_no_agent_anywhere_names_every_way_to_fix_it(
+    fake_api_key: str,
+) -> None:
+    from memanto_mcp.lifecycle import NoAgentConfiguredError
+
+    lc = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+    with pytest.raises(NoAgentConfiguredError, match="memanto agent activate"):
+        lc.resolve_agent_id(None)
+
+
+def test_joins_the_live_session_instead_of_replacing_it(
+    lifecycle: MemantoLifecycle, session_service
+) -> None:
+    live = session_service.create_session("agent-a")
+
+    client = lifecycle.client_for("agent-a")
+
+    assert client.activation_calls == 0
+    assert client.session_token == live.session_token
+    # The CLI's token is still the live one: nobody was signed out.
+    assert session_service.get_session("agent-a").session_token == live.session_token
+
+
+def test_picks_up_a_session_another_tool_replaced(
+    lifecycle: MemantoLifecycle, session_service
+) -> None:
+    session_service.create_session("agent-a")
+    client = lifecycle.client_for("agent-a")
+
+    replaced = session_service.create_session("agent-a")  # `memanto agent activate`
+    assert lifecycle.client_for("agent-a") is client
+    assert client.session_token == replaced.session_token
+    assert client.activation_calls == 0
+
+
+def test_activates_when_the_agent_has_no_live_session(
+    lifecycle: MemantoLifecycle,
+) -> None:
+    client = lifecycle.client_for("agent-a")
+    assert client.activation_calls == 1

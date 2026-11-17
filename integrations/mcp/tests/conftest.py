@@ -32,3 +32,19 @@ def fake_api_key(monkeypatch: pytest.MonkeyPatch) -> str:
     key = "mch_test_fake_key_for_unit_tests"
     monkeypatch.setenv("MOORCHEH_API_KEY", key)
     return key
+
+
+@pytest.fixture(autouse=True)
+def session_service(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Sessions in a temp dir, so the developer's active agent never leaks in.
+
+    ``resolve_agent_id`` follows the agent active on this computer, read from
+    the process-wide ``SessionService`` singleton.
+    """
+    from memanto.app.services.session_service import SessionService
+
+    import memanto_mcp.lifecycle as lifecycle_module
+
+    service = SessionService(secret_key="k" * 32, sessions_dir=tmp_path / "sessions")
+    monkeypatch.setattr(lifecycle_module, "get_session_service", lambda: service)
+    return service

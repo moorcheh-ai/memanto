@@ -266,6 +266,7 @@ memanto agent create AGENT_ID             # Create and activate new agent
 memanto agent list                        # List all agents
 memanto agent activate AGENT_ID           # Activate (or reactivate) session
 memanto agent deactivate                  # End session
+memanto agent auto-activate on            # Resume the last agent automatically
 memanto agent delete AGENT_ID            # Delete agent (prompts to keep/purge cloud memories; --delete-memories / --keep-memories to skip)
 
 # Memory Operations
@@ -395,10 +396,12 @@ answer:
 # Recall configuration
 recall:
   limit: 10               # top-N results returned by `recall`
-
-active_agent_id: "code-assistant"
-active_session_token: "eyJhbGciOiJIUzI1NiI..."
 ```
+
+The active agent is not stored in `config.yaml`. It is the `~/.memanto/sessions/active`
+marker, shared by the CLI, coding-tool hooks, the MCP server, the desktop widget and the
+editor extensions. Run `memanto agent auto-activate on` to resume the last active agent
+automatically when none is active.
 
 
 **Security:**

@@ -302,6 +302,7 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
         for _yaml_key, _settings_attr in (
             ("auto_renew_enabled", "SESSION_AUTO_RENEW_ENABLED"),
             ("auto_recreate_enabled", "SESSION_AUTO_RECREATE_ENABLED"),
+            ("auto_activate_enabled", "SESSION_AUTO_ACTIVATE_ENABLED"),
         ):
             _toggle = updates["session"].get(_yaml_key)
             if isinstance(_toggle, bool):

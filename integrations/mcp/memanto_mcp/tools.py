@@ -418,10 +418,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
 
     settings = lifecycle.settings
     default_source = getattr(settings, "default_source", None)
-    default_hint = (
-        f" (defaults to '{settings.default_agent_id}')"
-        if settings.default_agent_id
-        else " (required: no MEMANTO_DEFAULT_AGENT_ID is configured)"
+    default_hint = " (defaults to the agent active in Memanto on this computer" + (
+        f", else '{settings.default_agent_id}')" if settings.default_agent_id else ")"
     )
 
     AgentIdField = Annotated[
