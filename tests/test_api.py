@@ -2852,14 +2852,14 @@ class TestCWE200ApiKeyLeak:
             json={
                 "session": {
                     "default_duration_hours": 12,
-                    "auto_renew_enabled": False,
+                    "auto_activate_enabled": False,
                 }
             },
         )
 
         assert response.status_code == 200
         _mock_ui_config_manager.set_session_config.assert_called_once_with(
-            {"default_duration_hours": 12, "auto_renew_enabled": False}
+            {"default_duration_hours": 12, "auto_activate_enabled": False}
         )
 
     @pytest.mark.asyncio
@@ -3136,7 +3136,7 @@ class TestRealpathGuard:
 class TestSessionAutoRecreate:
     """Coming back to MEMANTO after a session has fully lapsed.
 
-    ``SESSION_AUTO_RECREATE_ENABLED`` (default on) issues a brand-new session
+    ``SESSION_AUTO_ACTIVATE_ENABLED`` (on in the suite) issues a brand-new session
     on the first operation that presents an expired-but-not-terminated token,
     instead of failing with 401. It is gated by the same management-access
     check as explicit activation, so a stolen stale token alone is worthless.
@@ -3283,10 +3283,10 @@ class TestSessionAutoRecreate:
     async def test_expired_session_auto_recreate_can_be_disabled(
         self, client, auth_headers, mock_moorcheh
     ):
-        """Disabling SESSION_AUTO_RECREATE_ENABLED restores the plain 401."""
+        """Disabling SESSION_AUTO_ACTIVATE_ENABLED restores the plain 401."""
         token = await self._activate_expired(client, auth_headers)
 
-        with patch.object(settings, "SESSION_AUTO_RECREATE_ENABLED", False):
+        with patch.object(settings, "SESSION_AUTO_ACTIVATE_ENABLED", False):
             response = await client.post(
                 f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
                 headers={**auth_headers, "X-Session-Token": token},

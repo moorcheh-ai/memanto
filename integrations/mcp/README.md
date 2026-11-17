@@ -185,8 +185,10 @@ clients.
   first tool call.
 - On the first memory tool invocation for a given agent, the server
   ensures the agent exists (auto-creates if needed) and activates a JWT
-  session. Sessions auto-renew before expiry, so long-running MCP
-  connections never hit a session-expired error mid-conversation.
+  session. With `memanto agent auto-activate on`, sessions renew before
+  expiry and restart after it, so long-running MCP connections never hit a
+  session-expired error mid-conversation. With it off, a lapsed session
+  returns an error asking you to run `memanto agent activate`.
 - The server intentionally keeps the session alive on shutdown: JWT
   sessions are TTL-bound and other Memanto clients (CLI, REST) may want
   to share them.

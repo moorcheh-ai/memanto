@@ -5652,9 +5652,7 @@
                     <div class="form-group"></div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
-                    ${cfgToggle('cfgSessAutoRenew', 'Auto-renew sessions before expiry', sess.auto_renew_enabled ?? true)}
-                    ${cfgToggle('cfgSessAutoRecreate', 'Auto-create a fresh session after expiry (next request)', sess.auto_recreate_enabled ?? true)}
-                    ${cfgToggle('cfgSessAutoActivate', 'Auto-activate the last active agent when none is active (CLI, coding tools, widget, editors)', sess.auto_activate_enabled ?? false)}
+                    ${cfgToggle('cfgSessAutoActivate', 'Auto-activate: keep your agent working without running activate (renews sessions before expiry, starts a fresh one after expiry, and resumes the last active agent when none is active, in the CLI, coding tools, widget and editors)', sess.auto_activate_enabled ?? false)}
                 </div>
             </div>
             <!-- ANSWER CONFIG -->
@@ -5799,9 +5797,7 @@
                     session: {
                         default_duration_hours: parseInt(document.getElementById('cfgSessDuration').value) || 6,
                         extend_threshold_minutes: parseInt(document.getElementById('cfgSessExtendThreshold').value) || 30,
-                        auto_renew_enabled: document.getElementById('cfgSessAutoRenew').checked,
                         auto_renew_interval_hours: parseInt(document.getElementById('cfgSessRenewInterval').value) || 6,
-                        auto_recreate_enabled: document.getElementById('cfgSessAutoRecreate').checked,
                         auto_activate_enabled: document.getElementById('cfgSessAutoActivate').checked,
                     },
                     answer: isOnPrem()

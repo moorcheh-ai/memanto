@@ -7,9 +7,9 @@ to call ``recall`` and expects it to "just work". This module owns:
   wins; then the agent active on this computer, shared with the CLI, widget
   and other tools; then the configured default).
 * Lazily creating the default agent on first use (if enabled).
-* Lazily creating one independently activated ``SdkClient`` per agent. The
-  underlying ``SdkClient._get_validated_session_for_agent`` already auto-renews
-  tokens nearing expiry, so each client only has to be activated once.
+* Lazily creating one independently activated ``SdkClient`` per agent. With
+  auto-activate on, ``SdkClient._get_validated_session_for_agent`` renews and
+  recreates tokens around expiry, so each client only has to be activated once.
 
 The client registry is guarded by a short-lived global lock, while per-agent
 locks serialize setup for the same agent without blocking unrelated agents on

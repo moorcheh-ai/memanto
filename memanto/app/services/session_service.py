@@ -627,7 +627,7 @@ class SessionService:
         Returns:
             New Session if renewed, None if no renewal was needed
         """
-        if not settings.SESSION_AUTO_RENEW_ENABLED:
+        if not settings.SESSION_AUTO_ACTIVATE_ENABLED:
             return None
 
         # Validation and renewal must be one operation. Without the per-agent
@@ -672,7 +672,7 @@ class SessionService:
         Returns:
             New Session if recreated, None when recreation does not apply
         """
-        if not settings.SESSION_AUTO_RECREATE_ENABLED:
+        if not settings.SESSION_AUTO_ACTIVATE_ENABLED:
             return None
 
         try:

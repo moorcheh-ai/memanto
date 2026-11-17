@@ -55,6 +55,37 @@ def test_off_by_default(sessions, monkeypatch):
     assert sessions.get_active_session() is None
 
 
+def test_off_also_stops_renew_and_recreate(sessions, monkeypatch):
+    """One switch: with it off, sessions simply end when they expire."""
+    monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", False)
+    near_expiry = sessions.create_session("a", duration_hours=0)
+    assert sessions.check_and_auto_renew("a") is None
+    assert sessions.check_and_auto_recreate(near_expiry.session_token) is None
+    assert sessions.get_active_session() is None
+
+    monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
+    recreated = sessions.check_and_auto_recreate(near_expiry.session_token)
+    assert recreated is not None and recreated.is_active()
+
+
+def test_expired_session_with_switch_off_says_how_to_fix_it(sessions, monkeypatch):
+    """Long-running clients (MCP, widget) get an actionable error, not a bare expiry."""
+    import time
+
+    from memanto.app.utils.errors import SessionExpiredError
+    from memanto.cli.client.sdk_client import SdkClient
+
+    monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", False)
+    lapsed = sessions.create_session("a", duration_hours=0)
+    time.sleep(1)
+    client = SdkClient(api_key="test-key")
+    monkeypatch.setattr(client, "_get_session_service", lambda: sessions)
+    client.agent_id, client.session_token = "a", lapsed.session_token
+
+    with pytest.raises(SessionExpiredError, match="auto-activate on"):
+        client._get_validated_session_for_agent("a")
+
+
 def test_deactivate_pauses_until_an_agent_is_activated_again(sessions):
     sessions.create_session("a")
     sessions.clear_active_session(pause_auto_activate=True)

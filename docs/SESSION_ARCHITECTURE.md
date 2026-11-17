@@ -347,48 +347,43 @@ def validate_session(session_token: str) -> Session:
     return Session(**payload)
 ```
 
-#### Auto-Recreate After Expiry
+#### Auto-Activate: Renew, Recreate, Resume
 
-When `auto_recreate_enabled` is on (the default), a request that presents a
-token whose session has *fully lapsed* is not rejected outright — MEMANTO
-issues a brand-new session and continues, returning the replacement token in
-the `X-Session-Token` response header (and refreshing the cookie for browser
-callers). This is what lets you pick MEMANTO back up after an idle gap without
-hitting "No active session".
+One switch, `auto_activate_enabled` (off by default), keeps an agent working
+without `memanto agent activate`. When it is on:
 
-Three rules bound it:
+- **Renew.** A live session close to expiry gets a fresh token.
+- **Recreate.** A request that presents the token of a session that has
+  *fully lapsed* gets a brand-new session instead of a 401. The replacement
+  token comes back in the `X-Session-Token` response header (and the cookie is
+  refreshed for browser callers).
+- **Resume.** A client that finds no active agent resumes the last one. The
+  last active agent is kept per backend in `sessions/last_active`. If its
+  session is still live it is joined, so other clients keep their token;
+  otherwise a fresh session is started.
 
-- **Authorization is unchanged.** Recreation runs behind the same
-  `require_management_access` check as explicit activation — a valid management
-  credential or a loopback caller. A stolen expired token on its own buys
-  nothing, and anyone who *does* pass that check could already call
-  `/activate` directly, so no new capability is granted.
-- **Logout is authoritative.** A session ended via `/deactivate` is
-  `TERMINATED` and is never revived; the caller must activate explicitly.
-- **Stale tokens never supersede a newer session.** The token's `session_id`
-  must still match the persisted record, so an old token cannot displace a
-  session that was already replaced.
-
-Note the trade-off: with auto-recreate on, expiry no longer bounds how long a
-leaked token remains useful to a caller who also has management access. Set
-`SESSION_AUTO_RECREATE_ENABLED=False` (or `auto_recreate_enabled: false`) where
-that matters.
-
-#### Auto-Activate the Last Agent
-
-When `auto_activate_enabled` is on (off by default), a client that finds no
-active agent resumes the last one instead of failing with "No active
-session". Everything that reads the active agent goes through
+Everything that reads the active agent goes through
 `SessionService.get_active_session()`, so the CLI, coding-tool hooks, the MCP
 server, the desktop widget, the editor extensions and `GET /api/v2/status` all
-pick it up.
+follow the switch. When it is off, sessions end when they expire and a client
+gets an error telling it to run `memanto agent activate`.
 
-- The last active agent is kept per backend in `sessions/last_active`, written
-  whenever an agent becomes active.
-- If that agent's session is still live it is joined, so other clients keep
-  their token; otherwise a fresh session is started.
-- `memanto agent deactivate` and `/deactivate` pause auto-activate until an
-  agent is activated again. Deleting the agent forgets it.
+Rules that bound it:
+
+- **Authorization is unchanged.** Recreation runs behind the same
+  `require_management_access` check as explicit activation: a valid management
+  credential or a loopback caller. A stolen expired token on its own buys
+  nothing.
+- **Deactivate is authoritative.** A session ended via `/deactivate` is
+  `TERMINATED` and is never revived. `memanto agent deactivate` and
+  `/deactivate` also pause resume until an agent is activated again. Deleting
+  the agent forgets it.
+- **Stale tokens never supersede a newer session.** The token's `session_id`
+  must still match the persisted record.
+
+Trade-off: with the switch on, expiry no longer bounds how long a leaked token
+remains useful to a caller who also has management access. Leave it off where
+that matters.
 
 Turn it on with `memanto agent auto-activate on`, the Settings page of
 `memanto ui`, or `SESSION_AUTO_ACTIVATE_ENABLED=True`.
@@ -464,14 +459,11 @@ memanto:
     default_duration_hours: 6
     auto_extend: true
     extend_threshold_minutes: 30  # Extend if < 30 min remaining
-    auto_renew_enabled: true
-    auto_renew_interval_hours: 6  # Fresh session every 6 hours
-    auto_recreate_enabled: true   # Fresh session on first request after expiry
-    auto_activate_enabled: false  # Resume the last active agent when none is active
+    auto_renew_interval_hours: 6  # Length of a renewed session
+    auto_activate_enabled: false  # Renew, recreate after expiry, resume last agent
 
-  # The three booleans above are overlaid onto the server settings at startup.
-  # An explicitly exported SESSION_AUTO_RENEW_ENABLED / SESSION_AUTO_RECREATE_ENABLED /
-  # SESSION_AUTO_ACTIVATE_ENABLED
+  # auto_activate_enabled is overlaid onto the server settings at startup.
+  # An explicitly exported SESSION_AUTO_ACTIVATE_ENABLED
   # wins, so containerised deployments stay environment-driven. The numeric
   # session fields are read by the CLI only; set them via SESSION_* env vars
   # to change server behaviour.

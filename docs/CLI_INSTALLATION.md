@@ -266,7 +266,7 @@ memanto agent create AGENT_ID             # Create and activate new agent
 memanto agent list                        # List all agents
 memanto agent activate AGENT_ID           # Activate (or reactivate) session
 memanto agent deactivate                  # End session
-memanto agent auto-activate on            # Resume the last agent automatically
+memanto agent auto-activate on            # Keep the agent active across expiry and restarts
 memanto agent delete AGENT_ID            # Delete agent (prompts to keep/purge cloud memories; --delete-memories / --keep-memories to skip)
 
 # Memory Operations

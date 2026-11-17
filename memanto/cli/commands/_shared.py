@@ -120,8 +120,8 @@ def get_client() -> SdkClient:
         # MEMANTO_SECRET_KEY - which used to break analyze LLM narratives
         # mid-run. Gate it on the same single toggle as every other path
         # (settings, which config.yaml feeds) rather than re-reading the YAML,
-        # so turning auto-recreate off disables it everywhere.
-        if settings.SESSION_AUTO_RECREATE_ENABLED:
+        # so turning auto-activate off disables it everywhere.
+        if settings.SESSION_AUTO_ACTIVATE_ENABLED:
             session_service = get_session_service()
             needs_reactivate = False
             try:

@@ -63,8 +63,6 @@ _SESSION_CONFIG_LIMITS = {
 }
 _SESSION_CONFIG_BOOLEANS = {
     "auto_extend",
-    "auto_renew_enabled",
-    "auto_recreate_enabled",
     "auto_activate_enabled",
 }
 
@@ -525,9 +523,7 @@ class ConfigManager:
             "auto_extend": True,
             "extend_threshold_minutes": 30,
             "warn_before_expiry_minutes": 15,
-            "auto_renew_enabled": True,
             "auto_renew_interval_hours": 6,
-            "auto_recreate_enabled": True,
             "auto_activate_enabled": False,
         }
         defaults.update(self._dict_section(self.load_yaml(), "session"))

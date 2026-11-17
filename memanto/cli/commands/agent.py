@@ -125,8 +125,8 @@ def agent_activate(
         )
         if not config_manager.get_session_config().get("auto_activate_enabled"):
             console.print(
-                "[dim]Tip: run 'memanto agent auto-activate on' to resume your last "
-                "agent automatically and skip this step next time.[/dim]"
+                "[dim]Tip: run 'memanto agent auto-activate on' to keep this agent "
+                "active across expiry and restarts and skip this step next time.[/dim]"
             )
 
     except Exception as e:
@@ -161,11 +161,13 @@ def agent_auto_activate(
         None, help="on or off. Omit to show the current setting."
     ),
 ):
-    """Resume the last active agent automatically when no agent is active.
+    """Keep your agent working without running 'agent activate'.
 
+    When on, Memanto renews a session before it expires, starts a fresh one
+    after it expires, and resumes the last active agent when none is active.
     Applies to every tool on this computer that uses the active agent: the
     CLI, Claude Code and other coding-tool hooks, the MCP server, the desktop
-    widget and the local UI.
+    widget, the editor extensions and the local UI.
     """
     from memanto.app.config import settings
     from memanto.app.services.session_service import get_session_service
@@ -187,11 +189,15 @@ def agent_auto_activate(
     settings.SESSION_AUTO_ACTIVATE_ENABLED = enabled
     if enabled:
         console.print(
-            "[green]OK Auto-activate on.[/green] [dim]Your last active agent resumes "
-            "automatically; 'memanto agent deactivate' pauses it.[/dim]"
+            "[green]OK Auto-activate on.[/green] [dim]Sessions renew and restart "
+            "by themselves and your last active agent resumes automatically; "
+            "'memanto agent deactivate' pauses it.[/dim]"
         )
     else:
-        console.print("[green]OK Auto-activate off.[/green]")
+        console.print(
+            "[green]OK Auto-activate off.[/green] [dim]Sessions now end when they "
+            "expire; run 'memanto agent activate' to start a new one.[/dim]"
+        )
 
 
 @agent_app.command("delete")

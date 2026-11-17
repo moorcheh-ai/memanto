@@ -237,10 +237,11 @@ also pauses it until you activate an agent again.
 memanto agent auto-activate [on|off]
 ```
 
-With auto-activate on, any tool that finds no active agent (the CLI, coding-tool hooks, the
-MCP server, the desktop widget, the editor extensions) resumes the last active agent, so you
-don't have to run `agent activate` each time. It joins that agent's session when it is still
-live and starts a fresh one otherwise. Off by default. Run it without an argument to see the
+One switch that keeps your agent working without `agent activate`. When it is on, sessions
+renew before they expire and restart after they expire, and any tool that finds no active
+agent (the CLI, coding-tool hooks, the MCP server, the desktop widget, the editor extensions)
+resumes the last active agent: it joins that agent's session when it is still live and starts
+a fresh one otherwise. Off by default, so sessions end when they expire. Run it without an argument to see the
 setting and the last active agent. The same switch is on the Settings page of `memanto ui`.
 
 #### `agent delete` - Delete Agent

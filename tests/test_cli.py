@@ -71,7 +71,7 @@ def mock_all_clients():
             mock_cfg.get_server_url.return_value = "http://localhost:8000"
             mock_cfg.get_session_config.return_value = {
                 "default_duration_hours": 6,
-                "auto_renew_enabled": True,
+                "auto_activate_enabled": True,
             }
             mock_cfg.get_cli_config.return_value = {
                 "interactive_mode": True,
