@@ -352,7 +352,7 @@ memanto recall QUERY [OPTIONS]
 - `QUERY` - Search query (semantic search)
 
 **Options:**
-- `--limit, -n INT` - Maximum results (default: `recall_limit` from config, factory default 10)
+- `--limit, -n INT` - Maximum results (default: `recall_limit` from config, factory default 50)
 - `--type, -t TEXT` - Filter by memory type
 - `--min-confidence FLOAT` - Minimum confidence score
 - `--tags TEXT` - Filter by tags (comma-separated)
