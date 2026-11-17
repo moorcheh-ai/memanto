@@ -185,7 +185,7 @@ class Settings(BaseSettings):
     SUMMARY_MODEL: str = "anthropic.claude-sonnet-4-6"
 
     # Recall / Search Configuration
-    RECALL_LIMIT: int = 10  # default top-N results for recall/search
+    RECALL_LIMIT: int = 50  # default top-N results for recall/search
 
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"
