@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { describe, expect, it, vi } from "vitest";
+import { defineMemory } from "eve/memory";
 
 import type { Memanto } from "../../src/index.js";
 import { memantoMemory } from "../../src/integrations/eve.js";
@@ -31,6 +32,35 @@ function turnContext(text: string, scopeKey = SCOPE_KEY) {
     messages: [],
   } as never;
 }
+
+// The public helpers only brand/return definitions; the installed eve build
+// normalizer enforces the lifecycle contract at runtime.
+const { normalizeMemoryDefinition } = await import(
+  new URL("../../internal/authored-definition/memory.js", import.meta.resolve("eve/memory")).href
+);
+
+describe("eve 1.x memory definition compatibility", () => {
+  it.each([true, false])("normalizes the provider with capture=%s", (capture) => {
+    const p = provider(fakeMemanto(), { capture });
+    const definition = defineMemory({ provider: p, scope: "user-1" });
+    expect(normalizeMemoryDefinition(definition, "memanto memory")).toBe(definition);
+    expect(Object.keys(p.recall)).toEqual(["turn.started"]);
+  });
+
+  it("rejects the obsolete post-compaction recall hook", () => {
+    const p = provider(fakeMemanto());
+    const definition = defineMemory({
+      provider: {
+        ...p,
+        recall: { ...p.recall, "compaction.completed": async () => null },
+      },
+      scope: "user-1",
+    } as Parameters<typeof defineMemory>[0]);
+    expect(() => normalizeMemoryDefinition(definition, "memanto memory")).toThrow(
+      /compaction.completed/,
+    );
+  });
+});
 
 describe("memantoMemory", () => {
   it("recalls this scope's memories into context before a turn", async () => {

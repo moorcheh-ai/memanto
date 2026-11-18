@@ -83,6 +83,7 @@ def _out(text: str) -> None:
 
 
 def _read_stdin() -> dict:
+    """Read and parse the JSON hook payload from stdin."""
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return {}
@@ -93,6 +94,7 @@ def _read_stdin() -> dict:
 
 
 def _project_dir(payload: dict) -> str:
+    """Determine the target project directory from the hook payload or cwd."""
     workspace = payload.get("workspace") or {}
     for value in (
         workspace.get("project_dir"),
@@ -112,6 +114,17 @@ def _catch_up_lines(out: str) -> str:
         r"^Since your last session[^\n]*\n(?:- [^\n]*(?:\n|$))+", out, re.MULTILINE
     )
     return match.group(0).rstrip() if match else ""
+def _host(argv: list[str], payload: dict) -> str:
+    """Identify the calling agent (e.g. `--host kimi-code` or stdin client_type)."""
+    for i, arg in enumerate(argv):
+        if arg == "--host" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--host="):
+            return arg.split("=", 1)[1]
+    client_type = payload.get("client_type")
+    if isinstance(client_type, str) and client_type:
+        return client_type
+    return "claude-code"
 
 
 def sync_memory(project_dir: str) -> str | None:
@@ -161,10 +174,12 @@ def sync_memory(project_dir: str) -> str | None:
 
 
 def _settings_path() -> Path:
+    """Return the path to the user's Claude Code settings.json."""
     return Path(os.path.expanduser("~")) / ".claude" / "settings.json"
 
 
 def _statusline_script() -> Path:
+    """Return the path to the bundled statusline script."""
     return (Path(__file__).resolve().parent.parent / "statusline.py").resolve()
 
 
@@ -228,6 +243,7 @@ def install_statusline() -> str | None:
 
 
 def _touch(marker: Path) -> None:
+    """Write the statusline installation marker file."""
     try:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("1", encoding="utf-8")
@@ -237,8 +253,10 @@ def _touch(marker: Path) -> None:
 
 
 def main() -> None:
+    """Run session-start memory sync and optional Claude Code statusline setup."""
     payload = _read_stdin()
     project_dir = _project_dir(payload)
+    host = _host(sys.argv[1:], payload)
 
     if not _claim("sessionstart:" + str(payload.get("session_id") or project_dir)):
         return
@@ -257,13 +275,15 @@ def main() -> None:
         # Ignore errors syncing memory in session start hook
         pass
 
-    try:
-        notice = install_statusline()
-        if notice:
-            lines.append(notice)
-    except Exception:
-        # Ignore errors installing statusline in session start hook
-        pass
+    # The status line is a Claude Code feature; other hosts have no use for it.
+    if host == "claude-code":
+        try:
+            notice = install_statusline()
+            if notice:
+                lines.append(notice)
+        except Exception:
+            # Ignore errors installing statusline in session start hook
+            pass
 
     if lines:
         _out("\n".join(lines))

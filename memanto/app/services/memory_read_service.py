@@ -263,8 +263,27 @@ class MemoryReadService:
                     )
                 search_items.extend(result_items)
 
-            # Format results
-            all_results = [self._format_memory_item(item) for item in search_items]
+            # Validate raw items for data corruption upfront before filtering
+            for item in search_items:
+                if not isinstance(item, dict):
+                    raise MemoryOperationError(
+                        message=(
+                            "Data corruption detected: Received malformed "
+                            "memory item from storage layer."
+                        ),
+                        details={"item_preview": str(item)[:100]},
+                    )
+                metadata = item.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    raise MemoryOperationError(
+                        message=(
+                            "Data corruption detected: Received malformed "
+                            "metadata from storage layer."
+                        ),
+                        details={"item_preview": str(item)[:100]},
+                    )
+
+            candidate_items = search_items
 
             if len(enhanced_queries) > 1:
                 # Scores from the per-type searches share the same backend
@@ -281,22 +300,22 @@ class MemoryReadService:
                     except (TypeError, ValueError):
                         return float("-inf")
 
-                all_results.sort(key=_score, reverse=True)
+                candidate_items.sort(key=_score, reverse=True)
                 unique_results: list[dict[str, Any]] = []
                 seen_ids: set[Any] = set()
-                for memory in all_results:
+                for memory in candidate_items:
                     memory_id = memory.get("id")
                     if memory_id is not None and memory_id in seen_ids:
                         continue
                     if memory_id is not None:
                         seen_ids.add(memory_id)
                     unique_results.append(memory)
-                all_results = unique_results
+                candidate_items = unique_results
 
             # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
             if created_after or created_before:
-                all_results = self._apply_temporal_filter(
-                    all_results,
+                candidate_items = self._apply_temporal_filter(
+                    candidate_items,
                     created_after=created_after,
                     created_before=created_before,
                 )
@@ -305,16 +324,21 @@ class MemoryReadService:
             # above already does this server-side for a single-status request,
             # but records written before the lifecycle field carry no status,
             # so re-apply it here to keep the two paths in agreement.
-            all_results = self._filter_by_status(all_results, status)
+            candidate_items = self._filter_by_status(candidate_items, status)
 
             if min_confidence is not None:
-                all_results = self._filter_by_min_confidence(
-                    all_results, min_confidence
+                candidate_items = self._filter_by_min_confidence(
+                    candidate_items, min_confidence
                 )
 
-            # Apply pagination (offset + limit)
-            paginated_results = all_results[offset : offset + limit]
-            has_more = len(all_results) > offset + limit
+            # Apply pagination (offset + limit) and format ONLY the final slice.
+            # Avoids running expensive presentation formatting (regex text parsing,
+            # tag stripping, object allocations) on candidates discarded by post-filters.
+            paginated_raw = candidate_items[offset : offset + limit]
+            has_more = len(candidate_items) > offset + limit
+            paginated_results = [
+                self._format_memory_item(item) for item in paginated_raw
+            ]
 
             log_memory_activity(
                 op="recall", agent_id=agent_id, count=len(paginated_results)
@@ -323,7 +347,7 @@ class MemoryReadService:
             return {
                 "results": paginated_results,
                 "total_found": len(paginated_results),
-                "total_available": len(all_results),
+                "total_available": len(candidate_items),
                 "offset": offset,
                 "limit": limit,
                 "has_more": has_more,
@@ -783,6 +807,26 @@ class MemoryReadService:
             return f"{base} {joined}".strip() if base else joined
         return base
 
+    @staticmethod
+    def _extract_candidate_field(
+        item: dict[str, Any], field_name: str, flat_field_name: str | None = None
+    ) -> Any:
+        """Extract a field from either nested metadata (API spec) or flat structure.
+
+        Matches the field extraction precedence in ``_format_memory_item``,
+        allowing lightweight pre-filtering and sorting on raw candidates before
+        expensive full document formatting.
+        """
+        metadata = item.get("metadata")
+        flat_name = flat_field_name or field_name
+        if (
+            isinstance(metadata, dict)
+            and field_name in metadata
+            and metadata[field_name] is not None
+        ):
+            return metadata[field_name]
+        return item.get(flat_name)
+
     def _apply_temporal_filter(
         self,
         results: list[dict[str, Any]],
@@ -793,7 +837,7 @@ class MemoryReadService:
         Apply temporal filtering to search results
 
         Args:
-            results: List of formatted memory items
+            results: List of raw candidate items or formatted memory items
             created_after: ISO timestamp - include only memories created after this time
             created_before: ISO timestamp - include only memories created before this time
 
@@ -822,12 +866,16 @@ class MemoryReadService:
 
         filtered = []
         for result in results:
-            raw_created = result.get("created_at")
-            if not raw_created:
+            raw_created = self._extract_candidate_field(result, "created_at")
+            if raw_created is None or raw_created == "":
+                continue
+
+            coerced_created = _coerce_timestamp_str(raw_created)
+            if not coerced_created:
                 continue
 
             try:
-                created_dt = parse_iso_timestamp(raw_created)
+                created_dt = parse_iso_timestamp(coerced_created)
             except (ValueError, AttributeError, TypeError):
                 continue
 
@@ -843,10 +891,13 @@ class MemoryReadService:
     def _filter_by_min_confidence(
         self, results: list[dict[str, Any]], min_confidence: float
     ) -> list[dict[str, Any]]:
-        """Keep only results whose numeric confidence meets the threshold."""
+        """Keep only results whose numeric confidence meets the threshold.
+
+        Works on both raw candidate items and formatted memory items.
+        """
         filtered: list[dict[str, Any]] = []
         for result in results:
-            raw_confidence: Any = result.get("confidence")
+            raw_confidence: Any = self._extract_candidate_field(result, "confidence")
             try:
                 confidence = float(raw_confidence)
             except (TypeError, ValueError, OverflowError):
@@ -859,9 +910,9 @@ class MemoryReadService:
                 filtered.append(result)
         return filtered
 
-    @staticmethod
+    @classmethod
     def _filter_by_status(
-        results: list[dict[str, Any]], status: str
+        cls, results: list[dict[str, Any]], status: str
     ) -> list[dict[str, Any]]:
         """
         Narrow results to one lifecycle state.
@@ -871,8 +922,10 @@ class MemoryReadService:
         reader, not hidden from them. A record with no stored status predates
         the lifecycle field and counts as active.
 
+        Works on both raw candidate items and formatted memory items.
+
         Args:
-            results: List of formatted memory items
+            results: List of raw candidate items or formatted memory items
             status: One of ``all``, ``active``, ``expired``
 
         Returns:
@@ -882,7 +935,9 @@ class MemoryReadService:
             return results
 
         return [
-            result for result in results if (result.get("status") or "active") == status
+            result
+            for result in results
+            if (cls._extract_candidate_field(result, "status") or "active") == status
         ]
 
     def generate_answer(
@@ -987,11 +1042,7 @@ class MemoryReadService:
         # Helper to get field from either nested metadata or flat structure
         def get_field(field_name, flat_field_name=None):
             """Get field from metadata object or fallback to flat field"""
-            flat_name = flat_field_name or field_name
-            # Try metadata object first (API spec), then flat field (fallback)
-            if field_name in metadata and metadata[field_name] is not None:
-                return metadata[field_name]
-            return item.get(flat_name)
+            return self._extract_candidate_field(item, field_name, flat_field_name)
 
         # Parse tags - can be comma-separated string or array. External imports
         # and older documents may include spaces after commas, so normalize

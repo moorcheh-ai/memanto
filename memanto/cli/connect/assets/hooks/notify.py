@@ -64,10 +64,18 @@ def _claim(key: str, ttl: float = 10.0) -> bool:
         return True  # never suppress the hook over an unexpected filesystem error
 
 
-def _emit(message: str | None) -> None:
+def _emit(message: str | None, host: str = "claude-code") -> None:
+    """Write a hook summary message to stdout in the host's expected format."""
     if not message:
         return
-    payload = {"systemMessage": f"{MARK} · {message}"}
+    # Claude Code surfaces PostToolUse output only via the systemMessage JSON
+    # field; other hosts (e.g. Kimi Code) read plain hook stdout instead.
+    if host == "kimi-code":
+        payload_text = f"{MARK} · {message}"
+    else:
+        payload_text = json.dumps(
+            {"systemMessage": f"{MARK} · {message}"}, ensure_ascii=False
+        )
     try:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
@@ -75,10 +83,20 @@ def _emit(message: str | None) -> None:
         # Ignore if stdout reconfigure fails or is unsupported
         pass
     try:
-        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+        sys.stdout.write(payload_text)
     except Exception:
         # Ignore stdout writing errors in hook
         pass
+
+
+def _host(argv: list[str]) -> str:
+    """Identify the calling agent from `--host <name>` / `--host=<name>`."""
+    for i, arg in enumerate(argv):
+        if arg == "--host" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--host="):
+            return arg.split("=", 1)[1]
+    return "claude-code"
 
 
 def _plain(value) -> str:
@@ -97,6 +115,7 @@ def _plain(value) -> str:
 
 
 def _flag(tokens: list[str], name: str) -> str | None:
+    """Extract the value of a CLI flag from tokenized shell arguments."""
     for i, token in enumerate(tokens):
         if token == name and i + 1 < len(tokens):
             return tokens[i + 1]
@@ -106,11 +125,13 @@ def _flag(tokens: list[str], name: str) -> str | None:
 
 
 def _int_after(pattern: str, text: str) -> int | None:
+    """Extract the first integer captured by `pattern` in `text`."""
     match = re.search(pattern, text, re.I)
     return int(match.group(1)) if match else None
 
 
 def describe(command: str, output: str) -> str | None:
+    """Summarize a Memanto CLI command and its stdout into a short notice."""
     try:
         tokens = shlex.split(command)
     except Exception:
@@ -265,10 +286,12 @@ def describe_mcp(tool: str, tool_input: dict, output: str) -> str | None:
 
 
 def main() -> None:
+    """Read a PostToolUse hook payload from stdin and emit a Memanto summary."""
     try:
         payload = json.loads(sys.stdin.read().strip() or "{}")
         if not isinstance(payload, dict):
             return
+        host = _host(sys.argv[1:])
         tool_name = str(payload.get("tool_name") or "")
         if tool_name.startswith(MCP_PREFIX):
             response = _plain(payload.get("tool_response"))
@@ -282,7 +305,8 @@ def main() -> None:
                     tool_name[len(MCP_PREFIX) :],
                     tool_input if isinstance(tool_input, dict) else {},
                     response,
-                )
+                ),
+                host,
             )
             return
         command = (payload.get("tool_input") or {}).get("command") or ""
@@ -291,7 +315,7 @@ def main() -> None:
         response = _plain(payload.get("tool_response"))
         if not _claim("posttooluse:" + command + ":" + response[:200]):
             return
-        _emit(describe(command, response))
+        _emit(describe(command, response), host)
     except Exception:
         # Never disrupt the session over a cosmetic notice.
         pass
