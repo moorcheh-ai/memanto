@@ -614,7 +614,7 @@ class ConfigManager:
         data = self.load_yaml()
         recall = self._dict_section(data, "recall")
 
-        defaults = {"limit": 10, "min_similarity": 0.0}
+        defaults = {"limit": 50, "min_similarity": 0.1}
         defaults.update(recall)
         return defaults
 

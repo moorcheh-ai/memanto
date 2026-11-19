@@ -1792,14 +1792,15 @@ class TestMEMANTOAPI:
             {
                 "id": f"m{i}",
                 "metadata": {
-                    "created_at": f"2025-01-{i + 1:02d}T00:00:00Z",
-                    "updated_at": f"2025-01-{i + 1:02d}T01:00:00Z",
+                    "created_at": f"{day:%Y-%m-%d}T00:00:00Z",
+                    "updated_at": f"{day:%Y-%m-%d}T01:00:00Z",
                     "memory_type": "fact",
                     "status": "active",
                 },
                 "text": f"[FACT] Memory {i}\n\ncontent {i}",
             }
-            for i in range(12)
+            for i in range(55)
+            for day in [datetime(2025, 1, 1) + timedelta(days=i)]
         ]
         mock_moorcheh.documents.fetch_text_data.return_value = {
             "status": "ok",
@@ -1813,16 +1814,21 @@ class TestMEMANTOAPI:
             ("recall/recent", {}),
         ]
 
-        for route, payload in requests:
-            response = await client.post(
-                f"/api/v2/agents/{self.TEST_AGENT_ID}/{route}",
-                headers=headers,
-                json=payload,
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["count"] == 10
-            assert len(data["memories"]) == 10
+        # Ignore the developer's real ~/.memanto/config.yaml so the factory
+        # default recall limit (50) is what gets applied.
+        with patch(
+            "memanto.app.routes.memory._config_manager.load_yaml", return_value={}
+        ):
+            for route, payload in requests:
+                response = await client.post(
+                    f"/api/v2/agents/{self.TEST_AGENT_ID}/{route}",
+                    headers=headers,
+                    json=payload,
+                )
+                assert response.status_code == 200
+                data = response.json()
+                assert data["count"] == 50
+                assert len(data["memories"]) == 50
 
     @pytest.mark.asyncio
     async def test_temporal_recall_rejects_non_positive_config_limit(

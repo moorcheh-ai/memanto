@@ -288,6 +288,18 @@ def install_mcp(
         target = base / ".cursor" / "mcp.json"
         _check_local(project_path, target, is_global)
         return _install_json_server(target, "mcpServers", entry)
+    if client == "kimi-code":
+        from memanto.cli.connect.agent_registry import KIMI_CODE
+
+        if is_global:
+            config_dir = KIMI_CODE.resolve_config_global_dir() or (
+                Path.home() / ".kimi-code"
+            )
+            target = config_dir / "mcp.json"
+        else:
+            target = project_path / ".kimi-code" / "mcp.json"
+            _check_local(project_path, target, is_global)
+        return _install_json_server(target, "mcpServers", entry)
     if client == "github-copilot":
         target = (
             _vscode_user_mcp_path()
@@ -322,6 +334,25 @@ def remove_mcp(client: str, project_path: Path, is_global: bool) -> str | None:
         target = base / ".cursor" / "mcp.json"
         _check_local(project_path, target, is_global)
         return _remove_json_server(target, "mcpServers")
+    if client == "kimi-code":
+        from memanto.cli.connect.agent_registry import KIMI_CODE
+
+        if is_global:
+            config_dir = KIMI_CODE.resolve_config_global_dir() or (
+                Path.home() / ".kimi-code"
+            )
+            target = config_dir / "mcp.json"
+        else:
+            target = project_path / ".kimi-code" / "mcp.json"
+            _check_local(project_path, target, is_global)
+        result = _remove_json_server(target, "mcpServers")
+        if not is_global:
+            try:
+                if target.parent.exists() and not any(target.parent.iterdir()):
+                    target.parent.rmdir()
+            except OSError:
+                pass
+        return result
     if client == "github-copilot":
         target = (
             _vscode_user_mcp_path()

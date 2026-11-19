@@ -29,7 +29,7 @@ def test_config_setters_recover_malformed_sections(tmp_path):
     assert manager.get_session_config()["default_duration_hours"] == 6
     assert manager.get_cli_config()["interactive_mode"] is True
     assert manager.get_answer_config()["model"] == "anthropic.claude-sonnet-4-6"
-    assert manager.get_recall_config() == {"limit": 10, "min_similarity": 0.0}
+    assert manager.get_recall_config() == {"limit": 50, "min_similarity": 0.1}
 
     manager.set_server_config("127.0.0.1", 9999)
     manager.set_cli_config(interactive_mode=False, smart_parse=False)
