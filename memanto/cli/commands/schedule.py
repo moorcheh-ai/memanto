@@ -63,7 +63,7 @@ def schedule_run_internal(
         _error(
             "scheduled job uses the LLM Answer endpoint, which is not "
             "available on the on-prem backend.",
-            hint="Switch with: memanto config backend cloud",
+            hint="Switch with: memanto use moorcheh",
         )
 
     start = time.perf_counter()

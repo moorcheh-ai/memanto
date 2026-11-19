@@ -25,7 +25,7 @@
   <a href="https://docs.memanto.ai"><strong>Docs</strong></a> ·
   <a href="https://arxiv.org/abs/2604.22085"><strong>Paper</strong></a> ·
   <a href="https://discord.com/invite/CyxRFQSQ3p"><strong>Discord</strong></a> ·
-  <a href="https://memanto.ai"><strong>Memanto Cloud waitlist</strong></a>
+  <a href="https://console.memanto.ai"><strong>Memanto Cloud</strong></a>
 </p>
 
 <p align="center">
@@ -45,11 +45,21 @@
 
 ## Give your agent a memory in 60 seconds
 
+**Let your coding agent set it up.** Paste this into Claude Code, Cursor, Codex, or any coding agent:
+
+```text
+Read https://memanto.ai/start.md and set me up on Memanto
+```
+
+Or by hand:
+
 ```bash
 pip install memanto
-memanto                        # pick "On-Prem" (Docker, no account) or "Cloud" (free key)
-memanto connect claude-code    # or cursor, codex, copilot, gemini-cli, windsurf… 15 tools
+memanto login      # Memanto Cloud: approve in your browser, no key to copy
+memanto connect    # pick your tools (claude-code, cursor, codex, github-copilot… 15 tools) and the agent they share
 ```
+
+Prefer local? Run `memanto` and pick **Memanto local** (on-prem with Docker, or a free Moorcheh key).
 
 That's the whole setup. No code changes, no wrapper, no vector database to run. Your agent now remembers across sessions, and so does every other agent you connect.
 
@@ -252,7 +262,7 @@ Narrow recall with `--active` or `--expired`. Point-in-time recall (`--as-of`) s
 - **Scoped by default.** Each agent gets its own namespace. Your production-ops agent doesn't read your scratch experiments.
 - **Auditable.** Every belief can be traced to where it entered the fleet and when. That's the difference between an auditable memory and a black box.
 - **Forgetting is a decision, not a side effect.** Expiry is policy-driven and reversible. Deletion is a separate, explicit act.
-- **Deploy it your way.** pip, Docker, Compose, systemd or Kubernetes, against cloud or on-prem. `memanto config backend` switches between them, and your memory comes with you.
+- **Deploy it your way.** pip, Docker, Compose, systemd or Kubernetes, against cloud or on-prem. `memanto use` switches between them, and `memanto migrate to-cloud` moves your memories up to Memanto Cloud.
 
 **No lock-in, because there's nothing to lock.** `memanto memory export --okf` writes the [Open Knowledge Format](https://docs.memanto.ai/integrations/okf): plain Markdown you can read, diff, grep and commit. OKF is an open format that any framework or vendor can implement, our competitors included, on purpose. `memanto migrate` imports from Mem0, Letta, Supermemory, Zep, Hindsight, Langfuse or any OKF bundle.
 
@@ -291,33 +301,40 @@ Memanto is a mature project, not a weekend experiment.
 
 ---
 
-## ☁️ Memanto Cloud — coming soon
+## ☁️ Memanto Cloud
 
-Everything above, hosted. Sign in from your browser, with no Docker, no API keys to juggle, and backups handled for you. **[Get notified at memanto.ai →](https://memanto.ai)**
+Everything above, hosted. Sign in from your browser with `memanto login`, with no Docker, no API keys to juggle, and backups handled for you. Already on Memanto local? `memanto login` offers to move your memories up.
 
-Until then, the free cloud key gives you 100K operations, and on-prem costs nothing.
+Prefer to stay local? The free Moorcheh key gives you 100K operations, and on-prem costs nothing.
 
 ---
 
 <details>
-<summary><strong>Install options: fully local vs. free cloud</strong></summary>
+<summary><strong>Install options: Memanto Cloud vs. Memanto local</strong></summary>
 <br>
 
-**Fully local.** No account, no API key, nothing leaves your machine. Requires Docker.
+**Memanto Cloud (default).** Sign in with your browser, no key to copy.
 
 ```bash
 pip install memanto
-memanto           # choose "On-Prem"; it walks you through Docker + Ollama
+memanto login     # or let your agent do it: "Read https://memanto.ai/start.md and set me up on Memanto"
 ```
 
-**Free cloud.** No card, about 60 seconds.
+**Memanto local, fully on-prem.** No account, no API key, nothing leaves your machine. Requires Docker.
 
 ```bash
 pip install memanto
-memanto           # choose "Cloud" and paste your free API key
+memanto           # choose "Memanto local", then "Moorcheh on-prem"; it walks you through Docker + Ollama
 ```
 
-Get a free key at [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) (100K free operations). Switch any time with `memanto config backend`.
+**Memanto local with Moorcheh Cloud.** Free key, no card.
+
+```bash
+pip install memanto
+memanto           # choose "Memanto local", then "Moorcheh Cloud" and paste your free API key
+```
+
+Get a free key at [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) (100K free operations). Switch any time with `memanto use cloud`, `memanto use moorcheh` or `memanto use on-prem`.
 
 **Other languages:**
 
@@ -360,10 +377,10 @@ go get github.com/moorcheh-ai/memanto/sdks/go  # Go
 | Advanced recall | `memanto recall` | Semantic search plus temporal queries (`--as-of`, `--changed-since`), with filters by type, tag and state. |
 | Grounded answers | `memanto answer` | Answers generated from retrieved memory. |
 | Daily intelligence | `memanto daily-summary`, `memanto conflicts` | Summaries, contradiction detection, interactive resolution. |
-| Sessions & automation | `memanto session ...`, `memanto schedule ...` | Inspect sessions, enable the nightly run. |
+| Sessions & automation | `memanto session ...`, `memanto agent auto-activate`, `memanto schedule ...` | Inspect sessions, keep your agent active without re-activating, enable the nightly run. |
 | Export & sync | `memanto memory export`, `memanto memory sync` | Export structured Markdown (`--okf` for a portable bundle), or inject standing instructions, preferences and goals into your coding agents' instruction files. |
 | Import & migration | `memanto migrate` | Import from Mem0, Letta, Supermemory, Zep, Hindsight, Langfuse or an OKF bundle. |
-| Configuration | `memanto config show`, `memanto config backend` | Key status, active agent and session, server settings, backend switching. |
+| Configuration | `memanto config show`, `memanto use` | Key status, active agent and session, server settings, backend switching. |
 | Tool integration | `memanto connect ...` | Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, Augment, Kimi Code, Pi, or `connect multi` for several at once. |
 
 ```bash

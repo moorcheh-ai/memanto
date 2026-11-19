@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Memanto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Memanto style guide v1.0 tokens (console names). Light default, dark by system. */
+  :root {
+    color-scheme: light;
+    --bg: #fbfaff; --bg-subtle: #f6f4fc;
+    --surface: #ffffff; --surface-hover: #f8f6fd; --surface-sunken: #f6f4fc;
+    --border: rgba(28,22,58,.09); --border-soft: rgba(28,22,58,.06); --border-strong: rgba(107,78,173,.32);
+    --ink-rgb: 28, 22, 58;
+    --text: #16131f; --text-2: #3f3b52; --text-3: #5c5872; --text-4: #8a86a0;
+    --accent: #6b4ead; --accent-hover: #5534a5; --accent-text: #5b3fa0;
+    --accent-soft: rgba(107,78,173,.10); --accent-soft-strong: rgba(107,78,173,.18);
+    --accent-grad: linear-gradient(180deg, #7a5cc0 0%, #5534a5 100%);
+    --brand-rule: linear-gradient(90deg, #00d2fe, #6b4ead);
+    --success: #15803d; --warning: #b45309; --danger: #dc2626;
+    --shadow-xs: 0 1px 2px rgba(46,32,98,.05);
+    --shadow-btn: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px -4px rgba(85,52,165,.55);
+    --font: "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --logo: #5534a5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #060608; --bg-subtle: #09090b;
+      --surface: #0f0d18; --surface-hover: #15131f; --surface-sunken: #0a0a0f;
+      --border: rgba(255,255,255,.08); --border-soft: rgba(255,255,255,.05); --border-strong: rgba(157,122,214,.4);
+      --ink-rgb: 255, 255, 255;
+      --text: #e8e8f0; --text-2: #b4b2c8; --text-3: #8f8ca8; --text-4: #6a6782;
+      --accent: #a888e0; --accent-hover: #c4b0f0; --accent-text: #c4b0f0;
+      --accent-soft: rgba(157,122,214,.12); --accent-soft-strong: rgba(157,122,214,.2);
+      --success: #7ee787; --warning: #fbcb6f; --danger: #ff8a80;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    font: 500 12.5px/1.55 var(--font);
+    color: var(--text);
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { background: var(--logo); }
+  body.open { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- the ant ---------- */
+  .ant svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .eye-closed { opacity: 0; }
+
+  /* ---------- collapsed: the tile ---------- */
+  .tile {
+    position: fixed; inset: 0; border: 0; padding: 0; margin: 0;
+    background: var(--logo); color: #fff; cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .tile:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+  body.open .tile { display: none; }
+  .tile .ant { width: 26px; height: 33px; margin-top: 2px; }
+  .tile .badge-dot {
+    position: absolute; bottom: 7px; right: 7px; width: 8px; height: 8px; border-radius: 50%;
+    background: #b4b2c8; box-shadow: 0 0 0 2px var(--logo);
+  }
+  /* Dark-theme status colors: they sit on the purple tile in both themes. */
+  .badge-dot.ok { background: #7ee787; } .badge-dot.warn { background: #fbcb6f; } .badge-dot.bad { background: #ff8a80; }
+
+  /* Every 9s: a wink, then a wave with the right arm. */
+  .tile .wink-open   { animation: wink-open 9s steps(1) infinite; }
+  .tile .wink-closed { animation: wink-closed 9s steps(1) infinite; }
+  .tile .arm {
+    transform-box: view-box; transform-origin: 81px 27px;
+    animation: wave 9s var(--ease) infinite;
+  }
+  body.asleep .tile .ant { opacity: .55; }
+  body.asleep .tile .eye-open { opacity: 0; }
+  body.asleep .tile .eye-closed { opacity: 1; }
+  body.asleep .tile .wink-open, body.asleep .tile .wink-closed, body.asleep .tile .arm { animation: none; }
+
+  @keyframes wink-open   { 0% { opacity: 1; } 20% { opacity: 0; } 22.5% { opacity: 1; } }
+  @keyframes wink-closed { 0% { opacity: 0; } 20% { opacity: 1; } 22.5% { opacity: 0; } }
+  @keyframes wave {
+    0%, 28%  { transform: rotate(0deg); }
+    33%      { transform: rotate(-150deg); }
+    37%      { transform: rotate(-115deg); }
+    41%      { transform: rotate(-150deg); }
+    45%      { transform: rotate(-115deg); }
+    49%      { transform: rotate(-150deg); }
+    55%, 100% { transform: rotate(0deg); }
+  }
+
+  /* ---------- expanded: the panel ---------- */
+  .panel { display: none; flex-direction: column; height: 100%; animation: rise .22s var(--ease); }
+  body.open .panel { display: flex; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+
+  header {
+    display: flex; align-items: center; gap: 8px; height: 46px; flex: none;
+    padding: 0 8px 0 14px; border-bottom: 1px solid var(--border-soft);
+  }
+  header .ant { width: 15px; height: 19px; color: var(--accent); flex: none; }
+  header .ant .wink-open   { animation: wink-open 5s steps(1) infinite; }
+  header .ant .wink-closed { animation: wink-closed 5s steps(1) infinite; }
+  .wordmark { font-weight: 600; font-size: 14px; letter-spacing: -0.045em; line-height: 1; }
+  header .grow { flex: 1; align-self: stretch; }
+
+  .badge {
+    display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    background: rgba(var(--ink-rgb), .05); color: var(--text-3);
+  }
+  .badge.accent { background: var(--accent-soft); color: var(--accent-text); }
+  .badge.ok   { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); }
+  .badge.warn { background: color-mix(in srgb, var(--warning) 10%, transparent); color: var(--warning); }
+  .badge.bad  { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); }
+
+  .icon-btn {
+    width: 28px; height: 28px; border: 0; border-radius: 6px; padding: 0; flex: none;
+    background: transparent; color: var(--text-3); cursor: pointer;
+    display: grid; place-items: center; transition: background .15s var(--ease), color .15s var(--ease);
+  }
+  .icon-btn:hover { background: rgba(var(--ink-rgb), .045); color: var(--text); }
+  .icon-btn.power:hover { color: var(--danger); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  main { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+
+  /* minmax(0, 1fr): a grid column otherwise grows to its widest content (a
+     <select> is as wide as its longest agent id), pushing the row and the
+     meter past the window edge. */
+  .section { padding: 12px 14px 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .overline {
+    font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-4);
+  }
+  .agent-row { display: flex; gap: 8px; align-items: center; }
+  select, input {
+    flex: 1; min-width: 0; height: 34px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font: 500 12.5px var(--font); box-shadow: var(--shadow-xs);
+    transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  select { width: 100%; font-weight: 600; cursor: pointer; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+  select:hover, input:hover { border-color: rgba(var(--ink-rgb), .18); }
+  select:focus, input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+  .btn {
+    height: 32px; padding: 0 14px; border-radius: 999px; flex: none;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font: 600 12px var(--font); letter-spacing: -0.01em; cursor: pointer; box-shadow: var(--shadow-xs);
+    transition: transform .18s var(--ease), border-color .15s var(--ease), color .15s var(--ease);
+  }
+  .btn:hover { border-color: var(--border-strong); color: var(--accent-text); transform: translateY(-1px); }
+  .btn:active { transform: none; }
+  .btn.primary { background: var(--accent-grad); border-color: transparent; color: #fff; box-shadow: var(--shadow-btn); }
+  .btn.primary:hover { color: #fff; }
+  .btn:disabled, input:disabled, select:disabled { opacity: .55; cursor: default; transform: none; }
+
+  .session { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-3); min-height: 20px; }
+  .session .left { font-variant-numeric: tabular-nums; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session .badge { flex: none; }
+  .meter { height: 6px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; }
+  .meter > span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--brand-rule);
+                  transition: width .25s var(--ease); }
+  .meter.warn > span { background: var(--warning); } .meter.bad > span { background: var(--danger); }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 14px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; min-width: 0;
+  }
+  .stat b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat span { display: block; margin-top: 1px; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .chat {
+    flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; border-top: 1px solid var(--border-soft);
+    display: flex; flex-direction: column; gap: 8px; user-select: text;
+  }
+  .empty { margin: auto; text-align: center; color: var(--text-3); font-size: 12px; max-width: 220px; text-wrap: pretty; }
+  .empty b { display: block; color: var(--text); font-weight: 600; font-size: 13px; letter-spacing: -0.02em; margin-bottom: 2px; }
+  .msg { max-width: 88%; padding: 8px 11px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+  .msg.q { align-self: flex-end; background: var(--accent-grad); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.a { align-self: flex-start; background: var(--surface-sunken); border: 1px solid var(--border-soft); border-bottom-left-radius: 4px; }
+  .msg.err {
+    align-self: stretch; max-width: none; border-radius: 10px; color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  }
+  .msg code { font: 500 11.5px var(--font); background: var(--accent-soft); padding: 0 4px; border-radius: 4px; }
+  .typing span { display: inline-block; width: 5px; height: 5px; margin: 0 1px; border-radius: 50%;
+                 background: var(--text-4); animation: dot 1s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+  form { display: flex; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--border-soft); background: var(--surface); flex: none; }
+  form .btn.primary { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; }
+  form .btn.primary svg { width: 15px; height: 15px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body class="asleep">
+  <!-- The ant (style guide §02): 96 x 120, single flat color via currentColor.
+       The right side block is a separate .arm so the tile can wave it. -->
+  <template id="ant-svg">
+    <svg viewBox="0 0 96 120" fill="currentColor" aria-hidden="true">
+      <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z"/>
+      <rect class="arm" x="78" y="24" width="6" height="24"/>
+      <g class="eye-open wink-open"><polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="42,32 44,36 42,40 40,36"/></g>
+      <g class="eye-closed wink-closed"><rect x="36" y="34" width="12" height="4"/></g>
+      <g class="eye-open"><polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="54,32 56,36 54,40 52,36"/></g>
+      <g class="eye-closed"><rect x="48" y="34" width="12" height="4"/></g>
+      <path d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z"/>
+    </svg>
+  </template>
+
+  <button class="tile pywebview-drag-region" id="tile" title="Memanto · click to open, drag to move">
+    <span class="ant"></span>
+    <span class="badge-dot" id="badge"></span>
+  </button>
+
+  <section class="panel" aria-label="Memanto">
+    <header>
+      <span class="ant"></span>
+      <span class="wordmark">Memanto</span>
+      <span class="badge accent" id="backend">…</span>
+      <span class="grow pywebview-drag-region" title="Drag to move"></span>
+      <button class="icon-btn" id="refresh" title="Refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+      </button>
+      <button class="icon-btn" id="hide" title="Minimize">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+      </button>
+      <button class="icon-btn power" id="quit" title="Turn widget off">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>
+      </button>
+    </header>
+
+    <main>
+      <div class="section">
+        <div class="overline">Active agent</div>
+        <div class="agent-row">
+          <select id="agents" title="Active agent, shared with the CLI and your tools"></select>
+          <button class="btn" id="reset" title="Start a fresh session for this agent">Reset</button>
+        </div>
+        <div class="session">
+          <span class="badge" id="status">…</span>
+          <span class="left" id="session">Loading…</span>
+        </div>
+        <div class="meter" id="meter"><span></span></div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="chat" id="chat">
+        <div class="empty" id="hint"><b>Ask your memory</b>Anything your agent remembered, answered from its memories.</div>
+      </div>
+
+      <form id="ask">
+        <input id="question" placeholder="What did we decide about…" autocomplete="off" maxlength="2000">
+        <button class="btn primary" id="send" title="Ask">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </form>
+    </main>
+  </section>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  for (const slot of document.querySelectorAll(".ant")) {
+    slot.append($("ant-svg").content.cloneNode(true));
+  }
+
+  // Full names (e.g. "Memanto local with Moorcheh Cloud") don't fit the header; they show on hover.
+  const SHORT_BACKEND = { "memanto-cloud": "Cloud", "cloud": "Local", "on-prem": "On-prem" };
+
+  let api = null;
+  let current = null;        // last state()
+  let remaining = 0;         // session seconds left, counted down locally
+  let duration = 0;          // full session length, for the meter
+  let busy = 0;
+
+  async function call(name, ...args) {
+    busy += 1;
+    try { return await api[name](...args); }
+    catch (e) { return { error: String((e && e.message) || e) }; }
+    finally { busy -= 1; }
+  }
+
+  function fmtNum(n) {
+    if (n === null || n === undefined) return "—";
+    if (n >= 10000) return (n / 1000).toFixed(n >= 100000 ? 0 : 1) + "k";
+    return n.toLocaleString();
+  }
+
+  function fmtLeft(s) {
+    if (s <= 0) return "expired";
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? `${h}h ${m}m left` : `${m}m left`;
+  }
+
+  function fmtAgo(iso) {
+    if (!iso) return "—";
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (s < 60) return "now";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
+
+  function renderSession() {
+    let tone = "", label, text;
+    if (!current) {
+      label = "…"; text = "Loading…";
+    } else if (current.error) {
+      tone = "bad"; label = "Error"; text = current.error;
+    } else if (!current.agent) {
+      label = "Idle"; text = "Pick an agent above";
+    } else {
+      tone = remaining > 900 ? "ok" : remaining > 0 ? "warn" : "bad";
+      label = remaining > 0 ? "Active" : "Expired";
+      text = fmtLeft(remaining);
+    }
+    $("status").className = "badge " + tone;
+    $("status").textContent = label;
+    $("session").textContent = text;
+    $("session").title = text;
+    $("badge").className = "badge-dot " + tone;
+    $("tile").title = (current && current.agent ? current.agent.id + " · " : "") + text;
+
+    const meter = $("meter");
+    meter.className = "meter " + (tone === "ok" ? "" : tone);
+    meter.firstElementChild.style.width = duration > 0 ? Math.min(100, (remaining / duration) * 100) + "%" : "0";
+    document.body.classList.toggle("asleep", !current || !!current.error || !current.agent);
+  }
+
+  function stat(value, label) {
+    const d = document.createElement("div");
+    d.className = "stat";
+    const b = document.createElement("b"); b.textContent = value; b.title = value;
+    const s = document.createElement("span"); s.className = "overline"; s.textContent = label;
+    d.append(b, s);
+    return d;
+  }
+
+  function renderStats() {
+    const box = $("stats");
+    box.replaceChildren();
+    const a = current && current.agent;
+    const acct = current && current.account;
+    box.append(stat(a ? fmtNum(a.memory_count) : "—", "Memories"));
+    if (acct) {
+      const u = (acct.usage || {}).api_calls || {};
+      const left = u.limit == null ? null : Math.max(u.limit - (u.used || 0), 0);
+      box.append(stat(acct.plan || "—", "Plan"));
+      box.append(left == null ? stat(fmtNum(u.used || 0), "Calls used") : stat(fmtNum(left), "Calls left"));
+    } else {
+      box.append(stat(a ? fmtNum(a.session_count) : "—", "Sessions"));
+      box.append(stat(a ? fmtAgo(a.last_session) : "—", "Last used"));
+    }
+  }
+
+  function renderAgents(list) {
+    const sel = $("agents");
+    sel.replaceChildren();
+    const active = current && current.agent ? current.agent.id : null;
+    if (!active) {
+      const o = document.createElement("option");
+      o.value = ""; o.textContent = list.length ? "Choose an agent…" : "No agents yet";
+      sel.append(o);
+    }
+    for (const a of list) {
+      const o = document.createElement("option");
+      o.value = a.id; o.textContent = a.id;
+      if (a.description) o.title = a.description;
+      sel.append(o);
+    }
+    sel.value = active || "";
+    sel.title = active ? `${active} (active for the CLI and your tools)` : "Choose an agent";
+  }
+
+  function renderControls() {
+    const hasAgent = !!(current && current.agent);
+    $("reset").disabled = !hasAgent;
+    $("question").disabled = !hasAgent;
+    $("send").disabled = !hasAgent;
+    $("backend").textContent = (current && SHORT_BACKEND[current.backend]) || "…";
+    $("backend").title = (current && current.backend_label) || "";
+  }
+
+  function applyState(s) {
+    current = s;
+    remaining = s && s.session ? s.session.remaining_seconds : 0;
+    duration = s && s.session ? s.session.duration_seconds : 0;
+    renderSession(); renderStats(); renderControls();
+  }
+
+  async function refresh() {
+    const [s, a] = await Promise.all([call("state"), call("agents")]);
+    applyState(s);
+    renderAgents(a && a.agents ? a.agents : []);
+    if (a && a.error && !s.error) addMsg("err", a.error);
+  }
+
+  // Answers come back as light markdown: render **bold**, *italic* and `code`
+  // on HTML-escaped text, so nothing in an answer can inject markup.
+  function lightMarkdown(text) {
+    const esc = text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    return esc
+      .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>");
+  }
+
+  function addMsg(cls, text) {
+    const hint = $("hint");
+    if (hint) hint.remove();
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    if (cls === "a") d.innerHTML = lightMarkdown(text);
+    else d.textContent = text;
+    $("chat").append(d);
+    d.scrollIntoView({ block: "end" });
+    return d;
+  }
+
+  async function open() {
+    await api.expand();
+    document.body.classList.add("open");
+    refresh();
+    if (!$("question").disabled) $("question").focus();
+  }
+
+  async function close() {
+    document.body.classList.remove("open");
+    await api.collapse();
+  }
+
+  // The tile is also the drag handle: only a press that did not move opens it.
+  let downAt = null;
+  $("tile").addEventListener("mousedown", (e) => { downAt = [e.screenX, e.screenY]; });
+  $("tile").addEventListener("click", (e) => {
+    if (downAt && Math.hypot(e.screenX - downAt[0], e.screenY - downAt[1]) > 4) return;
+    open();
+  });
+  $("hide").addEventListener("click", close);
+  $("quit").addEventListener("click", () => api.quit());
+  $("refresh").addEventListener("click", refresh);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.body.classList.contains("open")) close();
+  });
+
+  $("agents").addEventListener("change", async (e) => {
+    const id = e.target.value;
+    if (!id) return;
+    const s = await call("switch", id);
+    if (s && s.error) { addMsg("err", s.error); await refresh(); return; }
+    applyState(s);
+    const placeholder = $("agents").querySelector('option[value=""]');
+    if (placeholder) placeholder.remove();
+  });
+
+  $("reset").addEventListener("click", async () => {
+    const s = await call("reset");
+    if (s && s.error) { addMsg("err", s.error); return; }
+    applyState(s);
+  });
+
+  $("ask").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = $("question").value.trim();
+    if (!q) return;
+    $("question").value = "";
+    addMsg("q", q);
+    const pending = addMsg("a typing", "");
+    pending.innerHTML = "<span></span><span></span><span></span>";
+    const r = await call("ask", q);
+    pending.remove();
+    if (r && r.error) addMsg("err", r.error);
+    else addMsg("a", (r && r.answer) || "No answer.");
+  });
+
+  setInterval(() => {
+    if (remaining > 0) { remaining -= 1; if (remaining % 60 === 0) renderSession(); }
+  }, 1000);
+  // Pick up switches/resets made from the CLI or other tools while the panel
+  // is open (on Memanto Cloud each state() also reads the account).
+  setInterval(() => {
+    if (api && !busy && document.body.classList.contains("open")) call("state").then(applyState);
+  }, 30000);
+
+  window.addEventListener("pywebviewready", () => {
+    api = window.pywebview.api;
+    call("state").then(applyState);
+  });
+</script>
+</body>
+</html>

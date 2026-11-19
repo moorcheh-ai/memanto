@@ -386,7 +386,7 @@ def get_current_session(
 
     except SessionExpiredError as e:
         # The presented token belongs to a session that has fully lapsed.
-        # With SESSION_AUTO_RECREATE_ENABLED the caller gets a fresh session
+        # With SESSION_AUTO_ACTIVATE_ENABLED the caller gets a fresh session
         # on this first operation — but only after passing the same
         # management-access check as explicit activation (valid API key or
         # loopback origin), so a stolen stale token alone is worthless.

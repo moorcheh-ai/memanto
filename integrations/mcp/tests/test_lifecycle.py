@@ -47,7 +47,11 @@ class _FakeSdkClient:
 @pytest.fixture
 def lifecycle(fake_api_key: str, monkeypatch: pytest.MonkeyPatch) -> MemantoLifecycle:
     _FakeSdkClient.instances.clear()
-    monkeypatch.setattr(lifecycle_module, "SdkClient", _FakeSdkClient)
+    monkeypatch.setattr(
+        lifecycle_module,
+        "build_client",
+        lambda moorcheh_api_key=None: _FakeSdkClient(moorcheh_api_key),
+    )
     return MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
 
 
@@ -228,7 +232,10 @@ def test_ensure_ready_uses_distinct_clients_per_agent(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Different MCP agents must not share SdkClient session state."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = set()
@@ -255,7 +262,10 @@ def test_repeated_agent_reuses_its_scoped_client(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Repeated calls for one agent should reuse that agent's client."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = set()
@@ -273,7 +283,10 @@ def test_missing_agent_is_created_with_scoped_client(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Auto-create should happen on the same scoped client returned later."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = {"agent-a"}
     FakeSdkClient.fail_activate_agents = set()
@@ -292,7 +305,10 @@ def test_failed_first_activation_does_not_cache_new_client(
     fake_api_key: str, monkeypatch
 ) -> None:
     """A failed readiness check should not leave a new scoped client cached."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = {"agent-a"}
@@ -316,7 +332,10 @@ def test_batch_remember_validates_before_lifecycle_side_effects(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Invalid batch payloads should fail before creating or activating agents."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = set()
     FakeSdkClient.fail_activate_agents = set()
@@ -341,7 +360,10 @@ def test_auto_create_is_limited_to_default_agent(
     fake_api_key: str, monkeypatch
 ) -> None:
     """Only the configured default agent can be auto-created; arbitrary IDs fail."""
-    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    monkeypatch.setattr(
+        "memanto_mcp.lifecycle.build_client",
+        lambda moorcheh_api_key=None: FakeSdkClient(moorcheh_api_key),
+    )
     FakeSdkClient.instances = []
     FakeSdkClient.missing_agents = {"project-agent", "attacker-agent"}
     FakeSdkClient.fail_activate_agents = set()
@@ -362,3 +384,62 @@ def test_auto_create_is_limited_to_default_agent(
     client = lifecycle.ensure_ready("project-agent")
     assert client.created_agents == ["project-agent"]
     assert client.activated_agents == ["project-agent"]
+
+
+# --------------------------------------------------------------------------- #
+# Following the agent active on this computer
+# --------------------------------------------------------------------------- #
+
+
+def test_omitted_agent_follows_the_active_agent(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch, session_service
+) -> None:
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "connect-time-agent")
+    lc = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+    assert lc.resolve_agent_id(None) == "connect-time-agent"
+
+    session_service.create_session("cli-agent")
+    assert lc.resolve_agent_id(None) == "cli-agent"
+    assert lc.resolve_agent_id("explicit") == "explicit"
+
+
+def test_no_agent_anywhere_names_every_way_to_fix_it(
+    fake_api_key: str,
+) -> None:
+    from memanto_mcp.lifecycle import NoAgentConfiguredError
+
+    lc = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+    with pytest.raises(NoAgentConfiguredError, match="memanto agent activate"):
+        lc.resolve_agent_id(None)
+
+
+def test_joins_the_live_session_instead_of_replacing_it(
+    lifecycle: MemantoLifecycle, session_service
+) -> None:
+    live = session_service.create_session("agent-a")
+
+    client = lifecycle.client_for("agent-a")
+
+    assert client.activation_calls == 0
+    assert client.session_token == live.session_token
+    # The CLI's token is still the live one: nobody was signed out.
+    assert session_service.get_session("agent-a").session_token == live.session_token
+
+
+def test_picks_up_a_session_another_tool_replaced(
+    lifecycle: MemantoLifecycle, session_service
+) -> None:
+    session_service.create_session("agent-a")
+    client = lifecycle.client_for("agent-a")
+
+    replaced = session_service.create_session("agent-a")  # `memanto agent activate`
+    assert lifecycle.client_for("agent-a") is client
+    assert client.session_token == replaced.session_token
+    assert client.activation_calls == 0
+
+
+def test_activates_when_the_agent_has_no_live_session(
+    lifecycle: MemantoLifecycle,
+) -> None:
+    client = lifecycle.client_for("agent-a")
+    assert client.activation_calls == 1

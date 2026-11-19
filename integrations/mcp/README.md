@@ -138,7 +138,7 @@ All config is via environment variables (load order: process env →
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `MOORCHEH_API_KEY` | **yes** | — | Moorcheh API key. |
-| `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Default agent. When set, tool calls may omit `agent_id`. |
+| `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Fallback agent. Tool calls that omit `agent_id` use the agent active on this computer (`memanto agent activate`, shared with the CLI and other tools), else this one. |
 | `MEMANTO_AGENT_PATTERN` | no | `tool` | Pattern (`support`/`project`/`tool`) used when auto-creating the default agent. |
 | `MEMANTO_AGENT_AUTO_CREATE` | no | `true` | Create the default agent on first use if missing. Explicit non-default agents must already exist. |
 | `MEMANTO_SESSION_DURATION_HOURS` | no | server default (6) | Session lifetime in hours. |
@@ -185,8 +185,10 @@ clients.
   first tool call.
 - On the first memory tool invocation for a given agent, the server
   ensures the agent exists (auto-creates if needed) and activates a JWT
-  session. Sessions auto-renew before expiry, so long-running MCP
-  connections never hit a session-expired error mid-conversation.
+  session. With `memanto agent auto-activate on`, sessions renew before
+  expiry and restart after it, so long-running MCP connections never hit a
+  session-expired error mid-conversation. With it off, a lapsed session
+  returns an error asking you to run `memanto agent activate`.
 - The server intentionally keeps the session alive on shutdown: JWT
   sessions are TTL-bound and other Memanto clients (CLI, REST) may want
   to share them.

@@ -2,7 +2,11 @@
 MEMANTO CLI - Memory management commands (export, sync).
 """
 
+import json
 import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 import typer
 from rich.panel import Panel
@@ -11,6 +15,13 @@ from rich.table import Table
 from memanto.app.services.memory_export_service import (
     MEMORY_TYPE_META,
     MEMORY_TYPE_ORDER,
+)
+from memanto.app.utils.atomic_write import atomic_write_text
+from memanto.app.utils.client_identity import (
+    detect_client,
+    display_for,
+    normalize_tool,
+    tool_from_source,
 )
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
@@ -204,6 +215,68 @@ def _check_template_updates(project_dir: str):
             print(f"Failed to check instruction update status: {e}")
 
 
+_CATCH_UP_LIMIT = 20
+_CATCH_UP_CHARS = 300
+
+
+def _print_catch_up(client: Any, agent_id: str, project_dir: str) -> None:
+    """Print the memories saved since the last catch-up, then move the cursor.
+
+    The cursor is kept per agent, calling tool and project in
+    ``~/.memanto/cursors.json``. The first run only starts the clock (no API
+    call), and a failed read keeps the old cursor so the next run retries.
+    """
+    path = config_manager.config_dir / "cursors.json"
+    try:
+        cursors = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cursors = {}
+    if not isinstance(cursors, dict):
+        cursors = {}
+    key = f"{agent_id}|{detect_client().tool}|{Path(project_dir).resolve()}"
+    since = cursors.get(key)
+    # Taken before the read, so a memory saved during it is shown next time.
+    now = datetime.now(timezone.utc).isoformat()
+
+    if isinstance(since, str):
+        try:
+            result = client.recall_changed_since(
+                agent_id=agent_id,
+                since=since,
+                limit=_CATCH_UP_LIMIT,
+                status="active",
+            )
+        except Exception as e:
+            console.print(
+                f"[yellow]Could not load memories saved since the last session: {e}[/yellow]"
+            )
+            return
+        memories = result.get("memories", [])
+        if memories:
+            # Plain, unwrapped lines: the session-start hook passes them on.
+            console.print(
+                f"\nSince your last session ({len(memories)} new):",
+                markup=False,
+                highlight=False,
+                soft_wrap=True,
+            )
+            for mem in memories:
+                content = " ".join(str(mem.get("content") or "").split())
+                if len(content) > _CATCH_UP_CHARS:
+                    content = content[: _CATCH_UP_CHARS - 3] + "..."
+                tool = tool_from_source(mem.get("source"))
+                origin = f" (from {display_for(normalize_tool(tool))})" if tool else ""
+                console.print(
+                    f"- [{str(mem.get('type') or 'fact').upper()}] {content}{origin}",
+                    markup=False,
+                    highlight=False,
+                    soft_wrap=True,
+                )
+
+    cursors[key] = now
+    atomic_write_text(path, json.dumps(cursors, indent=2))
+
+
 @memory_app.command("sync")
 def memory_sync(
     project_dir: str = typer.Option(
@@ -238,6 +311,12 @@ def memory_sync(
         "--split",
         help="OKF layout: auto | file | type (only used with --okf)",
     ),
+    catch_up: bool = typer.Option(
+        False,
+        "--catch-up",
+        help="Also print memories saved (by any tool) since this tool's last "
+        "catch-up in this project. Session-start hooks use it.",
+    ),
 ):
     """Sync agent memories directly into your project's agent instructions.
 
@@ -253,6 +332,7 @@ def memory_sync(
         memanto memory sync --project-dir ./my-project
         memanto memory sync -p C:\\\\Projects\\\\my-app --agent my-agent
         memanto memory sync --okf -p ./my-project
+        memanto memory sync --catch-up
     """
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
@@ -375,6 +455,9 @@ def memory_sync(
         console.print(f"[dim]* {msg}[/dim]")
     for msg in injection_results.get("no_eligible_target", []):
         console.print(f"[yellow]* {msg}[/yellow]")
+
+    if catch_up:
+        _print_catch_up(client, agent_id, project_dir)
 
     _check_template_updates(project_dir)
     console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")

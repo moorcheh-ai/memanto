@@ -59,15 +59,14 @@ def reset_session_toggles(monkeypatch):
     """Pin the session toggles to their defaults for every test.
 
     ``memanto.app.config`` overlays ``~/.memanto/config.yaml`` onto ``settings``
-    at import time, so a developer who has switched auto-renew or auto-recreate
-    off locally would otherwise change how the suite behaves. Tests that
+    at import time, so a developer's local auto-activate setting would
+    otherwise change how the suite behaves. Renew and recreate tests need it on. Tests that
     exercise the disabled path override this with their own ``patch.object``.
     The overlay itself is covered in ``tests/test_session_config_overlay.py``.
     """
     from memanto.app.config import settings
 
-    monkeypatch.setattr(settings, "SESSION_AUTO_RENEW_ENABLED", True)
-    monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+    monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
 
 
 @pytest.fixture(autouse=True)

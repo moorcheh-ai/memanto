@@ -10,6 +10,7 @@ Importing this module registers all CLI commands with the shared Typer app.
 
 from memanto.cli.commands import (
     agent,  # noqa: F401  (create, list, activate, deactivate, bootstrap)
+    auth,  # noqa: F401  (login, logout)
     config_cmd,  # noqa: F401  (show)
     connect,  # noqa: F401  (all connect subcommands)
     core,  # noqa: F401  (main_callback, status, serve, ui)
@@ -19,4 +20,5 @@ from memanto.cli.commands import (
     policy,  # noqa: F401  (show, presets, preset, apply, purge)
     schedule,  # noqa: F401  (enable, disable, status)
     session,  # noqa: F401  (info, extend)
+    widget,  # noqa: F401  (widget on/off)
 )

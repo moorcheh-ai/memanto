@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from dotenv import load_dotenv, set_key
+from dotenv import load_dotenv, set_key, unset_key
 from filelock import FileLock
 
 from memanto.app.clients.backend import Backend, parse_backend
@@ -23,6 +23,11 @@ from memanto.app.utils.validation import validate_recall_limit
 from memanto.cli.schedule_time import normalize_schedule_time
 
 yaml = importlib.import_module("yaml")
+
+# Memanto Cloud public API gateway (x-api-key auth). Override with MEMANTO_API_URL.
+DEFAULT_MEMANTO_API_URL = "https://memanto-saas-public-gw-33wzz25k.ue.gateway.dev"
+# Memanto Cloud console, used in hints (where to get a key, upgrade a plan).
+MEMANTO_CONSOLE_URL = "https://console.memanto.ai"
 
 
 def _normalize_duplicated_api_key(key: str) -> str:
@@ -58,8 +63,7 @@ _SESSION_CONFIG_LIMITS = {
 }
 _SESSION_CONFIG_BOOLEANS = {
     "auto_extend",
-    "auto_renew_enabled",
-    "auto_recreate_enabled",
+    "auto_activate_enabled",
 }
 
 
@@ -148,6 +152,32 @@ class ConfigManager:
     def set_api_key(self, api_key: str) -> None:
         """Save Moorcheh API key to ~/.memanto/.env."""
         self._set_env_var("MOORCHEH_API_KEY", api_key)
+
+    # Memanto Cloud credentials (``memanto-cloud`` backend only)
+
+    def get_memanto_api_key(self) -> str | None:
+        """Get the Memanto Cloud key (``MEMANTO_API_KEY``), from ~/.memanto/.env or the environment."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        key = os.environ.get("MEMANTO_API_KEY", "").strip()
+        return key if key else None
+
+    def set_memanto_api_key(self, api_key: str) -> None:
+        """Save the Memanto Cloud key to ~/.memanto/.env."""
+        self._set_env_var("MEMANTO_API_KEY", api_key)
+
+    def clear_memanto_api_key(self) -> None:
+        """Remove the Memanto Cloud key from ~/.memanto/.env and the environment."""
+        if self.env_file.exists():
+            unset_key(str(self.env_file), "MEMANTO_API_KEY")
+        os.environ.pop("MEMANTO_API_KEY", None)
+
+    def get_memanto_api_url(self) -> str:
+        """Memanto Cloud API base URL: ``MEMANTO_API_URL`` if set, else production."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        url = os.environ.get("MEMANTO_API_URL", "").strip()
+        return (url or DEFAULT_MEMANTO_API_URL).rstrip("/")
 
     def get_supermemory_api_key(self) -> str | None:
         """Get Supermemory API key from ~/.memanto/.env."""
@@ -305,9 +335,13 @@ class ConfigManager:
         Cloud: requires an API key.
         On-prem: requires ``backend: on-prem`` persisted in config.yaml
         (server reachability is verified at runtime, not here).
+        Memanto Cloud: requires a Memanto Cloud key (``MEMANTO_API_KEY``).
         """
-        if self.get_backend() == Backend.ON_PREM:
+        backend = self.get_backend()
+        if backend == Backend.ON_PREM:
             return True
+        if backend == Backend.MEMANTO_CLOUD:
+            return self.get_memanto_api_key() is not None
         return self.get_api_key() is not None
 
     # Backend selection
@@ -489,9 +523,8 @@ class ConfigManager:
             "auto_extend": True,
             "extend_threshold_minutes": 30,
             "warn_before_expiry_minutes": 15,
-            "auto_renew_enabled": True,
             "auto_renew_interval_hours": 6,
-            "auto_recreate_enabled": True,
+            "auto_activate_enabled": False,
         }
         defaults.update(self._dict_section(self.load_yaml(), "session"))
         return defaults
@@ -628,11 +661,13 @@ class ConfigManager:
             return None, None
         return session.agent_id, session.session_token
 
-    def clear_active_session(self) -> None:
-        """Clear the active-session marker."""
+    def clear_active_session(self, *, pause_auto_activate: bool = False) -> None:
+        """Clear the active-session marker (see ``SessionService.clear_active_session``)."""
         from memanto.app.services.session_service import get_session_service
 
-        get_session_service().clear_active_session()
+        get_session_service().clear_active_session(
+            pause_auto_activate=pause_auto_activate
+        )
 
     def set_server_config(self, url: str, port: int) -> None:
         """Set fallback server configuration."""

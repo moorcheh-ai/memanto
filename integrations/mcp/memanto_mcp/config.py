@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,12 +30,14 @@ class MCPServerSettings(BaseSettings):
     """Server settings loaded from env / ``.env``.
 
     Required:
-        moorcheh_api_key: Moorcheh API key.
+        moorcheh_api_key: Moorcheh API key, unless the Memanto backend in
+            ``~/.memanto/config.yaml`` is ``memanto-cloud`` (``memanto login``),
+            which uses ``MEMANTO_API_KEY`` from ``~/.memanto/.env`` instead.
 
     Optional:
-        default_agent_id: When set, callers may omit ``agent_id`` from tool
-            calls and this value is used. Strongly recommended in MCP setups
-            since most clients invoke a tool per turn with no shared state.
+        default_agent_id: Used when a tool call omits ``agent_id`` and no
+            agent is active on this computer (the active agent is shared with
+            the CLI, widget and other tools, and wins when there is one).
         agent_pattern: Pattern used when auto-creating the default agent
             (``support``, ``project``, or ``tool``).
         agent_auto_create: If True (default), the default agent is created
@@ -58,17 +60,20 @@ class MCPServerSettings(BaseSettings):
     )
 
     # ---- Memanto credentials & agent ----
-    moorcheh_api_key: SecretStr = Field(
-        ...,
+    moorcheh_api_key: SecretStr | None = Field(
+        default=None,
         validation_alias="MOORCHEH_API_KEY",
-        description="Moorcheh API key. Create one at https://console.moorcheh.ai/api-keys",
+        description=(
+            "Moorcheh API key. Create one at https://console.moorcheh.ai/api-keys. "
+            "Not needed when signed in to Memanto Cloud (`memanto login`)."
+        ),
     )
     default_agent_id: str | None = Field(
         default=None,
         validation_alias="MEMANTO_DEFAULT_AGENT_ID",
         description=(
-            "Default agent used when a tool call omits agent_id. "
-            "Set this to a stable per-project identifier."
+            "Agent used when a tool call omits agent_id and no agent is "
+            "active on this computer (`memanto agent activate`)."
         ),
     )
     default_source: str | None = Field(
@@ -146,17 +151,24 @@ class MCPServerSettings(BaseSettings):
             )
         return upper
 
-    @field_validator("moorcheh_api_key")
-    @classmethod
-    def _validate_api_key(cls, v: SecretStr) -> SecretStr:
-        if not v.get_secret_value().strip():
-            raise ValueError(
-                "MOORCHEH_API_KEY is required. Create one at "
-                "https://console.moorcheh.ai/api-keys and set it in your "
-                "environment or MCP client config."
-            )
-        return v
+    @model_validator(mode="after")
+    def _require_credentials(self) -> MCPServerSettings:
+        from memanto.app.clients.backend import Backend
+        from memanto.cli.config.manager import ConfigManager
 
-    # Convenience accessor — never logged.
+        if self.api_key_value().strip():
+            return self
+        if ConfigManager().get_backend() == Backend.MEMANTO_CLOUD:
+            return self
+        raise ValueError(
+            "MOORCHEH_API_KEY is required. Create one at "
+            "https://console.moorcheh.ai/api-keys and set it in your "
+            "environment or MCP client config, or sign in to Memanto Cloud "
+            "with `memanto login`."
+        )
+
+    # Convenience accessor — never logged. Empty when no Moorcheh key is set.
     def api_key_value(self) -> str:
+        if self.moorcheh_api_key is None:
+            return ""
         return self.moorcheh_api_key.get_secret_value()
