@@ -55,8 +55,8 @@ Or by hand:
 
 ```bash
 pip install memanto
-memanto login                  # Memanto Cloud: approve in your browser, no key to copy
-memanto connect claude-code    # or cursor, codex, copilot, gemini-cli, windsurf… 15 tools
+memanto login      # Memanto Cloud: approve in your browser, no key to copy
+memanto connect    # pick your tools (claude-code, cursor, codex, github-copilot… 15 tools) and the agent they share
 ```
 
 Prefer local? Run `memanto` and pick **Memanto local** (on-prem with Docker, or a free Moorcheh key).
@@ -262,7 +262,7 @@ Narrow recall with `--active` or `--expired`. Point-in-time recall (`--as-of`) s
 - **Scoped by default.** Each agent gets its own namespace. Your production-ops agent doesn't read your scratch experiments.
 - **Auditable.** Every belief can be traced to where it entered the fleet and when. That's the difference between an auditable memory and a black box.
 - **Forgetting is a decision, not a side effect.** Expiry is policy-driven and reversible. Deletion is a separate, explicit act.
-- **Deploy it your way.** pip, Docker, Compose, systemd or Kubernetes, against cloud or on-prem. `memanto use` switches between them, and your memory comes with you.
+- **Deploy it your way.** pip, Docker, Compose, systemd or Kubernetes, against cloud or on-prem. `memanto use` switches between them, and `memanto migrate to-cloud` moves your memories up to Memanto Cloud.
 
 **No lock-in, because there's nothing to lock.** `memanto memory export --okf` writes the [Open Knowledge Format](https://docs.memanto.ai/integrations/okf): plain Markdown you can read, diff, grep and commit. OKF is an open format that any framework or vendor can implement, our competitors included, on purpose. `memanto migrate` imports from Mem0, Letta, Supermemory, Zep, Hindsight, Langfuse or any OKF bundle.
 
@@ -334,7 +334,7 @@ pip install memanto
 memanto           # choose "Memanto local", then "Moorcheh Cloud" and paste your free API key
 ```
 
-Get a free key at [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) (100K free operations). Switch any time with `memanto use moorcheh | on-prem | cloud`.
+Get a free key at [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) (100K free operations). Switch any time with `memanto use cloud`, `memanto use moorcheh` or `memanto use on-prem`.
 
 **Other languages:**
 

@@ -372,6 +372,26 @@ def test_gateway_errors_are_retried(client, api):
     assert len(api.requests) == 3
 
 
+def test_gateway_error_on_a_write_is_not_retried(active, api):
+    """A 504 can follow a write the service applied; resending would duplicate it."""
+    api.routes[("POST", f"/agents/{AGENT}/remember")] = httpx.Response(504)
+
+    with pytest.raises(ConnectionError):
+        active.remember(AGENT, "fact", "Title", "Body")
+    assert len([r for r in api.requests if r.method == "POST"]) == 1
+
+
+def test_rate_limited_write_is_retried(active, api):
+    responses = [
+        httpx.Response(429, json={"message": "slow down"}),
+        httpx.Response(200, json={"memory_id": "m1"}),
+    ]
+    api.routes[("POST", f"/agents/{AGENT}/remember")] = lambda _r: responses.pop(0)
+
+    active.remember(AGENT, "fact", "Title", "Body")
+    assert len([r for r in api.requests if r.method == "POST"]) == 2
+
+
 def test_500_is_not_retried(client, api):
     api.routes[("GET", "/agents")] = httpx.Response(500, json={"message": "boom"})
 

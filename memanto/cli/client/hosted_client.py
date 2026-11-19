@@ -55,10 +55,14 @@ __all__ = ["HostedClient"]
 _TIMEOUT_SECONDS = 30.0
 _MAX_RETRIES = 3
 _BACKOFF_SECONDS = (0.5, 1.0, 2.0)
-# Retried: rate limiting and gateway errors where the request did not reach a
-# service. A plain 500 or a read timeout is not retried, so a write that may
-# have been applied is never sent twice.
-_RETRY_STATUSES = {429, 502, 503, 504}
+# Retried: rate limiting (429, rejected before it is processed) for every
+# method, and gateway errors only for idempotent methods. A gateway error can
+# follow a write the service already applied, and a plain 500 or a read
+# timeout is never retried, so a write that may have been applied is never
+# sent twice.
+_RETRY_STATUSES = {429}
+_GATEWAY_RETRY_STATUSES = {502, 503, 504}
+_IDEMPOTENT_METHODS = {"GET", "HEAD", "OPTIONS", "PUT", "DELETE"}
 _ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
 
 
@@ -189,7 +193,11 @@ class HostedClient(SdkClient):
             except httpx.TransportError as e:
                 raise ConnectionError(f"Memanto Cloud request failed: {e}") from e
 
-            if response.status_code in _RETRY_STATUSES and attempt < _MAX_RETRIES:
+            retryable = response.status_code in _RETRY_STATUSES or (
+                response.status_code in _GATEWAY_RETRY_STATUSES
+                and method.upper() in _IDEMPOTENT_METHODS
+            )
+            if retryable and attempt < _MAX_RETRIES:
                 time.sleep(_BACKOFF_SECONDS[attempt])
                 continue
             break
