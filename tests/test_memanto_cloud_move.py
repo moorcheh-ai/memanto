@@ -555,7 +555,7 @@ def _ui_move(client, body: dict[str, Any]) -> dict[str, Any]:
 
     assert client.post("/api/ui/cloud-move", json=body).json() == {"started": True}
     for _ in range(200):
-        progress = client.get("/api/ui/cloud-move/progress").json()
+        progress: dict[str, Any] = client.get("/api/ui/cloud-move/progress").json()
         if not progress["running"]:
             return progress
         time.sleep(0.02)
