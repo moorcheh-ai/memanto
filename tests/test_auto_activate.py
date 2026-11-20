@@ -127,6 +127,17 @@ def test_last_active_agent_is_kept_per_backend(sessions, monkeypatch):
     assert resumed is not None and resumed.agent_id == "cloud-agent"
 
 
+def test_an_active_agent_from_before_the_record_existed_is_resumed(sessions):
+    """Upgraded installs: an active marker but no last-active record yet."""
+    sessions.create_session("a")
+    sessions._last_active_path().unlink()
+
+    assert sessions.get_active_session().agent_id == "a"
+    sessions.clear_active_session()  # e.g. a `memanto use` round trip
+    resumed = sessions.get_active_session()
+    assert resumed is not None and resumed.agent_id == "a"
+
+
 def test_record_is_not_listed_as_a_session(sessions):
     sessions.create_session("a")
     assert [s.agent_id for s in sessions.list_sessions()] == ["a"]

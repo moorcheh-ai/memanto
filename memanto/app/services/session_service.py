@@ -504,6 +504,11 @@ class SessionService:
                 return None
 
             if session.is_active():
+                # Installs from before auto-activate have an active agent but
+                # no last-active record, so a later backend switch (which
+                # clears the marker) would leave nothing to resume.
+                if self.get_last_active() is None:
+                    self._write_last_active(agent_id)
                 return session
 
             expired_token = session.session_token
