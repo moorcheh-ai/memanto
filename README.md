@@ -33,11 +33,11 @@
 </p>
 
 <p align="center">
-  <b>89.8%</b> LongMemEval &nbsp;·&nbsp; <b>87.1%</b> LoCoMo &nbsp;·&nbsp; <b>0</b> LLM tokens per write &nbsp;·&nbsp; searchable the <b>instant</b> it's written &nbsp;·&nbsp; <b>38</b> integrations &nbsp;·&nbsp; runs <b>100% local</b>
+  <b>83.8%</b> DolphinBench &nbsp;·&nbsp; <b>89.8%</b> LongMemEval &nbsp;·&nbsp; <b>87.1%</b> LoCoMo &nbsp;·&nbsp; <b>0</b> LLM tokens per write &nbsp;·&nbsp; searchable the <b>instant</b> it's written &nbsp;·&nbsp; <b>38</b> integrations &nbsp;·&nbsp; runs <b>100% local</b>
 </p>
 
 <p align="center">
-  <img alt="Accuracy vs. cost: Memanto at 83.8% for $11.86, compared with Mem0, Hindsight, Honcho, Supermemory and built-in memory" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/accuracy-vs-cost.png" width="900">
+  <img alt="Accuracy vs. cost: Memanto at 83.8% for $10.86, compared with Mem0, Hindsight, Honcho, Supermemory and built-in memory" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/accuracy-vs-cost.png" width="900">
 </p>
 
 <p align="center">
