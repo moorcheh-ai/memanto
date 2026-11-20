@@ -29,6 +29,10 @@
 </p>
 
 <p align="center">
+  <a href="https://www.producthunt.com/products/memanto-by-moorcheh?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-memanto-cloud" target="_blank" rel="noopener noreferrer"><img alt="Memanto Cloud - A companion memory for agents to improve as you work | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1311824&amp;theme=light&amp;t=1795192682172"></a>
+</p>
+
+<p align="center">
   <sub><a href="README.md">English</a> · <a href="i18n/README_es.md">Español</a> · <a href="i18n/README_zh-CN.md">简体中文</a> · <a href="i18n/README_ja.md">日本語</a></sub>
 </p>
 
