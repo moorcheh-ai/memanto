@@ -37,6 +37,10 @@
 </p>
 
 <p align="center">
+  <img alt="Accuracy vs. cost: Memanto at 83.8% for $11.86, compared with Mem0, Hindsight, Honcho, Supermemory and built-in memory" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/accuracy-vs-cost.png" width="900">
+</p>
+
+<p align="center">
   <a href="https://github.com/moorcheh-ai/memanto/stargazers"><img alt="Star Memanto on GitHub" src="https://img.shields.io/github/stars/moorcheh-ai/memanto?style=for-the-badge&logo=github&label=%E2%AD%90%20Star%20Memanto&color=5534a5"></a><br>
   <sub>Like where this is going? A star helps other developers find Memanto, and tells us to keep building it in the open.</sub>
 </p>
