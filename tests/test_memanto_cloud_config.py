@@ -58,6 +58,8 @@ def test_memanto_cloud_is_configured_only_with_memanto_key(cm):
 
 def test_memanto_api_url_defaults_and_overrides(cm, monkeypatch):
     assert cm.get_memanto_api_url() == DEFAULT_MEMANTO_API_URL
+    # The documented public address, not a raw gateway hostname.
+    assert DEFAULT_MEMANTO_API_URL == "https://api.memanto.ai"
     monkeypatch.setenv("MEMANTO_API_URL", "https://staging.test/")
     assert cm.get_memanto_api_url() == "https://staging.test"
 
