@@ -95,6 +95,20 @@ def get_moorcheh_api_key() -> str:
         # string. Return a placeholder so the dependency resolves.
         return "on-prem"
 
+    from memanto.app.clients.memanto_cloud import cloud_api_key, cloud_serve_enabled
+
+    if cloud_serve_enabled():
+        # On Memanto Cloud the server's credential is the ``mk_`` key: it is
+        # what a non-loopback caller presents for management access.
+        key = cloud_api_key()
+        if key:
+            return key
+        raise HTTPException(
+            status_code=500,
+            detail="Server misconfigured: not signed in to Memanto Cloud "
+            "(run memanto login)",
+        )
+
     if settings.MOORCHEH_API_KEY:
         return settings.MOORCHEH_API_KEY
 

@@ -25,7 +25,7 @@ from memanto.cli.schedule_time import normalize_schedule_time
 yaml = importlib.import_module("yaml")
 
 # Memanto Cloud public API gateway (x-api-key auth). Override with MEMANTO_API_URL.
-DEFAULT_MEMANTO_API_URL = "https://memanto-saas-public-gw-33wzz25k.ue.gateway.dev"
+DEFAULT_MEMANTO_API_URL = "https://api.memanto.ai"
 # Memanto Cloud console, used in hints (where to get a key, upgrade a plan).
 MEMANTO_CONSOLE_URL = "https://console.memanto.ai"
 

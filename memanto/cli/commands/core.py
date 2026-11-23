@@ -1087,6 +1087,18 @@ def serve(
             f"\n[dim]Backend: on-prem at {op.get('url', 'http://localhost:8080')}[/dim]"
         )
         os.environ["MEMANTO_BACKEND"] = "on-prem"
+    elif backend == Backend.MEMANTO_CLOUD:
+        # Serve the same API, with memories on Memanto Cloud. Never hand the
+        # server a Moorcheh key here: it would silently serve Memanto local.
+        if not config_manager.get_memanto_api_key():
+            _error(
+                "Not signed in to Memanto Cloud.",
+                hint="Run: memanto login (or memanto use moorcheh | on-prem)",
+            )
+        from memanto.app.clients.memanto_cloud import CLOUD_SERVE_ENV
+
+        console.print("\n[dim]Backend: Memanto Cloud[/dim]")
+        os.environ[CLOUD_SERVE_ENV] = "1"
     else:
         api_key = config_manager.get_api_key()
         if not api_key:

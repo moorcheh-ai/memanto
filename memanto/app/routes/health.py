@@ -2,6 +2,8 @@
 Health Check Routes
 """
 
+import asyncio
+
 import httpx
 from fastapi import APIRouter
 from moorcheh_sdk import MoorchehClient
@@ -20,6 +22,19 @@ async def health_check():
 
     moorcheh_connected = False
     backend = parse_backend(settings.MEMANTO_BACKEND)
+
+    from memanto.app.clients.memanto_cloud import cloud_reachable, cloud_serve_enabled
+
+    if cloud_serve_enabled():
+        # ``moorcheh_connected`` keeps its name for compatibility; on Memanto
+        # Cloud it reports whether Memanto Cloud accepts this server's key.
+        connected = await asyncio.to_thread(cloud_reachable)
+        return HealthResponse(
+            status="healthy" if connected else "unhealthy",
+            service="MEMANTO",
+            version=__version__,
+            moorcheh_connected=connected,
+        )
 
     if backend == Backend.ON_PREM:
         url = f"{settings.MOORCHEH_ONPREM_URL.rstrip('/')}/health"
