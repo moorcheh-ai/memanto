@@ -71,7 +71,7 @@ from memanto_ag2 import register_memanto_tools
 
 executor = UserProxyAgent(name="executor", human_input_mode="NEVER")
 for agent in [researcher, writer]:
-    register_memanto_tools(agent, executor=executor, client=client, agent_id="team-memory")
+    register_memanto_tools(agent, executor=executor, agent_id="team-memory")
 
 group_chat = GroupChat(agents=[researcher, writer, executor], messages=[])
 manager = GroupChatManager(groupchat=group_chat)

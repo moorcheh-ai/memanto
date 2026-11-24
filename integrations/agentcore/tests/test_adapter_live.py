@@ -6,9 +6,9 @@ import uuid
 
 import pytest
 from memanto_agentcore import MemantoRuntimeAdapter, TurnContext
+from memanto_agentcore.adapter import _build_memanto_client
 
 from memanto.app.config import settings
-from memanto.cli.client.sdk_client import SdkClient
 
 
 def _live_key() -> str:
@@ -36,7 +36,7 @@ async def test_memory_survives_runtime_session_churn():
     marker = f"agentcore-live-{suffix}"
     user_id = f"live-user-{suffix}"
 
-    client = SdkClient(api_key=_live_key())
+    client = _build_memanto_client(_live_key())
     adapter = MemantoRuntimeAdapter(
         client,
         agent_name="agentcore-smoke",

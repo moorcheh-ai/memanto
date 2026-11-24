@@ -314,15 +314,12 @@ class _MemantoClient:
             bool(api_key) and api_key == os.environ.get("MEMANTO_API_KEY", "").strip()
         )
         if is_cloud:
-            try:
-                from memanto.cli.client.hosted_client import HostedClient
-            except ImportError:
-                pass
-            else:
-                base_url = os.environ.get("MEMANTO_API_URL", "").strip()
-                if base_url:
-                    return HostedClient(api_key, base_url=base_url)
-                return HostedClient(api_key)
+            from memanto.cli.client.hosted_client import HostedClient
+
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(api_key, base_url=base_url)
+            return HostedClient(api_key)
         return sdk_client_cls(api_key=api_key)
 
     @property

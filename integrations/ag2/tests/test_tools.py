@@ -125,3 +125,27 @@ def test_register_accepts_memanto_api_key_env(monkeypatch):
     reset_config()
     tools = register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
     assert len(tools) == 3
+
+
+def test_active_cloud_signin_takes_precedence_over_moorcheh_env(monkeypatch):
+    from memanto_ag2.config import reset_config
+    from memanto_ag2.register import _build_memanto_client
+
+    import memanto.cli.client.factory as factory_mod
+    import memanto.cli.config.manager as manager_mod
+    from memanto.app.clients.backend import Backend
+
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mch_legacy_env_key")
+    reset_config()
+
+    sentinel_cloud_client = MagicMock(name="HostedClientFromFactory")
+    monkeypatch.setattr(
+        manager_mod.ConfigManager,
+        "get_backend",
+        lambda self: Backend.MEMANTO_CLOUD,
+    )
+    monkeypatch.setattr(factory_mod, "build_client", lambda: sentinel_cloud_client)
+
+    resolved = _build_memanto_client(None, None)
+    assert resolved is sentinel_cloud_client

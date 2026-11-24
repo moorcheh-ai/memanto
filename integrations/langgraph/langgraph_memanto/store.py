@@ -138,25 +138,41 @@ class MemantoStore(BaseStore):
         elif os.environ.get("MEMANTO_API_KEY", "").strip():
             self.api_key = os.environ["MEMANTO_API_KEY"].strip()
             self._is_cloud_key = True
-        elif os.environ.get("MOORCHEH_API_KEY", "").strip():
-            self.api_key = os.environ["MOORCHEH_API_KEY"].strip()
         else:
-            # Check if ~/.memanto is configured via build_client
+            # Check active Cloud sign-in in ~/.memanto before falling back to MOORCHEH_API_KEY.
             resolved_client = None
             try:
+                from memanto.app.clients.backend import Backend
                 from memanto.cli.client.factory import build_client
+                from memanto.cli.config.manager import ConfigManager
 
-                resolved_client = build_client()
+                if ConfigManager().get_backend() == Backend.MEMANTO_CLOUD:
+                    resolved_client = build_client()
             except (ImportError, AuthenticationError):
-                pass
+                # No active Cloud sign-in available; fall back to MOORCHEH_API_KEY or local factory.
+                resolved_client = None
+
             if resolved_client is not None:
                 self.api_key = resolved_client.api_key
                 self._use_factory = True
+            elif os.environ.get("MOORCHEH_API_KEY", "").strip():
+                self.api_key = os.environ["MOORCHEH_API_KEY"].strip()
             else:
-                raise ValueError(
-                    "No Memanto API key found: pass api_key=..., set MEMANTO_API_KEY "
-                    "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
-                )
+                try:
+                    from memanto.cli.client.factory import build_client
+
+                    resolved_client = build_client()
+                except (ImportError, AuthenticationError):
+                    # ~/.memanto is not configured with local or on-prem credentials either.
+                    resolved_client = None
+                if resolved_client is not None:
+                    self.api_key = resolved_client.api_key
+                    self._use_factory = True
+                else:
+                    raise ValueError(
+                        "No Memanto API key found: pass api_key=..., set MEMANTO_API_KEY "
+                        "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+                    )
 
         self._strict_namespace_binding = strict_namespace_binding
         self._lock = threading.RLock()
@@ -176,15 +192,12 @@ class MemantoStore(BaseStore):
 
             return build_client()
         if self._is_cloud_key:
-            try:
-                from memanto.cli.client.hosted_client import HostedClient
-            except ImportError:
-                pass
-            else:
-                base_url = os.environ.get("MEMANTO_API_URL", "").strip()
-                if base_url:
-                    return HostedClient(self.api_key, base_url=base_url)
-                return HostedClient(self.api_key)
+            from memanto.cli.client.hosted_client import HostedClient
+
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(self.api_key, base_url=base_url)
+            return HostedClient(self.api_key)
         return SdkClient(api_key=self.api_key)
 
     def _agent_id_for(self, namespace: tuple[str, ...]) -> str:

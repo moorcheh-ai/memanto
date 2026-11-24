@@ -347,17 +347,14 @@ class MemantoLangfuseHandler(SpanProcessor):
                     clean == os.environ.get("MEMANTO_API_KEY", "").strip()
                 )
                 if is_cloud:
-                    try:
-                        from memanto.cli.client.hosted_client import HostedClient
-                    except ImportError:
-                        self._client = SdkClient(clean)
-                    else:
-                        base_url = os.environ.get("MEMANTO_API_URL", "").strip()
-                        self._client = (
-                            HostedClient(clean, base_url=base_url)
-                            if base_url
-                            else HostedClient(clean)
-                        )
+                    from memanto.cli.client.hosted_client import HostedClient
+
+                    base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+                    self._client = (
+                        HostedClient(clean, base_url=base_url)
+                        if base_url
+                        else HostedClient(clean)
+                    )
                 else:
                     self._client = SdkClient(clean)
             else:

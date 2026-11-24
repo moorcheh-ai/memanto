@@ -38,9 +38,9 @@ def _bootstrap_import_path() -> None:
 _bootstrap_import_path()
 
 from memanto_agentcore import MemantoRuntimeAdapter, TurnContext  # noqa: E402
+from memanto_agentcore.adapter import _build_memanto_client  # noqa: E402
 
 from memanto.app.config import settings  # noqa: E402
-from memanto.cli.client.sdk_client import SdkClient  # noqa: E402
 
 
 def _resolve_api_key() -> str:
@@ -90,7 +90,7 @@ async def main() -> int:
     print(f"  user_id:    {user_id}")
     print(f"  agent_name: {agent_name}")
 
-    client = SdkClient(api_key=api_key)
+    client = _build_memanto_client(api_key)
     adapter = MemantoRuntimeAdapter(
         client,
         agent_name=agent_name,

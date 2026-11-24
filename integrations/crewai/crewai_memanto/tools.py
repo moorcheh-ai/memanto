@@ -41,24 +41,21 @@ VALID_MEMORY_TYPES = (
 
 
 def _instantiate_client(api_key: str, *, is_cloud_key: bool = False) -> SdkClient:
-    """Return a Memanto client for *api_key* (HostedClient for Memanto Cloud keys when available)."""
+    """Return a Memanto client for *api_key* (HostedClient for Memanto Cloud keys)."""
     if SdkClient is not _ORIG_SDK_CLIENT:
         return SdkClient(api_key=api_key)
     if is_cloud_key or api_key.startswith("mk_"):
-        try:
-            from memanto.cli.client.hosted_client import HostedClient
-        except ImportError:
-            pass
-        else:
-            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
-            if base_url:
-                return HostedClient(api_key, base_url=base_url)
-            return HostedClient(api_key)
+        from memanto.cli.client.hosted_client import HostedClient
+
+        base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+        if base_url:
+            return HostedClient(api_key, base_url=base_url)
+        return HostedClient(api_key)
     return SdkClient(api_key=api_key)
 
 
 def _build_memanto_client(api_key: str | None = None) -> SdkClient:
-    """Resolve credentials from *api_key*, ``MEMANTO_API_KEY``, ``MOORCHEH_API_KEY``, or ``~/.memanto``."""
+    """Resolve credentials from *api_key*, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``."""
     if api_key is not None and api_key.strip():
         clean = api_key.strip()
         return _instantiate_client(clean, is_cloud_key=clean.startswith("mk_"))
@@ -67,18 +64,35 @@ def _build_memanto_client(api_key: str | None = None) -> SdkClient:
     if memanto_key:
         return _instantiate_client(memanto_key, is_cloud_key=True)
 
+    try:
+        from memanto.app.clients.backend import Backend
+        from memanto.cli.client.factory import build_client
+        from memanto.cli.config.manager import ConfigManager
+    except ImportError:
+        build_client = None  # type: ignore[assignment]
+        is_cloud_signin = False
+    else:
+        try:
+            is_cloud_signin = ConfigManager().get_backend() == Backend.MEMANTO_CLOUD
+        except Exception:
+            is_cloud_signin = False
+
+    if is_cloud_signin and build_client is not None:
+        try:
+            return build_client()
+        except AuthenticationError:
+            # Saved Cloud sign-in has no valid key yet; fall through to Moorcheh fallback.
+            pass
+
     moorcheh_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
     if moorcheh_key:
         return _instantiate_client(moorcheh_key, is_cloud_key=False)
 
-    try:
-        from memanto.cli.client.factory import build_client
-    except ImportError:
-        pass
-    else:
+    if build_client is not None:
         try:
             return build_client()
         except AuthenticationError:
+            # No local/on-prem credentials configured in ~/.memanto either.
             pass
 
     raise ValueError(

@@ -277,7 +277,6 @@ def test_create_memanto_tools_resolves_memanto_api_key(monkeypatch):
         tools = create_memanto_tools(agent_id="test-agent")
         mock_cls.assert_called_once_with(api_key="mk_test_key")
         recall_tool = next(t for t in tools if t.name == "memanto_recall")
-        assert recall_tool.invoke({"query": "hello", "limit": 5, "memory_types": ""}) == (
-            "No memories found for query: 'hello'"
-        )
-
+        assert recall_tool.invoke(
+            {"query": "hello", "limit": 5, "memory_types": ""}
+        ) == ("No memories found for query: 'hello'")

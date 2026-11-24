@@ -160,23 +160,40 @@ class MemantoMemoryService(BaseMemoryService):
         elif os.environ.get(MEMANTO_API_KEY_ENV, "").strip():
             resolved_key = os.environ[MEMANTO_API_KEY_ENV].strip()
             self._is_cloud_key = True
-        elif os.environ.get(API_KEY_ENV, "").strip():
-            resolved_key = os.environ[API_KEY_ENV].strip()
         else:
+            # Check active Cloud sign-in in ~/.memanto before falling back to MOORCHEH_API_KEY.
             factory_client = None
             try:
+                from memanto.app.clients.backend import Backend
                 from memanto.cli.client.factory import build_client
+                from memanto.cli.config.manager import ConfigManager
 
-                factory_client = build_client()
+                if ConfigManager().get_backend() == Backend.MEMANTO_CLOUD:
+                    factory_client = build_client()
             except (ImportError, AuthenticationError):
-                pass
+                # No active Cloud sign-in available; fall back to MOORCHEH_API_KEY or local factory.
+                factory_client = None
+
             if factory_client is not None:
                 resolved_key = factory_client.api_key
                 self._use_factory = True
+            elif os.environ.get(API_KEY_ENV, "").strip():
+                resolved_key = os.environ[API_KEY_ENV].strip()
             else:
-                raise ValueError(
-                    f"api_key is required (or set ${MEMANTO_API_KEY_ENV} / ${API_KEY_ENV} or run `memanto login`)"
-                )
+                try:
+                    from memanto.cli.client.factory import build_client
+
+                    factory_client = build_client()
+                except (ImportError, AuthenticationError):
+                    # ~/.memanto is not configured with local or on-prem credentials either.
+                    factory_client = None
+                if factory_client is not None:
+                    resolved_key = factory_client.api_key
+                    self._use_factory = True
+                else:
+                    raise ValueError(
+                        f"api_key is required (or set ${MEMANTO_API_KEY_ENV} / ${API_KEY_ENV} or run `memanto login`)"
+                    )
         if not 1 <= recall_limit <= _MAX_RECALL:
             raise ValueError(f"recall_limit must be between 1 and {_MAX_RECALL}")
         if not 1 <= extract_max_memories <= _MAX_EXTRACT:
@@ -435,15 +452,12 @@ class MemantoMemoryService(BaseMemoryService):
 
             return build_client()
         if self._is_cloud_key:
-            try:
-                from memanto.cli.client.hosted_client import HostedClient
-            except ImportError:
-                pass
-            else:
-                base_url = os.environ.get("MEMANTO_API_URL", "").strip()
-                if base_url:
-                    return HostedClient(self._api_key, base_url=base_url)
-                return HostedClient(self._api_key)
+            from memanto.cli.client.hosted_client import HostedClient
+
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(self._api_key, base_url=base_url)
+            return HostedClient(self._api_key)
         return SdkClient(self._api_key)
 
     def _agent(self, app_name: str) -> _Agent:

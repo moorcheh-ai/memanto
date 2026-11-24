@@ -8,8 +8,8 @@ The integration combines managed `AGENTS.md` instructions, the `memanto-memory` 
 
 - Python 3.10 or later.
 - Kimi Code.
-- A configured Memanto installation with an active agent (create and activate one with `memanto agent create <name>` or `memanto agent activate <name>`; `--agent-id <name>` can optionally override the agent used by MCP). Installing this package automatically installs `memanto>=0.2.30` (install `memanto-mcp` as well if you want native MCP tools instead of the CLI skill).
-- `MOORCHEH_API_KEY` configured in `~/.memanto/.env` (via `memanto` setup) or available in the environment.
+- A configured Memanto installation with an active agent (sign in to Memanto Cloud with `memanto login`, or create and activate an agent with `memanto agent create <name>` / `memanto agent activate <name>`; `--agent-id <name>` can optionally override the agent used by MCP). Installing this package automatically installs `memanto>=0.3.0` (install `memanto-mcp` as well if you want native MCP tools instead of the CLI skill).
+- Memanto Cloud credentials (`memanto login` or `MEMANTO_API_KEY` from [console.memanto.ai](https://console.memanto.ai/sign-in)) — or `MOORCHEH_API_KEY` / on-prem configured in `~/.memanto/.env` for Memanto local.
 
 Install the package:
 
@@ -47,7 +47,7 @@ This manages the following paths:
 | `.kimi-code/mcp.json` | Optional: when `memanto-mcp` is installed and an active agent is set, registers the `memanto` MCP server instead of the CLI skill. |
 | `~/.kimi-code/config.toml` | Adds the Memanto lifecycle hooks and the `mcp__memanto__*` permission allow-rule inside a clearly marked managed section. |
 
-> **Note on API keys:** `MOORCHEH_API_KEY` is never written into `.kimi-code/mcp.json`, `~/.kimi-code/mcp.json`, or `config.toml`. `memanto-mcp` reads your key directly from `~/.memanto/.env` (or the process environment).
+> **Note on API keys:** `MEMANTO_API_KEY` / `MOORCHEH_API_KEY` is never written into `.kimi-code/mcp.json`, `~/.kimi-code/mcp.json`, or `config.toml`. `memanto-mcp` reads your credentials directly from `~/.memanto/.env` (or the process environment).
 
 **Hooks are always user-level in Kimi Code.** Kimi Code only supports hooks in the user-level `~/.kimi-code/config.toml` (or `$KIMI_CODE_HOME/config.toml`), so even a project-local install writes the hook and permission rules there — inside a `# >>> MEMANTO-MANAGED-SECTION >>>` / `# <<< MEMANTO-MANAGED-SECTION <<<` block. The rest of your `config.toml` is never touched.
 

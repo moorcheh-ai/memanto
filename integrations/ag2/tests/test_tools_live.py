@@ -5,10 +5,10 @@ import time
 import uuid
 
 import pytest
+from memanto_ag2.register import _build_memanto_client
 from memanto_ag2.tools import create_memanto_tools
 
 from memanto.app.config import settings
-from memanto.cli.client.sdk_client import SdkClient
 
 
 def _live_key() -> str:
@@ -35,7 +35,7 @@ def test_remember_recall_survives_tool_calls():
     marker = f"ag2-live-{suffix}-teal"
     agent_id = f"ag2-live-{suffix}"
 
-    client = SdkClient(api_key=_live_key())
+    client = _build_memanto_client(_live_key(), None)
     tools = create_memanto_tools(client, agent_id, source="ag2-live-test")
     remember = next(t for t in tools if t.__name__ == "memanto_remember")
     recall = next(t for t in tools if t.__name__ == "memanto_recall")
