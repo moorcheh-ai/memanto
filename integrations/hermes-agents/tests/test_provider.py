@@ -607,6 +607,13 @@ def test_memanto_client_token_persistence(tmp_path):
     assert client2._ready is True
     assert client2._client.session_token == "token-abc"
 
+    # On Memanto Cloud (mk_ key), a saved local token must not mark _ready True
+    # before ensure_session() verifies/creates the Cloud agent.
+    cloud_client = _MemantoClient("mk_cloud_key", "agent-1")
+    cloud_client._client = MagicMock()
+    cloud_client.set_profile_path(str(tmp_path))
+    assert cloud_client._ready is False
+
 
 def test_memanto_client_auto_refresh_on_expiration(tmp_path):
     from hermes_memanto.provider import _MemantoClient

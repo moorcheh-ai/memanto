@@ -300,6 +300,7 @@ class _MemantoClient:
         self._pattern = pattern
         self._auto_create = auto_create
         self._session_duration_hours = session_duration_hours
+        self._is_cloud = self._is_cloud_api_key(api_key)
         self._client = self._build_client(api_key, SdkClient)
         self._lock = threading.RLock()
         self._ready = False
@@ -309,11 +310,14 @@ class _MemantoClient:
         self._last_refresh = 0.0
 
     @staticmethod
-    def _build_client(api_key: str, sdk_client_cls: Any) -> Any:
-        is_cloud = api_key.startswith("mk_") or (
+    def _is_cloud_api_key(api_key: str) -> bool:
+        return api_key.startswith("mk_") or (
             bool(api_key) and api_key == os.environ.get("MEMANTO_API_KEY", "").strip()
         )
-        if is_cloud:
+
+    @classmethod
+    def _build_client(cls, api_key: str, sdk_client_cls: Any) -> Any:
+        if cls._is_cloud_api_key(api_key):
             from memanto.cli.client.hosted_client import HostedClient
 
             base_url = os.environ.get("MEMANTO_API_URL", "").strip()
@@ -330,12 +334,15 @@ class _MemantoClient:
         self._profile_path = Path(profile_path)
         self._token_file = self._profile_path / _TOKEN_FILE_NAME
 
-        # Load any existing persisted token on startup
+        # Load any existing persisted token on startup. On Memanto Cloud, a
+        # local session token does not prove the Cloud agent exists yet, so
+        # leave _ready False until ensure_session() verifies/creates the agent.
         token = self.load_token()
         if token:
             self._client.session_token = token
             self._client.agent_id = self._agent_id
-            self._ready = True
+            if not self._is_cloud:
+                self._ready = True
 
     def save_token(self, token: str) -> None:
         if self._token_file:
