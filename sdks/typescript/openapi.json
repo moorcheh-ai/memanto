@@ -4601,6 +4601,126 @@
         }
       }
     },
+    "/api/ui/cloud-move": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Cloud Move Overview",
+        "description": "What a move to Memanto Cloud would take from this computer.\n\nReturns the local backend to move from, whether Memanto Cloud is signed\nin and active, and per agent: active and expired memory counts and how\nmany were already moved.",
+        "operationId": "cloud_move_overview_api_ui_cloud_move_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Cloud Move Run",
+        "description": "Start moving every agent's memories to Memanto Cloud; resumable, local data kept.\n\nBody: ``{include_expired?: bool}`` (default: active memories only). Returns\nat once; poll ``GET /api/ui/cloud-move/progress`` for progress and the result.",
+        "operationId": "cloud_move_run_api_ui_cloud_move_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/cloud-move/sign-in": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Cloud Move Sign In Start",
+        "description": "Start browser sign-in to Memanto Cloud, as 'memanto login' does.\n\nReturns the console approval link and code; the page opens the link and\npolls ``/api/ui/cloud-move/sign-in/poll``. New accounts can sign up on\nthe same page. Only when not signed in yet, so a page on loopback cannot\nswap the account an existing sign-in points at. Does not switch backend.",
+        "operationId": "cloud_move_sign_in_start_api_ui_cloud_move_sign_in_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/cloud-move/sign-in/poll": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Cloud Move Sign In Poll",
+        "description": "Check the browser sign-in once: ``pending`` or ``signed_in`` (key saved).",
+        "operationId": "cloud_move_sign_in_poll_api_ui_cloud_move_sign_in_poll_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/cloud-move/progress": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Cloud Move Progress",
+        "description": "The current or last move: ``running``, per-agent ``{done, total}``,\nthe agent being moved, and ``report`` or ``error`` once it finished.",
+        "operationId": "cloud_move_progress_api_ui_cloud_move_progress_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",

@@ -6,7 +6,7 @@
           {
             "_managed_by": "memanto",
             "type": "command",
-            "command": "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir .",
+            "command": "\"${SYS_EXECUTABLE}\" -m memanto memory sync --project-dir . --catch-up",
             "timeout": 30,
             "statusMessage": "Loading MEMANTO memory..."
           }

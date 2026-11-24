@@ -123,6 +123,11 @@ def agent_activate(
         console.print(
             f"[dim]Activation expires: {result.get('expires_at', 'unknown')}[/dim]"
         )
+        if not config_manager.get_session_config().get("auto_activate_enabled"):
+            console.print(
+                "[dim]Tip: run 'memanto agent auto-activate on' to keep this agent "
+                "active across expiry and restarts and skip this step next time.[/dim]"
+            )
 
     except Exception as e:
         msg = str(e)
@@ -141,9 +146,58 @@ def agent_deactivate():
         console.print("[yellow]No active agent[/yellow]")
         return
 
-    config_manager.clear_active_session()
+    config_manager.clear_active_session(pause_auto_activate=True)
 
     console.print(f"[green]OK Agent '{active_agent_id}' deactivated[/green]")
+    if config_manager.get_session_config().get("auto_activate_enabled"):
+        console.print(
+            "[dim]Auto-activate is paused until you activate an agent again.[/dim]"
+        )
+
+
+@agent_app.command("auto-activate")
+def agent_auto_activate(
+    state: str | None = typer.Argument(
+        None, help="on or off. Omit to show the current setting."
+    ),
+):
+    """Keep your agent working without running 'agent activate'.
+
+    When on, Memanto renews a session before it expires, starts a fresh one
+    after it expires, and resumes the last active agent when none is active.
+    Applies to every tool on this computer that uses the active agent: the
+    CLI, Claude Code and other coding-tool hooks, the MCP server, the desktop
+    widget, the editor extensions and the local UI.
+    """
+    from memanto.app.config import settings
+    from memanto.app.services.session_service import get_session_service
+
+    if state is None:
+        enabled = config_manager.get_session_config().get("auto_activate_enabled")
+        console.print(f"Auto-activate: {'on' if enabled else 'off'}")
+        last = get_session_service().get_last_active()
+        if last:
+            paused = " [dim](paused by deactivate)[/dim]" if last["paused"] else ""
+            console.print(f"Last active agent: {last['agent_id']}{paused}")
+        return
+
+    normalized = state.strip().lower()
+    if normalized not in ("on", "off"):
+        _error(f"Expected 'on' or 'off', got '{state}'.")
+    enabled = normalized == "on"
+    config_manager.set_session_config({"auto_activate_enabled": enabled})
+    settings.SESSION_AUTO_ACTIVATE_ENABLED = enabled
+    if enabled:
+        console.print(
+            "[green]OK Auto-activate on.[/green] [dim]Sessions renew and restart "
+            "by themselves and your last active agent resumes automatically; "
+            "'memanto agent deactivate' pauses it.[/dim]"
+        )
+    else:
+        console.print(
+            "[green]OK Auto-activate off.[/green] [dim]Sessions now end when they "
+            "expire; run 'memanto agent activate' to start a new one.[/dim]"
+        )
 
 
 @agent_app.command("delete")
@@ -180,6 +234,9 @@ def agent_delete(
     on_prem = config_manager.get_backend() == Backend.ON_PREM
     if delete_memories is not None:
         keep_cloud = not delete_memories
+    elif config_manager.get_backend() == Backend.MEMANTO_CLOUD:
+        # Memanto Cloud deletes an agent's memories with the agent.
+        keep_cloud = False
     elif on_prem:
         console.print()
         op = config_manager.get_onprem_config()

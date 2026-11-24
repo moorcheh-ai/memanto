@@ -127,7 +127,7 @@ When `apiKey` is set it is sent as `X-Api-Key` on every request. Memanto Cloud a
 - `listAgents()`
 - `getAgent()`
 - `createAgent({ pattern?, description? })` — explicit create (only needed when `autoCreate: false`).
-- `deleteAgent({ deleteMemories? })` — memories are kept in Moorcheh unless `deleteMemories: true`
+- `deleteAgent({ deleteMemories? })` — on Memanto local, memories are kept in Moorcheh unless `deleteMemories: true`. On Memanto Cloud, deleting an agent always deletes its memories.
 - `deactivate()` — end the current session (the next call rebootstraps).
 - `status()` — current session info.
 - `close()` — stop the spawned server.
@@ -155,6 +155,10 @@ The SDK ships pre-built memory tools (`recallMemory`, `rememberMemory`, `answerM
 | Mastra | `@moorcheh-ai/memanto/mastra` | [Mastra](https://docs.memanto.ai/integrations/mastra) |
 | VoltAgent | `@moorcheh-ai/memanto/voltagent` | [VoltAgent](https://docs.memanto.ai/integrations/voltagent) |
 | OpenAI Node SDK | `@moorcheh-ai/memanto/openai` | [OpenAI](https://docs.memanto.ai/integrations/openai) |
+
+The eve adapter requires `eve >=1.0.0` and Node.js 24 or newer. `memantoMemory()` recalls on
+`turn.started`, exposes scope-bound `remember` and `recall` tools, and
+optionally captures on `turn.completed` (`capture: true`, off by default).
 
 ## Versioning
 

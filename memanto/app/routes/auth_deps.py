@@ -95,6 +95,20 @@ def get_moorcheh_api_key() -> str:
         # string. Return a placeholder so the dependency resolves.
         return "on-prem"
 
+    from memanto.app.clients.memanto_cloud import cloud_api_key, cloud_serve_enabled
+
+    if cloud_serve_enabled():
+        # On Memanto Cloud the server's credential is the ``mk_`` key: it is
+        # what a non-loopback caller presents for management access.
+        key = cloud_api_key()
+        if key:
+            return key
+        raise HTTPException(
+            status_code=500,
+            detail="Server misconfigured: not signed in to Memanto Cloud "
+            "(run memanto login)",
+        )
+
     if settings.MOORCHEH_API_KEY:
         return settings.MOORCHEH_API_KEY
 
@@ -386,7 +400,7 @@ def get_current_session(
 
     except SessionExpiredError as e:
         # The presented token belongs to a session that has fully lapsed.
-        # With SESSION_AUTO_RECREATE_ENABLED the caller gets a fresh session
+        # With SESSION_AUTO_ACTIVATE_ENABLED the caller gets a fresh session
         # on this first operation — but only after passing the same
         # management-access check as explicit activation (valid API key or
         # loopback origin), so a stolen stale token alone is worthless.

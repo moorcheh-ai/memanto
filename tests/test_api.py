@@ -1792,14 +1792,15 @@ class TestMEMANTOAPI:
             {
                 "id": f"m{i}",
                 "metadata": {
-                    "created_at": f"2025-01-{i + 1:02d}T00:00:00Z",
-                    "updated_at": f"2025-01-{i + 1:02d}T01:00:00Z",
+                    "created_at": f"{day:%Y-%m-%d}T00:00:00Z",
+                    "updated_at": f"{day:%Y-%m-%d}T01:00:00Z",
                     "memory_type": "fact",
                     "status": "active",
                 },
                 "text": f"[FACT] Memory {i}\n\ncontent {i}",
             }
-            for i in range(12)
+            for i in range(55)
+            for day in [datetime(2025, 1, 1) + timedelta(days=i)]
         ]
         mock_moorcheh.documents.fetch_text_data.return_value = {
             "status": "ok",
@@ -1813,16 +1814,21 @@ class TestMEMANTOAPI:
             ("recall/recent", {}),
         ]
 
-        for route, payload in requests:
-            response = await client.post(
-                f"/api/v2/agents/{self.TEST_AGENT_ID}/{route}",
-                headers=headers,
-                json=payload,
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["count"] == 10
-            assert len(data["memories"]) == 10
+        # Ignore the developer's real ~/.memanto/config.yaml so the factory
+        # default recall limit (50) is what gets applied.
+        with patch(
+            "memanto.app.routes.memory._config_manager.load_yaml", return_value={}
+        ):
+            for route, payload in requests:
+                response = await client.post(
+                    f"/api/v2/agents/{self.TEST_AGENT_ID}/{route}",
+                    headers=headers,
+                    json=payload,
+                )
+                assert response.status_code == 200
+                data = response.json()
+                assert data["count"] == 50
+                assert len(data["memories"]) == 50
 
     @pytest.mark.asyncio
     async def test_temporal_recall_rejects_non_positive_config_limit(
@@ -2852,14 +2858,14 @@ class TestCWE200ApiKeyLeak:
             json={
                 "session": {
                     "default_duration_hours": 12,
-                    "auto_renew_enabled": False,
+                    "auto_activate_enabled": False,
                 }
             },
         )
 
         assert response.status_code == 200
         _mock_ui_config_manager.set_session_config.assert_called_once_with(
-            {"default_duration_hours": 12, "auto_renew_enabled": False}
+            {"default_duration_hours": 12, "auto_activate_enabled": False}
         )
 
     @pytest.mark.asyncio
@@ -3136,7 +3142,7 @@ class TestRealpathGuard:
 class TestSessionAutoRecreate:
     """Coming back to MEMANTO after a session has fully lapsed.
 
-    ``SESSION_AUTO_RECREATE_ENABLED`` (default on) issues a brand-new session
+    ``SESSION_AUTO_ACTIVATE_ENABLED`` (on in the suite) issues a brand-new session
     on the first operation that presents an expired-but-not-terminated token,
     instead of failing with 401. It is gated by the same management-access
     check as explicit activation, so a stolen stale token alone is worthless.
@@ -3283,10 +3289,10 @@ class TestSessionAutoRecreate:
     async def test_expired_session_auto_recreate_can_be_disabled(
         self, client, auth_headers, mock_moorcheh
     ):
-        """Disabling SESSION_AUTO_RECREATE_ENABLED restores the plain 401."""
+        """Disabling SESSION_AUTO_ACTIVATE_ENABLED restores the plain 401."""
         token = await self._activate_expired(client, auth_headers)
 
-        with patch.object(settings, "SESSION_AUTO_RECREATE_ENABLED", False):
+        with patch.object(settings, "SESSION_AUTO_ACTIVATE_ENABLED", False):
             response = await client.post(
                 f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
                 headers={**auth_headers, "X-Session-Token": token},

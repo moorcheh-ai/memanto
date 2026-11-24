@@ -479,15 +479,19 @@ class SessionService:
         Get currently active session
 
         Returns:
-            Session object or None when there is no active marker, or the
-            marker named a session that has lapsed and could not be
-            auto-recreated.
+            Session object or None when there is no active marker (and
+            auto-activate did not resume the last agent), or the marker
+            named a session that has lapsed and could not be auto-recreated.
         """
         with self._active_marker_lock:
             agent_id = self._read_active_marker_agent_id()
-            if agent_id is None:
-                return None
 
+        if agent_id is None:
+            # Outside the marker lock for the same lock-order reason as
+            # auto-recreate below.
+            return self._auto_activate_last()
+
+        with self._active_marker_lock:
             try:
                 session = self.get_session(agent_id)
             except (ValueError, OSError):
@@ -500,6 +504,11 @@ class SessionService:
                 return None
 
             if session.is_active():
+                # Installs from before auto-activate have an active agent but
+                # no last-active record, so a later backend switch (which
+                # clears the marker) would leave nothing to resume.
+                if self.get_last_active() is None:
+                    self._write_last_active(agent_id)
                 return session
 
             expired_token = session.session_token
@@ -559,10 +568,15 @@ class SessionService:
         session.status = SessionStatus.TERMINATED
         self._save_session(session)
 
-        # Clear active session if this was active
-        active_session = self.get_active_session()
-        if active_session and active_session.agent_id == agent_id:
-            self._clear_active_session()
+        # Clear active session if this was active. Read the marker directly:
+        # get_active_session() could auto-activate an agent here.
+        with self._active_marker_lock:
+            if self._read_active_marker_agent_id() == agent_id:
+                self._clear_active_session()
+
+        # Ending a session is an explicit deactivate: stop auto-activate from
+        # bringing it back until an agent is activated again.
+        self._pause_last_active(agent_id)
 
         # TODO: Get actual memory count from backend
         memories_created = 0
@@ -618,7 +632,7 @@ class SessionService:
         Returns:
             New Session if renewed, None if no renewal was needed
         """
-        if not settings.SESSION_AUTO_RENEW_ENABLED:
+        if not settings.SESSION_AUTO_ACTIVATE_ENABLED:
             return None
 
         # Validation and renewal must be one operation. Without the per-agent
@@ -663,7 +677,7 @@ class SessionService:
         Returns:
             New Session if recreated, None when recreation does not apply
         """
-        if not settings.SESSION_AUTO_RECREATE_ENABLED:
+        if not settings.SESSION_AUTO_ACTIVATE_ENABLED:
             return None
 
         try:
@@ -938,15 +952,144 @@ class SessionService:
                 with self._open_private_text(active_link, flags, "w") as f:
                     f.write(agent_id)
 
+            self._write_last_active(agent_id, paused=False)
+
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
         with self._active_marker_lock:
             active_link = self.sessions_dir / "active"
             active_link.unlink(missing_ok=True)
 
-    def clear_active_session(self) -> None:
-        """Public alias: clear the active-session marker without ending the session."""
-        self._clear_active_session()
+    def clear_active_session(self, *, pause_auto_activate: bool = False) -> None:
+        """Clear the active-session marker without ending the session.
+
+        Args:
+            pause_auto_activate: True for an explicit deactivate, so
+                auto-activate does not bring the agent back until one is
+                activated again. Leave False when the marker is cleared for
+                another reason (backend switch, sign-out).
+        """
+        with self._active_marker_lock:
+            agent_id = self._read_active_marker_agent_id()
+            self._clear_active_session()
+        if pause_auto_activate and agent_id:
+            self._pause_last_active(agent_id)
+
+    # Last active agent, per backend. Auto-activate resumes it when no agent
+    # is active. Kept in ``sessions/last_active`` (no .json suffix, so
+    # list_sessions never reads it as a session record). Keyed by backend
+    # because Memanto Cloud and Moorcheh Cloud share this directory.
+
+    def _last_active_path(self) -> Path:
+        return self.sessions_dir / "last_active"
+
+    @staticmethod
+    def _backend_key() -> str:
+        return settings.MEMANTO_BACKEND.strip().lower()
+
+    def _read_last_active_all(self) -> dict[str, Any]:
+        try:
+            with open(self._last_active_path(), encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def get_last_active(self) -> dict[str, Any] | None:
+        """The last active agent on this backend: ``{"agent_id", "paused"}``, or None."""
+        entry = self._read_last_active_all().get(self._backend_key())
+        if not isinstance(entry, dict) or not isinstance(entry.get("agent_id"), str):
+            return None
+        return {"agent_id": entry["agent_id"], "paused": bool(entry.get("paused"))}
+
+    def _write_last_active(self, agent_id: str | None, paused: bool = False) -> None:
+        """Record (or with None, forget) this backend's last active agent.
+
+        Caller must hold ``_active_marker_lock``. The record only feeds
+        auto-activate, so a failed write (e.g. Windows refusing the atomic
+        replace while another process reads the file) is logged and never
+        fails the activate, deactivate or delete that triggered it.
+        """
+        data = self._read_last_active_all()
+        if agent_id is None:
+            if data.pop(self._backend_key(), None) is None:
+                return
+        else:
+            data[self._backend_key()] = {"agent_id": agent_id, "paused": paused}
+        try:
+            self._harden_session_storage()
+            self._write_private_json_atomic(self._last_active_path(), data)
+        except OSError as e:
+            logger.warning("Could not update the last active agent record: %s", e)
+
+    def _pause_last_active(self, agent_id: str) -> None:
+        with self._active_marker_lock:
+            last = self.get_last_active()
+            if last and last["agent_id"] == agent_id and not last["paused"]:
+                self._write_last_active(agent_id, paused=True)
+
+    def _auto_activate_last(self) -> Session | None:
+        """Resume the last active agent when auto-activate is on.
+
+        Joins its live session when it has one, so other clients keep their
+        token; otherwise starts a fresh session. Returns None when the setting
+        is off, the last agent was deactivated, or there is nothing to resume
+        (no record, or no saved session for the agent).
+        """
+        if not settings.SESSION_AUTO_ACTIVATE_ENABLED:
+            return None
+        last = self.get_last_active()
+        if last is None or last["paused"]:
+            return None
+        agent_id = last["agent_id"]
+        try:
+            validate_safe_id(agent_id, "agent_id")
+            return self._resume_agent(agent_id)
+        except (ValueError, OSError) as e:
+            # A bad record or unreadable session file means there is nothing
+            # to resume; callers then see "no active agent", as with the
+            # setting off.
+            logger.warning("Could not auto-activate agent '%s': %s", agent_id, e)
+            return None
+
+    def _resume_agent(self, agent_id: str) -> Session | None:
+        with self.lock_agent_lifecycle(agent_id):
+            with self._active_marker_lock:
+                current = self._read_active_marker_agent_id()
+            if current is not None:
+                # Another client activated an agent in the meantime.
+                other = self.get_session(current)
+                return other if other is not None and other.is_active() else None
+
+            session = self.get_session(agent_id)
+            if session is None:
+                return None
+            if session.is_active():
+                self._set_active_session(agent_id)
+                return session
+            logger.info("Auto-activating last active agent '%s'", agent_id)
+            return self._create_session(
+                agent_id,
+                session.pattern,
+                settings.SESSION_DEFAULT_DURATION_HOURS,
+            )
+
+    def join_session(self, agent_id: str) -> Session | None:
+        """Make *agent_id*'s live session the active one, without replacing it.
+
+        Unlike :meth:`create_session`, the agent's existing token stays valid,
+        so other clients using it are not signed out.
+
+        Returns:
+            The joined session, or None when the agent has no live session
+            (the caller should then activate it).
+        """
+        with self.lock_agent_lifecycle(agent_id):
+            session = self.get_session(agent_id)
+            if session is None or not session.is_active():
+                return None
+            self._set_active_session(agent_id)
+            return session
 
     def delete_session(self, agent_id: str) -> bool:
         """
@@ -979,6 +1122,10 @@ class SessionService:
 
             if active_agent_id == agent_id:
                 self._clear_active_session()
+
+            last = self.get_last_active()
+            if last and last["agent_id"] == agent_id:
+                self._write_last_active(None)
 
             return deleted
 

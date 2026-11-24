@@ -426,13 +426,21 @@ class DirectClient:
         try:
             # Validate JWT token
             token_payload = session_service.validate_session(self.session_token)
-        except SessionExpiredError:
+        except SessionExpiredError as expired:
             # The stored session fully lapsed (e.g. the process was idle past
-            # its expiry). With auto-recreate enabled, transparently issue a
-            # fresh session on this first operation instead of failing.
+            # its expiry). With auto-activate on, transparently issue a fresh
+            # session on this first operation instead of failing.
             recreated = session_service.check_and_auto_recreate(self.session_token)
             if recreated is None:
-                raise
+                from memanto.app.config import settings
+
+                if settings.SESSION_AUTO_ACTIVATE_ENABLED:
+                    raise
+                raise SessionExpiredError(
+                    f"The session for agent '{agent_id}' expired. Run 'memanto "
+                    f"agent activate {agent_id}', or 'memanto agent auto-activate "
+                    "on' to keep sessions going by themselves."
+                ) from expired
             self._cached_session = recreated
             self.session_token = recreated.session_token
             return recreated

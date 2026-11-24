@@ -11,6 +11,7 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event
 from time import perf_counter
@@ -194,6 +195,26 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
     assert row["updated_at"] is not None
     assert row["expired_at"] is None
     assert row["expired_by"] is None
+
+
+def test_okf_unquoted_yaml_date_is_kept_as_created_at(tmp_path):
+    """YAML loads ``timestamp: 2024-01-15`` as a date, which must not be dropped."""
+    (tmp_path / "memory.md").write_text(
+        "---\n"
+        "type: fact\n"
+        "title: Dated fact\n"
+        "timestamp: 2024-01-15\n"
+        "x_memanto:\n"
+        "  updated_at: 2024-02-01\n"
+        "---\n\n"
+        "This memory has a date-only timestamp.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+
+    assert row["created_at"] == datetime(2024, 1, 15, tzinfo=timezone.utc)
+    assert row["updated_at"] == datetime(2024, 2, 1, tzinfo=timezone.utc)
 
 
 def test_okf_invalid_provenance_falls_back_to_imported():

@@ -424,14 +424,6 @@ export function memantoMemory(options: MemantoMemoryOptions = {}) {
           scopeTag(ctx.memory.scope.key),
           ctx.session.id,
         ),
-      "compaction.completed": (ctx) =>
-        ctx.turn
-          ? recallForTurn(
-              userText(ctx.turn.input),
-              scopeTag(ctx.memory.scope.key),
-              ctx.session.id,
-            )
-          : null,
     },
     ...(capture
       ? {

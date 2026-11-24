@@ -20,7 +20,7 @@ import typer
 from rich.panel import Panel
 from rich.table import Table
 
-from memanto.app.clients.backend import Backend
+from memanto.app.clients.backend import BACKEND_LABELS, BACKEND_NAMES, Backend
 from memanto.app.config import is_loopback_host, settings
 from memanto.cli.commands._shared import (
     ACCENT,
@@ -39,6 +39,7 @@ from memanto.cli.commands._shared import (
     print_logo,
     show_welcome_banner,
 )
+from memanto.cli.config.manager import MEMANTO_CONSOLE_URL
 
 
 def _notify_exposed_deployment(host: str) -> None:
@@ -77,7 +78,11 @@ def _first_run_setup() -> None:
     console.print()
 
     backend = _prompt_backend_choice()
-    if backend == Backend.ON_PREM:
+    if backend == Backend.MEMANTO_CLOUD:
+        from memanto.cli.commands.auth import sign_in
+
+        sign_in()
+    elif backend == Backend.ON_PREM:
         _onprem_setup()
     else:
         _cloud_setup()
@@ -94,13 +99,16 @@ def _first_run_setup() -> None:
     _settings.MEMANTO_BACKEND = backend.value
     _singleton.reset_client()
 
-    backend_label = "Cloud" if backend == Backend.CLOUD else "On-Prem"
-    extras = (
-        "[dim]API Key:[/dim] [green]●[/green] configured"
-        if backend == Backend.CLOUD
-        else f"[dim]Server:[/dim] {config_manager.get_onprem_config()['url']}\n"
-        f"[dim]Embedding:[/dim] {config_manager.get_onprem_config()['embedding_provider'] or 'unknown'}"
-    )
+    backend_label = BACKEND_LABELS[backend]
+    if backend == Backend.MEMANTO_CLOUD:
+        extras = "[dim]Next:[/dim] memanto connect"
+    elif backend == Backend.CLOUD:
+        extras = "[dim]API Key:[/dim] [green]●[/green] configured"
+    else:
+        extras = (
+            f"[dim]Server:[/dim] {config_manager.get_onprem_config()['url']}\n"
+            f"[dim]Embedding:[/dim] {config_manager.get_onprem_config()['embedding_provider'] or 'unknown'}"
+        )
     console.print(
         Panel(
             "[bold green]Setup complete![/bold green]\n\n"
@@ -115,14 +123,28 @@ def _first_run_setup() -> None:
 
 
 def _prompt_backend_choice() -> Backend:
-    """Ask the user which backend they want. Default: Cloud."""
-    console.print(f"[{BOLD_BRIGHT}]Choose your backend[/{BOLD_BRIGHT}]")
+    """Ask the user which backend they want. Default: Memanto Cloud."""
+    console.print(f"[{BOLD_BRIGHT}]Where should Memanto keep memories?[/{BOLD_BRIGHT}]")
     console.print(
-        f"  [{BRIGHT}]1[/{BRIGHT}]  Moorcheh Cloud  "
-        "[dim](instant, needs API key, all features)[/dim]"
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Memanto Cloud  "
+        "[dim](recommended: sign in with your browser, nothing to install)[/dim]"
     )
     console.print(
-        f"  [{BRIGHT}]2[/{BRIGHT}]  Moorcheh On-Prem  "
+        f"  [{BRIGHT}]2[/{BRIGHT}]  Memanto local  "
+        "[dim](with your own Moorcheh API key, or Moorcheh on-prem)[/dim]"
+    )
+    choice = typer.prompt("  Enter 1 or 2", default="1")
+    console.print()
+    if str(choice).strip() != "2":
+        return Backend.MEMANTO_CLOUD
+
+    console.print(f"[{BOLD_BRIGHT}]Memanto local setup[/{BOLD_BRIGHT}]")
+    console.print(
+        f"  [{BRIGHT}]1[/{BRIGHT}]  {BACKEND_LABELS[Backend.CLOUD]}  "
+        "[dim](instant, needs a Moorcheh API key)[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]2[/{BRIGHT}]  {BACKEND_LABELS[Backend.ON_PREM]}  "
         "[dim](~5-10 min install, Docker required, no API key)[/dim]"
     )
     choice = typer.prompt("  Enter 1 or 2", default="1")
@@ -646,6 +668,33 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
+# Commands that are themselves about Memanto Cloud: no notice after them.
+_CLOUD_NOTICE_SKIP = {"login", "logout", "use"}
+
+
+def _stdout_is_terminal() -> bool:
+    return sys.stdout is not None and sys.stdout.isatty()
+
+
+def _show_cloud_notice_once() -> None:
+    """Once per install, after a command on a local backend: point at Memanto Cloud.
+
+    Only on a terminal, so hook output (e.g. ``memanto memory sync`` injected
+    into a coding tool's context) never carries it.
+    """
+    if not _stdout_is_terminal() or config_manager.get("cloud_notice_shown"):
+        return
+    if not config_manager.get("backend"):
+        return
+    if config_manager.get_backend() == Backend.MEMANTO_CLOUD:
+        return
+    config_manager.set("cloud_notice_shown", True)
+    console.print(
+        "\n[dim]New: Memanto Cloud keeps your memories in sync across tools and "
+        f"computers. Try it: [/dim][{BRIGHT}]memanto login[/{BRIGHT}]"
+    )
+
+
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
@@ -658,6 +707,8 @@ def main_callback(
     ),
 ):
     """MEMANTO CLI - Memory that AI Agents Love!"""
+    if ctx.invoked_subcommand and ctx.invoked_subcommand not in _CLOUD_NOTICE_SKIP:
+        ctx.call_on_close(_show_cloud_notice_once)
     if ctx.invoked_subcommand is None:
         # Print logo
         print_logo()
@@ -673,6 +724,34 @@ def main_callback(
 # ============================================================================
 # STATUS COMMAND - Comprehensive Scenario Dashboard
 # ============================================================================
+
+
+def _add_memanto_cloud_rows(table: Table) -> None:
+    """Add Memanto Cloud API URL, account, plan and usage-left rows to *table*."""
+    from memanto.cli.client.hosted_client import HostedClient
+
+    table.add_row("Memanto Cloud API", config_manager.get_memanto_api_url())
+    try:
+        account = HostedClient(
+            config_manager.get_memanto_api_key() or "",
+            base_url=config_manager.get_memanto_api_url(),
+        ).get_account()
+    except Exception as e:
+        table.add_row("Account", f"[red]● {e}[/red]")
+        return
+    if account is None:
+        table.add_row("Account", "[dim]not reported by this server[/dim]")
+        return
+
+    table.add_row("Account", account.get("email") or account.get("user_id") or "—")
+    table.add_row("Plan", account.get("plan") or "—")
+    for meter, label in (("api_calls", "API calls"), ("agentic_ops", "Agentic ops")):
+        usage = (account.get("usage") or {}).get(meter) or {}
+        used, limit = usage.get("used", 0), usage.get("limit")
+        if limit is None:
+            table.add_row(f"{label} used", f"{used:,}")
+        else:
+            table.add_row(f"{label} left", f"{max(limit - used, 0):,} of {limit:,}")
 
 
 @app.command()
@@ -715,7 +794,7 @@ def status():
     cfg_table.add_row("Config Dir", str(config_manager.config_dir))
 
     backend = config_manager.get_backend()
-    cfg_table.add_row("Backend", backend.value)
+    cfg_table.add_row("Backend", BACKEND_NAMES[backend])
     if backend == Backend.ON_PREM:
         op = config_manager.get_onprem_config()
         cfg_table.add_row("On-Prem URL", op.get("url", ""))
@@ -735,8 +814,10 @@ def status():
     server_url = config_manager.get_server_url()
     if is_configured:
         cfg_table.add_row("Local REST API URL", server_url)
-        if backend == Backend.CLOUD:
+        if backend in (Backend.CLOUD, Backend.MEMANTO_CLOUD):
             cfg_table.add_row("API Key", "[green]● configured[/green]")
+        if backend == Backend.MEMANTO_CLOUD:
+            _add_memanto_cloud_rows(cfg_table)
     else:
         cfg_table.add_row("Local REST API URL", "[dim]not set[/dim]")
         cfg_table.add_row("API Key", "[red]● not configured[/red]")
@@ -1006,6 +1087,18 @@ def serve(
             f"\n[dim]Backend: on-prem at {op.get('url', 'http://localhost:8080')}[/dim]"
         )
         os.environ["MEMANTO_BACKEND"] = "on-prem"
+    elif backend == Backend.MEMANTO_CLOUD:
+        # Serve the same API, with memories on Memanto Cloud. Never hand the
+        # server a Moorcheh key here: it would silently serve Memanto local.
+        if not config_manager.get_memanto_api_key():
+            _error(
+                "Not signed in to Memanto Cloud.",
+                hint="Run: memanto login (or memanto use moorcheh | on-prem)",
+            )
+        from memanto.app.clients.memanto_cloud import CLOUD_SERVE_ENV
+
+        console.print("\n[dim]Backend: Memanto Cloud[/dim]")
+        os.environ[CLOUD_SERVE_ENV] = "1"
     else:
         api_key = config_manager.get_api_key()
         if not api_key:
@@ -1104,8 +1197,29 @@ def _open_dashboard_window(url: str) -> None:
 def ui(
     host: str = typer.Option(None, "--host", help="Server host (defaults to config)"),
     port: int = typer.Option(None, "--port", help="Server port (defaults to config)"),
+    local: bool = typer.Option(
+        False,
+        "--local",
+        help="On Memanto Cloud: start this computer's dashboard anyway, at its "
+        "Migrate page, to move Memanto local memories up.",
+    ),
 ):
-    """Start MEMANTO server and open the Web UI Dashboard."""
+    """Start MEMANTO server and open the Web UI Dashboard.
+
+    On Memanto Cloud, opens the Memanto console instead: your memories live
+    there. 'memanto ui --local' still starts this computer's dashboard.
+    """
+    on_cloud = config_manager.get_backend() == Backend.MEMANTO_CLOUD
+    if on_cloud and not local:
+        url = f"{MEMANTO_CONSOLE_URL}/memory"
+        console.print(
+            f"You're on Memanto Cloud. Opening the console: [{BRIGHT}]{url}[/{BRIGHT}]"
+        )
+        console.print(
+            "[dim]To move memories from Memanto local: memanto ui --local[/dim]"
+        )
+        webbrowser.open_new(url)
+        return
 
     server_cfg = config_manager.get_server_config()
     host = host or server_cfg.get("url", "0.0.0.0")
@@ -1137,7 +1251,7 @@ def ui(
     port_in_use = sock.connect_ex(("localhost", port)) == 0
     sock.close()
 
-    ui_url = f"http://localhost:{port}/ui"
+    ui_url = f"http://localhost:{port}/ui" + ("/migrate" if on_cloud else "")
 
     if port_in_use:
         console.print(f"\n[green]Server already running on port {port}.[/green]")

@@ -12,9 +12,10 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
+from memanto.app.clients.memanto_cloud import cloud_api_key, cloud_serve_enabled
 from memanto.app.config import settings
 from memanto.app.middleware import TrustedProxySchemeMiddleware
-from memanto.app.routes import health, sessions
+from memanto.app.routes import cloud, health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
 from memanto.app.utils.client_identity import (
@@ -30,6 +31,14 @@ from memanto.app.utils.client_identity import (
 def _validate_startup_dependencies() -> None:
     """Fail fast when mandatory external dependencies are misconfigured."""
     backend = parse_backend(settings.MEMANTO_BACKEND)
+
+    if cloud_serve_enabled():
+        if not cloud_api_key():
+            raise RuntimeError(
+                "Not signed in to Memanto Cloud. Run: memanto login, then start "
+                "the server again."
+            )
+        return
 
     if backend == Backend.ON_PREM:
         import httpx
@@ -167,13 +176,18 @@ async def attribute_calling_tool(request, call_next):
 # Include routers
 app.include_router(health.router, tags=["Health"])
 
-# Session-Based API (Primary)
-app.include_router(sessions.router, prefix="/api/v2", tags=["Sessions & Agents"])
+if cloud_serve_enabled():
+    # Memanto Cloud: same API, memories stored on Memanto Cloud. The local
+    # dashboard reads Memanto local, so /ui points to the console instead.
+    app.include_router(cloud.router, prefix="/api/v2", tags=["Sessions & Agents"])
+    app.include_router(cloud.ui_router)
+else:
+    # Session-Based API (Primary)
+    app.include_router(sessions.router, prefix="/api/v2", tags=["Sessions & Agents"])
 
-
-# Web UI Dashboard
-app.include_router(ui_router, tags=["Web UI"])
-mount_ui_static(app)
+    # Web UI Dashboard
+    app.include_router(ui_router, tags=["Web UI"])
+    mount_ui_static(app)
 
 
 @app.get("/")

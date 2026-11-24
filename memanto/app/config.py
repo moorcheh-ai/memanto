@@ -59,20 +59,17 @@ if _config_file.exists():
             if _smart_parse is not None:
                 os.environ["AUTO_PARSE_ENABLED"] = str(_smart_parse)
 
-            # Session toggles. The Web UI and ``memanto config`` persist these
-            # to config.yaml, but SessionService reads them off ``settings``,
-            # so without this they would be inert for the server and only
-            # half-honoured by the CLI. Use setdefault so an explicitly
-            # exported SESSION_AUTO_* (containerised deployments) still wins.
+            # Session toggle. The Web UI and ``memanto agent auto-activate``
+            # persist it to config.yaml, but SessionService reads it off
+            # ``settings``, so without this it would be inert for the server
+            # and only half-honoured by the CLI. Use setdefault so an
+            # explicitly exported SESSION_AUTO_ACTIVATE_ENABLED
+            # (containerised deployments) still wins.
             _session = _memanto.get("session", {})
             if isinstance(_session, dict):
-                for _yaml_key, _env_key in (
-                    ("auto_renew_enabled", "SESSION_AUTO_RENEW_ENABLED"),
-                    ("auto_recreate_enabled", "SESSION_AUTO_RECREATE_ENABLED"),
-                ):
-                    _toggle = _session.get(_yaml_key)
-                    if isinstance(_toggle, bool):
-                        os.environ.setdefault(_env_key, str(_toggle))
+                _toggle = _session.get("auto_activate_enabled")
+                if isinstance(_toggle, bool):
+                    os.environ.setdefault("SESSION_AUTO_ACTIVATE_ENABLED", str(_toggle))
 
             # Backend selection (cloud | on-prem)
             _backend = _memanto.get("backend")
@@ -115,9 +112,8 @@ class SessionConfig(BaseModel):
     auto_extend: bool = True
     extend_threshold_minutes: int = 30
     warn_before_expiry_minutes: int = 15
-    auto_renew_enabled: bool = True
     auto_renew_interval_hours: int = 6
-    auto_recreate_enabled: bool = True
+    auto_activate_enabled: bool = False
 
 
 class CLIConfig(BaseModel):
@@ -165,12 +161,13 @@ class Settings(BaseSettings):
     SESSION_DEFAULT_DURATION_HOURS: int = 6
     SESSION_AUTO_EXTEND: bool = True
     SESSION_EXTEND_THRESHOLD_MINUTES: int = 30
-    SESSION_AUTO_RENEW_ENABLED: bool = True
     SESSION_AUTO_RENEW_INTERVAL_HOURS: int = 6
-    # Transparently issue a fresh session (new token) when a request presents
-    # an expired-but-not-terminated token. Gated behind management access.
-
-    SESSION_AUTO_RECREATE_ENABLED: bool = True
+    # The one session-continuity switch (opt-in). When on, Memanto keeps your
+    # agent working without `memanto agent activate`: it renews a live session
+    # near expiry, issues a fresh session when a request presents an
+    # expired-but-not-terminated token (gated behind management access), and
+    # resumes the last active agent when none is active.
+    SESSION_AUTO_ACTIVATE_ENABLED: bool = False
 
     # Memory Configuration
     DEFAULT_TTL_SECONDS: int = 3600  # 1 hour
@@ -185,7 +182,7 @@ class Settings(BaseSettings):
     SUMMARY_MODEL: str = "anthropic.claude-sonnet-4-6"
 
     # Recall / Search Configuration
-    RECALL_LIMIT: int = 10  # default top-N results for recall/search
+    RECALL_LIMIT: int = 50  # default top-N results for recall/search
 
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"

@@ -27,10 +27,14 @@ from typing import Any, cast
 
 import typer
 from rich.panel import Panel
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 from rich.table import Table
 
+from memanto.app.clients.backend import BACKEND_LABELS, Backend
 from memanto.app.utils.errors import (
+    AuthenticationError,
     InvalidSessionTokenError,
+    MemoryOperationError,
     SessionError,
     SessionExpiredError,
 )
@@ -1298,3 +1302,150 @@ def migrate_langfuse(
             border_style=border,
         )
     )
+
+
+# Memanto Cloud: move a local backend's memories up
+
+
+def run_cloud_move(source: Backend, include_expired: bool = False) -> None:
+    """Move every agent's memories from the local *source* backend to Memanto Cloud.
+
+    Moves active memories only unless *include_expired*.
+
+    Resumable: re-running continues from ``~/.memanto/migrate/cloud-state.json``.
+    Local data is left as it is. Exits with an error if either side is unreachable.
+    """
+    from memanto.cli.client.factory import build_client
+    from memanto.cli.migrate import cloud_move
+
+    label = BACKEND_LABELS[source]
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]Moving memories: {label} -> Memanto Cloud[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    try:
+        with cloud_move.reading_from(source.value):
+            local = build_client(config_manager, backend=source)
+            hosted = build_client(config_manager, backend=Backend.MEMANTO_CLOUD)
+            with Progress(
+                TextColumn("  {task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                console=console,
+            ) as bar:
+                tasks: dict[str, Any] = {}
+
+                def on_progress(agent_id: str, done: int, total: int) -> None:
+                    if agent_id not in tasks:
+                        tasks[agent_id] = bar.add_task(agent_id, total=total)
+                    bar.update(tasks[agent_id], completed=done)
+
+                report = cloud_move.move_to_cloud(
+                    local,
+                    hosted,
+                    cloud_move.state_path(config_manager.config_dir),
+                    source.value,
+                    on_progress=on_progress,
+                    include_expired=include_expired,
+                )
+    except (AuthenticationError, MemoryOperationError, ConnectionError, OSError) as e:
+        _error(
+            f"Could not move memories: {e}",
+            hint="Fix the problem, then run: memanto migrate to-cloud (it resumes)",
+        )
+
+    table = Table(show_header=True, header_style=BOLD_PRIMARY)
+    table.add_column("Local agent")
+    table.add_column("On Memanto Cloud")
+    table.add_column("Moved", justify="right")
+    table.add_column("Failed", justify="right")
+    for move in report.agents:
+        table.add_row(
+            move.local_id,
+            move.cloud_id or "",
+            str(move.moved + move.already_moved),
+            str(len(move.failed)),
+        )
+    console.print(table)
+
+    if report.empty:
+        console.print(
+            f"[dim]Nothing to move in {label}, not moved: {', '.join(report.empty)}[/dim]"
+        )
+    if report.expired_skipped:
+        console.print(
+            f"[dim]{report.expired_skipped} expired memories stay local. "
+            "To move them too: memanto migrate to-cloud --include-expired[/dim]"
+        )
+    failures = [(m.local_id, mid, why) for m in report.agents for mid, why in m.failed]
+    for agent_id, mid, why in failures[:5]:
+        console.print(f"  [red]Failed[/red] {agent_id}/{mid}: {why}")
+    if report.not_moved:
+        _warn(
+            f"Agent limit reached ({report.stop_reason}). Not moved: "
+            f"{', '.join(report.not_moved)}. Free up agents, then run: "
+            "memanto migrate to-cloud"
+        )
+    if failures:
+        console.print(
+            "[dim]Retry the failed memories with: memanto migrate to-cloud[/dim]"
+        )
+    elif not report.not_moved:
+        console.print(
+            "[green]All memories moved.[/green] [dim]Your local copy is unchanged.[/dim]"
+        )
+
+
+@migrate_app.command("to-cloud")
+def migrate_to_cloud(
+    source: str | None = typer.Option(
+        None,
+        "--from",
+        help="Local backend to move from: 'moorcheh' (Memanto local with Moorcheh "
+        "Cloud) or 'on-prem' (Memanto local with Moorcheh on-prem). "
+        "Defaults to the one you used before signing in to Memanto Cloud.",
+    ),
+    include_expired: bool = typer.Option(
+        False,
+        "--include-expired",
+        help="Also move expired memories (they stay expired). Default: active only.",
+    ),
+):
+    """Move your local memories to Memanto Cloud (resumable, keeps local data).
+
+    Each agent becomes a Memanto Cloud agent (named <id>-local if the id is
+    taken) and keeps its memories' type, tags, confidence, provenance and
+    creation time. Only active memories move unless --include-expired. Re-running after an interruption continues where it stopped
+    and never sends a memory twice. Needs 'memanto login' first.
+
+    Examples:
+        memanto migrate to-cloud
+        memanto migrate to-cloud --from on-prem
+        memanto migrate to-cloud --include-expired
+    """
+    from memanto.cli.migrate import cloud_move
+
+    if not config_manager.get_memanto_api_key():
+        _error("Not signed in to Memanto Cloud.", hint="Run: memanto login")
+
+    if source is not None:
+        names = {"moorcheh": Backend.CLOUD, "on-prem": Backend.ON_PREM}
+        if source not in names:
+            _error(
+                f"Unknown backend '{source}'.",
+                hint="Use --from moorcheh or --from on-prem",
+            )
+        backend = names[source]
+    else:
+        saved = cloud_move.default_source(config_manager)
+        if saved is None:
+            _error(
+                "No local backend to move from.",
+                hint="Use --from moorcheh or --from on-prem",
+            )
+        backend = Backend(saved)
+
+    run_cloud_move(backend, include_expired=include_expired)

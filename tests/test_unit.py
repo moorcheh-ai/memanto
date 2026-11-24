@@ -408,7 +408,7 @@ class TestSessionService:
         self, session_service, monkeypatch
     ):
         """A lapsed session gets a fresh one on the next operation when enabled."""
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
         original = session_service.create_session(
             agent_id="test-agent",
             pattern=AgentPattern.SUPPORT,
@@ -429,7 +429,7 @@ class TestSessionService:
         self, session_service, monkeypatch
     ):
         """The expired token must not authenticate after recreation."""
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
         original = session_service.create_session(
             agent_id="test-agent", duration_hours=0
         )
@@ -468,7 +468,7 @@ class TestSessionService:
         self, session_service, monkeypatch
     ):
         """Disabling the flag restores the plain expiry error path."""
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", False)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", False)
         original = session_service.create_session(
             agent_id="test-agent", duration_hours=0
         )
@@ -482,7 +482,7 @@ class TestSessionService:
         self, session_service, monkeypatch
     ):
         """Only the token matching the persisted (expired) session qualifies."""
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
         session = session_service.create_session(
             agent_id="test-agent", duration_hours=0
         )
@@ -518,7 +518,7 @@ class TestSessionService:
         expiry stranded the caller with "No active session. Call
         activate_agent()" - the exact failure auto-recreate exists to prevent.
         """
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
         original = session_service.create_session(
             agent_id="test-agent",
             pattern=AgentPattern.SUPPORT,
@@ -541,7 +541,7 @@ class TestSessionService:
         self, session_service, monkeypatch
     ):
         """With the toggle off, expiry still clears the stale marker."""
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", False)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", False)
         session_service.create_session(agent_id="test-agent", duration_hours=0)
         time.sleep(1)
 
@@ -552,7 +552,7 @@ class TestSessionService:
         self, session_service, monkeypatch
     ):
         """Logout clears the marker and auto-recreate must not restore it."""
-        monkeypatch.setattr(settings, "SESSION_AUTO_RECREATE_ENABLED", True)
+        monkeypatch.setattr(settings, "SESSION_AUTO_ACTIVATE_ENABLED", True)
         session_service.create_session(agent_id="test-agent", duration_hours=0)
         session_service.end_session("test-agent")
         time.sleep(1)
@@ -2394,14 +2394,14 @@ class TestSessionConfigValidation:
             {
                 "default_duration_hours": "12",
                 "extend_threshold_minutes": "45",
-                "auto_renew_enabled": False,
+                "auto_activate_enabled": True,
             }
         )
 
         session = manager.get_session_config()
         assert session["default_duration_hours"] == 12
         assert session["extend_threshold_minutes"] == 45
-        assert session["auto_renew_enabled"] is False
+        assert session["auto_activate_enabled"] is True
 
     @pytest.mark.parametrize(
         ("key", "value"),

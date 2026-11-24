@@ -83,6 +83,7 @@ def _out(text: str) -> None:
 
 
 def _read_stdin() -> dict:
+    """Read and parse the JSON hook payload from stdin."""
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return {}
@@ -93,6 +94,7 @@ def _read_stdin() -> dict:
 
 
 def _project_dir(payload: dict) -> str:
+    """Determine the target project directory from the hook payload or cwd."""
     workspace = payload.get("workspace") or {}
     for value in (
         workspace.get("project_dir"),
@@ -104,13 +106,44 @@ def _project_dir(payload: dict) -> str:
     return os.getcwd()
 
 
+def _catch_up_lines(out: str) -> str:
+    """The "Since your last session" block `memory sync --catch-up` printed, or ""."""
+    import re
+
+    match = re.search(
+        r"^Since your last session[^\n]*\n(?:- [^\n]*(?:\n|$))+", out, re.MULTILINE
+    )
+    return match.group(0).rstrip() if match else ""
+
+
+def _host(argv: list[str], payload: dict) -> str:
+    """Identify the calling agent (e.g. `--host kimi-code` or stdin client_type)."""
+    for i, arg in enumerate(argv):
+        if arg == "--host" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--host="):
+            return arg.split("=", 1)[1]
+    client_type = payload.get("client_type")
+    if isinstance(client_type, str) and client_type:
+        return client_type
+    return "claude-code"
+
+
 def sync_memory(project_dir: str) -> str | None:
-    """Run `memanto memory sync`. Returns a one-line summary, or None if unavailable."""
+    """Run `memanto memory sync --catch-up`.
+
+    Returns a one-line summary, followed by the memories saved since the last
+    session (by any tool) when there are some, or None if unavailable.
+    """
     try:
         result = subprocess.run(
-            ["memanto", "memory", "sync", "--project-dir", project_dir],
+            ["memanto", "memory", "sync", "--project-dir", project_dir, "--catch-up"],
             capture_output=True,
-            text=True,
+            # Memories can hold any text: have the child write UTF-8 and read
+            # it as UTF-8, not the Windows console code page.
+            encoding="utf-8",
+            errors="replace",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             timeout=SYNC_TIMEOUT,
         )
     except FileNotFoundError:
@@ -127,24 +160,28 @@ def sync_memory(project_dir: str) -> str | None:
     import re
 
     out = result.stdout or ""
+    catch_up = _catch_up_lines(out)
     if re.search(r"No active dynamic memories", out):
-        return "Memory refreshed — no active standing memories."
-    match = re.search(r"Recalled\s+(\d+)\s+dynamic memor", out)
-    if not match:
-        return "Memory refreshed."
-    count = int(match.group(1))
-    return (
-        f"Memory refreshed — {count} active "
-        + ("memory" if count == 1 else "memories")
-        + " loaded."
-    )
+        summary = "Memory refreshed — no active standing memories."
+    elif match := re.search(r"Recalled\s+(\d+)\s+dynamic memor", out):
+        count = int(match.group(1))
+        summary = (
+            f"Memory refreshed — {count} active "
+            + ("memory" if count == 1 else "memories")
+            + " loaded."
+        )
+    else:
+        summary = "Memory refreshed."
+    return f"{summary}\n{catch_up}" if catch_up else summary
 
 
 def _settings_path() -> Path:
+    """Return the path to the user's Claude Code settings.json."""
     return Path(os.path.expanduser("~")) / ".claude" / "settings.json"
 
 
 def _statusline_script() -> Path:
+    """Return the path to the bundled statusline script."""
     return (Path(__file__).resolve().parent.parent / "statusline.py").resolve()
 
 
@@ -208,6 +245,7 @@ def install_statusline() -> str | None:
 
 
 def _touch(marker: Path) -> None:
+    """Write the statusline installation marker file."""
     try:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("1", encoding="utf-8")
@@ -217,8 +255,10 @@ def _touch(marker: Path) -> None:
 
 
 def main() -> None:
+    """Run session-start memory sync and optional Claude Code statusline setup."""
     payload = _read_stdin()
     project_dir = _project_dir(payload)
+    host = _host(sys.argv[1:], payload)
 
     if not _claim("sessionstart:" + str(payload.get("session_id") or project_dir)):
         return
@@ -227,20 +267,25 @@ def main() -> None:
     try:
         summary = sync_memory(project_dir)
         if summary:
+            first, _, catch_up = summary.partition("\n")
             lines.append(
-                f"{MARK} {summary} Use `memanto recall` for anything not already in your memory context."
+                f"{MARK} {first} Use `memanto recall` for anything not already in your memory context."
             )
+            if catch_up:
+                lines.append(catch_up)
     except Exception:
         # Ignore errors syncing memory in session start hook
         pass
 
-    try:
-        notice = install_statusline()
-        if notice:
-            lines.append(notice)
-    except Exception:
-        # Ignore errors installing statusline in session start hook
-        pass
+    # The status line is a Claude Code feature; other hosts have no use for it.
+    if host == "claude-code":
+        try:
+            notice = install_statusline()
+            if notice:
+                lines.append(notice)
+        except Exception:
+            # Ignore errors installing statusline in session start hook
+            pass
 
     if lines:
         _out("\n".join(lines))

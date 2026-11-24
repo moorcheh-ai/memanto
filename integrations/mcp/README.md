@@ -22,7 +22,7 @@ custom agents, …) can plug into long-term memory in a single config line.
 pip install memanto-mcp
 ```
 
-Requires Python 3.10+, `memanto>=0.2.31`, `mcp>=1.2,<2`, and a
+Requires Python 3.10+, `memanto>=0.3.0`, `mcp>=1.2,<2`, and a
 [Memanto Cloud account](https://console.memanto.ai/sign-in) (`memanto login` or `MEMANTO_API_KEY`) — or a [Moorcheh API key](https://console.moorcheh.ai/api-keys) for Memanto local.
 
 ## Quick start (Claude Desktop)
@@ -138,7 +138,7 @@ All config is via environment variables (load order: process env →
 |---|---|---|---|
 | `MEMANTO_API_KEY` | **yes*** | — | Memanto Cloud API key from [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in) (*not needed if signed in with `memanto login` or using `MOORCHEH_API_KEY`). |
 | `MOORCHEH_API_KEY` | no | — | Moorcheh API key when using Memanto local (`moorcheh-cloud`). |
-| `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Default agent. When set, tool calls may omit `agent_id`. |
+| `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Fallback agent. Tool calls that omit `agent_id` use the agent active on this computer (`memanto agent activate`, shared with the CLI and other tools), else this one. |
 | `MEMANTO_AGENT_PATTERN` | no | `tool` | Pattern (`support`/`project`/`tool`) used when auto-creating the default agent. |
 | `MEMANTO_AGENT_AUTO_CREATE` | no | `true` | Create the default agent on first use if missing. Explicit non-default agents must already exist. |
 | `MEMANTO_SESSION_DURATION_HOURS` | no | server default (6) | Session lifetime in hours. |
@@ -185,8 +185,10 @@ clients.
   first tool call.
 - On the first memory tool invocation for a given agent, the server
   ensures the agent exists (auto-creates if needed) and activates a JWT
-  session. Sessions auto-renew before expiry, so long-running MCP
-  connections never hit a session-expired error mid-conversation.
+  session. With `memanto agent auto-activate on`, sessions renew before
+  expiry and restart after it, so long-running MCP connections never hit a
+  session-expired error mid-conversation. With it off, a lapsed session
+  returns an error asking you to run `memanto agent activate`.
 - The server intentionally keeps the session alive on shutdown: JWT
   sessions are TTL-bound and other Memanto clients (CLI, REST) may want
   to share them.

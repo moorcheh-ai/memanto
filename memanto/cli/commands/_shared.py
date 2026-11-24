@@ -4,7 +4,6 @@ MEMANTO CLI - Shared utilities, app instances, and helpers.
 All command modules import from here to avoid circular dependencies.
 """
 
-import os
 from typing import NoReturn
 
 import typer
@@ -67,7 +66,9 @@ config_app = typer.Typer(help="Configuration commands")
 schedule_app = typer.Typer(help="Daily summary scheduling commands")
 memory_app = typer.Typer(help="Memory management commands")
 policy_app = typer.Typer(help="Memory expiry policy commands")
-connect_app = typer.Typer(help="Connect MEMANTO to external tools")
+connect_app = typer.Typer(
+    help="Connect MEMANTO to your coding tools. With no tool name: interactive setup."
+)
 migrate_app = typer.Typer(
     help="Migrate memories from other providers (Mem0/Letta/Supermemory/Zep/Hindsight) into Memanto"
 )
@@ -97,26 +98,14 @@ def _warn(message: str) -> None:
 
 
 def get_client() -> SdkClient:
-    """Get configured SDK client or exit if not initialized."""
-    from memanto.app.clients.backend import Backend
+    """Get the client for the configured backend or exit if not initialized."""
+    from memanto.app.utils.errors import AuthenticationError
+    from memanto.cli.client.factory import build_client
 
-    backend = config_manager.get_backend()
-    if backend == Backend.ON_PREM:
-        # On-prem: no API key needed. Pass a placeholder; the underlying
-        # OnPremClient ignores it (it talks to localhost:8080).
-        api_key = "on-prem"
-    else:
-        cfg_key = config_manager.get_api_key()
-        if not cfg_key:
-            _error(
-                "MEMANTO not configured.",
-                hint="Run 'memanto' to set up your API key.",
-            )
-        api_key = cfg_key
-        # Ensure env is set for app services on the cloud path.
-        os.environ["MOORCHEH_API_KEY"] = api_key
-
-    client = SdkClient(api_key)
+    try:
+        client = build_client(config_manager)
+    except AuthenticationError as e:
+        _error(e.message)
 
     # Restore active session if available
     active_agent_id, active_session_token = config_manager.get_active_session()
@@ -131,8 +120,8 @@ def get_client() -> SdkClient:
         # MEMANTO_SECRET_KEY - which used to break analyze LLM narratives
         # mid-run. Gate it on the same single toggle as every other path
         # (settings, which config.yaml feeds) rather than re-reading the YAML,
-        # so turning auto-recreate off disables it everywhere.
-        if settings.SESSION_AUTO_RECREATE_ENABLED:
+        # so turning auto-activate off disables it everywhere.
+        if settings.SESSION_AUTO_ACTIVATE_ENABLED:
             session_service = get_session_service()
             needs_reactivate = False
             try:

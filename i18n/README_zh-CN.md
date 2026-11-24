@@ -66,11 +66,21 @@ Memanto 不是你调用的库，而是运行在你的智能体群旁边、根据
 ---
 ## 60 秒建立受管理的智能体群
 
+**让你的编码代理来配置。** 把这句粘贴到 Claude Code、Cursor、Codex 或任意编码代理：
+
+```text
+Read https://memanto.ai/start.md and set me up on Memanto
+```
+
+或手动：
+
 ```bash
 pip install memanto
-memanto                            # "On-Prem"（Docker，无需账户）或 "Cloud"（免费密钥）
+memanto login                      # Memanto Cloud：在浏览器中批准，无需复制密钥
 memanto connect claude-code        # 也支持：cursor, codex, windsurf, cline, goose, copilot…
 ```
+
+想用本地？运行 `memanto` 并选择 **Memanto local**（Docker on-prem，或免费的 Moorcheh 密钥）。
 现在智能体共享一个受管理的资产。无需改代码、无需 wrapper、无需重写智能体循环。
 
 ```bash
@@ -94,7 +104,7 @@ macOS、Linux、Windows。`memanto ui` 打开覆盖整个资产的本地仪表�
 
 **它可以迁移。** `memanto migrate` 可从 Mem0、Letta、Supermemory、Zep、Hindsight 或任意 OKF 包导入，反向同样适用。OKF 是任何框架或供应商（包括我们的竞争对手）都能实现的开放交换格式。
 
-**它在你的机器上运行。** 本地 Docker + Ollama，无需账户和 API 密钥，内容不会离开你的基础设施；也可以使用免费云或自托管。`memanto config backend` 一条命令切换，资产随你而行。
+**它在你的机器上运行。** 本地 Docker + Ollama，无需账户和 API 密钥，内容不会离开你的基础设施；也可以使用免费云或自托管。`memanto use` 一条命令切换，资产随你而行。
 
 **MIT。** 没有等待锁住有用部分的 open-core 层，没有功能开关、席位限制或突然撤走的服务。
 
@@ -211,26 +221,33 @@ memanto recall "user communication style" --type preference
 完整参考：[CLI 用户指南](https://docs.memanto.ai/cli)
 </details>
 
-<details><summary><strong>安装选项：完全本地或免费云</strong></summary>
+<details><summary><strong>安装选项：Memanto Cloud 或 Memanto local</strong></summary>
 <br>
 
-**完全本地。无需账户、无需 API 密钥，内容不会离开你的机器：**
+**Memanto Cloud（默认）。用浏览器登录，无需复制密钥：**
 
 ```bash
 pip install memanto
-memanto           # 选择 "On-Prem"；引导 Docker + Ollama 设置
+memanto login     # 或让代理完成："Read https://memanto.ai/start.md and set me up on Memanto"
+```
+
+**Memanto local，完全 on-prem。无需账户、无需 API 密钥，内容不会离开你的机器：**
+
+```bash
+pip install memanto
+memanto           # 选择 "Memanto local"，再选 "Moorcheh on-prem"；引导 Docker + Ollama 设置
 ```
 需要 Docker。
 
-**免费云。无需信用卡，约 60 秒：**
+**Memanto local + Moorcheh Cloud。免费密钥，无需信用卡：**
 
 ```bash
 pip install memanto
-memanto           # 选择 "Cloud"；粘贴免费 API 密钥
+memanto           # 选择 "Memanto local"，再选 "Moorcheh Cloud"；粘贴免费 API 密钥
 ```
 免费密钥位于 [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)：100K 次免费操作。
 
-随时切换：`memanto config backend`
+随时切换：`memanto use`
 </details>
 
 <details><summary><strong>架构</strong></summary>
