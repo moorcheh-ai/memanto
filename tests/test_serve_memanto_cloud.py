@@ -360,9 +360,12 @@ def test_ui_points_to_the_console(server: TestClient) -> None:
 def test_without_the_flag_the_local_routes_are_mounted() -> None:
     import memanto.app.main as main_module
 
-    paths = {getattr(r, "path", "") for r in main_module.app.routes}
-    assert "/api/v2/agents/{agent_id}/recall/all" in paths
+    # Newer FastAPI keeps included routers out of ``app.routes``; the OpenAPI
+    # schema lists their paths on every version.
+    api_paths = main_module.app.openapi()["paths"]
+    assert "/api/v2/agents/{agent_id}/recall/all" in api_paths
     # The local UI is mounted only in local mode.
+    paths = {getattr(r, "path", "") for r in main_module.app.routes}
     assert any(p.startswith("/ui") for p in paths)
     assert cloud_module.cloud_serve_enabled() is False
 
