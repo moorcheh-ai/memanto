@@ -43,6 +43,11 @@ def pid_path(cm: ConfigManager) -> Path:
 
 def _style_windows_window(window: Any) -> None:
     """Round the corners (Windows 11) and keep the widget off the taskbar."""
+    # Win32 only. The check also lets mypy skip ``ctypes.windll`` when it type
+    # checks for Linux or macOS, where ctypes has no ``windll``.
+    if sys.platform != "win32":
+        return
+
     import ctypes
 
     hwnd = window.native.Handle.ToInt32()
