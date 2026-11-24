@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
 import { AddressInfo } from "node:net";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -168,9 +168,20 @@ function collectBody(req: IncomingMessage): Promise<string> {
 
 describe("Memanto", () => {
   let cleanupFns: Array<() => void | Promise<void>> = [];
+  const savedEnv: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const k of ["MEMANTO_API_KEY", "MOORCHEH_API_KEY", "MEMANTO_API_URL"]) {
+      savedEnv[k] = process.env[k];
+      delete process.env[k];
+    }
+  });
   afterEach(async () => {
     for (const fn of cleanupFns) await fn();
     cleanupFns = [];
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   });
 
   it("bootstraps and remembers", async () => {
@@ -547,6 +558,92 @@ describe("Memanto", () => {
     for (const r of recorded) {
       expect(r.headers["x-api-key"]).toBe("mk_live_secret");
       expect(r.headers["x-session-token"]).toBeUndefined();
+    }
+  });
+
+  it("honors MEMANTO_API_KEY from environment when baseUrl is set and prevents stale bootstrap after deleteAgent", async () => {
+    const prevEnvKey = process.env.MEMANTO_API_KEY;
+    process.env.MEMANTO_API_KEY = "mk_env_secret";
+    cleanupFns.push(() => {
+      if (prevEnvKey === undefined) delete process.env.MEMANTO_API_KEY;
+      else process.env.MEMANTO_API_KEY = prevEnvKey;
+    });
+
+    const recorded: Recorded[] = [];
+    let releaseFirstLookup: (() => void) | null = null;
+    let firstLookupSeen: (() => void) | null = null;
+    const firstLookupReached = new Promise<void>((resolve) => {
+      firstLookupSeen = resolve;
+    });
+
+    const srv: Server = createServer((req, res) => {
+      collectBody(req).then((body) => {
+        recorded.push({
+          method: req.method ?? "",
+          url: req.url ?? "",
+          headers: req.headers,
+          body,
+        });
+        const reply = (status: number, payload: unknown) => {
+          res.writeHead(status, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(payload));
+        };
+        if (req.url === "/agents/cloud-race" && req.method === "GET") {
+          if (firstLookupSeen) {
+            const notify = firstLookupSeen;
+            firstLookupSeen = null;
+            releaseFirstLookup = () => reply(200, { agent_id: "cloud-race" });
+            notify();
+            return;
+          }
+          return reply(200, { agent_id: "cloud-race" });
+        }
+        if (req.url === "/agents/cloud-race" && req.method === "DELETE") {
+          return reply(200, { agent_id: "cloud-race", deleted: true });
+        }
+        if (req.url === "/agents/cloud-race/remember" && req.method === "POST") {
+          return reply(200, {
+            memory_id: "mem-cloud-race",
+            agent_id: "cloud-race",
+            status: "queued",
+          });
+        }
+        return reply(404, { detail: "unknown cloud route" });
+      });
+    });
+
+    const cloudUrl = await new Promise<string>((resolve) => {
+      srv.listen(0, "127.0.0.1", () => {
+        const addr = srv.address() as AddressInfo;
+        resolve(`http://127.0.0.1:${addr.port}`);
+      });
+    });
+    cleanupFns.push(() => srv.close());
+
+    const m = new Memanto({
+      agentId: "cloud-race",
+      baseUrl: cloudUrl,
+    });
+    cleanupFns.push(() => m.close());
+
+    const firstRemember = m.remember({ content: "first write" });
+    await firstLookupReached;
+
+    // Delete while the initial bootstrap GET /agents/cloud-race is still in flight.
+    await m.deleteAgent();
+    releaseFirstLookup?.();
+    await firstRemember;
+
+    // A subsequent call must re-bootstrap (GET /agents/cloud-race again) because
+    // the earlier bootstrap was invalidated by deleteAgent().
+    await m.remember({ content: "second write" });
+
+    const getAgentCalls = recorded.filter(
+      (r) => r.method === "GET" && r.url === "/agents/cloud-race",
+    );
+    expect(getAgentCalls).toHaveLength(2);
+    for (const r of recorded) {
+      expect(r.headers["x-api-key"]).toBe("mk_env_secret");
     }
   });
 });

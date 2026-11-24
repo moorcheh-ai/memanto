@@ -147,6 +147,9 @@ func (f *fakeAPI) last(path string) recorded {
 
 func newTestClient(t *testing.T, f *fakeAPI, opts Options) *Client {
 	t.Helper()
+	t.Setenv("MEMANTO_API_KEY", "")
+	t.Setenv("MOORCHEH_API_KEY", "")
+	t.Setenv("MEMANTO_API_URL", "")
 	opts.AgentID = f.agentID
 	opts.BaseURL = f.start() + "/"
 	c, err := New(opts)
@@ -441,5 +444,51 @@ func TestMemantoCloudMode(t *testing.T) {
 		"POST /agents/cloud-bot/remember",
 		"POST /agents/cloud-bot/recall",
 	})
+}
+
+func TestMemantoCloudBaseURLFromEnvKey(t *testing.T) {
+	t.Setenv("MEMANTO_API_KEY", "mk_env_cloud_key")
+	var calls []recorded
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		calls = append(calls, recorded{
+			Method: r.Method, Path: r.URL.Path, APIKey: r.Header.Get("X-Api-Key"), Body: body,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/agents/cloud-bot" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{"agent_id": "cloud-bot"})
+		case r.URL.Path == "/agents/cloud-bot/remember" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"memory_id": "mem-c2", "agent_id": "cloud-bot", "session_id": "s",
+				"namespace": "cloud-bot", "status": "queued", "provenance": "explicit_statement", "confidence": 0.8,
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := New(Options{
+		AgentID: "cloud-bot",
+		BaseURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+
+	if _, err := c.Remember(context.Background(), RememberInput{Content: "env key with custom baseURL"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 {
+		t.Fatalf("expected 2 cloud calls, got %d", len(calls))
+	}
+	equal(t, calls[0].Path, "/agents/cloud-bot")
+	equal(t, calls[0].APIKey, "mk_env_cloud_key")
+	equal(t, calls[1].Path, "/agents/cloud-bot/remember")
+	equal(t, calls[1].APIKey, "mk_env_cloud_key")
 }
 

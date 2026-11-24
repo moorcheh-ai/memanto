@@ -11,8 +11,7 @@ export type { ServerOptions } from "./lifecycle.js";
 export type { DoctorResult } from "./doctor.js";
 
 /** Default public gateway for Memanto Cloud (`MEMANTO_API_KEY`). */
-export const DEFAULT_MEMANTO_API_URL =
-  "https://memanto-saas-public-gw-33wzz25k.ue.gateway.dev";
+export const DEFAULT_MEMANTO_API_URL = "https://api.memanto.ai";
 
 export interface MemantoOptions extends ServerOptions {
   /** Agent id to bind this client to. Created if missing on first call. */
@@ -223,6 +222,7 @@ export class Memanto {
   private readonly authHeaders: Record<string, string>;
   private sessionToken: string | null = null;
   private agentEnsured = false;
+  private resetSeq = 0;
   private starting: Promise<void> | null = null;
 
   constructor(opts: MemantoOptions) {
@@ -236,15 +236,15 @@ export class Memanto {
     const envMoorchehKey = process.env.MOORCHEH_API_KEY?.trim() || undefined;
     const envCloudUrl = process.env.MEMANTO_API_URL?.trim() || undefined;
 
-    const hasLocalServerOpts = Boolean(
-      opts.baseUrl || opts.uvxPath || opts.host || opts.port || opts.packageSpec,
+    const hasLocalSpawnOpts = Boolean(
+      opts.uvxPath || opts.host || opts.port || opts.packageSpec,
     );
     let resolvedApiKey = explicitKey;
     if (explicitKey) {
       this.isCloud =
         explicitKey.startsWith("mk_") ||
         (Boolean(envMemantoKey) && explicitKey === envMemantoKey);
-    } else if (!hasLocalServerOpts && envMemantoKey) {
+    } else if (!hasLocalSpawnOpts && envMemantoKey) {
       this.isCloud = true;
       resolvedApiKey = envMemantoKey;
     } else if (!opts.baseUrl && envMoorchehKey) {
@@ -489,6 +489,7 @@ export class Memanto {
       undefined,
       { requireSession: false },
     );
+    this.resetSeq += 1;
     this.sessionToken = null;
     this.agentEnsured = false;
     this.starting = null;
@@ -497,6 +498,7 @@ export class Memanto {
 
   async deactivate() {
     if (this.isCloud) {
+      this.resetSeq += 1;
       this.sessionToken = null;
       this.agentEnsured = false;
       this.starting = null;
@@ -506,6 +508,7 @@ export class Memanto {
       "POST",
       `${this.agentPath}/deactivate`,
     );
+    this.resetSeq += 1;
     this.sessionToken = null;
     this.starting = null;
     return result;
@@ -525,6 +528,7 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async close(): Promise<void> {
+    this.resetSeq += 1;
     this.sessionToken = null;
     this.agentEnsured = false;
     this.starting = null;
@@ -561,10 +565,13 @@ export class Memanto {
   }
 
   private async bootstrap(): Promise<void> {
+    const seq = this.resetSeq;
     await this.lifecycle.start();
     if (this.autoCreate) await this.createAgentIfMissing();
     if (this.isCloud) {
-      this.agentEnsured = true;
+      if (this.resetSeq === seq) {
+        this.agentEnsured = true;
+      }
       return;
     }
     await this.activate();

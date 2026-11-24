@@ -31,7 +31,7 @@ import (
 )
 
 // DefaultMemantoAPIURL is the default public gateway for Memanto Cloud (MEMANTO_API_KEY).
-const DefaultMemantoAPIURL = "https://memanto-saas-public-gw-33wzz25k.ue.gateway.dev"
+const DefaultMemantoAPIURL = "https://api.memanto.ai"
 
 var cloudCardHeaderRe = regexp.MustCompile(`^\[([A-Za-z]+)\] `)
 
@@ -106,12 +106,12 @@ func New(opts Options) (*Client, error) {
 	envMoorchehKey := strings.TrimSpace(os.Getenv("MOORCHEH_API_KEY"))
 	envCloudURL := strings.TrimSpace(os.Getenv("MEMANTO_API_URL"))
 
-	hasLocalServerOpts := opts.BaseURL != "" || opts.UvxPath != "" || opts.Host != "" || opts.Port != 0 || opts.PackageSpec != ""
+	hasLocalSpawnOpts := opts.UvxPath != "" || opts.Host != "" || opts.Port != 0 || opts.PackageSpec != ""
 	resolvedKey := explicitKey
 	isCloud := false
 	if explicitKey != "" {
 		isCloud = strings.HasPrefix(explicitKey, "mk_") || (envMemantoKey != "" && explicitKey == envMemantoKey)
-	} else if !hasLocalServerOpts && envMemantoKey != "" {
+	} else if !hasLocalSpawnOpts && envMemantoKey != "" {
 		isCloud = true
 		resolvedKey = envMemantoKey
 	} else if opts.BaseURL == "" && envMoorchehKey != "" {

@@ -205,11 +205,15 @@ def test_instantiate_sdk_client_prefers_hosted_client_for_memanto_key(monkeypatc
     fake_hosted_mod = ModuleType("memanto.cli.client.hosted_client")
     hosted_cls = MagicMock(name="HostedClient")
     fake_hosted_mod.HostedClient = hosted_cls  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "memanto.cli.client.hosted_client", fake_hosted_mod)
+    monkeypatch.setitem(
+        sys.modules, "memanto.cli.client.hosted_client", fake_hosted_mod
+    )
     monkeypatch.setenv("MEMANTO_API_URL", "https://api.memanto.example")
 
     _instantiate_sdk_client("mk_live_123", explicit_api_key="mk_live_123")
-    hosted_cls.assert_called_once_with("mk_live_123", base_url="https://api.memanto.example")
+    hosted_cls.assert_called_once_with(
+        "mk_live_123", base_url="https://api.memanto.example"
+    )
 
 
 def test_explicit_key_does_not_leak_to_other_clients(monkeypatch):

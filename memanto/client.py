@@ -87,9 +87,8 @@ def _resolve_api_key(api_key: str | None) -> str:
 
     config = ConfigManager()
     backend = config.get_backend()
-    if getattr(backend, "value", None) == "memanto-cloud":
-        get_cloud_key = getattr(config, "get_memanto_api_key", None)
-        cloud_key = get_cloud_key() if callable(get_cloud_key) else None
+    if backend == Backend.MEMANTO_CLOUD:
+        cloud_key = config.get_memanto_api_key()
         if cloud_key and cloud_key.strip():
             return cloud_key.strip()
 
@@ -111,39 +110,28 @@ def _resolve_api_key(api_key: str | None) -> str:
     return key
 
 
-def _instantiate_sdk_client(key: str, *, explicit_api_key: str | None = None) -> SdkClient:
-    """Construct ``HostedClient`` for Memanto Cloud keys when available, else ``SdkClient``."""
+def _instantiate_sdk_client(
+    key: str, *, explicit_api_key: str | None = None
+) -> SdkClient:
+    """Construct ``HostedClient`` for Memanto Cloud keys, else ``SdkClient``."""
     if SdkClient is not _ORIG_SDK_CLIENT:
         return SdkClient(api_key=key)
 
-    is_cloud = _is_cloud_api_key(key)
-    if not is_cloud and explicit_api_key is None:
-        try:
-            from memanto.cli.config.manager import ConfigManager
+    from memanto.app.clients.backend import Backend
+    from memanto.cli.client.hosted_client import HostedClient
+    from memanto.cli.config.manager import ConfigManager
 
-            is_cloud = getattr(ConfigManager().get_backend(), "value", None) == "memanto-cloud"
-        except Exception:
-            is_cloud = False
+    config = ConfigManager()
+    is_cloud = _is_cloud_api_key(key) or (
+        explicit_api_key is None and config.get_backend() == Backend.MEMANTO_CLOUD
+    )
 
     if is_cloud:
-        try:
-            from memanto.cli.client.hosted_client import HostedClient
-        except ImportError:
-            pass
-        else:
-            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
-            if not base_url:
-                try:
-                    from memanto.cli.config.manager import ConfigManager
-
-                    get_url = getattr(ConfigManager(), "get_memanto_api_url", None)
-                    if callable(get_url):
-                        base_url = (get_url() or "").strip()
-                except Exception:
-                    base_url = ""
-            if base_url:
-                return HostedClient(key, base_url=base_url)
-            return HostedClient(key)
+        base_url = (
+            os.environ.get("MEMANTO_API_URL", "").strip()
+            or config.get_memanto_api_url()
+        )
+        return HostedClient(key, base_url=base_url)
 
     return SdkClient(api_key=key)
 
