@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
 import { AddressInfo } from "node:net";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Memanto } from "../src/index.js";
@@ -522,6 +522,23 @@ describe("Memanto", () => {
             ],
           });
         }
+        if (
+          req.url === "/agents/cloud-agent/daily-summary" &&
+          req.method === "POST"
+        ) {
+          return reply(200, {
+            summary: { status: "success", date: "2026-11-24" },
+          });
+        }
+        if (
+          req.url === "/agents/cloud-agent/daily-summary?date=2026-11-24" &&
+          req.method === "GET"
+        ) {
+          return reply(200, {
+            date: "2026-11-24",
+            content: "# Daily Summary\n\nAlex prefers oat milk.",
+          });
+        }
         return reply(404, { detail: "unknown cloud route" });
       });
     });
@@ -549,11 +566,25 @@ describe("Memanto", () => {
     };
     expect(rec.memories[0]?.content).toBe("Alex prefers oat milk.");
 
+    const dir = await mkdtemp(join(tmpdir(), "memanto-cloud-summary-"));
+    cleanupFns.push(() => rm(dir, { recursive: true, force: true }));
+    const summaryPath = join(dir, "nested", "summary.md");
+    const summaryRes = (await m.dailySummary({
+      date: "2026-11-24",
+      outputPath: summaryPath,
+    })) as { summary: { status: string; summary_path: string } };
+    expect(summaryRes.summary.summary_path).toBe(summaryPath);
+    expect(await readFile(summaryPath, "utf-8")).toBe(
+      "# Daily Summary\n\nAlex prefers oat milk.",
+    );
+
     expect(recorded.map((r) => `${r.method} ${r.url}`)).toEqual([
       "GET /agents/cloud-agent",
       "POST /agents",
       "POST /agents/cloud-agent/remember",
       "POST /agents/cloud-agent/recall",
+      "POST /agents/cloud-agent/daily-summary",
+      "GET /agents/cloud-agent/daily-summary?date=2026-11-24",
     ]);
     for (const r of recorded) {
       expect(r.headers["x-api-key"]).toBe("mk_live_secret");

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { openAsBlob } from "node:fs";
-import { stat } from "node:fs/promises";
-import { basename } from "node:path";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { basename, dirname } from "node:path";
 
 import { ServerLifecycle, type ServerOptions } from "./lifecycle.js";
 
@@ -405,11 +405,37 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async dailySummary(input: DailySummaryInput = {}) {
-    return this.request(
+    if (!this.isCloud) {
+      return this.request("POST", `${this.agentPath}/daily-summary`, {
+        date: input.date,
+        output_path: input.outputPath,
+      });
+    }
+    const result = (await this.request(
       "POST",
       `${this.agentPath}/daily-summary`,
-      { date: input.date, output_path: input.outputPath },
-    );
+      { date: input.date },
+    )) as Record<string, unknown> | null;
+    const summary =
+      result && typeof result.summary === "object" && result.summary !== null
+        ? (result.summary as Record<string, unknown>)
+        : null;
+    if (input.outputPath && summary && summary.status === "success") {
+      const qs = input.date ? `?date=${encodeURIComponent(input.date)}` : "";
+      const stored = (await this.request(
+        "GET",
+        `${this.agentPath}/daily-summary${qs}`,
+      )) as Record<string, unknown> | null;
+      const content =
+        stored && typeof stored.content === "string" ? stored.content : "";
+      await mkdir(dirname(input.outputPath), { recursive: true });
+      await writeFile(input.outputPath, content, "utf-8");
+      return {
+        ...result,
+        summary: { ...summary, summary_path: input.outputPath },
+      };
+    }
+    return result;
   }
 
   async generateConflicts(input: ConflictDateInput = {}) {

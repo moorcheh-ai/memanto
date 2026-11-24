@@ -216,6 +216,21 @@ def test_instantiate_sdk_client_prefers_hosted_client_for_memanto_key(monkeypatc
     )
 
 
+def test_moorcheh_fallback_when_backend_is_memanto_cloud_uses_sdk_client(monkeypatch):
+    from memanto.app.clients.backend import Backend
+    from memanto.client import _instantiate_sdk_client, _resolve_api_key
+
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mch_fallback_key")
+    with patch("memanto.cli.config.manager.ConfigManager") as cm:
+        cm.return_value.get_backend.return_value = Backend.MEMANTO_CLOUD
+        cm.return_value.get_memanto_api_key.return_value = None
+        key = _resolve_api_key(None)
+        assert key == "mch_fallback_key"
+        client = _instantiate_sdk_client(key)
+        assert type(client).__name__ == "SdkClient"
+
+
 def test_explicit_key_does_not_leak_to_other_clients(monkeypatch):
     """A wrong api_key= on one instance must not become the process-wide key."""
     import os

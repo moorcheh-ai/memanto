@@ -403,6 +403,17 @@ func TestMemantoCloudMode(t *testing.T) {
 					"score":   0.95,
 				}},
 			})
+		case r.URL.Path == "/agents/cloud-bot/daily-summary" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"summary": map[string]any{"status": "success", "date": "2026-11-24"},
+			})
+		case r.URL.Path == "/agents/cloud-bot/daily-summary" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"date":    "2026-11-24",
+				"content": "# Daily Summary\n\nAlex prefers oat milk.",
+			})
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -432,6 +443,19 @@ func TestMemantoCloudMode(t *testing.T) {
 	}
 	equal(t, *recalled.Memories[0].Content, "Alex prefers oat milk.")
 
+	summaryOut := filepath.Join(t.TempDir(), "nested", "summary.md")
+	summaryRes, err := c.DailySummary(ctx, DailySummaryInput{Date: "2026-11-24", OutputPath: summaryOut})
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryMap, _ := summaryRes["summary"].(map[string]any)
+	equal(t, summaryMap["summary_path"], summaryOut)
+	written, err := os.ReadFile(summaryOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, string(written), "# Daily Summary\n\nAlex prefers oat milk.")
+
 	var gotPaths []string
 	for _, call := range calls {
 		gotPaths = append(gotPaths, call.Method+" "+call.Path)
@@ -443,6 +467,8 @@ func TestMemantoCloudMode(t *testing.T) {
 		"POST /agents",
 		"POST /agents/cloud-bot/remember",
 		"POST /agents/cloud-bot/recall",
+		"POST /agents/cloud-bot/daily-summary",
+		"GET /agents/cloud-bot/daily-summary",
 	})
 }
 
@@ -491,4 +517,3 @@ func TestMemantoCloudBaseURLFromEnvKey(t *testing.T) {
 	equal(t, calls[1].Path, "/agents/cloud-bot/remember")
 	equal(t, calls[1].APIKey, "mk_env_cloud_key")
 }
-

@@ -64,8 +64,8 @@ def _is_cloud_api_key(key: str) -> bool:
     return bool(env_cloud and clean == env_cloud)
 
 
-def _resolve_api_key(api_key: str | None) -> str:
-    """Return the key to use: explicit arg, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``.
+def _resolve_credentials(api_key: str | None) -> tuple[str, bool]:
+    """Return ``(key, is_cloud)`` from explicit arg, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``.
 
     Importing ``memanto.app.config`` loads ``~/.memanto/.env`` over the
     environment, so a key saved by ``memanto`` setup is available alongside
@@ -77,23 +77,24 @@ def _resolve_api_key(api_key: str | None) -> str:
 
     if api_key is not None and api_key.strip():
         clean = api_key.strip()
-        if not _is_cloud_api_key(clean) and not settings.MOORCHEH_API_KEY:
+        is_cloud = _is_cloud_api_key(clean)
+        if not is_cloud and not settings.MOORCHEH_API_KEY:
             settings.MOORCHEH_API_KEY = clean
-        return clean
+        return clean, is_cloud
 
     memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
     if memanto_key:
-        return memanto_key
+        return memanto_key, True
 
     config = ConfigManager()
     backend = config.get_backend()
     if backend == Backend.MEMANTO_CLOUD:
         cloud_key = config.get_memanto_api_key()
         if cloud_key and cloud_key.strip():
-            return cloud_key.strip()
+            return cloud_key.strip(), True
 
     if api_key is None and backend == Backend.ON_PREM:
-        return _ON_PREM_API_KEY
+        return _ON_PREM_API_KEY, False
 
     key = os.environ.get("MOORCHEH_API_KEY") or config.get_api_key()
     if not key or not key.strip():
@@ -107,11 +108,20 @@ def _resolve_api_key(api_key: str | None) -> str:
     # clients in this process resolve.
     if not settings.MOORCHEH_API_KEY:
         settings.MOORCHEH_API_KEY = key
+    return key, False
+
+
+def _resolve_api_key(api_key: str | None) -> str:
+    """Return the key to use: explicit arg, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``."""
+    key, _ = _resolve_credentials(api_key)
     return key
 
 
 def _instantiate_sdk_client(
-    key: str, *, explicit_api_key: str | None = None
+    key: str,
+    *,
+    explicit_api_key: str | None = None,
+    is_cloud: bool | None = None,
 ) -> SdkClient:
     """Construct ``HostedClient`` for Memanto Cloud keys, else ``SdkClient``."""
     if SdkClient is not _ORIG_SDK_CLIENT:
@@ -122,11 +132,20 @@ def _instantiate_sdk_client(
     from memanto.cli.config.manager import ConfigManager
 
     config = ConfigManager()
-    is_cloud = _is_cloud_api_key(key) or (
-        explicit_api_key is None and config.get_backend() == Backend.MEMANTO_CLOUD
-    )
+    if is_cloud is not None:
+        use_cloud = is_cloud
+    else:
+        saved_cloud_key = (
+            (config.get_memanto_api_key() or "").strip()
+            if explicit_api_key is None
+            and config.get_backend() == Backend.MEMANTO_CLOUD
+            else ""
+        )
+        use_cloud = _is_cloud_api_key(key) or (
+            bool(saved_cloud_key) and key.strip() == saved_cloud_key
+        )
 
-    if is_cloud:
+    if use_cloud:
         base_url = (
             os.environ.get("MEMANTO_API_URL", "").strip()
             or config.get_memanto_api_url()

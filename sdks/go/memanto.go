@@ -479,7 +479,35 @@ type DailySummaryInput struct {
 
 // DailySummary summarizes one day of memories.
 func (c *Client) DailySummary(ctx context.Context, in DailySummaryInput) (map[string]any, error) {
-	return requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", in, true)
+	if !c.isCloud {
+		return requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", in, true)
+	}
+	body := DailySummaryInput{Date: in.Date}
+	res, err := requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", body, true)
+	if err != nil || in.OutputPath == "" {
+		return res, err
+	}
+	summary, _ := res["summary"].(map[string]any)
+	if summary == nil || summary["status"] != "success" {
+		return res, nil
+	}
+	path := c.agentPath + "/daily-summary"
+	if in.Date != "" {
+		path += "?date=" + url.QueryEscape(in.Date)
+	}
+	stored, err := requestMap(ctx, c, http.MethodGet, path, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	content, _ := stored["content"].(string)
+	if err := os.MkdirAll(filepath.Dir(in.OutputPath), 0o755); err != nil {
+		return nil, fmt.Errorf("memanto: create daily summary dir: %w", err)
+	}
+	if err := os.WriteFile(in.OutputPath, []byte(content), 0o600); err != nil {
+		return nil, fmt.Errorf("memanto: write daily summary: %w", err)
+	}
+	summary["summary_path"] = in.OutputPath
+	return res, nil
 }
 
 // ConflictDateInput selects the day of a conflict report.
