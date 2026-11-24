@@ -41,7 +41,8 @@
 </p>
 
 <p align="center">
-  <img alt="Accuracy vs. cost: Memanto at 83.8% for $10.86, compared with Mem0, Hindsight, Honcho, Supermemory and built-in memory" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/accuracy-vs-cost.png" width="900">
+  <img alt="Accuracy vs. cost: Memanto at 83.8% for $10.86, compared with Mem0, Hindsight, Honcho, Supermemory and built-in memory" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/accuracy-vs-cost.png" width="900"><br>
+  <sub>DolphinBench results. Read the <a href="https://arxiv.org/abs/2611.28231">paper</a>.</sub>
 </p>
 
 <p align="center">
