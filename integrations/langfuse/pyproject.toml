@@ -44,7 +44,7 @@ dependencies = [
     # `memanto migrate langfuse` so a memory reads the same either way.
     # 0.2.14 is the first release carrying memanto.cli.migrate.langfuse_*;
     # anything older resolves but fails at handler construction.
-    "memanto>=0.2.14",
+    "memanto>=0.3.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",

@@ -43,7 +43,7 @@ dependencies = [
     "mcp[cli]>=1.2.0,<2",
     # `source` on SdkClient read/answer/batch_remember methods and
     # tool_from_source / alias normalization in client_identity land in 0.2.31.
-    "memanto>=0.2.31",
+    "memanto>=0.3.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
