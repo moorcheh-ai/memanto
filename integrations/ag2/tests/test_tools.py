@@ -105,10 +105,47 @@ def test_register_memanto_tools_wires_ag2_agents():
     assert executor.register_for_execution.call_count == 3
 
 
-def test_register_requires_api_key_without_client(monkeypatch):
+def test_register_requires_api_key_without_client(monkeypatch, tmp_path):
     from memanto_ag2.config import reset_config
 
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    reset_config()
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
+
+
+def test_register_accepts_memanto_api_key_env(monkeypatch):
+    from memanto_ag2.config import reset_config
+
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_test_key")
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
     reset_config()
-    with pytest.raises(ValueError, match="MOORCHEH_API_KEY"):
-        register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
+    tools = register_memanto_tools(MagicMock(), executor=MagicMock(), agent_id="x")
+    assert len(tools) == 3
+
+
+def test_active_cloud_signin_takes_precedence_over_moorcheh_env(monkeypatch):
+    from memanto_ag2.config import reset_config
+    from memanto_ag2.register import _build_memanto_client
+
+    import memanto.cli.client.factory as factory_mod
+    import memanto.cli.config.manager as manager_mod
+    from memanto.app.clients.backend import Backend
+
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mch_legacy_env_key")
+    reset_config()
+
+    sentinel_cloud_client = MagicMock(name="HostedClientFromFactory")
+    monkeypatch.setattr(
+        manager_mod.ConfigManager,
+        "get_backend",
+        lambda self: Backend.MEMANTO_CLOUD,
+    )
+    monkeypatch.setattr(factory_mod, "build_client", lambda: sentinel_cloud_client)
+
+    resolved = _build_memanto_client(None, None)
+    assert resolved is sentinel_cloud_client

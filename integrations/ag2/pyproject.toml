@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memanto-ag2"
-version = "0.1.0"
+version = "0.1.1"
 description = "AG2 (AutoGen) tools for Memanto persistent memory (preview)"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<4"
 authors = [{ name = "Memanto", email = "info@memanto.ai" }]
 dependencies = [
-    "memanto>=0.2.21",
+    "memanto>=0.3.0",
     "pydantic>=2.0",
 ]
 classifiers = [

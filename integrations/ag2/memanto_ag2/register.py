@@ -6,9 +6,76 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+from memanto.app.utils.errors import AuthenticationError
 from memanto.cli.client.sdk_client import SdkClient
 from memanto_ag2.config import get_config
 from memanto_ag2.tools import create_memanto_tools
+
+_ORIG_SDK_CLIENT = SdkClient
+
+
+def _build_memanto_client(api_key: str | None, cfg_key: str | None) -> SdkClient:
+    from dotenv import dotenv_values
+
+    from memanto.app.clients.backend import Backend
+    from memanto.cli.client.factory import build_client
+    from memanto.cli.client.hosted_client import HostedClient
+    from memanto.cli.config.manager import ConfigManager
+
+    def _make(key: str, *, cloud: bool) -> SdkClient:
+        if SdkClient is not _ORIG_SDK_CLIENT or not (cloud or key.startswith("mk_")):
+            return SdkClient(api_key=key)
+        base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+        return HostedClient(key, base_url=base_url) if base_url else HostedClient(key)
+
+    explicit = api_key or cfg_key
+    if explicit is not None and explicit.strip():
+        clean = explicit.strip()
+        return _make(
+            clean,
+            cloud=clean == os.environ.get("MEMANTO_API_KEY", "").strip(),
+        )
+
+    memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    moorcheh_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
+    caller_url = os.environ.get("MEMANTO_API_URL", "").strip()
+    cm = ConfigManager()
+    if memanto_key:
+        os.environ["MEMANTO_API_KEY"] = memanto_key
+    if moorcheh_key:
+        os.environ["MOORCHEH_API_KEY"] = moorcheh_key
+    if caller_url:
+        os.environ["MEMANTO_API_URL"] = caller_url
+    backend = cm.get_backend()
+    saved_cloud_key = (
+        (dotenv_values(cm.env_file).get("MEMANTO_API_KEY") or "").strip()
+        if cm.env_file.exists()
+        else ""
+    )
+    is_dormant_saved_key = (
+        cm.config_file.exists()
+        and backend == Backend.ON_PREM
+        and bool(saved_cloud_key)
+        and memanto_key == saved_cloud_key
+    )
+    if memanto_key and not is_dormant_saved_key:
+        return _make(memanto_key, cloud=True)
+    if backend == Backend.MEMANTO_CLOUD:
+        try:
+            return build_client()
+        except AuthenticationError:
+            pass
+    if backend == Backend.ON_PREM and cm.config_file.exists():
+        return build_client()
+    if moorcheh_key:
+        return _make(moorcheh_key, cloud=False)
+    try:
+        return build_client()
+    except AuthenticationError:
+        raise ValueError(
+            "Memanto API key required: pass api_key=, configure(), set MEMANTO_API_KEY "
+            "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`"
+        )
 
 
 def register_memanto_tools(
@@ -33,13 +100,8 @@ def register_memanto_tools(
         raise ValueError("agent_id is required")
 
     cfg = get_config()
-    resolved_key = api_key or cfg.api_key or os.environ.get("MOORCHEH_API_KEY")
     if client is None:
-        if not resolved_key:
-            raise ValueError(
-                "Memanto API key required: pass api_key=, configure(), or set MOORCHEH_API_KEY"
-            )
-        client = SdkClient(api_key=resolved_key)
+        client = _build_memanto_client(api_key, cfg.api_key)
 
     tools = create_memanto_tools(
         client,

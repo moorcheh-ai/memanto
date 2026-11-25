@@ -43,20 +43,22 @@ from memanto_ag2 import (  # noqa: E402
     openai_llm_config,
     register_memanto_tools,
 )
+from memanto_ag2.register import _build_memanto_client  # noqa: E402
 
 from memanto.app.config import settings  # noqa: E402
-from memanto.cli.client.sdk_client import SdkClient  # noqa: E402
 
 
 def _resolve_api_key() -> str:
     key = (
-        os.environ.get("MOORCHEH_API_KEY") or settings.MOORCHEH_API_KEY or ""
-    ).strip()
+        os.environ.get("MEMANTO_API_KEY", "").strip()
+        or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        or (settings.MOORCHEH_API_KEY or "").strip()
+    )
     if not key or key == "test-api-key":
         print(
-            "FAIL: MOORCHEH_API_KEY is missing or is the placeholder 'test-api-key'.\n"
-            "  Set it in PowerShell:  $env:MOORCHEH_API_KEY = 'your-key'\n"
-            "  Or run: memanto   (wizard writes ~/.memanto/.env)"
+            "FAIL: MEMANTO_API_KEY (or MOORCHEH_API_KEY) is missing or is the placeholder 'test-api-key'.\n"
+            "  Set it in PowerShell:  $env:MEMANTO_API_KEY = 'mk_...'\n"
+            "  Or run: memanto login"
         )
         sys.exit(1)
     return key
@@ -109,7 +111,7 @@ def main() -> int:
     print(f"  run id:   {suffix}")
     print(f"  agent_id: {agent_id}")
 
-    client = SdkClient(api_key=api_key)
+    client = _build_memanto_client(api_key, None)
     tools = create_memanto_tools(client, agent_id, source="ag2-smoke-test")
 
     remember = _tool_by_name(tools, "memanto_remember")

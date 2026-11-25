@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 _config: MemantoAg2Config | None = None
@@ -33,7 +32,7 @@ def configure(
 def get_config() -> MemantoAg2Config:
     if _config is not None:
         return _config
-    return MemantoAg2Config(api_key=os.environ.get("MOORCHEH_API_KEY"))
+    return MemantoAg2Config()
 
 
 def reset_config() -> None:
