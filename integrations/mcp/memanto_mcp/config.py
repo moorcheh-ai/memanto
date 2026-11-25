@@ -30,9 +30,11 @@ class MCPServerSettings(BaseSettings):
     """Server settings loaded from env / ``.env``.
 
     Required:
-        moorcheh_api_key: Moorcheh API key, unless the Memanto backend in
-            ``~/.memanto/config.yaml`` is ``memanto-cloud`` (``memanto login``),
-            which uses ``MEMANTO_API_KEY`` from ``~/.memanto/.env`` instead.
+        memanto_api_key / moorcheh_api_key: Memanto Cloud API key
+            (``MEMANTO_API_KEY``) or Moorcheh API key (``MOORCHEH_API_KEY``),
+            unless the Memanto backend in ``~/.memanto/config.yaml`` is
+            ``memanto-cloud`` (``memanto login``), which uses
+            ``MEMANTO_API_KEY`` from ``~/.memanto/.env`` instead.
 
     Optional:
         default_agent_id: Used when a tool call omits ``agent_id`` and no
@@ -60,12 +62,21 @@ class MCPServerSettings(BaseSettings):
     )
 
     # ---- Memanto credentials & agent ----
+    memanto_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="MEMANTO_API_KEY",
+        description=(
+            "Memanto Cloud API key (recommended). Create one at "
+            "https://console.memanto.ai/sign-in or sign in with `memanto login`."
+        ),
+    )
     moorcheh_api_key: SecretStr | None = Field(
         default=None,
         validation_alias="MOORCHEH_API_KEY",
         description=(
-            "Moorcheh API key. Create one at https://console.moorcheh.ai/api-keys. "
-            "Not needed when signed in to Memanto Cloud (`memanto login`)."
+            "Moorcheh API key for Memanto local fallback. Create one at "
+            "https://console.moorcheh.ai/api-keys. Not needed when signed in "
+            "to Memanto Cloud (`memanto login`)."
         ),
     )
     default_agent_id: str | None = Field(
@@ -161,14 +172,20 @@ class MCPServerSettings(BaseSettings):
         if ConfigManager().get_backend() == Backend.MEMANTO_CLOUD:
             return self
         raise ValueError(
-            "MOORCHEH_API_KEY is required. Create one at "
-            "https://console.moorcheh.ai/api-keys and set it in your "
-            "environment or MCP client config, or sign in to Memanto Cloud "
-            "with `memanto login`."
+            "MEMANTO_API_KEY or MOORCHEH_API_KEY is required. Sign in at "
+            "https://console.memanto.ai/sign-in (or https://console.moorcheh.ai/api-keys) "
+            "and set it in your environment or MCP client config, or sign in "
+            "to Memanto Cloud with `memanto login`."
         )
 
-    # Convenience accessor — never logged. Empty when no Moorcheh key is set.
+    # Convenience accessor — never logged. Prefers non-empty MEMANTO_API_KEY, then MOORCHEH_API_KEY.
     def api_key_value(self) -> str:
-        if self.moorcheh_api_key is None:
-            return ""
-        return self.moorcheh_api_key.get_secret_value()
+        if self.memanto_api_key is not None:
+            val = self.memanto_api_key.get_secret_value().strip()
+            if val:
+                return val
+        if self.moorcheh_api_key is not None:
+            val = self.moorcheh_api_key.get_secret_value().strip()
+            if val:
+                return val
+        return ""

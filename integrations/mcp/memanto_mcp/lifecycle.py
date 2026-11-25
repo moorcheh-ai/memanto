@@ -19,6 +19,7 @@ network calls.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from typing import TYPE_CHECKING
 
@@ -30,6 +31,8 @@ from memanto.app.utils.errors import (
 )
 from memanto.cli.client.factory import build_client
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 if TYPE_CHECKING:
     from memanto_mcp.config import MCPServerSettings
@@ -63,8 +66,25 @@ class MemantoLifecycle:
         self._lock = threading.Lock()
 
     def _new_client(self) -> SdkClient:
-        """A client for the backend in ``~/.memanto/config.yaml`` (shared CLI factory)."""
-        return build_client(moorcheh_api_key=self._settings.api_key_value() or None)
+        """Build a client for the configured backend (Memanto Cloud or local Moorcheh)."""
+        key = self._settings.api_key_value()
+        if SdkClient is not _ORIG_SDK_CLIENT:
+            return SdkClient(api_key=key)
+
+        is_cloud_key = key.startswith("mk_") or (
+            bool(key) and key == os.environ.get("MEMANTO_API_KEY", "").strip()
+        )
+        if is_cloud_key:
+            from memanto.cli.client.hosted_client import HostedClient
+            from memanto.cli.config.manager import ConfigManager
+
+            base_url = (
+                os.environ.get("MEMANTO_API_URL", "").strip()
+                or ConfigManager().get_memanto_api_url()
+            )
+            return HostedClient(key, base_url=base_url)
+
+        return build_client(moorcheh_api_key=key or None)
 
     # ------------------------------------------------------------------ #
     # Public API used by tools

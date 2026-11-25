@@ -6,9 +6,10 @@ sessions.
 
 ## 1. Ask the user for two values
 
-- **Moorcheh API key** (required). The user can create one at
-  https://console.moorcheh.ai/api-keys. The free tier is enough to start.
-  Keys look like `mch_...`. Do not invent or guess a key.
+- **Memanto API key** (required unless the user has already signed in with `memanto login`).
+  The user can sign in and create one at https://console.memanto.ai/sign-in
+  (keys look like `mk_...`). For Memanto local, a Moorcheh API key (`MOORCHEH_API_KEY`
+  from https://console.moorcheh.ai/api-keys) also works. Do not invent or guess a key.
 - **Agent ID** (recommended). A short name for this memory space, for
   example `cline-assistant` or the project name. Letters, digits, `-` and
   `_` work. If the user has no preference, use `cline-assistant`.
@@ -43,7 +44,7 @@ already there:
     "memanto": {
       "command": "memanto-mcp",
       "env": {
-        "MOORCHEH_API_KEY": "<the user's Moorcheh API key>",
+        "MEMANTO_API_KEY": "<the user's Memanto API key>",
         "MEMANTO_DEFAULT_AGENT_ID": "<the agent ID from step 1>"
       },
       "disabled": false,
@@ -73,7 +74,7 @@ test entry would show up in the user's later recalls.
 
 | Problem | Fix |
 |---|---|
-| `MOORCHEH_API_KEY is required` | The key is missing from the `env` block. Add it and restart the server. |
+| `MEMANTO_API_KEY or MOORCHEH_API_KEY is required` | The key is missing from the `env` block (or run `memanto login`). Add it and restart the server. |
 | Authentication error on the first call | The key is wrong or revoked. Ask the user to create a new one in the console. |
 | Tools do not appear | Check that `command` points to a working `memanto-mcp` (see step 2) and look at the server's log output in the MCP panel. |
 | First call is slow | Normal: the first call opens a session. Later calls are fast. |

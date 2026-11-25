@@ -31,6 +31,21 @@ def test_minimal_valid_settings(fake_api_key: str) -> None:
     assert settings.agent_pattern == "tool"
 
 
+def test_memanto_api_key_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_test_cloud_key")
+    settings = MCPServerSettings()  # type: ignore[call-arg]
+    assert settings.api_key_value() == "mk_test_cloud_key"
+
+
+def test_empty_memanto_api_key_falls_back_to_moorcheh_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MEMANTO_API_KEY", "   ")
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mch_fallback_key")
+    settings = MCPServerSettings()  # type: ignore[call-arg]
+    assert settings.api_key_value() == "mch_fallback_key"
+
+
 def test_secret_key_not_in_repr(fake_api_key: str) -> None:
     settings = MCPServerSettings()  # type: ignore[call-arg]
     assert fake_api_key not in repr(settings)
