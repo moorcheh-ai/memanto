@@ -16,8 +16,10 @@ Everything lives in a Memanto agent, so you can read, edit and audit what your A
 
 ```bash
 pip install memanto-google-adk
-export MOORCHEH_API_KEY=...   # Memanto / Moorcheh key
+export MEMANTO_API_KEY=mk_...   # from https://console.memanto.ai (or run `memanto login`)
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 ## Use it
 
@@ -79,7 +81,7 @@ Where ADK looks for it depends on the command:
 | `adk web --memory_service_uri memanto:// <agents_dir>` (also `adk api_server`) | `<agents_dir>/services.py`, the folder that contains your agent folders |
 | `adk run --memory_service_uri memanto:// <agents_dir>/my_agent` | `<agents_dir>/my_agent/services.py` |
 
-A `services.py` in the wrong folder fails at startup with `Unsupported memory service URI: memanto:`. Set `MOORCHEH_API_KEY` in the environment before starting.
+A `services.py` in the wrong folder fails at startup with `Unsupported memory service URI: memanto:`. Set `MEMANTO_API_KEY` (or run `memanto login`, or set `MOORCHEH_API_KEY`) before starting.
 
 `memanto://my-agent` uses the Memanto agent `my-agent` for every app, instead of one per app.
 
@@ -93,7 +95,7 @@ A `services.py` in the wrong folder fails at startup with `Unsupported memory se
 
 | | |
 |---|---|
-| `MemantoMemoryService(api_key=None, *, agent_id=None, recall_limit=10, extract_max_memories=20)` | The memory service. `api_key` defaults to `$MOORCHEH_API_KEY`. |
+| `MemantoMemoryService(api_key=None, *, agent_id=None, recall_limit=10, extract_max_memories=20)` | The memory service. `api_key` defaults to `$MEMANTO_API_KEY`, `$MOORCHEH_API_KEY`, or the active `~/.memanto` sign-in (`memanto login`). |
 | `add_session_to_memory(session)` | Extracts and stores events added since the last save. |
 | `add_events_to_memory(app_name=, user_id=, events=, session_id=None)` | Extracts and stores a delta, such as the latest turn. |
 | `add_memory(app_name=, user_id=, memories=)` | Stores `MemoryEntry` items as they are, without extraction. `custom_metadata["type"]` sets the Memanto type (default `fact`). |

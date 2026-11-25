@@ -179,10 +179,20 @@ def test_default_agent_id_is_a_valid_memanto_id() -> None:
     assert default_agent_id("!!!") == "adk-app"
 
 
-def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_requires_api_key(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     with pytest.raises(ValueError, match="api_key"):
         MemantoMemoryService()
+
+
+def test_reads_memanto_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_cloud_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    svc = MemantoMemoryService()
+    assert svc._api_key == "mk_cloud_key"
 
 
 def test_from_uri_reads_agent_id(
