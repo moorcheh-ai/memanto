@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crewai-memanto"
-version = "0.1.0"
+version = "0.1.2"
 description = "CrewAI tools and integration for Memanto's persistent memory"
 readme = "README.md"
 license = { text = "MIT" }
@@ -14,7 +14,7 @@ authors = [
 ]
 dependencies = [
     "crewai>=0.80.0",
-    "memanto>=0.1.0",
+    "memanto>=0.3.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0"
 ]
