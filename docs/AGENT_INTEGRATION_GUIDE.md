@@ -600,5 +600,5 @@ print(result.stdout)
 
 **Questions?** See [CLI_USER_GUIDE.md](CLI_USER_GUIDE.md) or [Quick Start](V2_QUICK_START.md)
 
-**MIT License** | **December 2025**
+**Apache License 2.0** | **December 2025**
 

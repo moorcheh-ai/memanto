@@ -220,7 +220,7 @@ mcp.run(transport="stdio")
 
 ## License
 
-MIT — same as the [Memanto](https://github.com/moorcheh-ai/memanto)
+Apache-2.0 — same as the [Memanto](https://github.com/moorcheh-ai/memanto)
 project. See [LICENSE](../../LICENSE).
 
 ## Links

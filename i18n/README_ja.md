@@ -14,7 +14,7 @@
   <a href="https://arxiv.org/abs/2604.22085"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.22085-b31b1b.svg"></a>
   <a href="https://pypi.org/project/memanto/"><img alt="PyPI" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
   <a href="https://mcptoplist.com/server/io.github.moorcheh-ai%2Fmemanto"><img alt="MCP Toplist" src="https://mcptoplist.com/badge/io.github.moorcheh-ai%2Fmemanto.svg"></a>
-  <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
+  <a href="LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -102,7 +102,7 @@ macOS、Linux、Windows に対応。`memanto ui` は資産全体を閲覧、検�
 
 **自分のマシンで動きます。** ローカル Docker + Ollama ならアカウントも API キーも不要で、インフラ外へ出ません。無料クラウドや自前ホストも選べ、`memanto use` で切り替え、資産を持ち運べます。
 
-**MIT。** open-core の壁、機能フラグ、席数制限、突然の撤回はありません。ロックするものがないためロックインもありません。
+**Apache 2.0。** open-core の壁、機能フラグ、席数制限、突然の撤回はありません。ロックするものがないためロックインもありません。
 
 ---
 ## セキュリティと主権
@@ -169,7 +169,7 @@ memanto memory restore mem-123      # 戻す
 ---
 <p align="center">
   <strong>⭐ Memanto がフリートの記憶を管理しているならリポジトリにスターを</strong><br>
-  <sub>MIT の下で何も隠さずオープンに作り続けるための合図です。</sub></p>
+  <sub>Apache 2.0 の下で何も隠さずオープンに作り続けるための合図です。</sub></p>
 
 ---
 ## 開発者体験
@@ -322,5 +322,5 @@ memanto.answer("Does Alex drink dairy?")
 
 ---
 <p align="center">
-  <strong>MIT License</strong>
+  <strong>Apache License 2.0</strong>
 </p>

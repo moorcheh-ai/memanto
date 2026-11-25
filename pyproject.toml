@@ -5,7 +5,7 @@ description = "A companion memory agent that lets your agents focus and improve 
 authors = [{ name = "Majid Fekri", email = "majid.fekri@edgeaiinnovations.com" }]
 requires-python = ">=3.10,<4"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 keywords = [
     "memanto",
     "moorcheh",
@@ -21,7 +21,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -101,6 +101,7 @@ include = [
     "/pytest.ini",
     "/README.md",
     "/LICENSE",
+    "/NOTICE",
 ]
 
 [dependency-groups]

@@ -17,7 +17,7 @@
   <a href="https://arxiv.org/abs/2604.22085"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.22085-b31b1b.svg"></a>
   <a href="https://pypi.org/project/memanto/"><img alt="PyPI" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
   <a href="https://mcptoplist.com/server/io.github.moorcheh-ai%2Fmemanto"><img alt="MCP Toplist" src="https://mcptoplist.com/badge/io.github.moorcheh-ai%2Fmemanto.svg"></a>
-  <a href="https://opensource.org/licenses/MIT"><img alt="Licencia MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
+  <a href="LICENSE"><img alt="Licencia Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -118,7 +118,7 @@ Esta es la parte que importará dentro de dos años, y la que todas las funcione
 
 **Se ejecuta en tu máquina.** Docker local + Ollama, sin cuenta, sin clave de API, sin que nada salga de tu infraestructura. O nube gratuita, o tu propio alojamiento. `memanto use` cambia entre ellos y el patrimonio viaja contigo.
 
-**MIT.** Sin un nivel open-core esperando para bloquear la mitad útil. Sin flags de funciones, sin límites de asientos, sin retirada de la alfombra.
+**Apache 2.0.** Sin un nivel open-core esperando para bloquear la mitad útil. Sin flags de funciones, sin límites de asientos, sin retirada de la alfombra.
 
 No hay dependencia porque no hay nada que bloquear.
 
@@ -199,7 +199,7 @@ Los sustratos de almacenamiento están *debajo* de Memanto: almacenes vectoriale
 
 <p align="center">
   <strong>⭐ Marca el repositorio con una estrella si Memanto administra la memoria de tu flota</strong><br>
-  <sub>Es la señal que nos dice que sigamos construyendo esto en abierto, bajo MIT, sin reservarnos nada.</sub></p>
+  <sub>Es la señal que nos dice que sigamos construyendo esto en abierto, bajo Apache 2.0, sin reservarnos nada.</sub></p>
 
 ---
 
@@ -381,5 +381,5 @@ Preguntas: [support@moorcheh.ai](mailto:support@moorcheh.ai) · [@moorcheh_ai](h
 ---
 
 <p align="center">
-  <strong>Licencia MIT</strong>
+  <strong>Licencia Apache 2.0</strong>
 </p>
