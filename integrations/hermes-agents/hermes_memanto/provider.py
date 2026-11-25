@@ -300,13 +300,31 @@ class _MemantoClient:
         self._pattern = pattern
         self._auto_create = auto_create
         self._session_duration_hours = session_duration_hours
-        self._client = SdkClient(api_key=api_key)
+        self._is_cloud = self._is_cloud_api_key(api_key)
+        self._client = self._build_client(api_key, SdkClient)
         self._lock = threading.RLock()
         self._ready = False
         self._retry_after = 0.0
         self._profile_path: Path | None = None
         self._token_file: Path | None = None
         self._last_refresh = 0.0
+
+    @staticmethod
+    def _is_cloud_api_key(api_key: str) -> bool:
+        return api_key.startswith("mk_") or (
+            bool(api_key) and api_key == os.environ.get("MEMANTO_API_KEY", "").strip()
+        )
+
+    @classmethod
+    def _build_client(cls, api_key: str, sdk_client_cls: Any) -> Any:
+        if cls._is_cloud_api_key(api_key):
+            from memanto.cli.client.hosted_client import HostedClient
+
+            base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+            if base_url:
+                return HostedClient(api_key, base_url=base_url)
+            return HostedClient(api_key)
+        return sdk_client_cls(api_key=api_key)
 
     @property
     def agent_id(self) -> str:
@@ -316,12 +334,15 @@ class _MemantoClient:
         self._profile_path = Path(profile_path)
         self._token_file = self._profile_path / _TOKEN_FILE_NAME
 
-        # Load any existing persisted token on startup
+        # Load any existing persisted token on startup. On Memanto Cloud, a
+        # local session token does not prove the Cloud agent exists yet, so
+        # leave _ready False until ensure_session() verifies/creates the agent.
         token = self.load_token()
         if token:
             self._client.session_token = token
             self._client.agent_id = self._agent_id
-            self._ready = True
+            if not self._is_cloud:
+                self._ready = True
 
     def save_token(self, token: str) -> None:
         if self._token_file:
@@ -598,7 +619,10 @@ class MemantoMemoryProvider(MemoryProvider):
         return "memanto"
 
     def is_available(self) -> bool:
-        if not os.environ.get("MOORCHEH_API_KEY", "").strip():
+        if not (
+            os.environ.get("MEMANTO_API_KEY", "").strip()
+            or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        ):
             return False
         try:
             __import__("memanto")
@@ -610,11 +634,11 @@ class MemantoMemoryProvider(MemoryProvider):
         return [
             {
                 "key": "api_key",
-                "description": "Moorcheh API key (powers Memanto)",
+                "description": "Memanto Cloud API key (or set MOORCHEH_API_KEY for Memanto local)",
                 "secret": True,
                 "required": True,
-                "env_var": "MOORCHEH_API_KEY",
-                "url": "https://console.moorcheh.ai/api-keys",
+                "env_var": "MEMANTO_API_KEY",
+                "url": "https://console.memanto.ai/sign-in",
             },
             {
                 "key": "agent_id",
@@ -640,7 +664,10 @@ class MemantoMemoryProvider(MemoryProvider):
     def initialize(self, session_id: str, **kwargs) -> None:
         self._hermes_home = kwargs.get("hermes_home") or _resolve_hermes_home()
         self._config = _load_memanto_config(self._hermes_home)
-        self._api_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
+        self._api_key = (
+            os.environ.get("MEMANTO_API_KEY", "").strip()
+            or os.environ.get("MOORCHEH_API_KEY", "").strip()
+        )
 
         # Resolve the agent id: env override > config, with {identity} template.
         identity = kwargs.get("agent_identity", "default") or "default"

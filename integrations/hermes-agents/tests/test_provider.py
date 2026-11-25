@@ -105,9 +105,17 @@ def provider(monkeypatch, tmp_path):
 
 
 def test_is_available_false_without_api_key(monkeypatch):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
     monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
     p = MemantoMemoryProvider()
     assert p.is_available() is False
+
+
+def test_is_available_true_with_memanto_api_key(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_test_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    p = MemantoMemoryProvider()
+    assert p.is_available() is True
 
 
 def test_is_available_false_when_import_missing(monkeypatch):
@@ -539,7 +547,8 @@ def test_get_config_schema(provider):
     assert "api_key" in keys and "agent_id" in keys
     api_field = next(f for f in schema if f["key"] == "api_key")
     assert api_field["secret"] is True
-    assert api_field["env_var"] == "MOORCHEH_API_KEY"
+    assert api_field["env_var"] == "MEMANTO_API_KEY"
+    assert api_field["url"] == "https://console.memanto.ai/sign-in"
 
 
 def test_system_prompt_block_mentions_agent(provider):
@@ -597,6 +606,13 @@ def test_memanto_client_token_persistence(tmp_path):
     client2.set_profile_path(str(tmp_path))
     assert client2._ready is True
     assert client2._client.session_token == "token-abc"
+
+    # On Memanto Cloud (mk_ key), a saved local token must not mark _ready True
+    # before ensure_session() verifies/creates the Cloud agent.
+    cloud_client = _MemantoClient("mk_cloud_key", "agent-1")
+    cloud_client._client = MagicMock()
+    cloud_client.set_profile_path(str(tmp_path))
+    assert cloud_client._ready is False
 
 
 def test_memanto_client_auto_refresh_on_expiration(tmp_path):

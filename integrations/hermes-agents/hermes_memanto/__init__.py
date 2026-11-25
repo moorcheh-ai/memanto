@@ -12,4 +12,4 @@ Then point Hermes at it::
 from .provider import MemantoMemoryProvider, register
 
 __all__ = ["MemantoMemoryProvider", "register"]
-__version__ = "0.1.1"
+__version__ = "0.1.2"

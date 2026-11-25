@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hermes-memanto"
-version = "0.1.1"
+version = "0.1.2"
 description = "Memanto memory-agent provider for the Hermes agent - typed long-term memory (remember/recall/answer) backed by Moorcheh"
 readme = "README.md"
 license = { text = "MIT" }
@@ -35,7 +35,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "memanto>=0.1.0",
+    "memanto>=0.3.0",
 ]
 
 [project.optional-dependencies]

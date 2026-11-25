@@ -12,7 +12,7 @@ Hermes identity to one Memanto agent.
 ## Requirements
 
 - `pip install memanto`
-- Moorcheh API key from [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)
+- Memanto Cloud API key from [console.memanto.ai](https://console.memanto.ai/sign-in) (or `MOORCHEH_API_KEY` from [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys) for Memanto local)
 
 ## Setup
 
@@ -24,7 +24,7 @@ Or manually:
 
 ```bash
 hermes config set memory.provider memanto
-echo 'MOORCHEH_API_KEY=***' >> ~/.hermes/.env
+echo 'MEMANTO_API_KEY=mk_***' >> ~/.hermes/.env
 ```
 
 ## Config
@@ -47,7 +47,8 @@ Config file: `$HERMES_HOME/memanto.json`
 
 | Variable | Description |
 |----------|-------------|
-| `MOORCHEH_API_KEY` | Moorcheh API key (required). |
+| `MEMANTO_API_KEY` | Memanto Cloud API key (recommended — [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in)). |
+| `MOORCHEH_API_KEY` | Moorcheh API key fallback when using Memanto local ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)). |
 | `MEMANTO_AGENT_ID` | Override the agent id (takes priority over the config file). |
 
 ## Tools
