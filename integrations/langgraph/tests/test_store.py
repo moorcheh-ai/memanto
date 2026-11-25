@@ -22,6 +22,52 @@ def test_memanto_store_init():
     assert store._client_pool == {}
 
 
+def test_memanto_store_init_from_memanto_api_key_env(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_cloud_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    store = MemantoStore()
+    assert store.api_key == "mk_cloud_key"
+
+
+def test_memanto_store_init_without_key_raises(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        MemantoStore()
+
+
+def test_memanto_store_respects_on_prem_with_dormant_saved_cloud_key(
+    monkeypatch, tmp_path
+):
+    config_dir = tmp_path / ".memanto"
+    config_dir.mkdir()
+    (config_dir / "config.yaml").write_text("memanto:\n  backend: on-prem\n")
+    (config_dir / ".env").write_text("MEMANTO_API_KEY=mk_dormant_saved_key\n")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_dormant_saved_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+
+    store = MemantoStore()
+    assert store.api_key == "on-prem"
+    assert store._is_cloud is False
+
+
+def test_memanto_store_retains_resolved_credential_context(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_account_a")
+    monkeypatch.setenv("MEMANTO_API_URL", "https://api-a.memanto.example")
+    store = MemantoStore()
+
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_account_b")
+    monkeypatch.setenv("MEMANTO_API_URL", "https://api-b.memanto.example")
+
+    client = store._new_client()
+    assert client.api_key == "mk_account_a"
+    assert getattr(client, "base_url", None) == "https://api-a.memanto.example"
+
+
 def test_ensure_client_creates_and_activates(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
 
