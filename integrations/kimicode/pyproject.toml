@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kimicode-memanto"
-version = "0.1.0"
+version = "0.1.1"
 description = "Convenience CLI for installing Memanto's Kimi Code integration."
 readme = "README.md"
 license = { text = "MIT" }
@@ -39,7 +39,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "memanto>=0.2.30",
+    "memanto>=0.3.0",
 ]
 
 [project.optional-dependencies]
