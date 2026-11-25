@@ -35,7 +35,7 @@ except ModuleNotFoundError as _exc:  # pragma: no cover
         "Upgrade with:  pip install -U 'memanto>=0.2.14'"
     ) from _exc
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "HandlerSettings",

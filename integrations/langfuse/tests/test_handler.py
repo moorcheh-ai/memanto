@@ -31,6 +31,23 @@ def test_agent_can_come_from_the_environment(errors_only, memanto_client, monkey
     assert MemantoLangfuseHandler(client=memanto_client).agent_id == "from-env"
 
 
+def test_api_key_can_come_from_memanto_api_key_env(
+    errors_only, memanto_client, monkeypatch
+):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_cloud_key")
+    handler = MemantoLangfuseHandler(agent_id="test-agent", client=memanto_client)
+    assert handler._api_key == "mk_cloud_key"
+
+
+def test_empty_memanto_api_key_falls_back_to_moorcheh_api_key(
+    errors_only, memanto_client, monkeypatch
+):
+    monkeypatch.setenv("MEMANTO_API_KEY", "   ")
+    monkeypatch.setenv("MOORCHEH_API_KEY", "mch_fallback_key")
+    handler = MemantoLangfuseHandler(agent_id="test-agent", client=memanto_client)
+    assert handler._api_key == "mch_fallback_key"
+
+
 def test_capture_settings_come_from_the_shared_profile(errors_only, memanto_client):
     """The app must not need its own copy of the capture rules."""
     handler = build(errors_only, memanto_client)

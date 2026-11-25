@@ -14,11 +14,13 @@ That's the only install. `memanto` comes with it, and **there is no server to ru
 
 ## Quick start — from nothing
 
-You need one thing: a Memanto API key from [memanto.ai](https://www.memanto.ai).
+You need one thing: a Memanto API key from [console.memanto.ai](https://console.memanto.ai/sign-in) (or run `memanto login`).
 
 ```bash
-export MOORCHEH_API_KEY="your-key"
+export MEMANTO_API_KEY="mk_your_key"
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 Then two lines in your app:
 
@@ -109,7 +111,8 @@ Runtime settings are read from the environment:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `MOORCHEH_API_KEY` | Yes | — | Memanto API key. Never logged. |
+| `MEMANTO_API_KEY` | Yes* | — | Memanto Cloud API key (recommended, from [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in)). *Not needed if signed in via `memanto login` or using `MOORCHEH_API_KEY`. Never logged. |
+| `MOORCHEH_API_KEY` | No | — | Moorcheh API key fallback when using Memanto local (`moorcheh-cloud`). Never logged. |
 | `MEMANTO_LANGFUSE_AGENT_ID` | Yes* | — | Agent that receives the memories. *Or pass `agent_id=`. |
 | `MEMANTO_LANGFUSE_PROJECT` | No | `default` | Which stored capture profile to use |
 | `MEMANTO_LANGFUSE_FLUSH_INTERVAL` | No | `30` | Seconds between background flushes |
