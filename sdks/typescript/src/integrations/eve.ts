@@ -82,7 +82,7 @@ function toModelMemory(memory: RecalledMemory) {
  *
  * const memanto = new Memanto({
  *   agentId: "my-agent",
- *   apiKey: process.env.MOORCHEH_API_KEY,
+ *   apiKey: process.env.MEMANTO_API_KEY, // or process.env.MOORCHEH_API_KEY for Memanto local
  * });
  *
  * export const memantoTools = createMemantoEveTools(memanto);
@@ -368,7 +368,7 @@ function logFailure(operation: string, error: unknown, sessionId: string): void 
  * export default defineMemory({
  *   description: "Recall and manage durable context for the current user.",
  *   provider: memantoMemory({
- *     apiKey: process.env.MOORCHEH_API_KEY,
+ *     apiKey: process.env.MEMANTO_API_KEY, // or process.env.MOORCHEH_API_KEY
  *     baseUrl: process.env.MEMANTO_BASE_URL,
  *   }),
  *   scope: byPrincipal,

@@ -147,6 +147,9 @@ func (f *fakeAPI) last(path string) recorded {
 
 func newTestClient(t *testing.T, f *fakeAPI, opts Options) *Client {
 	t.Helper()
+	t.Setenv("MEMANTO_API_KEY", "")
+	t.Setenv("MOORCHEH_API_KEY", "")
+	t.Setenv("MEMANTO_API_URL", "")
 	opts.AgentID = f.agentID
 	opts.BaseURL = f.start() + "/"
 	c, err := New(opts)
@@ -363,4 +366,154 @@ func TestErrorsReturnNilResult(t *testing.T) {
 	if err == nil || res != nil {
 		t.Fatalf("want nil result and an error, got %v, %v", res, err)
 	}
+}
+
+func TestMemantoCloudMode(t *testing.T) {
+	var calls []recorded
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		calls = append(calls, recorded{
+			Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery,
+			Token: r.Header.Get("X-Session-Token"), APIKey: r.Header.Get("X-Api-Key"),
+			ContentType: r.Header.Get("Content-Type"), Body: body,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/agents/cloud-bot" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]any{"detail": "not found"})
+		case r.URL.Path == "/agents" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"agent_id": "cloud-bot"})
+		case r.URL.Path == "/agents/cloud-bot/remember" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"memory_id": "mem-c1", "agent_id": "cloud-bot", "session_id": "s",
+				"namespace": "cloud-bot", "status": "queued", "provenance": "explicit_statement", "confidence": 0.8,
+			})
+		case r.URL.Path == "/agents/cloud-bot/recall" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"agent_id": "cloud-bot", "session_id": "s", "query": "milk", "count": 1,
+				"memories": []map[string]any{{
+					"id":      "mem-c1",
+					"type":    "preference",
+					"tags":    []string{"diet", "coffee"},
+					"content": "[PREFERENCE] Milk preference\n\nAlex prefers oat milk.\n\nTags: diet, coffee",
+					"score":   0.95,
+				}},
+			})
+		case r.URL.Path == "/agents/cloud-bot/daily-summary" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"summary": map[string]any{"status": "success", "date": "2026-11-24"},
+			})
+		case r.URL.Path == "/agents/cloud-bot/daily-summary" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"date":    "2026-11-24",
+				"content": "# Daily Summary\n\nAlex prefers oat milk.",
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := New(Options{
+		AgentID: "cloud-bot",
+		APIKey:  "mk_live_secret",
+		BaseURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+
+	ctx := context.Background()
+	if _, err := c.Remember(ctx, RememberInput{Content: "Alex prefers oat milk."}); err != nil {
+		t.Fatal(err)
+	}
+	recalled, err := c.Recall(ctx, RecallInput{Query: "milk"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recalled.Memories) != 1 || recalled.Memories[0].Content == nil {
+		t.Fatalf("unexpected recall memories: %+v", recalled.Memories)
+	}
+	equal(t, *recalled.Memories[0].Content, "Alex prefers oat milk.")
+
+	summaryOut := filepath.Join(t.TempDir(), "nested", "summary.md")
+	summaryRes, err := c.DailySummary(ctx, DailySummaryInput{Date: "2026-11-24", OutputPath: summaryOut})
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryMap, _ := summaryRes["summary"].(map[string]any)
+	equal(t, summaryMap["summary_path"], summaryOut)
+	written, err := os.ReadFile(summaryOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, string(written), "# Daily Summary\n\nAlex prefers oat milk.")
+
+	var gotPaths []string
+	for _, call := range calls {
+		gotPaths = append(gotPaths, call.Method+" "+call.Path)
+		equal(t, call.APIKey, "mk_live_secret")
+		equal(t, call.Token, "")
+	}
+	equal(t, gotPaths, []string{
+		"GET /agents/cloud-bot",
+		"POST /agents",
+		"POST /agents/cloud-bot/remember",
+		"POST /agents/cloud-bot/recall",
+		"POST /agents/cloud-bot/daily-summary",
+		"GET /agents/cloud-bot/daily-summary",
+	})
+}
+
+func TestMemantoCloudBaseURLFromEnvKey(t *testing.T) {
+	t.Setenv("MEMANTO_API_KEY", "mk_env_cloud_key")
+	var calls []recorded
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		calls = append(calls, recorded{
+			Method: r.Method, Path: r.URL.Path, APIKey: r.Header.Get("X-Api-Key"), Body: body,
+		})
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/agents/cloud-bot" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{"agent_id": "cloud-bot"})
+		case r.URL.Path == "/agents/cloud-bot/remember" && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"memory_id": "mem-c2", "agent_id": "cloud-bot", "session_id": "s",
+				"namespace": "cloud-bot", "status": "queued", "provenance": "explicit_statement", "confidence": 0.8,
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := New(Options{
+		AgentID: "cloud-bot",
+		BaseURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+
+	if _, err := c.Remember(context.Background(), RememberInput{Content: "env key with custom baseURL"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 {
+		t.Fatalf("expected 2 cloud calls, got %d", len(calls))
+	}
+	equal(t, calls[0].Path, "/agents/cloud-bot")
+	equal(t, calls[0].APIKey, "mk_env_cloud_key")
+	equal(t, calls[1].Path, "/agents/cloud-bot/remember")
+	equal(t, calls[1].APIKey, "mk_env_cloud_key")
 }

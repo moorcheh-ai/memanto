@@ -2,21 +2,7 @@
 
 TypeScript SDK for [Memanto](https://github.com/moorcheh-ai/memanto) — memory that AI agents love.
 
-The SDK boots a local Memanto server on demand via `uvx` and exposes a small ergonomic client for storing and recalling memories.
-
-## Prerequisites
-
-You need `uv` (which ships `uvx`) installed on the machine. The SDK will not install it for you.
-
-```bash
-# macOS / Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-See https://docs.astral.sh/uv/getting-started/installation/ for other install methods.
+Connects directly to **Memanto Cloud** ([console.memanto.ai/sign-in](https://console.memanto.ai/sign-in)) with `MEMANTO_API_KEY` (`mk_...`), or boots a local Memanto server on demand via `uvx` when using **Memanto local** (`MOORCHEH_API_KEY` or Moorcheh on-prem).
 
 ## Install
 
@@ -24,14 +10,16 @@ See https://docs.astral.sh/uv/getting-started/installation/ for other install me
 npm install @moorcheh-ai/memanto
 ```
 
-## Quick start
+## Quick start (Memanto Cloud — recommended)
+
+Create a Memanto Cloud API key at [console.memanto.ai/sign-in](https://console.memanto.ai/sign-in) and set `MEMANTO_API_KEY`:
 
 ```ts
 import { Memanto } from "@moorcheh-ai/memanto";
 
 const memanto = new Memanto({
   agentId: "my-agent",
-  apiKey: process.env.MOORCHEH_API_KEY,
+  apiKey: process.env.MEMANTO_API_KEY,
 });
 
 await memanto.remember({ content: "Alex prefers oat milk." });
@@ -45,7 +33,23 @@ console.log(answer);
 await memanto.close();
 ```
 
-On the first call, the SDK:
+With a Memanto Cloud key (`mk_...` or `MEMANTO_API_KEY`), the SDK talks directly to the hosted Memanto Cloud API over HTTPS — no local `uvx` server is needed.
+
+## Memanto local (`MOORCHEH_API_KEY` or On-Prem)
+
+To run locally against Moorcheh Cloud (`MOORCHEH_API_KEY` from [console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or Moorcheh on-prem, install `uv` (which ships `uvx`):
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+See https://docs.astral.sh/uv/getting-started/installation/ for other install methods.
+
+On the first call in local mode, the SDK:
 
 1. Picks a free port and spawns `uvx memanto serve --port <port>`.
 2. Polls `/health` until the server is ready.
@@ -54,9 +58,9 @@ On the first call, the SDK:
 
 When `close()` is called (or the Node process exits), the server is sent `SIGTERM`.
 
-## On-prem (no API key)
+### On-prem (no API key)
 
-The SDK is a thin wrapper around the Memanto server, so backend selection lives in Memanto — not in this SDK. To run fully on-prem (no Moorcheh API key), configure it once with the CLI:
+To run fully on-prem (no API key), configure it once with the CLI:
 
 ```bash
 uvx memanto
@@ -81,20 +85,17 @@ The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `agentId` | `string` | — | **Required.** Agent identifier. |
-| `apiKey` | `string` | — | Moorcheh API key, passed to the server as `MOORCHEH_API_KEY`. |
+| `apiKey` | `string` | `MEMANTO_API_KEY` / `MOORCHEH_API_KEY` | Memanto Cloud API key (`mk_...`, recommended) or Moorcheh API key for local fallback. |
 | `autoCreate` | `boolean` | `true` | Create the agent if it does not exist. |
-| `baseUrl` | `string` | — | Use an already-running server at this URL instead of spawning one. |
-| `port` | `number` | auto | Bind the spawned server to this port. |
-| `host` | `string` | `127.0.0.1` | Bind host. |
-| `uvxPath` | `string` | `uvx` | Override the path to `uvx`. |
-| `packageSpec` | `string` | `memanto` | Package spec passed to `uvx`. Use `memanto==0.2.3` to pin. |
-| `healthTimeoutMs` | `number` | `60000` | Health-check timeout. |
-| `verbose` | `boolean` | `false` | Stream server logs to the parent process. |
+| `baseUrl` | `string` | — | Override the Memanto Cloud API URL or use an already-running local server instead of spawning one. |
+| `port` | `number` | auto | Bind the spawned local server to this port. |
+| `host` | `string` | `127.0.0.1` | Bind host for the spawned local server. |
+| `uvxPath` | `string` | `uvx` | Override the path to `uvx` (local mode). |
+| `packageSpec` | `string` | `memanto` | Package spec passed to `uvx` (local mode). Use `memanto==0.2.3` to pin. |
+| `healthTimeoutMs` | `number` | `60000` | Health-check timeout (local mode). |
+| `verbose` | `boolean` | `false` | Stream local server logs to the parent process. |
 
-When `apiKey` is set it is sent as `X-Api-Key` on every request. A server
-reachable beyond loopback requires it for agent management, activation, and
-session renewal. Memory requests are still authorized by the server-issued
-session token.
+When `apiKey` is set it is sent as `X-Api-Key` on every request. Memanto Cloud authenticates every call with `X-Api-Key`; a local server reachable beyond loopback requires it for agent management, activation, and session renewal while memory requests use the server-issued session token.
 
 ### Methods
 
@@ -126,7 +127,7 @@ session token.
 - `listAgents()`
 - `getAgent()`
 - `createAgent({ pattern?, description? })` — explicit create (only needed when `autoCreate: false`).
-- `deleteAgent({ deleteMemories? })` — memories are kept in Moorcheh unless `deleteMemories: true`
+- `deleteAgent({ deleteMemories? })` — on Memanto local, memories are kept in Moorcheh unless `deleteMemories: true`. On Memanto Cloud, deleting an agent always deletes its memories.
 - `deactivate()` — end the current session (the next call rebootstraps).
 - `status()` — current session info.
 - `close()` — stop the spawned server.

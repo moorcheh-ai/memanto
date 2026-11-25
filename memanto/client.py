@@ -34,6 +34,8 @@ from memanto.app.utils.errors import (
 )
 from memanto.cli.client.sdk_client import SdkClient
 
+_ORIG_SDK_CLIENT = SdkClient
+
 __all__ = ["Memanto"]
 
 _T = TypeVar("_T")
@@ -52,33 +54,114 @@ def _as_list(value: str | list[str] | None) -> list[str] | None:
     return [value] if isinstance(value, str) else value
 
 
-def _resolve_api_key(api_key: str | None) -> str:
-    """Return the key to use: explicit arg, then ``MOORCHEH_API_KEY``.
+def _is_cloud_api_key(key: str) -> bool:
+    clean = key.strip()
+    if not clean:
+        return False
+    if clean.startswith("mk_"):
+        return True
+    env_cloud = os.environ.get("MEMANTO_API_KEY", "").strip()
+    return bool(env_cloud and clean == env_cloud)
+
+
+def _resolve_credentials(api_key: str | None) -> tuple[str, bool]:
+    """Return ``(key, is_cloud)`` from explicit arg, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``.
 
     Importing ``memanto.app.config`` loads ``~/.memanto/.env`` over the
-    environment, so a key saved by ``memanto`` setup takes precedence over an
-    exported ``MOORCHEH_API_KEY``. The on-prem backend needs no key.
+    environment, so a key saved by ``memanto`` setup is available alongside
+    exported environment variables. The on-prem backend needs no key.
     """
+    caller_memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    caller_memanto_url = os.environ.get("MEMANTO_API_URL", "").strip()
     from memanto.app.clients.backend import Backend
     from memanto.app.config import settings
     from memanto.cli.config.manager import ConfigManager
 
-    config = ConfigManager()
-    if api_key is None and config.get_backend() == Backend.ON_PREM:
-        return _ON_PREM_API_KEY
+    if caller_memanto_key:
+        os.environ["MEMANTO_API_KEY"] = caller_memanto_key
+    if caller_memanto_url:
+        os.environ["MEMANTO_API_URL"] = caller_memanto_url
 
-    key = api_key or os.environ.get("MOORCHEH_API_KEY") or config.get_api_key()
+    if api_key is not None and api_key.strip():
+        clean = api_key.strip()
+        is_cloud = _is_cloud_api_key(clean)
+        if not is_cloud and not settings.MOORCHEH_API_KEY:
+            settings.MOORCHEH_API_KEY = clean
+        return clean, is_cloud
+
+    if caller_memanto_key:
+        return caller_memanto_key, True
+
+    config = ConfigManager()
+    backend = config.get_backend()
+    if backend == Backend.MEMANTO_CLOUD:
+        cloud_key = config.get_memanto_api_key()
+        if cloud_key and cloud_key.strip():
+            return cloud_key.strip(), True
+
+    if api_key is None and backend == Backend.ON_PREM:
+        return _ON_PREM_API_KEY, False
+
+    key = os.environ.get("MOORCHEH_API_KEY") or config.get_api_key()
     if not key or not key.strip():
         raise ValueError(
-            "No Moorcheh API key found. Pass api_key=..., set MOORCHEH_API_KEY, "
-            "or run `memanto` once to configure a backend."
+            "No Memanto API key (or Moorcheh API key) found. Pass api_key=..., "
+            "set MEMANTO_API_KEY (https://console.memanto.ai/sign-in) or MOORCHEH_API_KEY, "
+            "or run `memanto login`."
         )
     # Services that fall back to the global key (daily analysis) need one. Fill
     # it only when none is configured: never replace the key that other
     # clients in this process resolve.
     if not settings.MOORCHEH_API_KEY:
         settings.MOORCHEH_API_KEY = key
+    return key, False
+
+
+def _resolve_api_key(api_key: str | None) -> str:
+    """Return the key to use: explicit arg, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``."""
+    key, _ = _resolve_credentials(api_key)
     return key
+
+
+def _instantiate_sdk_client(
+    key: str,
+    *,
+    explicit_api_key: str | None = None,
+    is_cloud: bool | None = None,
+) -> SdkClient:
+    """Construct ``HostedClient`` for Memanto Cloud keys, else ``SdkClient``."""
+    if SdkClient is not _ORIG_SDK_CLIENT:
+        return SdkClient(api_key=key)
+
+    from memanto.app.clients.backend import Backend
+    from memanto.cli.client.hosted_client import HostedClient
+    from memanto.cli.config.manager import ConfigManager
+
+    caller_memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    caller_memanto_url = os.environ.get("MEMANTO_API_URL", "").strip()
+    config = ConfigManager()
+    if caller_memanto_key:
+        os.environ["MEMANTO_API_KEY"] = caller_memanto_key
+    if caller_memanto_url:
+        os.environ["MEMANTO_API_URL"] = caller_memanto_url
+    if is_cloud is not None:
+        use_cloud = is_cloud
+    else:
+        saved_cloud_key = (
+            (config.get_memanto_api_key() or "").strip()
+            if explicit_api_key is None
+            and config.get_backend() == Backend.MEMANTO_CLOUD
+            else ""
+        )
+        use_cloud = _is_cloud_api_key(key) or (
+            bool(saved_cloud_key) and key.strip() == saved_cloud_key
+        )
+
+    if use_cloud:
+        base_url = caller_memanto_url or config.get_memanto_api_url()
+        return HostedClient(key, base_url=base_url)
+
+    return SdkClient(api_key=key)
 
 
 class Memanto:
@@ -86,8 +169,10 @@ class Memanto:
 
     Args:
         agent_id: Agent to read and write (alphanumeric, ``-`` and ``_``).
-        api_key: Moorcheh API key. Defaults to ``MOORCHEH_API_KEY`` or the key
-            saved by ``memanto`` setup; not needed on the on-prem backend.
+        api_key: Memanto Cloud API key (``mk_...``) or Moorcheh API key.
+            Defaults to ``MEMANTO_API_KEY``, the active ``~/.memanto`` sign-in
+            (``memanto login``), or ``MOORCHEH_API_KEY``; not needed on the
+            on-prem backend.
         auto_create: Create the agent if it does not exist (default ``True``).
         pattern: Pattern for an auto-created agent — ``"tool"`` (default),
             ``"support"``, or ``"project"``.
@@ -117,7 +202,8 @@ class Memanto:
         session_hours: int | None = None,
     ) -> None:
         self.agent_id = agent_id
-        self.client = SdkClient(api_key=_resolve_api_key(api_key))
+        resolved_key = _resolve_api_key(api_key)
+        self.client = _instantiate_sdk_client(resolved_key, explicit_api_key=api_key)
         self._session_hours = session_hours
         self._ensure_agent(auto_create, pattern)
         self._ensure_session()

@@ -22,11 +22,18 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/moorcheh-ai/memanto/sdks/go/api"
 )
+
+// DefaultMemantoAPIURL is the default public gateway for Memanto Cloud (MEMANTO_API_KEY).
+const DefaultMemantoAPIURL = "https://api.memanto.ai"
+
+var cloudCardHeaderRe = regexp.MustCompile(`^\[([A-Za-z]+)\] `)
 
 // Options configures a Client. Only AgentID is required.
 type Options struct {
@@ -36,12 +43,14 @@ type Options struct {
 	// does not exist yet.
 	DisableAutoCreate bool
 
-	// BaseURL of a running memanto server, e.g. "http://127.0.0.1:8000".
-	// When empty, the client starts `uvx memanto serve` on first use.
+	// BaseURL of a Memanto Cloud gateway or a running local memanto server,
+	// e.g. "http://127.0.0.1:8000". When empty, Memanto Cloud keys use
+	// DefaultMemantoAPIURL (or MEMANTO_API_URL), and local keys start
+	// `uvx memanto serve` on first use.
 	BaseURL string
-	// APIKey is the Moorcheh API key. A spawned server receives it as
-	// MOORCHEH_API_KEY, and every request sends it as X-Api-Key, which a
-	// server bound beyond loopback requires for agent management.
+	// APIKey is the Memanto Cloud API key ("mk_...", from https://console.memanto.ai)
+	// or Moorcheh API key for local fallback. Defaults to MEMANTO_API_KEY or
+	// MOORCHEH_API_KEY when BaseURL is empty.
 	APIKey string
 	// HTTPClient used for every request. Defaults to http.DefaultClient.
 	HTTPClient *http.Client
@@ -57,7 +66,7 @@ type Options struct {
 	// PackageSpec passed to uvx. Defaults to "memanto"; use e.g.
 	// "memanto==0.2.3" to pin a version.
 	PackageSpec string
-	// HealthTimeout bounds how long to wait for the spawned server's /health.
+	// HealthTimeout bounds how long to wait for a started server's /health.
 	// Defaults to 60s.
 	HealthTimeout time.Duration
 	// Verbose streams the spawned server's output to this process's
@@ -68,12 +77,14 @@ type Options struct {
 // Client is a Memanto client bound to one agent. It is safe for concurrent
 // use. Call Close when done to stop a server the client spawned.
 type Client struct {
-	agentID    string
-	agentPath  string
-	autoCreate bool
-	apiKey     string
-	http       *http.Client
-	server     *server
+	agentID        string
+	agentsRootPath string
+	agentPath      string
+	autoCreate     bool
+	isCloud        bool
+	apiKey         string
+	http           *http.Client
+	server         *server
 
 	mu    sync.Mutex // guards token and serializes session activation
 	token string
@@ -89,13 +100,47 @@ func New(opts Options) (*Client, error) {
 	if hc == nil {
 		hc = http.DefaultClient
 	}
+
+	explicitKey := strings.TrimSpace(opts.APIKey)
+	envMemantoKey := strings.TrimSpace(os.Getenv("MEMANTO_API_KEY"))
+	envMoorchehKey := strings.TrimSpace(os.Getenv("MOORCHEH_API_KEY"))
+	envCloudURL := strings.TrimSpace(os.Getenv("MEMANTO_API_URL"))
+
+	hasLocalSpawnOpts := opts.UvxPath != "" || opts.Host != "" || opts.Port != 0 || opts.PackageSpec != ""
+	resolvedKey := explicitKey
+	isCloud := false
+	if explicitKey != "" {
+		isCloud = strings.HasPrefix(explicitKey, "mk_") || (envMemantoKey != "" && explicitKey == envMemantoKey)
+	} else if !hasLocalSpawnOpts && envMemantoKey != "" {
+		isCloud = true
+		resolvedKey = envMemantoKey
+	} else if opts.BaseURL == "" && envMoorchehKey != "" {
+		isCloud = false
+		resolvedKey = envMoorchehKey
+	}
+
+	agentsRootPath := "/api/v2/agents"
+	if isCloud {
+		agentsRootPath = "/agents"
+		if opts.BaseURL == "" {
+			if envCloudURL != "" {
+				opts.BaseURL = envCloudURL
+			} else {
+				opts.BaseURL = DefaultMemantoAPIURL
+			}
+		}
+	}
+	opts.APIKey = resolvedKey
+
 	return &Client{
-		agentID:    opts.AgentID,
-		agentPath:  "/api/v2/agents/" + url.PathEscape(opts.AgentID),
-		autoCreate: !opts.DisableAutoCreate,
-		apiKey:     opts.APIKey,
-		http:       hc,
-		server:     &server{opts: opts, http: hc},
+		agentID:        opts.AgentID,
+		agentsRootPath: agentsRootPath,
+		agentPath:      agentsRootPath + "/" + url.PathEscape(opts.AgentID),
+		autoCreate:     !opts.DisableAutoCreate,
+		isCloud:        isCloud,
+		apiKey:         resolvedKey,
+		http:           hc,
+		server:         &server{opts: opts, http: hc},
 	}, nil
 }
 
@@ -231,6 +276,42 @@ func (c *Client) UploadFile(ctx context.Context, in UploadFileInput) (*api.Uploa
 	if name == "" {
 		name = filepath.Base(in.Path)
 	}
+	if c.isCloud {
+		created, err := requestMap(ctx, c, http.MethodPost, c.agentPath+"/files", map[string]any{
+			"file_name":  name,
+			"size_bytes": len(data),
+		}, true)
+		if err != nil {
+			return nil, err
+		}
+		uploadURL, _ := created["upload_url"].(string)
+		contentType, _ := created["content_type"].(string)
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		putReq, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadURL, bytes.NewReader(data))
+		if err != nil {
+			return nil, err
+		}
+		putReq.Header.Set("Content-Type", contentType)
+		putRes, err := c.http.Do(putReq)
+		if err != nil {
+			return nil, err
+		}
+		defer putRes.Body.Close()
+		if putRes.StatusCode < 200 || putRes.StatusCode > 299 {
+			return nil, fmt.Errorf("memanto: file upload to storage failed (%d)", putRes.StatusCode)
+		}
+		if fn, ok := created["file_name"].(string); ok && fn != "" {
+			name = fn
+		}
+		return &api.UploadFileResponse{
+			AgentId:   c.agentID,
+			Namespace: c.agentID,
+			FileName:  name,
+			Status:    "queued",
+		}, nil
+	}
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	fw, err := mw.CreateFormFile("file", name)
@@ -269,9 +350,50 @@ type RecallInput struct {
 	Source string `json:"source,omitempty"`
 }
 
+func normalizeCloudMemories(memories []api.MemoryItem) {
+	for i := range memories {
+		m := &memories[i]
+		if m.Content == nil || m.Type == nil {
+			continue
+		}
+		head, body, ok := strings.Cut(*m.Content, "\n\n")
+		if !ok {
+			continue
+		}
+		matches := cloudCardHeaderRe.FindStringSubmatch(head)
+		if len(matches) < 2 || !strings.EqualFold(matches[1], string(*m.Type)) {
+			continue
+		}
+		if m.Tags != nil && len(*m.Tags) > 0 {
+			const marker = "\n\nTags: "
+			if idx := strings.LastIndex(body, marker); idx != -1 {
+				footerParts := strings.Split(body[idx+len(marker):], ",")
+				if len(footerParts) == len(*m.Tags) {
+					same := true
+					for j, t := range *m.Tags {
+						if strings.TrimSpace(footerParts[j]) != strings.TrimSpace(t) {
+							same = false
+							break
+						}
+					}
+					if same {
+						body = body[:idx]
+					}
+				}
+			}
+		}
+		plain := body
+		m.Content = &plain
+	}
+}
+
 // Recall returns the memories most relevant to a query.
 func (c *Client) Recall(ctx context.Context, in RecallInput) (*api.RecallResponse, error) {
-	return request[api.RecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall", in, true)
+	res, err := request[api.RecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall", in, true)
+	if err == nil && c.isCloud && res != nil {
+		normalizeCloudMemories(res.Memories)
+	}
+	return res, err
 }
 
 // RecallAsOfInput selects memories as they were at a point in time.
@@ -285,7 +407,11 @@ type RecallAsOfInput struct {
 
 // RecallAsOf returns memories as they existed at AsOf.
 func (c *Client) RecallAsOf(ctx context.Context, in RecallAsOfInput) (*api.TemporalRecallResponse, error) {
-	return request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/as-of", in, true)
+	res, err := request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/as-of", in, true)
+	if err == nil && c.isCloud && res != nil {
+		normalizeCloudMemories(res.Memories)
+	}
+	return res, err
 }
 
 // RecallChangedSinceInput selects memories changed after a point in time.
@@ -299,7 +425,11 @@ type RecallChangedSinceInput struct {
 
 // RecallChangedSince returns memories created or changed since Since.
 func (c *Client) RecallChangedSince(ctx context.Context, in RecallChangedSinceInput) (*api.TemporalRecallResponse, error) {
-	return request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/changed-since", in, true)
+	res, err := request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/changed-since", in, true)
+	if err == nil && c.isCloud && res != nil {
+		normalizeCloudMemories(res.Memories)
+	}
+	return res, err
 }
 
 // RecallRecentInput selects the newest memories.
@@ -311,7 +441,11 @@ type RecallRecentInput struct {
 
 // RecallRecent returns the most recently created memories.
 func (c *Client) RecallRecent(ctx context.Context, in RecallRecentInput) (*api.TemporalRecallResponse, error) {
-	return request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/recent", in, true)
+	res, err := request[api.TemporalRecallResponse](ctx, c, http.MethodPost, c.agentPath+"/recall/recent", in, true)
+	if err == nil && c.isCloud && res != nil {
+		normalizeCloudMemories(res.Memories)
+	}
+	return res, err
 }
 
 // AnswerInput is a question answered from the agent's memories.
@@ -345,7 +479,35 @@ type DailySummaryInput struct {
 
 // DailySummary summarizes one day of memories.
 func (c *Client) DailySummary(ctx context.Context, in DailySummaryInput) (map[string]any, error) {
-	return requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", in, true)
+	if !c.isCloud {
+		return requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", in, true)
+	}
+	body := DailySummaryInput{Date: in.Date}
+	res, err := requestMap(ctx, c, http.MethodPost, c.agentPath+"/daily-summary", body, true)
+	if err != nil || in.OutputPath == "" {
+		return res, err
+	}
+	summary, _ := res["summary"].(map[string]any)
+	if summary == nil || summary["status"] != "success" {
+		return res, nil
+	}
+	path := c.agentPath + "/daily-summary"
+	if in.Date != "" {
+		path += "?date=" + url.QueryEscape(in.Date)
+	}
+	stored, err := requestMap(ctx, c, http.MethodGet, path, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	content, _ := stored["content"].(string)
+	if err := os.MkdirAll(filepath.Dir(in.OutputPath), 0o755); err != nil {
+		return nil, fmt.Errorf("memanto: create daily summary dir: %w", err)
+	}
+	if err := os.WriteFile(in.OutputPath, []byte(content), 0o600); err != nil {
+		return nil, fmt.Errorf("memanto: write daily summary: %w", err)
+	}
+	summary["summary_path"] = in.OutputPath
+	return res, nil
 }
 
 // ConflictDateInput selects the day of a conflict report.
@@ -389,7 +551,7 @@ func (c *Client) ResolveConflict(ctx context.Context, in ResolveConflictInput) (
 
 // ListAgents returns every agent on the server.
 func (c *Client) ListAgents(ctx context.Context) (*api.AgentList, error) {
-	return request[api.AgentList](ctx, c, http.MethodGet, "/api/v2/agents", nil, false)
+	return request[api.AgentList](ctx, c, http.MethodGet, c.agentsRootPath, nil, false)
 }
 
 // GetAgent returns the bound agent.
@@ -412,7 +574,7 @@ func (c *Client) CreateAgent(ctx context.Context, in CreateAgentInput) (*api.Age
 		Pattern     string `json:"pattern,omitempty"`
 		Description string `json:"description,omitempty"`
 	}{c.agentID, in.Pattern, in.Description}
-	return request[api.AgentInfo](ctx, c, http.MethodPost, "/api/v2/agents", body, false)
+	return request[api.AgentInfo](ctx, c, http.MethodPost, c.agentsRootPath, body, false)
 }
 
 // DeleteAgentInput configures DeleteAgent.
@@ -422,11 +584,11 @@ type DeleteAgentInput struct {
 	DeleteMemories bool
 }
 
-// DeleteAgent deletes the bound agent and forgets its session. Its memories
-// stay in Moorcheh unless DeleteMemories is set.
+// DeleteAgent deletes the bound agent and forgets its session. On Memanto
+// local, memories stay in Moorcheh unless DeleteMemories is set.
 func (c *Client) DeleteAgent(ctx context.Context, in DeleteAgentInput) (map[string]any, error) {
 	path := c.agentPath
-	if in.DeleteMemories {
+	if !c.isCloud && in.DeleteMemories {
 		path += "?delete-backup-too=true"
 	}
 	var out map[string]any
@@ -439,6 +601,10 @@ func (c *Client) DeleteAgent(ctx context.Context, in DeleteAgentInput) (map[stri
 
 // Deactivate ends the agent's session. The next call activates a new one.
 func (c *Client) Deactivate(ctx context.Context) (*api.SessionSummary, error) {
+	if c.isCloud {
+		c.forgetSession()
+		return &api.SessionSummary{AgentId: c.agentID}, nil
+	}
 	var out api.SessionSummary
 	if err := c.do(ctx, http.MethodPost, c.agentPath+"/deactivate", nil, true, &out); err != nil {
 		return nil, err
@@ -450,7 +616,11 @@ func (c *Client) Deactivate(ctx context.Context) (*api.SessionSummary, error) {
 // Status returns the server's currently active session, whichever agent
 // it belongs to.
 func (c *Client) Status(ctx context.Context) (*api.SessionInfo, error) {
-	return request[api.SessionInfo](ctx, c, http.MethodGet, "/api/v2/status", nil, false)
+	path := "/api/v2/status"
+	if c.isCloud {
+		path = "/me"
+	}
+	return request[api.SessionInfo](ctx, c, http.MethodGet, path, nil, false)
 }
 
 // ---------------------------------------------------------------------------
@@ -469,12 +639,19 @@ func (c *Client) session(ctx context.Context) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.token != "" {
+		if c.isCloud {
+			return "", nil
+		}
 		return c.token, nil
 	}
 	if c.autoCreate {
 		if err := c.createAgentIfMissing(ctx); err != nil {
 			return "", err
 		}
+	}
+	if c.isCloud {
+		c.token = "cloud"
+		return "", nil
 	}
 	return c.activateLocked(ctx)
 }
@@ -564,7 +741,7 @@ func (c *Client) send(ctx context.Context, method, path string, payload []byte, 
 	if err != nil {
 		return err
 	}
-	if withSession && res.StatusCode == http.StatusUnauthorized {
+	if !c.isCloud && withSession && res.StatusCode == http.StatusUnauthorized {
 		res.Body.Close()
 		if token, err = c.renewSession(ctx, token); err != nil {
 			return err

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { openAsBlob } from "node:fs";
-import { stat } from "node:fs/promises";
-import { basename } from "node:path";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { basename, dirname } from "node:path";
 
 import { ServerLifecycle, type ServerOptions } from "./lifecycle.js";
 
@@ -9,6 +9,9 @@ export { ServerLifecycle } from "./lifecycle.js";
 export { doctor } from "./doctor.js";
 export type { ServerOptions } from "./lifecycle.js";
 export type { DoctorResult } from "./doctor.js";
+
+/** Default public gateway for Memanto Cloud (`MEMANTO_API_KEY`). */
+export const DEFAULT_MEMANTO_API_URL = "https://api.memanto.ai";
 
 export interface MemantoOptions extends ServerOptions {
   /** Agent id to bind this client to. Created if missing on first call. */
@@ -148,20 +151,78 @@ interface SessionRecord {
   session_id: string;
 }
 
+interface CloudUploadResponse {
+  upload_url: string;
+  content_type?: string;
+  file_id?: string;
+  job_id?: string;
+  file_name?: string;
+}
+
+function plainCloudMemory(memory: unknown): unknown {
+  if (!memory || typeof memory !== "object") return memory;
+  const rec = memory as Record<string, unknown>;
+  if (typeof rec.content !== "string") return memory;
+  const sepIdx = rec.content.indexOf("\n\n");
+  if (sepIdx === -1) return memory;
+  const head = rec.content.slice(0, sepIdx);
+  let body = rec.content.slice(sepIdx + 2);
+  const headerMatch = /^\[([A-Za-z]+)\] /.exec(head);
+  const memType = typeof rec.type === "string" ? rec.type : "";
+  if (!headerMatch || headerMatch[1].toLowerCase() !== memType.toLowerCase()) {
+    return memory;
+  }
+  const tags = Array.isArray(rec.tags)
+    ? rec.tags.map((t) => String(t).trim()).filter(Boolean)
+    : [];
+  if (tags.length > 0) {
+    const marker = "\n\nTags: ";
+    const footerIdx = body.lastIndexOf(marker);
+    if (footerIdx !== -1) {
+      const footerTags = body
+        .slice(footerIdx + marker.length)
+        .split(",")
+        .map((t) => t.trim());
+      if (
+        footerTags.length === tags.length &&
+        footerTags.every((t, i) => t === tags[i])
+      ) {
+        body = body.slice(0, footerIdx);
+      }
+    }
+  }
+  return { ...rec, content: body };
+}
+
+function normalizeCloudRecallResult<T>(result: T): T {
+  if (!result || typeof result !== "object") return result;
+  const rec = result as Record<string, unknown>;
+  if (!Array.isArray(rec.memories)) return result;
+  return {
+    ...rec,
+    memories: rec.memories.map(plainCloudMemory),
+  } as T;
+}
+
 /**
- * Ergonomic Memanto client. Spawns a local memanto server via `uvx` on
- * first use, creates/activates the agent, and forwards calls to the
- * session-scoped REST endpoints.
+ * Ergonomic Memanto client. Connects directly to Memanto Cloud when configured
+ * with a Memanto Cloud API key (`mk_...` or `MEMANTO_API_KEY`), or falls back
+ * to spawning a local memanto server via `uvx` (`MOORCHEH_API_KEY` / on-prem).
  */
 export class Memanto {
   private readonly lifecycle: ServerLifecycle;
   private readonly agentId: string;
   private readonly encodedAgentId: string;
   private readonly autoCreate: boolean;
-  // A server bound beyond loopback only allows agent create/activate for
-  // callers presenting its management credential (the Moorcheh API key).
+  private readonly isCloud: boolean;
+  private readonly agentsRootPath: string;
+  private readonly agentPath: string;
+  // Memanto Cloud requires X-Api-Key on all requests; a local server bound
+  // beyond loopback requires it for agent create/activate.
   private readonly authHeaders: Record<string, string>;
   private sessionToken: string | null = null;
+  private agentEnsured = false;
+  private resetSeq = 0;
   private starting: Promise<void> | null = null;
 
   constructor(opts: MemantoOptions) {
@@ -169,8 +230,41 @@ export class Memanto {
     this.agentId = opts.agentId;
     this.encodedAgentId = encodeURIComponent(opts.agentId);
     this.autoCreate = opts.autoCreate ?? true;
-    this.authHeaders = opts.apiKey ? { "X-Api-Key": opts.apiKey } : {};
-    this.lifecycle = new ServerLifecycle(opts);
+
+    const explicitKey = opts.apiKey?.trim() || undefined;
+    const envMemantoKey = process.env.MEMANTO_API_KEY?.trim() || undefined;
+    const envMoorchehKey = process.env.MOORCHEH_API_KEY?.trim() || undefined;
+    const envCloudUrl = process.env.MEMANTO_API_URL?.trim() || undefined;
+
+    const hasLocalSpawnOpts = Boolean(
+      opts.uvxPath || opts.host || opts.port || opts.packageSpec,
+    );
+    let resolvedApiKey = explicitKey;
+    if (explicitKey) {
+      this.isCloud =
+        explicitKey.startsWith("mk_") ||
+        (Boolean(envMemantoKey) && explicitKey === envMemantoKey);
+    } else if (!hasLocalSpawnOpts && envMemantoKey) {
+      this.isCloud = true;
+      resolvedApiKey = envMemantoKey;
+    } else if (!opts.baseUrl && envMoorchehKey) {
+      this.isCloud = false;
+      resolvedApiKey = envMoorchehKey;
+    } else {
+      this.isCloud = false;
+    }
+
+    this.agentsRootPath = this.isCloud ? "/agents" : "/api/v2/agents";
+    this.agentPath = `${this.agentsRootPath}/${this.encodedAgentId}`;
+    this.authHeaders = resolvedApiKey ? { "X-Api-Key": resolvedApiKey } : {};
+    const effectiveBaseUrl = this.isCloud
+      ? opts.baseUrl?.trim() || envCloudUrl || DEFAULT_MEMANTO_API_URL
+      : opts.baseUrl;
+    this.lifecycle = new ServerLifecycle({
+      ...opts,
+      apiKey: resolvedApiKey,
+      baseUrl: effectiveBaseUrl,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -178,7 +272,7 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async remember(input: RememberInput) {
-    return this.request("POST", `/api/v2/agents/${this.encodedAgentId}/remember`, {
+    return this.request("POST", `${this.agentPath}/remember`, {
       content: input.content,
       type: input.type,
       title: input.title,
@@ -192,7 +286,7 @@ export class Memanto {
   async batchRemember(items: BatchRememberItem[]) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/batch-remember`,
+      `${this.agentPath}/batch-remember`,
       {
         memories: items.map((m) => ({
           content: m.content,
@@ -210,7 +304,7 @@ export class Memanto {
   async extractMemories(input: ExtractMemoriesInput) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/remember/extract`,
+      `${this.agentPath}/remember/extract`,
       {
         messages: input.messages,
         dry_run: input.dryRun,
@@ -224,16 +318,20 @@ export class Memanto {
   async deleteMemory(memoryId: string) {
     return this.request(
       "DELETE",
-      `/api/v2/agents/${this.encodedAgentId}/memories/${encodeURIComponent(memoryId)}`,
+      `${this.agentPath}/memories/${encodeURIComponent(memoryId)}`,
     );
   }
 
   async uploadFile(input: UploadFileInput) {
     await this.ensureReady();
+    const filename = input.filename ?? basename(input.path);
+    if (this.isCloud) {
+      return this.requestCloudFileUpload(input.path, filename);
+    }
     return this.requestFileUpload(
-      `/api/v2/agents/${this.encodedAgentId}/upload-file`,
+      `${this.agentPath}/upload-file`,
       input.path,
-      input.filename ?? basename(input.path),
+      filename,
     );
   }
 
@@ -242,7 +340,7 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async recall(input: RecallInput) {
-    return this.request("POST", `/api/v2/agents/${this.encodedAgentId}/recall`, {
+    const res = await this.request("POST", `${this.agentPath}/recall`, {
       query: input.query,
       limit: input.limit,
       min_similarity: input.minSimilarity,
@@ -250,12 +348,13 @@ export class Memanto {
       tags: input.tags,
       source: input.source,
     });
+    return this.isCloud ? normalizeCloudRecallResult(res) : res;
   }
 
   async recallAsOf(input: RecallAsOfInput) {
-    return this.request(
+    const res = await this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/recall/as-of`,
+      `${this.agentPath}/recall/as-of`,
       {
         as_of: input.asOf,
         limit: input.limit,
@@ -263,12 +362,13 @@ export class Memanto {
         source: input.source,
       },
     );
+    return this.isCloud ? normalizeCloudRecallResult(res) : res;
   }
 
   async recallChangedSince(input: RecallChangedSinceInput) {
-    return this.request(
+    const res = await this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/recall/changed-since`,
+      `${this.agentPath}/recall/changed-since`,
       {
         since: input.since,
         limit: input.limit,
@@ -276,18 +376,20 @@ export class Memanto {
         source: input.source,
       },
     );
+    return this.isCloud ? normalizeCloudRecallResult(res) : res;
   }
 
   async recallRecent(input: RecallRecentInput = {}) {
-    return this.request(
+    const res = await this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/recall/recent`,
+      `${this.agentPath}/recall/recent`,
       { limit: input.limit, type: input.type, source: input.source },
     );
+    return this.isCloud ? normalizeCloudRecallResult(res) : res;
   }
 
   async answer(input: AnswerInput) {
-    return this.request("POST", `/api/v2/agents/${this.encodedAgentId}/answer`, {
+    return this.request("POST", `${this.agentPath}/answer`, {
       question: input.question,
       limit: input.limit,
       threshold: input.threshold,
@@ -303,17 +405,43 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async dailySummary(input: DailySummaryInput = {}) {
-    return this.request(
+    if (!this.isCloud) {
+      return this.request("POST", `${this.agentPath}/daily-summary`, {
+        date: input.date,
+        output_path: input.outputPath,
+      });
+    }
+    const result = (await this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/daily-summary`,
-      { date: input.date, output_path: input.outputPath },
-    );
+      `${this.agentPath}/daily-summary`,
+      { date: input.date },
+    )) as Record<string, unknown> | null;
+    const summary =
+      result && typeof result.summary === "object" && result.summary !== null
+        ? (result.summary as Record<string, unknown>)
+        : null;
+    if (input.outputPath && summary && summary.status === "success") {
+      const qs = input.date ? `?date=${encodeURIComponent(input.date)}` : "";
+      const stored = (await this.request(
+        "GET",
+        `${this.agentPath}/daily-summary${qs}`,
+      )) as Record<string, unknown> | null;
+      const content =
+        stored && typeof stored.content === "string" ? stored.content : "";
+      await mkdir(dirname(input.outputPath), { recursive: true });
+      await writeFile(input.outputPath, content, "utf-8");
+      return {
+        ...result,
+        summary: { ...summary, summary_path: input.outputPath },
+      };
+    }
+    return result;
   }
 
   async generateConflicts(input: ConflictDateInput = {}) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/conflicts/generate`,
+      `${this.agentPath}/conflicts/generate`,
       { date: input.date },
     );
   }
@@ -322,14 +450,14 @@ export class Memanto {
     const qs = input.date ? `?date=${encodeURIComponent(input.date)}` : "";
     return this.request(
       "GET",
-      `/api/v2/agents/${this.encodedAgentId}/conflicts${qs}`,
+      `${this.agentPath}/conflicts${qs}`,
     );
   }
 
   async resolveConflict(input: ResolveConflictInput) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/conflicts/resolve`,
+      `${this.agentPath}/conflicts/resolve`,
       {
         conflict_index: input.conflictIndex,
         action: input.action,
@@ -345,13 +473,13 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async listAgents() {
-    return this.request("GET", `/api/v2/agents`, undefined, {
+    return this.request("GET", this.agentsRootPath, undefined, {
       requireSession: false,
     });
   }
 
   async getAgent() {
-    return this.request("GET", `/api/v2/agents/${this.encodedAgentId}`, undefined, {
+    return this.request("GET", this.agentPath, undefined, {
       requireSession: false,
     });
   }
@@ -359,7 +487,7 @@ export class Memanto {
   async createAgent(input: CreateAgentInput = {}) {
     await this.lifecycle.start();
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents`, {
+    const res = await fetch(`${baseUrl}${this.agentsRootPath}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...this.authHeaders },
       body: JSON.stringify({
@@ -375,36 +503,50 @@ export class Memanto {
   /**
    * Delete the bound agent and clear any cached session for it.
    *
-   * Its memories stay in Moorcheh unless `deleteMemories` is true. If deleting
-   * them fails, the agent is left intact and the call throws.
+   * On Memanto local, memories stay in Moorcheh unless `deleteMemories` is true.
+   * On Memanto Cloud, deleting an agent always deletes its memories.
    */
   async deleteAgent(input: DeleteAgentInput = {}) {
-    const query = input.deleteMemories ? "?delete-backup-too=true" : "";
+    const query =
+      !this.isCloud && input.deleteMemories ? "?delete-backup-too=true" : "";
     const result = await this.request(
       "DELETE",
-      `/api/v2/agents/${this.encodedAgentId}${query}`,
+      `${this.agentPath}${query}`,
       undefined,
       { requireSession: false },
     );
+    this.resetSeq += 1;
     this.sessionToken = null;
+    this.agentEnsured = false;
     this.starting = null;
     return result;
   }
 
   async deactivate() {
+    if (this.isCloud) {
+      this.resetSeq += 1;
+      this.sessionToken = null;
+      this.agentEnsured = false;
+      this.starting = null;
+      return { agent_id: this.agentId, status: "deactivated" };
+    }
     const result = await this.request(
       "POST",
-      `/api/v2/agents/${this.encodedAgentId}/deactivate`,
+      `${this.agentPath}/deactivate`,
     );
+    this.resetSeq += 1;
     this.sessionToken = null;
     this.starting = null;
     return result;
   }
 
   async status() {
-    return this.request("GET", `/api/v2/status`, undefined, {
-      requireSession: false,
-    });
+    return this.request(
+      "GET",
+      this.isCloud ? "/me" : "/api/v2/status",
+      undefined,
+      { requireSession: false },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -412,7 +554,9 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async close(): Promise<void> {
+    this.resetSeq += 1;
     this.sessionToken = null;
+    this.agentEnsured = false;
     this.starting = null;
     await this.lifecycle.stop();
   }
@@ -422,7 +566,7 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   private async ensureReady(): Promise<void> {
-    if (this.sessionToken) return;
+    if (this.isCloud ? this.agentEnsured : Boolean(this.sessionToken)) return;
     if (!this.starting) this.starting = this.bootstrap();
     const starting = this.starting;
     try {
@@ -447,8 +591,15 @@ export class Memanto {
   }
 
   private async bootstrap(): Promise<void> {
+    const seq = this.resetSeq;
     await this.lifecycle.start();
     if (this.autoCreate) await this.createAgentIfMissing();
+    if (this.isCloud) {
+      if (this.resetSeq === seq) {
+        this.agentEnsured = true;
+      }
+      return;
+    }
     await this.activate();
   }
 
@@ -459,14 +610,14 @@ export class Memanto {
 
   private async createAgentIfMissing(): Promise<void> {
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}`, {
+    const res = await fetch(`${baseUrl}${this.agentPath}`, {
       headers: this.authHeaders,
     });
     if (res.ok) return;
     if (res.status !== 404) {
       throw await asError(res, "Failed to look up agent");
     }
-    const create = await fetch(`${baseUrl}/api/v2/agents`, {
+    const create = await fetch(`${baseUrl}${this.agentsRootPath}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...this.authHeaders },
       body: JSON.stringify({ agent_id: this.agentId }),
@@ -478,7 +629,7 @@ export class Memanto {
 
   private async activate(): Promise<void> {
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}/activate`, {
+    const res = await fetch(`${baseUrl}${this.agentPath}/activate`, {
       method: "POST",
       headers: this.authHeaders,
     });
@@ -494,7 +645,7 @@ export class Memanto {
   ): Promise<Response> {
     const staleToken = this.sessionToken;
     let res = await send();
-    if (retryOn401 && res.status === 401) {
+    if (!this.isCloud && retryOn401 && res.status === 401) {
       await this.refreshExpiredSession(staleToken);
       headers["X-Session-Token"] = this.sessionToken ?? "";
       res = await send();
@@ -519,7 +670,7 @@ export class Memanto {
       "Content-Type": "application/json",
       ...this.authHeaders,
     };
-    if (requireSession) {
+    if (requireSession && !this.isCloud) {
       headers["X-Session-Token"] = this.sessionToken ?? "";
     }
     const serializedBody = body === undefined ? undefined : JSON.stringify(body);
@@ -529,6 +680,42 @@ export class Memanto {
     if (!res.ok) throw await asError(res, `${method} ${path} failed`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
+  }
+
+  private async requestCloudFileUpload<T = unknown>(
+    filePath: string,
+    filename: string,
+  ): Promise<T> {
+    const fileStats = await stat(filePath);
+    if (!fileStats.isFile()) {
+      throw new Error(`Upload path is not a file: ${filePath}`);
+    }
+    const created = await this.request<CloudUploadResponse>(
+      "POST",
+      `${this.agentPath}/files`,
+      { file_name: filename, size_bytes: fileStats.size },
+    );
+    const fileBlob = await openAsBlob(filePath);
+    const putRes = await fetch(created.upload_url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": created.content_type || "application/octet-stream",
+      },
+      body: fileBlob,
+    });
+    if (!putRes.ok) {
+      throw new Error(`File upload to storage failed (HTTP ${putRes.status})`);
+    }
+    return {
+      agent_id: this.agentId,
+      namespace: this.agentId,
+      success: true,
+      status: "queued",
+      file_name: created.file_name ?? filename,
+      file_size: fileStats.size,
+      file_id: created.file_id,
+      job_id: created.job_id,
+    } as T;
   }
 
   private async requestFileUpload<T = unknown>(

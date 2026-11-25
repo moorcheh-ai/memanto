@@ -68,7 +68,11 @@ func (s *server) start(ctx context.Context) (string, error) {
 	cmd := exec.Command(uvx, spec, "serve", "--host", host, "--port", strconv.Itoa(port))
 	cmd.Env = os.Environ()
 	if s.opts.APIKey != "" {
-		cmd.Env = append(cmd.Env, "MOORCHEH_API_KEY="+s.opts.APIKey)
+		if strings.HasPrefix(s.opts.APIKey, "mk_") {
+			cmd.Env = append(cmd.Env, "MEMANTO_API_KEY="+s.opts.APIKey)
+		} else {
+			cmd.Env = append(cmd.Env, "MOORCHEH_API_KEY="+s.opts.APIKey)
+		}
 	}
 	if s.opts.Verbose {
 		cmd.Stdout = os.Stdout
