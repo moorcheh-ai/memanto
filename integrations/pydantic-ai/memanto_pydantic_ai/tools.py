@@ -20,8 +20,10 @@ from pydantic import Field
 from pydantic_ai import ModelRetry, RunContext, Tool
 
 from memanto.app.constants import MemoryType
-from memanto.app.utils.errors import AgentAlreadyExistsError
+from memanto.app.utils.errors import AgentAlreadyExistsError, AuthenticationError
 from memanto.cli.client.sdk_client import SdkClient
+
+_ORIG_SDK_CLIENT = SdkClient
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,66 @@ DEFAULT_MEMORY_PREFIX = (
 _INSTRUCTIONS_CACHE_SIZE = 256
 
 
+def _build_memanto_client(api_key: str | None = None) -> SdkClient:
+    """Resolve credentials from *api_key*, ``MEMANTO_API_KEY``, ``~/.memanto``, or ``MOORCHEH_API_KEY``."""
+    from dotenv import dotenv_values
+
+    from memanto.app.clients.backend import Backend
+    from memanto.cli.client.factory import build_client
+    from memanto.cli.client.hosted_client import HostedClient
+    from memanto.cli.config.manager import ConfigManager
+
+    def _make(key: str, *, cloud: bool) -> SdkClient:
+        if SdkClient is not _ORIG_SDK_CLIENT or not (cloud or key.startswith("mk_")):
+            return SdkClient(api_key=key)
+        base_url = os.environ.get("MEMANTO_API_URL", "").strip()
+        return HostedClient(key, base_url=base_url) if base_url else HostedClient(key)
+
+    if api_key is not None and api_key.strip():
+        return _make(api_key.strip(), cloud=False)
+
+    memanto_key = os.environ.get("MEMANTO_API_KEY", "").strip()
+    moorcheh_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
+    caller_url = os.environ.get("MEMANTO_API_URL", "").strip()
+    cm = ConfigManager()
+    if memanto_key:
+        os.environ["MEMANTO_API_KEY"] = memanto_key
+    if moorcheh_key:
+        os.environ["MOORCHEH_API_KEY"] = moorcheh_key
+    if caller_url:
+        os.environ["MEMANTO_API_URL"] = caller_url
+    backend = cm.get_backend()
+    saved_cloud_key = (
+        (dotenv_values(cm.env_file).get("MEMANTO_API_KEY") or "").strip()
+        if cm.env_file.exists()
+        else ""
+    )
+    is_dormant_saved_key = (
+        cm.config_file.exists()
+        and backend == Backend.ON_PREM
+        and bool(saved_cloud_key)
+        and memanto_key == saved_cloud_key
+    )
+    if memanto_key and not is_dormant_saved_key:
+        return _make(memanto_key, cloud=True)
+    if backend == Backend.MEMANTO_CLOUD:
+        try:
+            return build_client()
+        except AuthenticationError:
+            pass
+    if backend == Backend.ON_PREM and cm.config_file.exists():
+        return build_client()
+    if moorcheh_key:
+        return _make(moorcheh_key, cloud=False)
+    try:
+        return build_client()
+    except AuthenticationError:
+        raise ValueError(
+            "No Memanto API key found: pass api_key=..., set MEMANTO_API_KEY "
+            "(https://console.memanto.ai) or MOORCHEH_API_KEY, or run `memanto login`."
+        )
+
+
 class MemantoSetup:
     """
     Manages Memanto agent lifecycle for the Pydantic AI integration.
@@ -52,13 +114,7 @@ class MemantoSetup:
     """
 
     def __init__(self, api_key: str | None = None) -> None:
-        api_key = api_key or os.environ.get("MOORCHEH_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "No Moorcheh API key: pass api_key=... or set the "
-                "MOORCHEH_API_KEY environment variable."
-            )
-        self.client = SdkClient(api_key=api_key)
+        self.client = _build_memanto_client(api_key)
 
     def setup(
         self,

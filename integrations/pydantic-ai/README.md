@@ -20,9 +20,11 @@ Requires Python 3.10+. Installs `pydantic-ai-slim` 2.0+ and `memanto` 0.2.21+.
 
 ```bash
 pip install memanto-pydantic-ai "pydantic-ai-slim[openai]"   # or the extra for your model provider, or full `pydantic-ai`
-export MOORCHEH_API_KEY=your_key_xxxxxxxxxxxxxxxxxx
-export OPENAI_API_KEY=sk-...  # for the openai:gpt-4o model below
+export MEMANTO_API_KEY=mk_xxxxxxxxxxxxxxxxxx                 # from https://console.memanto.ai (or run `memanto login`)
+export OPENAI_API_KEY=sk-...                                 # for the openai:gpt-4o model below
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 ## Use it
 
@@ -31,7 +33,7 @@ from pydantic_ai import Agent
 
 from memanto_pydantic_ai import MemantoSetup, create_memanto_tools, memory_instructions
 
-setup = MemantoSetup()  # reads MOORCHEH_API_KEY
+setup = MemantoSetup()  # reads MEMANTO_API_KEY, ~/.memanto (`memanto login`), or MOORCHEH_API_KEY
 client = setup.setup(agent_id="travel-agent", description="Travel planning assistant")
 
 agent = Agent(
@@ -85,8 +87,8 @@ Cache the result per user in a long-running app rather than calling `setup` on e
 
 ## API
 
-`MemantoSetup(api_key=None)`: creates or reuses a Memanto agent and activates a session. Reads `MOORCHEH_API_KEY` when `api_key` is omitted.
-- `.setup(agent_id, pattern="tool", description=None, duration_hours=6)` → an `SdkClient` with an active session for `agent_id`. Sessions renew automatically while in use.
+`MemantoSetup(api_key=None)`: creates or reuses a Memanto agent and activates a session. Reads `MEMANTO_API_KEY` (from [console.memanto.ai](https://console.memanto.ai)), the active `~/.memanto` login (`memanto login`), or `MOORCHEH_API_KEY` when `api_key` is omitted.
+- `.setup(agent_id, pattern="tool", description=None, duration_hours=6)` → a Memanto client with an active session for `agent_id`. Sessions renew automatically while in use.
 - `.teardown(agent_id)`: deactivates the session.
 
 `create_memanto_tools(client, agent_id, *, include_remember=True, include_recall=True, include_answer=True)` → `list[Tool]`, ready to pass into `Agent(tools=...)`. Set `include_remember=False` for a read-only agent.

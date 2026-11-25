@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memanto-pydantic-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pydantic AI tools and integration for Memanto's persistent memory"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<4"
 authors = [{ name = "Memanto", email = "info@memanto.ai" }]
 dependencies = [
-    "memanto>=0.2.21",
+    "memanto>=0.3.0",
     "pydantic-ai-slim>=2.0.0",
 ]
 classifiers = [
