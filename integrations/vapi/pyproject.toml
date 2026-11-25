@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memanto-vapi"
-version = "0.1.0"
+version = "0.1.1"
 description = "Memanto memory for Vapi voice agents: shared knowledge, lessons learned, optional per-caller memory"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<4"
 authors = [{ name = "Memanto", email = "info@memanto.ai" }]
 dependencies = [
-    "memanto>=0.2.21",
+    "memanto>=0.3.0",
     "fastapi>=0.110",
     "uvicorn>=0.27",
 ]

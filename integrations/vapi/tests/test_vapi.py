@@ -669,3 +669,19 @@ def test_caller_summary_only_retry_is_not_retained_twice(extraction):
     assert summary["content"] == "Opening hours confirmed."
     assert summary["tags"][0] == memory.caller_tag("number:+15551234567")
     assert fake.all_kwargs("recall")[-1]["tags"] == ["retained-call-9"]
+
+
+def test_vapi_memory_builds_client_from_memanto_api_key(monkeypatch):
+    monkeypatch.setenv("MEMANTO_API_KEY", "mk_test_key")
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    memory = VapiMemory(agent_id="acme-support")
+    assert memory._client.api_key == "mk_test_key"
+
+
+def test_vapi_memory_requires_client_or_api_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEMANTO_API_KEY", raising=False)
+    monkeypatch.delenv("MOORCHEH_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    with pytest.raises(ValueError, match="MEMANTO_API_KEY|MOORCHEH_API_KEY"):
+        VapiMemory(agent_id="acme-support")

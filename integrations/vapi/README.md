@@ -43,7 +43,7 @@ About this caller:
 ```bash
 pip install memanto-vapi
 
-export MOORCHEH_API_KEY=...                  # Memanto / Moorcheh key
+export MEMANTO_API_KEY=mk_...                # Memanto Cloud key from https://console.memanto.ai/sign-in (or run `memanto login`)
 export MEMANTO_VAPI_AGENT_ID=acme-support    # Memanto agent for this assistant
 export MEMANTO_VAPI_SECRET=$(openssl rand -hex 32)   # also goes in the Vapi credential
 export MEMANTO_VAPI_ASSISTANT_ID=...         # your saved Vapi assistant (inbound calls)
@@ -54,6 +54,8 @@ export MEMANTO_VAPI_ASSISTANT_ID=...         # your saved Vapi assistant (inboun
 
 memanto-vapi serve --port 8080
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 The webhook is at `POST /vapi/webhook`, with `GET /health` for status. It must be reachable over public HTTPS; for local testing use a tunnel such as `ngrok http 8080`.
 
@@ -111,10 +113,10 @@ would help on future calls.
 Vapi only sends `assistant-request` for inbound phone calls. For calls you start yourself, build the overrides when you create the call:
 
 ```python
-from memanto.cli.client.sdk_client import SdkClient
 from memanto_vapi import VapiMemory
 
-memory = VapiMemory(SdkClient(api_key=...), agent_id="acme-support")
+# Reads MEMANTO_API_KEY, ~/.memanto (`memanto login`), or MOORCHEH_API_KEY (or pass api_key=...)
+memory = VapiMemory(agent_id="acme-support")
 
 overrides = await memory.build_assistant_overrides({})
 # caller scope: pass the person, e.g.

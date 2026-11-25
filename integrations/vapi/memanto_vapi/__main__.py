@@ -18,15 +18,20 @@ def _require_env(name: str) -> str:
 def _serve(args: argparse.Namespace) -> None:
     import uvicorn
 
-    from memanto.cli.client.sdk_client import SdkClient
-    from memanto_vapi.memory import SCOPES, VapiMemory
+    from memanto_vapi.memory import SCOPES, VapiMemory, _build_memanto_client
     from memanto_vapi.webhook import create_app
 
     scope = os.environ.get("MEMANTO_VAPI_SCOPE", "shared").strip() or "shared"
     if scope not in SCOPES:
         sys.exit(f"memanto-vapi: MEMANTO_VAPI_SCOPE must be one of {', '.join(SCOPES)}")
+    try:
+        client = _build_memanto_client()
+    except ValueError:
+        sys.exit(
+            "memanto-vapi: environment variable MEMANTO_API_KEY (or MOORCHEH_API_KEY) is required, or run `memanto login`"
+        )
     memory = VapiMemory(
-        SdkClient(api_key=_require_env("MOORCHEH_API_KEY")),
+        client,
         agent_id=_require_env("MEMANTO_VAPI_AGENT_ID"),
         scope=scope,  # type: ignore[arg-type]
         caller_salt=(
@@ -60,7 +65,7 @@ def main(argv: list[str] | None = None) -> None:
 
     serve = commands.add_parser(
         "serve",
-        help="Run the webhook (configured by MOORCHEH_API_KEY, MEMANTO_VAPI_* env vars).",
+        help="Run the webhook (configured by MEMANTO_API_KEY / MOORCHEH_API_KEY, MEMANTO_VAPI_* env vars).",
     )
     serve.add_argument("--host", default="0.0.0.0")
     serve.add_argument("--port", type=int, default=8080)
