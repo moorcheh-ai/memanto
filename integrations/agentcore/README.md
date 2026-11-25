@@ -40,21 +40,21 @@ pip install -e .   # from Memanto repo root
 pip install -e integrations/agentcore
 ```
 
-Set your Moorcheh API key (same as CLI):
+Set your Memanto API key (from [console.memanto.ai](https://console.memanto.ai/sign-in), or run `memanto login`):
 
 ```bash
-export MOORCHEH_API_KEY=your_key
+export MEMANTO_API_KEY=mk_xxxxxxxxxxxxxxxxxx
 ```
+
+> Using Memanto local instead of Memanto Cloud? Set `MOORCHEH_API_KEY` ([console.moorcheh.ai/api-keys](https://console.moorcheh.ai/api-keys)) or configure on-prem with `memanto use on-prem`.
 
 ## Quick start
 
 ```python
-import os
-from memanto.cli.client.sdk_client import SdkClient
 from memanto_agentcore import MemantoRuntimeAdapter, TurnContext
 
-client = SdkClient(api_key=os.environ["MOORCHEH_API_KEY"])
-adapter = MemantoRuntimeAdapter(client, agent_name="support-agent")
+# Automatically uses MEMANTO_API_KEY, ~/.memanto (`memanto login`), or MOORCHEH_API_KEY
+adapter = MemantoRuntimeAdapter(agent_name="support-agent")
 
 
 async def handler(event: dict) -> dict:
@@ -154,11 +154,11 @@ One command runs retain → recall → `run_turn` → user-isolation check. No `
 ```powershell
 cd "c:\Users\patel\Downloads\Edge AI\memanto"
 pip install -e .
-$env:MOORCHEH_API_KEY = "your-moorcheh-api-key"
+$env:MEMANTO_API_KEY = "mk_..."
 python integrations\agentcore\scripts\smoke_test.py
 ```
 
-If you already ran `memanto` and have `~/.memanto\.env`, you can omit setting the env var.
+If you already ran `memanto login` (or have `~/.memanto\.env`), you can omit setting the env var.
 
 **Expected output:** four steps ending with `PASS — AgentCore-style smoke test completed.` Exit code `0`.
 
@@ -191,7 +191,7 @@ memanto recall "support channel preference"
 ## Requirements
 
 - Python 3.10+
-- `memanto` with valid `MOORCHEH_API_KEY`
+- `memanto` with `MEMANTO_API_KEY` (`memanto login`) or `MOORCHEH_API_KEY`
 - AgentCore Runtime handler (async recommended)
 
 ## Related docs
