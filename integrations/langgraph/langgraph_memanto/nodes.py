@@ -5,6 +5,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
+from langgraph_memanto.store import _ORIG_SDK_CLIENT, _build_memanto_client
 from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
@@ -42,16 +43,28 @@ class _PerAgentClientCache:
 
     def __init__(self, template_client: SdkClient) -> None:
         """Initialise cache, extracting the API key from *template_client*."""
+        self._template_client = template_client
         self._api_key = template_client.api_key
         self._clients: dict[str, tuple[SdkClient, threading.Lock]] = {}
         self._lock = threading.Lock()
+
+    def _clone_client(self) -> SdkClient:
+        if SdkClient is not _ORIG_SDK_CLIENT:
+            return SdkClient(api_key=self._api_key)
+        cls = type(self._template_client)
+        if cls.__name__ == "HostedClient":
+            base_url = getattr(self._template_client, "base_url", None)
+            if base_url:
+                return cls(self._api_key, base_url=base_url)
+            return cls(self._api_key)
+        return SdkClient(api_key=self._api_key)
 
     def get(self, agent_id: str) -> tuple[SdkClient, threading.Lock]:
         """Return the SdkClient and setup lock for *agent_id*, creating them on first access."""
         with self._lock:
             if agent_id not in self._clients:
                 self._clients[agent_id] = (
-                    SdkClient(api_key=self._api_key),
+                    self._clone_client(),
                     threading.Lock(),
                 )
             return self._clients[agent_id]
@@ -99,17 +112,24 @@ def _do_setup(
 
 
 def create_recall_node(
-    client: SdkClient,
+    client: SdkClient | None = None,
     agent_id: str | None = None,
     agent_id_from_config: str = "agent_id",
     output_key: str | None = None,
+    *,
+    api_key: str | None = None,
 ):
     """Create a LangGraph node that recalls memories based on the latest human message.
 
     This node extracts the query from the most recent human message in the state
     and retrieves relevant memories from Memanto.
     """
-    _cache = _PerAgentClientCache(client)
+    resolved_client = (
+        client
+        if client is not None
+        else _build_memanto_client(api_key, sdk_client_cls=SdkClient)
+    )
+    _cache = _PerAgentClientCache(resolved_client)
 
     def recall_node(
         state: dict, config: RunnableConfig | None = None
@@ -198,17 +218,24 @@ def create_recall_node(
 
 
 def create_remember_node(
-    client: SdkClient,
+    client: SdkClient | None = None,
     agent_id: str | None = None,
     agent_id_from_config: str = "agent_id",
     remember_human: bool = True,
     remember_ai: bool = False,
+    *,
+    api_key: str | None = None,
 ):
     """Create a LangGraph node that stores conversation messages as memories.
 
     This node extracts the latest messages and stores them in Memanto.
     """
-    _cache = _PerAgentClientCache(client)
+    resolved_client = (
+        client
+        if client is not None
+        else _build_memanto_client(api_key, sdk_client_cls=SdkClient)
+    )
+    _cache = _PerAgentClientCache(resolved_client)
 
     def remember_node(
         state: dict, config: RunnableConfig | None = None

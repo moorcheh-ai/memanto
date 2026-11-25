@@ -7,6 +7,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 from pydantic import Field
 
+from langgraph_memanto.store import _build_memanto_client
 from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
@@ -28,13 +29,28 @@ VALID_MEMORY_TYPES = (
 )
 
 
-def create_memanto_tools(client: SdkClient, agent_id: str):
+def create_memanto_tools(
+    client: SdkClient | str | None = None,
+    agent_id: str | None = None,
+    *,
+    api_key: str | None = None,
+):
     """Create LangGraph tools bound to a Memanto client and agent."""
 
     import copy
     import threading
 
-    client = copy.copy(client)
+    if isinstance(client, str) and agent_id is None:
+        agent_id = client
+        client = None
+    if not agent_id or not agent_id.strip():
+        raise ValueError("agent_id is required")
+    resolved_client = (
+        copy.copy(client)
+        if client is not None
+        else _build_memanto_client(api_key, sdk_client_cls=SdkClient)
+    )
+    client = resolved_client
     _setup_lock = threading.Lock()
     _setup_done = False
 
