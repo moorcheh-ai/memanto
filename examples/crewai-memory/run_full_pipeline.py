@@ -26,17 +26,14 @@ TOPIC = "AI agent frameworks"
 def main() -> None:
     load_dotenv()
 
-    api_key = os.environ.get("MOORCHEH_API_KEY")
-    if not api_key:
-        print(
-            "Error: MOORCHEH_API_KEY not set. Copy .env.example to .env and fill it in."
-        )
-        sys.exit(1)
-
     llm = os.environ.get("CREWAI_LLM", "openrouter/baidu/cobuddy:free")
 
-    # Set up Memanto
-    setup = MemantoSetup(api_key)
+    # Set up Memanto (resolves MEMANTO_API_KEY, `memanto login`, or MOORCHEH_API_KEY)
+    try:
+        setup = MemantoSetup()
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        sys.exit(1)
     client = setup.setup(
         agent_id=AGENT_ID,
         description="Shared memory for CrewAI research pipeline",

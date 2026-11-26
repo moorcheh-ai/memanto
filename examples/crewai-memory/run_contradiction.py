@@ -12,7 +12,6 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import sys
 from datetime import datetime
 
@@ -25,14 +24,11 @@ AGENT_ID = "crewai-contradiction-demo"
 def main() -> None:
     load_dotenv()
 
-    api_key = os.environ.get("MOORCHEH_API_KEY")
-    if not api_key:
-        print(
-            "Error: MOORCHEH_API_KEY not set. Copy .env.example to .env and fill it in."
-        )
+    try:
+        setup = MemantoSetup()
+    except ValueError as exc:
+        print(f"Error: {exc}")
         sys.exit(1)
-
-    setup = MemantoSetup(api_key)
     client = setup.setup(
         agent_id=AGENT_ID,
         description="Demo agent for contradictory memory handling",
