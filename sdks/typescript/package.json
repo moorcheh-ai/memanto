@@ -2,7 +2,7 @@
   "name": "@moorcheh-ai/memanto",
   "version": "0.2.3",
   "description": "TypeScript SDK for Memanto — memory that AI agents love.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

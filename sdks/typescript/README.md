@@ -165,4 +165,4 @@ The npm package version tracks the matching PyPI release of `memanto`. To pin a 
 
 ## License
 
-MIT
+Apache-2.0

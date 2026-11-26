@@ -158,7 +158,7 @@ import logging; logging.getLogger("langfuse_memanto").setLevel(logging.DEBUG)
 
 ## License
 
-MIT
+Apache-2.0
 
 ## Links
 

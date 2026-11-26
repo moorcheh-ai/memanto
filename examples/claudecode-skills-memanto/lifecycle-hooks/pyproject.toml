@@ -7,7 +7,7 @@ name = "claudecode-skills-memanto"
 version = "0.1.0"
 description = "Cross-session engineering memory for Claude Code + mattpocock/skills, powered by Memanto. Real lifecycle hooks + LLM distillation = zero repeated instructions."
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 requires-python = ">=3.10,<4"
 authors = [
     { name = "Memanto", email = "info@memanto.ai" }
@@ -28,7 +28,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

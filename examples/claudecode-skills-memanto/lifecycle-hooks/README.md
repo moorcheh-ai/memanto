@@ -200,4 +200,4 @@ ruff check .
 - [Claude Code hooks](https://code.claude.com/docs/en/hooks) — the lifecycle
   events this layer plugs into.
 
-MIT licensed.
+Apache-2.0 licensed.

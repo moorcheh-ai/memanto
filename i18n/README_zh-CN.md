@@ -14,7 +14,7 @@
   <a href="https://arxiv.org/abs/2604.22085"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.22085-b31b1b.svg"></a>
   <a href="https://pypi.org/project/memanto/"><img alt="PyPI" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
   <a href="https://mcptoplist.com/server/io.github.moorcheh-ai%2Fmemanto"><img alt="MCP Toplist" src="https://mcptoplist.com/badge/io.github.moorcheh-ai%2Fmemanto.svg"></a>
-  <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg"></a>
+  <a href="LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -106,7 +106,7 @@ macOS、Linux、Windows。`memanto ui` 打开覆盖整个资产的本地仪表�
 
 **它在你的机器上运行。** 本地 Docker + Ollama，无需账户和 API 密钥，内容不会离开你的基础设施；也可以使用免费云或自托管。`memanto use` 一条命令切换，资产随你而行。
 
-**MIT。** 没有等待锁住有用部分的 open-core 层，没有功能开关、席位限制或突然撤走的服务。
+**Apache 2.0。** 没有等待锁住有用部分的 open-core 层，没有功能开关、席位限制或突然撤走的服务。
 
 没有锁定，因为没有可锁定之物。
 
@@ -176,7 +176,7 @@ memanto memory restore mem-123      # 再恢复它
 ---
 <p align="center">
   <strong>⭐ 如果 Memanto 正在管理你的智能体群记忆，请给仓库点星</strong><br>
-  <sub>这会告诉我们继续以 MIT 许可、完全公开地构建它。</sub></p>
+  <sub>这会告诉我们继续以 Apache 2.0 许可、完全公开地构建它。</sub></p>
 
 ---
 ## 开发者体验
@@ -332,5 +332,5 @@ memanto.answer("Does Alex drink dairy?")
 
 ---
 <p align="center">
-  <strong>MIT 许可证</strong>
+  <strong>Apache 2.0 许可证</strong>
 </p>

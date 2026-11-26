@@ -7,7 +7,7 @@ name = "memanto-vapi"
 version = "0.1.0"
 description = "Memanto memory for Vapi voice agents: shared knowledge, lessons learned, optional per-caller memory"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 requires-python = ">=3.10,<4"
 authors = [{ name = "Memanto", email = "info@memanto.ai" }]
 dependencies = [
@@ -17,7 +17,7 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
 

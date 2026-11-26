@@ -62,6 +62,6 @@
     }
   },
   "keywords": ["memory", "semantic-memory", "agents", "memanto", "moorcheh"],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "privacy_policies": ["https://www.memanto.ai/privacy", "https://www.moorcheh.ai/privacy"]
 }

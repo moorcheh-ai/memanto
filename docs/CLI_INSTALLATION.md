@@ -517,6 +517,6 @@ chcp 65001
 
 ---
 
-**License**: MIT
+**License**: Apache-2.0
 **Last Updated**: December 2025
 
