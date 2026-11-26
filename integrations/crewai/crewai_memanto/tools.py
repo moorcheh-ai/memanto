@@ -83,6 +83,8 @@ def _build_memanto_client(api_key: str | None = None) -> SdkClient:
     if memanto_key and not is_dormant_saved_key:
         return _make(memanto_key, cloud=True)
     if backend == Backend.MEMANTO_CLOUD:
+        if saved_cloud_key:
+            return _make(saved_cloud_key, cloud=True)
         try:
             return build_client()
         except AuthenticationError:
