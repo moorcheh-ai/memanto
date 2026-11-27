@@ -204,7 +204,7 @@ Memanto doesn't wrap someone else's vector database. Recall runs on **[Moorcheh]
 
 ## Proof, not adjectives
 
-**Public benchmarks** ([paper](https://arxiv.org/abs/2604.22085)): **89.8%** on LongMemEval and **87.1%** on LoCoMo, with a single retrieval query and no LLM at ingestion. <!-- TODO (Majid): state reader model, judge model, and subset here — you should be the one in this space whose conditions are legible. --> Datasets and harness are open at [huggingface.co/moorcheh](https://huggingface.co/moorcheh).
+**Public benchmarks** ([paper](https://arxiv.org/abs/2604.22085)): **89.8%** on LongMemEval and **87.1%** on LoCoMo, with a single retrieval query and no LLM at ingestion. Datasets and harness are open at [huggingface.co/moorcheh](https://huggingface.co/moorcheh).
 
 **Head-to-head suites** live in this repo. Each one is reproducible, and three use no LLM judge at all:
 
@@ -261,11 +261,6 @@ Narrow recall with `--active` or `--expired`. Point-in-time recall (`--as-of`) s
 
 ## Security & sovereignty
 
-<!-- ============================================================
-     TODO — Majid: fill from your hardening work. Structure is
-     right; the specifics are yours. Items marked ⟨…⟩ need input.
-     Anything you can't substantiate today, delete rather than soften.
-     ============================================================ -->
 
 - **Nothing leaves your machine in on-prem mode.** Docker + Ollama, no account, no outbound calls. The whole loop (extraction, consolidation, reconciliation, briefing) runs locally.
 - **Scoped by default.** Each agent gets its own namespace. Your production-ops agent doesn't read your scratch experiments.
